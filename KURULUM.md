@@ -36,7 +36,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Şirket kurulumu | İsim, ana/ikincil renk; kuryeler ve merkez ofis bu renklerde |
 | Kuryeler | Bisiklet, e-scooter, motosiklet, araba; hız, kapasite ve ücret farklı |
 | İşe alım | Başvurular zamanla gelir, kabul/red edersin; işe alım ve çıkarma ücretsiz |
-| Serbest kuryeler | Her kuryenin asıl mesleği var: tam zamanlı (haftada 1 gün izin), ofis çalışanı (17:00 sonrası), sadece hafta sonu, öğrenci (sınav haftalarında çalışmaz, tatilde çok çalışır), vardiyalı işçi (haftalık değişen vardiya), emekli (sabahları). Yorgunluğuna ve moraline göre kendisi çevrimiçi/çevrimdışı olur. Boostlar çevrimiçi olmayı teşvik eder |
+| Serbest kuryeler | Her kuryenin asıl mesleği var: tam zamanlı (her gün çalışabilir, zorunlu izin yok), ofis çalışanı (17:00 sonrası), sadece hafta sonu, öğrenci (sınav haftalarında çalışmaz, tatilde çok çalışır), vardiyalı işçi (haftalık değişen vardiya), emekli (sabahları). Yorgunluğuna ve moraline göre kendisi çevrimiçi/çevrimdışı olur. Boostlar çevrimiçi olmayı teşvik eder |
 | Kuryenin kendi parası | Kazancının %30'unu biriktirir, parası yetince kendi cebinden daha iyi araç alır (bisiklet → scooter → motor → araba). Araç arızalanırsa yedek aracıyla çalışır. İsterse platform üzerinden kendi parasıyla sigorta yaptırır; şirket kaza masrafı ödemez |
 | Moral ve yorgunluk | Aynı anda kaç paket alacağını ve sipariş reddetme ihtimalini belirler |
 | Ödeme | Paket başı sabit + km başı (bisiklet 175 → araba 286 Ft) + hava/gece/yoğun saat bonusu × bonus çarpanı |

@@ -25,7 +25,6 @@ namespace KuryeTycoon
         public string courierName;
         public VehicleKind vehicle;            // şu an kullandığı araç
         public Occupation occupation;
-        public int fixedDayOff = -1;           // tam zamanlıların haftalık izin günü (0 = Pazartesi)
 
         [Header("Yetenekler")]
         public float speedSkill;
@@ -89,7 +88,6 @@ namespace KuryeTycoon
             courierName = c.name;
             vehicle = c.vehicle;
             occupation = c.occupation;
-            fixedDayOff = occupation == Occupation.TamZamanli ? Random.Range(0, 7) : -1;
             speedSkill = c.speedSkill;
             care = c.care;
             politeness = c.politeness;
@@ -122,13 +120,11 @@ namespace KuryeTycoon
                 case Occupation.Ogrenci: return "Öğrenci (derslere ve sınavlara göre)";
                 case Occupation.Vardiyali: return "Vardiyalı fabrika işçisi (vardiyası haftalık değişir)";
                 case Occupation.Emekli: return "Emekli (sabahları)";
-                default: return "Tam zamanlı kurye (haftada 1 gün izin)";
+                default: return "Tam zamanlı kurye (her gün çalışabilir)";
             }
         }
 
         public string OccupationName => OccupationLabel(occupation);
-
-        static readonly string[] DayNames = { "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar" };
 
         public static bool IsExamPeriod(GameClock c)
         {
@@ -167,7 +163,7 @@ namespace KuryeTycoon
                     case Occupation.Emekli:
                         return "Emekli, sabahları çalışmayı sever";
                     default:
-                        return fixedDayOff >= 0 ? $"Haftalık izin günü: {DayNames[fixedDayOff]}" : "Tam zamanlı";
+                        return "Geçimini kuryelikten sağlıyor, her gün çalışabilir";
                 }
             }
         }
@@ -608,14 +604,11 @@ namespace KuryeTycoon
                 if (unavailableDays == 0 && State == CourierState.Izinli) GoOffline("İzinden döndü, dinleniyor");
             }
 
-            // İzin günü
-            if (occupation == Occupation.TamZamanli && clock.DayOfWeek == fixedDayOff) dayOff = true;
-            else
-            {
-                float chance = clock.IsWeekend ? 0.12f : 0.06f;
-                if (morale < 0.4f) chance *= 1.5f;
-                dayOff = Random.value < chance;
-            }
+            // İzin günü: zorunlu değil, kurye canı isterse ara sıra kendine izin verir
+            float chance = clock.IsWeekend ? 0.12f : 0.06f;
+            if (occupation == Occupation.TamZamanli) chance *= 0.5f; // geçimini kuryelikten sağlıyor
+            if (morale < 0.4f) chance *= 1.5f;
+            dayOff = Random.value < chance;
         }
 
         // ================================================================== arayüz
