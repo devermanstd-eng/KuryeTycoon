@@ -33,6 +33,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 ## Oyunda neler var
 | Sistem | Ne yapar |
 |---|---|
+| Hikaye: aile borcu | Şirketi annenle babanın birikimi olan 1 000 000 Ft ile kurarsın (başlangıç kasası). Nisan–Temmuz her ay sonunda 250 000 Ft taksit; erken/kısmi ödenebilir. Taksit kaçırırsan aile güveni düşer ve borç sonrakine eklenir; 3 kez kaçırırsan şirket kapanır (kötü son). Borcu bitirirsen iyi son ve serbest mod. Aileden mesajlar ve hatırlatmalar gelir |
 | Şirket kurulumu | İsim, ana/ikincil renk; kuryeler ve merkez ofis bu renklerde |
 | Kuryeler | Bisiklet, e-scooter, motosiklet, araba; hız, kapasite ve ücret farklı |
 | İşe alım | Başvurular zamanla gelir, kabul/red edersin; işe alım ve çıkarma ücretsiz |
@@ -65,6 +66,7 @@ KuryeTycoon/Scripts/
   Economy/   EconomyManager (fiyat formülü, kasa, sürpriz vergiler, yıl sonu vergi, iflas)
   Events/    EventManager (olay kartları, haber akışı)
   Staff/     SupportManager (maaşlı destek ekibi, vardiyalar)
+  Story/     FamilyLoan (hikaye, aile borcu, taksitler, sonlar)
   UI/        GameUI (kurulum ekranı, üst bar, sekmeler)
 ```
 

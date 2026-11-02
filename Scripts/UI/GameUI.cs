@@ -117,7 +117,9 @@ namespace KuryeTycoon
 
             GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 40));
             GUILayout.Label("Kurye Şirketini Kur", title);
-            GUILayout.Label("Küçük bir sermaye ve 2 kuryeyle başlıyorsun. Önce şirketine bir isim ve renk ver.", label);
+            GUILayout.Label("Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan 1 000 000 Ft ile kendi kurye " +
+                            "şirketini kuruyorsun. Bu parayı Temmuz sonuna kadar taksitlerle geri ödemen gerekiyor.", label);
+            GUILayout.Label("Önce şirketine bir isim ve renk ver.", small);
             GUILayout.Space(12);
 
             GUILayout.Label("Şirket adı", header);
@@ -259,6 +261,7 @@ namespace KuryeTycoon
             string info = $"Kasa: {Ft(eco.money)}    " +
                           $"İtibar: {CompanyProfile.Reputation:0.0}/5    Çevrimiçi: {CourierManager.I.OnlineCount}/{CourierManager.I.Couriers.Count}    {clock.TimeText}    " +
                           $"{clock.SeasonName} · {weather.Name}";
+            if (FamilyLoan.I != null && !FamilyLoan.I.Finished) info += "    " + FamilyLoan.I.TopBarText;
             var boost = CampaignManager.I.ActiveWindow;
             if (boost != null) info += $"    BOOST %{boost.percent * 100f:0} ({boost.TimeText})";
             if (eco.taxDebt > 0) info += $"    VERGİ BORCU: {Ft(eco.taxDebt)}";
@@ -744,8 +747,49 @@ namespace KuryeTycoon
             return Mathf.Round(f * 20f) / 20f; // %5 adımlar
         }
 
+        void DrawFamilyLoan()
+        {
+            var loan = FamilyLoan.I;
+            var e = EconomyManager.I;
+            GUILayout.BeginVertical(box);
+            GUILayout.Label("Aile borcu", header);
+            if (loan.Finished)
+            {
+                GUILayout.Label($"Borç tamamen ödendi ({Ft(loan.principal)}). Ailen seninle gurur duyuyor.", label);
+                GUILayout.EndVertical();
+                return;
+            }
+            if (loan.Failed) GUILayout.Label("Borç ödenemedi, şirket kapandı (test modunda devam ediyorsun).", warn);
+
+            GUILayout.Label($"Kalan: {Ft(loan.Remaining)} / {Ft(loan.principal)} · Aile güveni: {loan.Trust}/{loan.maxTrust}", label);
+            Bar("Ödenen", loan.TotalPaid / (float)loan.principal, new Color(0.35f, 0.8f, 0.5f),
+                $"%{loan.TotalPaid * 100f / loan.principal:0}");
+            foreach (var t in loan.Schedule)
+            {
+                string state = t.closed ? (t.Remaining == 0 ? "ödendi" : "kaçırıldı") : $"{loan.DaysUntil(t)} gün kaldı";
+                GUILayout.Label($"• {t.DueText}: {Ft(t.amount)} — ödenen {Ft(t.paid)} ({state})",
+                    !t.closed && loan.DaysUntil(t) <= 7 ? warn : small);
+            }
+            var next = loan.NextDue;
+            if (next != null && !loan.Failed)
+            {
+                GUILayout.BeginHorizontal();
+                GUI.enabled = modalFree && e.money >= next.Remaining;
+                if (GUILayout.Button($"Taksiti öde ({Ft(next.Remaining)})", smallButton)) deferred = () => loan.Pay(next.Remaining);
+                GUI.enabled = modalFree && e.money >= 50000;
+                if (GUILayout.Button("50 000 Ft erken öde", smallButton)) deferred = () => loan.Pay(50000);
+                GUI.enabled = modalFree && e.money >= loan.Remaining;
+                if (GUILayout.Button($"Tamamını öde ({Ft(loan.Remaining)})", smallButton)) deferred = () => loan.Pay(loan.Remaining);
+                GUI.enabled = modalFree;
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.Label("Borç ödemesi gider değildir, vergiden düşülmez. Erken ödemek taksiti kapatır; ama kasada sürpriz vergiler için yedek bırak.", small);
+            GUILayout.EndVertical();
+        }
+
         void DrawFinance()
         {
+            DrawFamilyLoan();
             var e = EconomyManager.I;
             var clock = GameClock.I;
 

@@ -11,7 +11,8 @@ namespace KuryeTycoon
         public static GameBootstrap I { get; private set; }
 
         [Header("Başlangıç")]
-        public long startingMoney = 300000;
+        [Tooltip("Ailenden aldığın borç = başlangıç kasası")]
+        public long startingMoney = 1000000;
         public VehicleKind[] starterCouriers = { VehicleKind.Bisiklet, VehicleKind.EScooter };
 
         public bool Started { get; private set; }
@@ -32,6 +33,7 @@ namespace KuryeTycoon
             Make<OrderManager>("Siparişler");
             Make<CampaignManager>("Kampanyalar");
             Make<SupportManager>("Destek Ekibi");
+            Make<FamilyLoan>("Hikaye - Aile Borcu");
             Make<EventManager>("Olaylar");
             Make<GameUI>("Arayüz");
         }
@@ -71,12 +73,15 @@ namespace KuryeTycoon
             OrderManager.I.Init();
             CampaignManager.I.Init();
             SupportManager.I.Init();
+            FamilyLoan.I.principal = startingMoney;
+            FamilyLoan.I.Init();
 
             Started = true;
             GameClock.I.Paused = false;
 
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
-                "Merkez ofisin haritanın sol alt köşesinde. 2 kuryen ve 2 sözleşmeli dükkanın var.\n\n" +
+                "Merkez ofisin haritanın sol alt köşesinde. 2 kuryen ve 2 sözleşmeli dükkanın var.\n" +
+                "Aile borcunu ve taksitleri üst barda ve Finans sekmesinde görürsün.\n\n" +
                 "• Siparişler otomatik atanır; istersen Siparişler sekmesinden kendin ata.\n" +
                 "• Zararına iş yapılmaz: teslimat ücreti her zaman kurye ücretini karşılar.\n" +
                 "• Kuryeler paket başı + km başı kazanır. Gelen başvuruları İşe Alım sekmesinden kabul et.\n" +

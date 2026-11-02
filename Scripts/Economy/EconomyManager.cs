@@ -241,6 +241,13 @@ namespace KuryeTycoon
             Log($"+{Ft(amount)} {label}");
         }
 
+        /// <summary>Borç anapara ödemesi: gider değildir, vergiden düşülmez.</summary>
+        public void PayLoan(long amount, string label)
+        {
+            money -= amount;
+            Log($"−{Ft(amount)} {label}");
+        }
+
         /// <summary>Ceza (vergiden düşülmez).</summary>
         public void SpendPenalty(long amount, string label)
         {

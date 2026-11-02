@@ -68,6 +68,17 @@ namespace KuryeTycoon
         }
 
         public int DaysInMonth => MonthDays[Month - 1];
+
+        public static int MonthLength(int month) => MonthDays[Mathf.Clamp(month, 1, 12) - 1];
+        public static string MonthNameOf(int month) => MonthNames[Mathf.Clamp(month, 1, 12) - 1];
+
+        /// <summary>Verilen yıl/ay/günün mutlak gün numarası (Day ile karşılaştırılabilir).</summary>
+        public static int AbsoluteDay(int year, int month, int day)
+        {
+            int d = (year - 1) * DaysPerYear;
+            for (int m = 1; m < Mathf.Clamp(month, 1, 12); m++) d += MonthDays[m - 1];
+            return d + day;
+        }
         public int WeekOfMonth => (DayOfMonth - 1) / 7 + 1;
         /// <summary>0 = Pazartesi ... 6 = Pazar (kuruluş günü Pazartesi)</summary>
         public int DayOfWeek => ((Day - startDay) % 7 + 7) % 7;

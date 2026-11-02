@@ -1,6 +1,7 @@
 # Kurye Tycoon
 
 Wolt benzeri bir kurye şirketini yönettiğin 2D tycoon oyunu (Unity prototip).
+Annenle babanın birikimi olan 1 000 000 Ft ile kendi kurye şirketini kur ve borcu Temmuz sonuna kadar taksitlerle geri öde.
 Kuryeleri işe al, siparişleri dağıt, kampanyalar düzenle, vergileri öde ve şirketini büyüt.
 
 Bu repo, bir Unity projesinin `Assets/KuryeTycoon` klasörüdür. Görsel, prefab ya da sahne
