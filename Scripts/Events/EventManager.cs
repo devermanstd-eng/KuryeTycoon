@@ -94,15 +94,15 @@ namespace KuryeTycoon
                     $"{o.shop.Name} siparişinde (#{o.id}) müşteri bir ürünün eksik geldiğini söylüyor.\n" +
                     $"Kurye: {c.courierName} · Ürün değeri: {Ft(value)}")
                 .Add($"Tam iade yap (−{Ft(value)})", () =>
-                    EconomyManager.I.Spend(value, $"İade #{o.id}"))
+                    EconomyManager.I.Spend(value, $"İade #{o.id}", ExpenseCategory.Iade))
                 .Add($"Kupon ver (−{Ft(value / 2)}, itibar −0.05)", () =>
                 {
-                    EconomyManager.I.Spend(value / 2, $"Kupon #{o.id}");
+                    EconomyManager.I.Spend(value / 2, $"Kupon #{o.id}", ExpenseCategory.Iade);
                     CompanyProfile.AddReputation(-0.05f);
                 })
                 .Add("İade yap, yarısını kuryeden kes (moral −)", () =>
                 {
-                    EconomyManager.I.Spend(value, $"İade #{o.id}");
+                    EconomyManager.I.Spend(value, $"İade #{o.id}", ExpenseCategory.Iade);
                     EconomyManager.I.AddIncome(value / 2, $"Kurye kesintisi: {c.courierName}");
                     if (c != null) c.morale = Mathf.Max(0f, c.morale - 0.2f);
                 })
@@ -117,15 +117,15 @@ namespace KuryeTycoon
                     $"{reason}{o.shop.Name} siparişi (#{o.id}) hasarlı teslim edildi (dökülmüş içecek / ezilmiş paket).\n" +
                     $"Kurye: {c.courierName} · Zarar: {Ft(value)}")
                 .Add($"Tazmin et (−{Ft(value)})", () =>
-                    EconomyManager.I.Spend(value, $"Tazminat #{o.id}"))
+                    EconomyManager.I.Spend(value, $"Tazminat #{o.id}", ExpenseCategory.Iade))
                 .Add($"%50 indirim kuponu (−{Ft(value / 2)}, itibar −0.05)", () =>
                 {
-                    EconomyManager.I.Spend(value / 2, $"Kupon #{o.id}");
+                    EconomyManager.I.Spend(value / 2, $"Kupon #{o.id}", ExpenseCategory.Iade);
                     CompanyProfile.AddReputation(-0.05f);
                 })
                 .Add("Tazmin et, yarısını kuryeden kes (moral −)", () =>
                 {
-                    EconomyManager.I.Spend(value, $"Tazminat #{o.id}");
+                    EconomyManager.I.Spend(value, $"Tazminat #{o.id}", ExpenseCategory.Iade);
                     EconomyManager.I.AddIncome(value / 2, $"Kurye kesintisi: {c.courierName}");
                     if (c != null) c.morale = Mathf.Max(0f, c.morale - 0.2f);
                 })
@@ -177,7 +177,7 @@ namespace KuryeTycoon
                             $"{shop.Name}, ortak reklam kampanyası karşılığında komisyonu %2 artırmayı teklif ediyor.")
                         .Add($"Kabul et (−{Ft(adCost)}, komisyon +%2)", () =>
                         {
-                            if (EconomyManager.I.TrySpend(adCost, $"Reklam: {shop.Name}"))
+                            if (EconomyManager.I.TrySpend(adCost, $"Reklam: {shop.Name}", ExpenseCategory.Reklam))
                                 shop.commissionBonus += 0.02f;
                         })
                         .Add("Reddet", null));

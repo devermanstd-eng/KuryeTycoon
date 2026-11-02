@@ -5,8 +5,8 @@ namespace KuryeTycoon
     public enum Season { Kis, Ilkbahar, Yaz, Sonbahar }
 
     /// <summary>
-    /// Oyun içi takvim: 1 ay = 28 gün (4 hafta), 1 yıl = 12 ay.
-    /// Mevsimler aylara göre (Aralık–Şubat kış ...). Oyun Mart ayında, Pazartesi başlar.
+    /// Gerçek takvim: 365 gün, gerçek ay uzunlukları.
+    /// Şirket 1 Mart'ta, Pazartesi kurulur. Vergi yılı 1 Ocak–31 Aralık.
     /// </summary>
     public class GameClock : MonoBehaviour
     {
@@ -14,13 +14,13 @@ namespace KuryeTycoon
 
         static readonly string[] DayNames = { "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar" };
         static readonly string[] MonthNames = { "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık" };
+        static readonly int[] MonthDays = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+        public const int DaysPerYear = 365;
 
         [Tooltip("1x hızda gerçek 1 saniyede geçen oyun dakikası")]
         public float minutesPerSecond = 2f;
-        [Tooltip("Bir ay kaç gün (7'nin katı olmalı)")]
-        public int daysPerMonth = 28;
-        public int monthsPerYear = 12;
-        [Tooltip("Oyun hangi ayda başlar (1 = Ocak)")]
+        [Tooltip("Şirketin kurulduğu ay (1 = Ocak)")]
         public int startMonth = 3;
         public int startHour = 8;
 
@@ -31,19 +31,49 @@ namespace KuryeTycoon
         /// <summary>Bir olay kartı açıkken oyun otomatik durur.</summary>
         public bool EventPause { get; set; }
 
-        public int DaysPerYear => daysPerMonth * monthsPerYear;
+        /// <summary>Takvimdeki mutlak gün (1. yılın 1 Ocak'ı = 1).</summary>
         public int Day => (int)(TotalMinutes / 1440f) + 1;
+        /// <summary>Şirketin kaçıncı günü (kuruluş günü = 1).</summary>
+        public int CompanyDay => Day - startDay + 1;
         public int Year => (Day - 1) / DaysPerYear + 1;
         public int DayOfYear => (Day - 1) % DaysPerYear + 1;
+
         /// <summary>1 = Ocak ... 12 = Aralık</summary>
-        public int Month => (DayOfYear - 1) / daysPerMonth + 1;
-        public int DayOfMonth => (DayOfYear - 1) % daysPerMonth + 1;
+        public int Month
+        {
+            get
+            {
+                int d = DayOfYear;
+                for (int m = 0; m < 12; m++)
+                {
+                    if (d <= MonthDays[m]) return m + 1;
+                    d -= MonthDays[m];
+                }
+                return 12;
+            }
+        }
+
+        public int DayOfMonth
+        {
+            get
+            {
+                int d = DayOfYear;
+                for (int m = 0; m < 12; m++)
+                {
+                    if (d <= MonthDays[m]) return d;
+                    d -= MonthDays[m];
+                }
+                return d;
+            }
+        }
+
+        public int DaysInMonth => MonthDays[Month - 1];
         public int WeekOfMonth => (DayOfMonth - 1) / 7 + 1;
-        /// <summary>0 = Pazartesi ... 6 = Pazar</summary>
-        public int DayOfWeek => (Day - 1) % 7;
+        /// <summary>0 = Pazartesi ... 6 = Pazar (kuruluş günü Pazartesi)</summary>
+        public int DayOfWeek => ((Day - startDay) % 7 + 7) % 7;
         public bool IsWeekend => DayOfWeek >= 5;
         public string DayName => DayNames[DayOfWeek];
-        public string MonthName => MonthNames[(Month - 1) % 12];
+        public string MonthName => MonthNames[Month - 1];
         public int Hour => (int)(TotalMinutes % 1440f) / 60;
         public int Minute => (int)(TotalMinutes % 60f);
 
@@ -63,6 +93,7 @@ namespace KuryeTycoon
         public event System.Action OnNewMonth;
         public event System.Action<int> OnNewYear; // parametre: biten yıl
 
+        int startDay;
         int lastDay;
         int lastMonth;
         int lastYear;
@@ -70,7 +101,10 @@ namespace KuryeTycoon
         void Awake()
         {
             I = this;
-            TotalMinutes = (Mathf.Clamp(startMonth, 1, monthsPerYear) - 1) * daysPerMonth * 1440f + startHour * 60f;
+            int firstDayOfMonth = 1;
+            for (int m = 0; m < Mathf.Clamp(startMonth, 1, 12) - 1; m++) firstDayOfMonth += MonthDays[m];
+            TotalMinutes = (firstDayOfMonth - 1) * 1440f + startHour * 60f;
+            startDay = Day;
             lastDay = Day;
             lastMonth = Month;
             lastYear = Year;
@@ -113,6 +147,7 @@ namespace KuryeTycoon
             }
         }
 
-        public string TimeText => $"Yıl {Year} · {DayOfMonth} {MonthName} · {DayName} {Hour:00}:{Minute:00}";
+        public string DateText => $"{DayOfMonth} {MonthName}, Yıl {Year}";
+        public string TimeText => $"{DateText} · {DayName} {Hour:00}:{Minute:00} · {CompanyDay}. gün";
     }
 }

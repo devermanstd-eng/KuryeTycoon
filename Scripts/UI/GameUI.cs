@@ -257,7 +257,7 @@ namespace KuryeTycoon
             GUI.Label(new Rect(14, 0, 260, TopBar), CompanyProfile.Name, barTitle);
 
             string info = $"Kasa: {Ft(eco.money)}    Vergi kasası: {Ft(eco.taxVault)}    " +
-                          $"İtibar: {CompanyProfile.Reputation:0.0}/5    {clock.TimeText}    " +
+                          $"İtibar: {CompanyProfile.Reputation:0.0}/5    Çevrimiçi: {CourierManager.I.OnlineCount}/{CourierManager.I.Couriers.Count}    {clock.TimeText}    " +
                           $"{clock.SeasonName} · {weather.Name}";
             var boost = CampaignManager.I.ActiveWindow;
             if (boost != null) info += $"    BOOST %{boost.percent * 100f:0} ({boost.TimeText})";
@@ -382,16 +382,17 @@ namespace KuryeTycoon
         void DrawCouriers()
         {
             var cm = CourierManager.I;
-            GUILayout.Label($"Kuryeler ({cm.Couriers.Count})", header);
-            GUILayout.Label("Moral yüksekse kurye aynı anda daha çok paket alır; moral düşük veya çok yorgunsa daha az alır ve " +
-                            "sipariş reddedebilir. Yorgunluk %90'a ulaşınca kurye kendisi mola verir. " +
-                            "Moralı artıranlar: iş (paket), bonus, ekipman, iyi puan, bahşiş.", small);
+            GUILayout.Label($"Kuryeler ({cm.Couriers.Count}) · Şu an çevrimiçi: {cm.OnlineCount}", header);
+            GUILayout.Label("Kuryeler serbest çalışır: kendi düzenlerine, yorgunluklarına ve günlük hayatlarına göre istedikleri zaman " +
+                            "çevrimiçi/çevrimdışı olurlar, bazı günler hiç çalışmazlar. Onları zorlayamazsın; boostlar ve iyi moral " +
+                            "çevrimiçi olma isteğini artırır. Moral yüksekse aynı anda daha çok paket alırlar, düşükse sipariş reddedebilirler.", small);
 
             foreach (var c in cm.Couriers)
             {
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{c.courierName} — {c.V.name} · Seviye {c.level}", header);
                 GUILayout.Label($"{c.StateName} · Teslimat {c.deliveries} (bugün {c.deliveriesToday}) · Kazancı {Ft(c.totalEarned)}", small);
+                GUILayout.Label($"Çalışma düzeni: {c.RoutineName}" + (c.dayOff ? " · Bugün izin günü" : ""), small);
                 Bar("Moral", c.morale, Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), c.morale));
                 Bar("Yorgunluk", c.fatigue, new Color(1f, 0.6f, 0.2f));
 
@@ -462,6 +463,7 @@ namespace KuryeTycoon
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{cand.name} — {v.name} · Seviye {cand.level}", header);
                 GUILayout.Label($"\"{cand.note}\"", note);
+                GUILayout.Label($"Çalışma düzeni: {Courier.RoutineLabel(cand.routine)}", small);
                 GUILayout.Label($"Hız {cand.speedSkill:0.00} · Dikkat {cand.care:0.00} · Nezaket {cand.politeness:0.00} · Dayanıklılık {cand.stamina:0.00}", small);
                 GUILayout.Label($"Araç: {v.tilesPerMinute * 60f * GameData.KmPerTile:0} km/saat · {v.capacity} paket · " +
                                 $"Kazanç {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km", small);
@@ -575,7 +577,7 @@ namespace KuryeTycoon
             var eco = EconomyManager.I;
 
             GUILayout.Label("Kampanyalar şirketin kârından ödenir; müşterinin teslimat ücretine yansımaz. " +
-                            "Boost saatinde kuryeler sipariş reddetmez ve aynı anda +1 paket alır.", small);
+                            "Boost saatinde çevrimdışı kuryeler çevrimiçi olmaya daha istekli olur, kuryeler sipariş reddetmez ve aynı anda +1 paket alır.", small);
 
             GUILayout.Space(6);
             GUILayout.Label($"Bugün: {clock.DayName}{(clock.IsWeekend ? " (hafta sonu)" : "")}", header);
@@ -631,7 +633,7 @@ namespace KuryeTycoon
             GUILayout.Label($"Boost ödemeleri: {Ft(camp.boostPaidThisWeek)}", label);
             GUILayout.Label($"Haftalık hedef ödülleri: {Ft(camp.rewardsPaidThisWeek)} ({camp.rewardsClaimedThisWeek} kurye)", label);
             GUILayout.Label($"Bu ay aylık hedef ödülleri: {Ft(camp.rewardsPaidThisMonth)} ({camp.rewardsClaimedThisMonth} kurye)", label);
-            GUILayout.Label($"Bugünkü kampanya gideri: {Ft(eco.Today.campaigns)}", small);
+            GUILayout.Label($"Bugünkü kampanya gideri: {Ft(eco.Today.boosts + eco.Today.rewards)}", small);
         }
 
         void RewardCheck(float avgProfit, int target, int reward)
@@ -664,7 +666,7 @@ namespace KuryeTycoon
             if (e.taxVault > 0 && GUILayout.Button("Vergi kasasını ana kasaya aktar", smallButton)) deferred = () => e.WithdrawVault();
 
             GUILayout.Space(6);
-            GUILayout.Label($"Bu yıl (Yıl {clock.Year}, {clock.MonthName}, gün {clock.DayOfYear}/{clock.DaysPerYear})", header);
+            GUILayout.Label($"Bu vergi yılı (Yıl {clock.Year}: 1 Ocak – 31 Aralık · şirketin {clock.CompanyDay}. günü)", header);
             Stats(e.Year);
             long est = (long)Mathf.Round(Mathf.Max(0f, e.Year.Profit) * e.taxRate);
             GUILayout.Label($"Tahmini yıl sonu vergisi (%{e.taxRate * 100f:0}): {Ft(est)}", label);
@@ -690,10 +692,28 @@ namespace KuryeTycoon
 
         void Stats(PeriodStats s)
         {
-            GUILayout.Label($"Teslimat: {s.deliveries}", small);
-            GUILayout.Label($"Gelir: {Ft(s.Income)} (komisyon {Ft(s.commission)}, teslimat ücreti {Ft(s.fees)}, diğer {Ft(s.otherIncome)})", small);
-            GUILayout.Label($"Gider: {Ft(s.Expenses)} (kurye {Ft(s.courierPay)}, kampanya {Ft(s.campaigns)}, diğer {Ft(s.otherExpenses)})", small);
-            GUILayout.Label($"Kâr: {Ft(s.Profit)}" + (s.penalties > 0 ? $" · Cezalar: {Ft(s.penalties)}" : ""), label);
+            // 1) Teslimatlardan kalan
+            GUILayout.Label($"Teslimat: {s.deliveries} paket", small);
+            GUILayout.Label($"  + Komisyon {Ft(s.commission)}  + Teslimat ücreti {Ft(s.fees)}", small);
+            GUILayout.Label($"  − Kurye ödemeleri {Ft(s.courierPay)}" + (s.boosts > 0 ? $"  − Boost {Ft(s.boosts)}" : ""), small);
+            GUILayout.Label($"Teslimat kârı: {Ft(s.DeliveryProfit)}" +
+                            (s.deliveries > 0 ? $" (paket başı {Ft(s.DeliveryProfit / s.deliveries)})" : ""), label);
+
+            // 2) Yatırımlar ve sabit giderler
+            long others = s.OtherExpenses + s.rewards;
+            if (others > 0 || s.otherIncome > 0)
+            {
+                string list = "";
+                for (int i = 0; i < s.byCategory.Length; i++)
+                    if (s.byCategory[i] > 0) list += (list.Length > 0 ? ", " : "") + $"{PeriodStats.CategoryNames[i]} {Ft(s.byCategory[i])}";
+                if (s.rewards > 0) list += (list.Length > 0 ? ", " : "") + $"Hedef ödülleri {Ft(s.rewards)}";
+                GUILayout.Label($"Yatırım ve diğer giderler: −{Ft(others)}", label);
+                if (list.Length > 0) GUILayout.Label("  " + list, small);
+                if (s.otherIncome > 0) GUILayout.Label($"  + Diğer gelir (kurye kesintileri) {Ft(s.otherIncome)}", small);
+            }
+
+            // 3) Sonuç
+            GUILayout.Label($"Net kâr: {Ft(s.Profit)}" + (s.penalties > 0 ? $" · Cezalar: {Ft(s.penalties)}" : ""), header);
         }
 
         void DrawSettings()

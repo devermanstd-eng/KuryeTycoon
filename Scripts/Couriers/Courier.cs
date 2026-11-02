@@ -3,18 +3,22 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    public enum CourierState { Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, Mola, Izinli }
+    public enum CourierState { Cevrimdisi, Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, Mola, Izinli }
+
+    /// <summary>Kuryenin günlük hayatı: genelde hangi saatlerde çalışmak ister.</summary>
+    public enum WorkRoutine { TamGun, Sabahci, Ogrenci, OgleAksam, GeceKusu }
 
     /// <summary>
-    /// Haritada hareket eden tek bir kurye.
-    /// Moral ve yorgunluk; aynı anda kaç paket aldığını ve sipariş reddetme ihtimalini belirler.
-    /// Çok yorulunca kendisi mola verir.
+    /// Serbest çalışan kurye: istediği zaman çevrimiçi / çevrimdışı olur.
+    /// Kararını çalışma düzeni, yorgunluk, moral, izin günleri ve boostlar belirler.
+    /// Moral ve yorgunluk aynı anda kaç paket aldığını ve reddetme ihtimalini de etkiler.
     /// </summary>
     public class Courier : MonoBehaviour
     {
         [Header("Kimlik")]
         public string courierName;
         public VehicleKind vehicle;
+        public WorkRoutine routine;
 
         [Header("Yetenekler")]
         public float speedSkill;   // 0.85–1.35
@@ -29,10 +33,12 @@ namespace KuryeTycoon
         public int deliveriesToday;
         public int level = 1;
         public float xp;
-        public int extraPay;       // paket başı ek ücret (deneyim / zam)
+        public int extraPay;       // paket başı ek ücret (deneyim)
         public int unavailableDays;
         public long totalEarned;
         public string leaveReason = "";
+        public bool dayOff;                 // bugün hiç çalışmayacak
+        public float onlineMinutesToday;
         public int weekDeliveries;          // haftalık hedef için
         public bool weeklyRewardClaimed;
         public int monthDeliveries;         // aylık hedef için
@@ -46,13 +52,18 @@ namespace KuryeTycoon
         public IEnumerable<Order> QueuedOrders => queue;
         public VehicleDef V => GameData.Vehicle(vehicle);
         public string ShortName => courierName.Split(' ')[0];
+        public bool IsOnline => State != CourierState.Cevrimdisi && State != CourierState.Izinli;
 
         readonly Queue<Order> queue = new Queue<Order>();
         Order current;
         List<Vector2Int> path;
         int pathIndex;
-        float breakUntil;          // > 0 ise süreli mola (telefon şarjı)
+        float breakUntil;          // telefon şarjı gibi süreli mola
         string breakReason = "";
+        string offlineReason = "";
+        bool wantsOffline;         // elindeki paketler bitince çevrimdışı olacak
+        string wantsOfflineReason = "";
+        int lastDecisionHour = -1;
         SpriteRenderer body;
         SpriteRenderer ring;
 
@@ -60,6 +71,7 @@ namespace KuryeTycoon
         {
             courierName = c.name;
             vehicle = c.vehicle;
+            routine = c.routine;
             speedSkill = c.speedSkill;
             care = c.care;
             politeness = c.politeness;
@@ -71,16 +83,118 @@ namespace KuryeTycoon
 
             ring = SpriteFactory.Create("Halka", transform, true, CompanyProfile.Secondary, Vector3.zero, 0.75f, 10);
             body = SpriteFactory.Create("Gövde", transform, true, CompanyProfile.Primary, Vector3.zero, 0.55f, 11);
-            State = CourierState.Bosta;
+
+            // İşe başladığı saatte düzenine uygunsa hemen çevrimiçi olur
+            bool online = RoutinePreference(GameClock.I.Hour, GameClock.I.IsWeekend) >= 0.5f;
+            State = online ? CourierState.Bosta : CourierState.Cevrimdisi;
+            offlineReason = online ? "" : "Çalışma saati değil";
+            lastDecisionHour = GameClock.I.Hour;
         }
+
+        // ------------------------------------------------------------------ çalışma düzeni
+
+        public string RoutineName => RoutineLabel(routine);
+
+        public static string RoutineLabel(WorkRoutine r)
+        {
+            {
+                switch (r)
+                {
+                    case WorkRoutine.Sabahci: return "Sabahçı (genelde 06–15)";
+                    case WorkRoutine.Ogrenci: return "Öğrenci (hafta içi 17–01, hafta sonu gündüz)";
+                    case WorkRoutine.OgleAksam: return "Öğle + akşam yoğunluğu (11–14, 17–22)";
+                    case WorkRoutine.GeceKusu: return "Gece kuşu (genelde 20–04)";
+                    default: return "Tam gün (genelde 09–21)";
+                }
+            }
+        }
+
+        /// <summary>Bu saatte çalışmayı ne kadar ister (0–1).</summary>
+        public float RoutinePreference(int h, bool weekend)
+        {
+            switch (routine)
+            {
+                case WorkRoutine.Sabahci:
+                    return (h >= 6 && h < 15) ? 0.9f : (h >= 15 && h < 17 ? 0.35f : 0.05f);
+                case WorkRoutine.Ogrenci:
+                    if (weekend) return (h >= 11 && h < 23) ? 0.85f : 0.08f;
+                    return (h >= 17 || h < 1) ? 0.9f : (h >= 12 && h < 14 ? 0.35f : 0.05f);
+                case WorkRoutine.OgleAksam:
+                    return ((h >= 11 && h < 14) || (h >= 17 && h < 22)) ? 0.9f : 0.08f;
+                case WorkRoutine.GeceKusu:
+                    return (h >= 20 || h < 4) ? 0.9f : (h >= 16 && h < 20 ? 0.35f : 0.05f);
+                default:
+                    return (h >= 9 && h < 21) ? 0.9f : ((h >= 7 && h < 23) ? 0.35f : 0.05f);
+            }
+        }
+
+        /// <summary>Her oyun saatinde kurye çalışıp çalışmayacağına kendisi karar verir.</summary>
+        void DecideAvailability()
+        {
+            if (State == CourierState.Izinli || State == CourierState.Mola) return;
+            var clock = GameClock.I;
+            bool boost = CampaignManager.I != null && CampaignManager.I.BoostActive;
+
+            if (dayOff)
+            {
+                if (IsOnline) RequestOffline("Bugün izin günü");
+                return;
+            }
+
+            float pref = RoutinePreference(clock.Hour, clock.IsWeekend);
+
+            if (IsOnline)
+            {
+                float pOff = (1f - pref) * 0.7f
+                             + (fatigue >= 0.8f ? 0.6f : 0f)
+                             + (morale < 0.3f ? 0.15f : 0f)
+                             - (boost ? 0.35f : 0f);
+                if (Random.value < pOff)
+                    RequestOffline(fatigue >= 0.8f ? "Yoruldu, eve gitti" : "Günlük hayatına döndü");
+            }
+            else
+            {
+                if (fatigue > 0.5f) return; // önce dinlenmesi lazım
+                float pOn = pref * (0.4f + morale * 0.6f) + (boost ? 0.35f : 0f);
+                if (Random.value < pOn) GoOnline(boost);
+            }
+        }
+
+        void RequestOffline(string reason)
+        {
+            if (OrderCount > 0)
+            {
+                wantsOffline = true;
+                wantsOfflineReason = reason;
+                return;
+            }
+            GoOffline(reason);
+        }
+
+        void GoOffline(string reason)
+        {
+            wantsOffline = false;
+            offlineReason = reason;
+            path = null;
+            State = CourierState.Cevrimdisi;
+        }
+
+        void GoOnline(bool boost)
+        {
+            offlineReason = "";
+            State = CourierState.Bosta;
+            if (boost) EventManager.I.Notify($"{ShortName} boost için çevrimiçi oldu.");
+        }
+
+        // ------------------------------------------------------------------ kapasite / reddetme
 
         public bool Has(EquipmentKind k) => equipment.Contains(k);
         public int OrderCount => queue.Count + (current != null ? 1 : 0);
-        public bool Available => State != CourierState.Mola && State != CourierState.Izinli;
+        public bool Available => IsOnline && State != CourierState.Mola && !wantsOffline;
 
         /// <summary>
         /// Aynı anda taşıyabileceği paket: araç kapasitesi,
-        /// moral yüksekse +1, moral düşükse −1, yorgunsa −1 (en az 1).
+        /// moral yüksekse +1, moral düşükse −1, yorgunsa −1, boost saatinde +1 (en az 1).
         /// </summary>
         public int EffectiveCapacity
         {
@@ -90,16 +204,16 @@ namespace KuryeTycoon
                 if (morale >= 0.8f) cap += 1;
                 if (morale < 0.35f) cap -= 1;
                 if (fatigue >= 0.6f) cap -= 1;
-                if (CampaignManager.I != null && CampaignManager.I.BoostActive) cap += 1; // boost saatinde daha çok paket alır
+                if (CampaignManager.I != null && CampaignManager.I.BoostActive) cap += 1;
                 return Mathf.Max(1, cap);
             }
         }
 
         public bool CanTakeMore => Available && OrderCount < EffectiveCapacity;
 
-        /// <summary>Düşük moral ve yüksek yorgunlukta sipariş reddetme ihtimali.</summary>
+        /// <summary>Düşük moral ve yüksek yorgunlukta sipariş reddetme ihtimali. Boost saatinde reddetmez.</summary>
         public float RejectChance =>
-            (CampaignManager.I != null && CampaignManager.I.BoostActive) ? 0f // boost saatinde reddetmez
+            (CampaignManager.I != null && CampaignManager.I.BoostActive) ? 0f
             : Mathf.Clamp01((0.45f - morale) * 1.2f) + (fatigue >= 0.75f ? 0.15f : 0f);
 
         /// <summary>Elindeki işler bitince nerede olacak (atama tahmini için).</summary>
@@ -130,6 +244,8 @@ namespace KuryeTycoon
             V.tilesPerMinute * speedSkill * (1f + 0.04f * (level - 1)) *
             WeatherSystem.I.SpeedFactor(this) * (1f - 0.3f * fatigue) * TrafficFactor;
 
+        // ------------------------------------------------------------------ teslimat akışı
+
         public void Assign(Order o)
         {
             queue.Enqueue(o);
@@ -142,28 +258,14 @@ namespace KuryeTycoon
             {
                 current = null;
                 path = null;
-                if (fatigue >= 0.9f)
-                {
-                    StartBreak(0f, "Çok yorgun, mola veriyor");
-                    EventManager.I.Notify($"{courierName} çok yoruldu ve mola verdi.");
-                }
-                else if (State != CourierState.Mola)
-                {
-                    State = CourierState.Bosta;
-                }
+                if (wantsOffline) GoOffline(wantsOfflineReason);
+                else if (fatigue >= 0.95f) GoOffline("Çok yoruldu, eve gitti");
+                else if (State != CourierState.Mola) State = CourierState.Bosta;
                 return;
             }
             current = queue.Dequeue();
             State = CourierState.DukkanaGidiyor;
             GoTo(current.shop.door);
-        }
-
-        /// <summary>minutes = 0 ise yorgunluk %30'a inene kadar sürer.</summary>
-        void StartBreak(float minutes, string reason)
-        {
-            breakUntil = minutes > 0f ? GameClock.I.TotalMinutes + minutes : 0f;
-            breakReason = reason;
-            State = CourierState.Mola;
         }
 
         void GoTo(Vector2Int target)
@@ -179,6 +281,13 @@ namespace KuryeTycoon
 
             if (dm > 0f)
             {
+                if (clock.Hour != lastDecisionHour)
+                {
+                    lastDecisionHour = clock.Hour;
+                    DecideAvailability();
+                }
+                if (IsOnline) onlineMinutesToday += dm;
+
                 switch (State)
                 {
                     case CourierState.DukkanaGidiyor:
@@ -191,11 +300,9 @@ namespace KuryeTycoon
                         if (clock.TotalMinutes >= current.readyAt) PickUp();
                         break;
                     case CourierState.Mola:
-                        fatigue = Mathf.Max(0f, fatigue - dm * 0.004f);
-                        bool done = breakUntil > 0f ? clock.TotalMinutes >= breakUntil : fatigue <= 0.3f;
-                        if (done)
+                        fatigue = Mathf.Max(0f, fatigue - dm * 0.002f);
+                        if (clock.TotalMinutes >= breakUntil)
                         {
-                            breakUntil = 0f;
                             State = CourierState.Bosta;
                             if (queue.Count > 0) StartNext();
                         }
@@ -203,13 +310,18 @@ namespace KuryeTycoon
                     case CourierState.Bosta:
                         fatigue = Mathf.Max(0f, fatigue - dm * 0.0015f);
                         break;
+                    case CourierState.Cevrimdisi:
+                    case CourierState.Izinli:
+                        fatigue = Mathf.Max(0f, fatigue - dm * 0.006f);
+                        break;
                 }
             }
 
             transform.position = CityMap.ToWorld(Position);
-            bool off = State == CourierState.Mola || State == CourierState.Izinli;
-            ring.color = CompanyProfile.Secondary;
-            body.color = off ? Color.Lerp(CompanyProfile.Primary, Color.gray, 0.6f) : CompanyProfile.Primary;
+            ring.color = IsOnline ? CompanyProfile.Secondary : new Color(0.5f, 0.5f, 0.5f, 0.35f);
+            var p = CompanyProfile.Primary;
+            body.color = IsOnline ? (State == CourierState.Mola ? Color.Lerp(p, Color.gray, 0.5f) : p)
+                                  : new Color(p.r * 0.5f, p.g * 0.5f, p.b * 0.5f, 0.35f);
         }
 
         void Work(float dm)
@@ -261,9 +373,11 @@ namespace KuryeTycoon
                 OrderManager.I.CompleteDelivery(done, this);
 
                 // Powerbank yoksa telefon kapanabilir (elinde başka paket yoksa)
-                if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && Random.value < 0.05f)
+                if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && !wantsOffline && Random.value < 0.05f)
                 {
-                    StartBreak(60f, "Telefonu kapandı, şarj ediyor");
+                    breakUntil = GameClock.I.TotalMinutes + 60f;
+                    breakReason = "Telefonu kapandı, şarj ediyor";
+                    State = CourierState.Mola;
                     EventManager.I.Notify($"{courierName}'ın telefonu kapandı, 1 saat çevrimdışı. (Powerbank alınmalı)");
                     return;
                 }
@@ -296,15 +410,24 @@ namespace KuryeTycoon
             State = CourierState.Izinli;
         }
 
-        public void NewDay()
+        /// <summary>Gece yarısı çağrılır. Bugün izin günü mü, kurye kendisi karar verir.</summary>
+        public void NewDay(bool weekend)
         {
             deliveriesToday = 0;
+            onlineMinutesToday = 0f;
+
             if (unavailableDays > 0)
             {
                 unavailableDays--;
-                if (unavailableDays == 0 && State == CourierState.Izinli) State = CourierState.Bosta;
+                if (unavailableDays == 0 && State == CourierState.Izinli) GoOffline("İyileşti, dinleniyor");
             }
+
+            float chance = weekend ? 0.2f : 0.1f;
+            if (morale < 0.4f) chance *= 1.5f;
+            dayOff = Random.value < chance;
         }
+
+        // ------------------------------------------------------------------ arayüz
 
         /// <summary>Eksik ekipman yüzünden şu an yaşanan kayıplar (arayüzde gösterilir).</summary>
         public List<string> ActivePenalties()
@@ -335,12 +458,13 @@ namespace KuryeTycoon
             {
                 switch (State)
                 {
+                    case CourierState.Cevrimdisi: return "Çevrimdışı: " + offlineReason;
                     case CourierState.DukkanaGidiyor: return "Dükkana gidiyor";
                     case CourierState.Bekliyor: return "Dükkanda bekliyor";
-                    case CourierState.MusteriyeGidiyor: return "Müşteriye gidiyor";
+                    case CourierState.MusteriyeGidiyor: return wantsOffline ? "Son paketini götürüyor, sonra çıkacak" : "Müşteriye gidiyor";
                     case CourierState.Mola: return "Mola: " + breakReason;
                     case CourierState.Izinli: return $"İzinli ({leaveReason}, {unavailableDays} gün)";
-                    default: return "Boşta";
+                    default: return "Çevrimiçi, sipariş bekliyor";
                 }
             }
         }

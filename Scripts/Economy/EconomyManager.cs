@@ -4,19 +4,38 @@ using UnityEngine.SceneManagement;
 
 namespace KuryeTycoon
 {
+    /// <summary>Teslimat dışı giderlerin türü (Finans'ta ayrı gösterilir).</summary>
+    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger }
+
     public class PeriodStats
     {
+        public static readonly string[] CategoryNames =
+            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer" };
+
         public long commission;     // dükkan komisyonları
         public long fees;           // müşteriden alınan teslimat ücretleri
         public long otherIncome;    // kurye kesintileri vb.
-        public long courierPay;     // kurye ödemeleri
-        public long otherExpenses;  // kira, ekipman, sözleşme, iade, kaza masrafı...
-        public long campaigns;      // boostlar ve haftalık hedef ödülleri
+        public long courierPay;     // kurye ödemeleri (paket + km + bonus)
+        public long boosts;         // boost ödemeleri (kârdan)
+        public long rewards;        // haftalık / aylık hedef ödülleri (kârdan)
+        public readonly long[] byCategory = new long[8];
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
         public int deliveries;
 
+        public long OtherExpenses
+        {
+            get
+            {
+                long s = 0;
+                foreach (var v in byCategory) s += v;
+                return s;
+            }
+        }
+
         public long Income => commission + fees + otherIncome;
-        public long Expenses => courierPay + otherExpenses + campaigns;
+        public long Expenses => courierPay + boosts + rewards + OtherExpenses;
+        /// <summary>Teslimatlardan kalan: komisyon + teslimat ücreti − kurye − boost.</summary>
+        public long DeliveryProfit => commission + fees - courierPay - boosts;
         /// <summary>Vergilendirilebilir kâr (giderler düşülmüş, cezalar hariç).</summary>
         public long Profit => Income - Expenses;
     }
@@ -26,7 +45,7 @@ namespace KuryeTycoon
     ///
     /// Kurye ödemesi = paket başı ücret + km başı ücret × km + ek ücret + bonus
     /// Şirket geliri = sepet × komisyon + teslimat ücreti
-    /// Net kâr       = şirket geliri − kurye ödemesi
+    /// Net kâr       = şirket geliri − kurye ödemesi − boost
     /// Teslimat ücreti, en pahalı kuryeye bile verilse min. kâr kalacak şekilde hesaplanır.
     /// </summary>
     public class EconomyManager : MonoBehaviour
@@ -89,7 +108,7 @@ namespace KuryeTycoon
         public int PayFor(VehicleDef v, int extraPay, int tiles) =>
             v.basePay + Mathf.RoundToInt(v.payPerKm * GameData.Km(tiles)) + extraPay + CurrentBonus;
 
-        /// <summary>Bu kuryeye bu mesafe için şu an ödenecek tutar.</summary>
+        /// <summary>Bu kuryeye bu mesafe için şu an ödenecek tutar (boost hariç).</summary>
         public int CourierPay(Courier c, int tiles) => PayFor(c.V, c.extraPay, tiles);
 
         public int ProfitIf(Order o, Courier c) => o.CompanyIncome - CourierPay(c, o.distance);
@@ -122,7 +141,7 @@ namespace KuryeTycoon
                 s.commission += o.commissionIncome;
                 s.fees += o.deliveryFee;
                 s.courierPay += o.courierPay;
-                s.campaigns += o.boostPay;
+                s.boosts += o.boostPay;
                 s.deliveries++;
             }
             o.courier.totalEarned += o.courierPay + o.boostPay;
@@ -142,40 +161,32 @@ namespace KuryeTycoon
 
         // ---------- Para hareketleri ----------
 
-        public bool TrySpend(long amount, string label)
+        public bool TrySpend(long amount, string label, ExpenseCategory category = ExpenseCategory.Diger)
         {
             if (money < amount)
             {
                 EventManager.I.Notify($"Yetersiz bakiye: {label} ({Ft(amount)})");
                 return false;
             }
-            Spend(amount, label);
+            Spend(amount, label, category);
             return true;
         }
 
-        public void Spend(long amount, string label, bool penalty = false)
+        public void Spend(long amount, string label, ExpenseCategory category = ExpenseCategory.Diger)
         {
             money -= amount;
-            if (penalty)
-            {
-                Year.penalties += amount;
-                Today.penalties += amount;
-            }
-            else
-            {
-                Year.otherExpenses += amount;
-                Today.otherExpenses += amount;
-            }
+            Year.byCategory[(int)category] += amount;
+            Today.byCategory[(int)category] += amount;
             Log($"−{Ft(amount)} {label}");
             CheckBankruptcy();
         }
 
-        /// <summary>Kampanya gideri (haftalık hedef ödülü vb.). Zarara girse de ödenir.</summary>
+        /// <summary>Haftalık / aylık hedef ödülü. Kârdan ödenir.</summary>
         public void SpendCampaign(long amount, string label)
         {
             money -= amount;
-            Year.campaigns += amount;
-            Today.campaigns += amount;
+            Year.rewards += amount;
+            Today.rewards += amount;
             Log($"−{Ft(amount)} {label}");
             CheckBankruptcy();
         }
@@ -199,7 +210,7 @@ namespace KuryeTycoon
         void Log(string s)
         {
             var c = GameClock.I;
-            Ledger.Insert(0, $"G{c.Day} {c.Hour:00}:{c.Minute:00}  {s}");
+            Ledger.Insert(0, $"{c.DayOfMonth} {c.MonthName} {c.Hour:00}:{c.Minute:00}  {s}");
             if (Ledger.Count > 60) Ledger.RemoveAt(Ledger.Count - 1);
         }
 
@@ -209,8 +220,8 @@ namespace KuryeTycoon
         {
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
 
-            // Kuryeler kendi araçlarıyla, paket başı çalışır: şirketin günlük gideri sadece ofis
-            Spend(officeRentPerDay, "Ofis kirası");
+            // Kuryeler kendi araçlarıyla, serbest çalışır: şirketin günlük gideri sadece ofis
+            Spend(officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
 
             if (taxDebt > 0)
             {

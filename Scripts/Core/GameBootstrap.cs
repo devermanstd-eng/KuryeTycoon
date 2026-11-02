@@ -78,12 +78,13 @@ namespace KuryeTycoon
                 "• Siparişler otomatik atanır; istersen Siparişler sekmesinden kendin ata.\n" +
                 "• Zararına iş yapılmaz: teslimat ücreti her zaman kurye ücretini karşılar.\n" +
                 "• Kuryeler paket başı + km başı kazanır. Gelen başvuruları İşe Alım sekmesinden kabul et.\n" +
+                "• Kuryeler serbest çalışır: kendi düzenlerine ve yorgunluklarına göre çevrimiçi/çevrimdışı olurlar.\n" +
                 "• Moralsiz ve yorgun kuryeler daha az paket alır, sipariş reddedebilir.\n" +
                 "• Ekipman eksikse kuryenin kartında ne kaybettiğini görürsün (kışın mont, yazın tişört...).\n" +
                 "• Kampanyalar sekmesinde boostlar ve haftalık hedef ödülü var (kârından ödenir).\n" +
                 "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
                 "• Yıl sonunda vergi ödersin: Vergi kasası kârının bir kısmını kenara ayırır.\n\n" +
-                "Takvim: 1 ay = 28 gün, 1 yıl = 12 ay. Oyun Mart ayında başlar.\nKısayollar: Boşluk = duraklat, 1–5 = hız (1x, 2x, 4x, 8x, 16x)"));
+                "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–5 = hız (1x, 2x, 4x, 8x, 16x)"));
         }
     }
 }

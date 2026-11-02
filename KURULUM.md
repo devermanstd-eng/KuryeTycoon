@@ -27,7 +27,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 ## 5. Oyna
 1. **Play**'e bas.
 2. Şirket adını yaz, ana ve ikincil rengini seç → **Şirketi Kur ve Başla**.
-3. Kısayollar: **Boşluk** = duraklat, **1–5** = 1x / 2x / 4x / 8x / 16x hız. Takvim: 1 ay = 28 gün, 1 yıl = 12 ay.
+3. Kısayollar: **Boşluk** = duraklat, **1–5** = 1x / 2x / 4x / 8x / 16x hız. Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.
 4. Game penceresi küçükse üstteki **Free Aspect**'i **Full HD (1920x1080)** yap.
 
 ## Oyunda neler var
@@ -36,12 +36,13 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Şirket kurulumu | İsim, ana/ikincil renk; kuryeler ve merkez ofis bu renklerde |
 | Kuryeler | Yürüyerek, bisiklet, e-scooter, motosiklet, araba; hız, kapasite ve ücret farklı |
 | İşe alım | Başvurular zamanla gelir, kabul/red edersin; işe alım ve çıkarma ücretsiz |
-| Moral ve yorgunluk | Aynı anda kaç paket alacağını ve sipariş reddetme ihtimalini belirler; çok yorulan kurye mola verir |
+| Serbest kuryeler | Her kuryenin çalışma düzeni var (sabahçı, öğrenci, gece kuşu...); yorgunluğuna, moraline ve günlük hayatına göre kendisi çevrimiçi/çevrimdışı olur, izin günü yapar. Boostlar çevrimiçi olmayı teşvik eder |
+| Moral ve yorgunluk | Aynı anda kaç paket alacağını ve sipariş reddetme ihtimalini belirler |
 | Ödeme | Paket başı sabit + km başı (175–286 Ft, araca göre) + hava/gece/yoğun saat bonusu × bonus çarpanı |
 | Kâr kuralı | Teslimat ücreti, en pahalı kuryeye bile verilse min. kâr kalacak şekilde hesaplanır; zararına atama engellenir |
 | Siparişler | Sözleşmeli dükkanlardan gelir; pahalı ücrette müşteri vazgeçer, kurye bulunmazsa iptal olur |
 | Dükkanlar | Burger Queen, Döner Kral, Starbocks, Market 24, McDanold's, Pizza Hat, KFG, Sushi Samurai |
-| Olaylar | Eksik ürün, hasarlı sipariş, kaza, zam talebi, istifa, yavaş dükkan, viral yorum, komisyon teklifi |
+| Olaylar | Eksik ürün, hasarlı sipariş, kaza, hastalık, kuryenin ayrılması, yavaş dükkan, viral yorum, komisyon teklifi |
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |
 | Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık ve aylık hedef ödülü (örn. ayda 450+ paket → 50 000 Ft); hepsi şirketin kârından |

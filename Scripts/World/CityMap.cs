@@ -149,7 +149,7 @@ namespace KuryeTycoon
         {
             if (UnlockLevel >= MaxLevel) return false;
             long cost = UnlockCost[UnlockLevel + 1];
-            if (!EconomyManager.I.TrySpend(cost, $"Yeni bölge: {DistrictNames[UnlockLevel + 1]}")) return false;
+            if (!EconomyManager.I.TrySpend(cost, $"Yeni bölge: {DistrictNames[UnlockLevel + 1]}", ExpenseCategory.Bolge)) return false;
             UnlockLevel++;
             RefreshColors();
             EventManager.I.Notify($"{DistrictNames[UnlockLevel]} açıldı! Yeni dükkanlarla sözleşme yapabilirsin.");
@@ -159,7 +159,7 @@ namespace KuryeTycoon
         public bool SignContract(Shop s)
         {
             if (s.contracted || !IsUnlocked(s.tile.x)) return false;
-            if (!EconomyManager.I.TrySpend(s.def.contractCost, $"Sözleşme: {s.Name}")) return false;
+            if (!EconomyManager.I.TrySpend(s.def.contractCost, $"Sözleşme: {s.Name}", ExpenseCategory.Sozlesme)) return false;
             s.contracted = true;
             RefreshColors();
             EventManager.I.Notify($"{s.Name} ile sözleşme imzalandı (komisyon %{s.Commission * 100f:0.#}).");
