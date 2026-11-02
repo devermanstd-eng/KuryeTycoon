@@ -59,3 +59,5 @@ git pull
 - **İflas sonrası "Yeniden başla" çalışmıyor:** **File → Build Profiles → Scene List**'e sahneyi ekle.
 
 Oyunun tüm sistemleri ve ayarları için: [KURULUM.md](KURULUM.md)
+
+Projeye kendi eklemelerini yapmak istiyorsan: [KATKI.md](KATKI.md)
