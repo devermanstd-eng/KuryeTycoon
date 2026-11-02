@@ -31,8 +31,6 @@ namespace KuryeTycoon
         public readonly List<Courier> Couriers = new List<Courier>();
         public readonly List<CourierCandidate> Applications = new List<CourierCandidate>();
         public int maxApplications = 6;
-        /// <summary>Depoda bekleyen, iade edilmiş başlangıç kitleri (yeni kuryeye bedava verilir).</summary>
-        public int kitsInStock;
 
         Transform root;
         float nextApplicationAt;
@@ -196,11 +194,12 @@ namespace KuryeTycoon
             return courier;
         }
 
-        /// <summary>Giriş seviyesi ekipman: depoda iade edilmiş kit varsa o, yoksa şirket yenisini alır.</summary>
+        /// <summary>
+        /// Giriş seviyesi ekipman. Şirkete maliyeti yok: bedeli kuryeden depozito olarak alınır
+        /// (kurye 30 000 Ft kazanınca 20 000 Ft kesilir).
+        /// </summary>
         void GiveStarterKit(Courier c)
         {
-            if (kitsInStock > 0) kitsInStock--;
-            else EconomyManager.I.Spend(GameData.StarterKitCost, $"Başlangıç ekipmanı: {c.courierName}", ExpenseCategory.Ekipman);
             foreach (var k in GameData.StarterKit) c.equipment.Add(k);
             c.hasCompanyKit = true;
         }
@@ -215,20 +214,19 @@ namespace KuryeTycoon
             bool returns = Random.value < (c.depositPaid ? 0.9f : 0.7f);
             if (returns)
             {
-                kitsInStock++;
                 if (c.depositPaid)
                 {
                     EconomyManager.I.RefundDeposit(c);
-                    EventManager.I.Notify($"{c.courierName} ekipmanı iade etti, {GameData.Ft(GameData.DepositAmount)} depozitosu geri ödendi. Kit depoya döndü.");
+                    EventManager.I.Notify($"{c.courierName} ekipmanı iade etti, {GameData.Ft(GameData.DepositAmount)} depozitosu geri ödendi.");
                 }
-                else EventManager.I.Notify($"{c.courierName} ekipmanı iade etti (depozito henüz kesilmemişti). Kit depoya döndü.");
+                else EventManager.I.Notify($"{c.courierName} ekipmanı iade etti (depozito henüz kesilmemişti).");
             }
             else if (c.depositPaid)
             {
                 EconomyManager.I.KeepDeposit(c);
                 EventManager.I.Notify($"{c.courierName} ekipmanı iade etmedi, {GameData.Ft(GameData.DepositAmount)} depozito şirkette kaldı.");
             }
-            else EventManager.I.Notify($"{c.courierName} ekipmanı iade etmedi (depozito kesilmemişti, kit kayıp).");
+            else EventManager.I.Notify($"{c.courierName} ekipmanı iade etmedi (depozito henüz kesilmemişti).");
             c.hasCompanyKit = false;
         }
 

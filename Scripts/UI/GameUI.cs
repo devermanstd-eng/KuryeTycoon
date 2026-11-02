@@ -540,9 +540,9 @@ namespace KuryeTycoon
             }
             GUILayout.Label("Ekipman kısa vadede kârı düşürür ama gider olarak vergiden düşülür; hız, moral, puan ve " +
                             "daha az hastalık/kaza olarak geri döner. Kuryeler sekmesinde her kuryenin eksikleri yazar.", small);
-            GUILayout.Label($"Başlangıç kiti ({GameData.StarterKitText}) her yeni kuryeye otomatik verilir. " +
-                            $"Kurye {Ft(GameData.DepositThreshold)} kazanınca {Ft(GameData.DepositAmount)} depozito kesilir; " +
-                            $"ayrılırken iade ederse geri ödenir. Depodaki iade edilmiş kit: {cm.kitsInStock}", label);
+            GUILayout.Label($"Başlangıç kiti ({GameData.StarterKitText}) her yeni kuryeye verilir; şirkete maliyeti yoktur. " +
+                            $"Bedeli kuryeden alınır: {Ft(GameData.DepositThreshold)} kazanınca {Ft(GameData.DepositAmount)} depozito kesilir, " +
+                            "ayrılırken ekipmanı iade ederse geri ödenir.", label);
 
             if (selectedCourier == null || !cm.Couriers.Contains(selectedCourier))
                 selectedCourier = cm.Couriers.Count > 0 ? cm.Couriers[0] : null;
