@@ -26,7 +26,15 @@ namespace KuryeTycoon
     {
         static int nextId = 1;
 
-        public int id = nextId++;
+        /// <summary>Sipariş numarası 0–999 arası döner (999'dan sonra 0'dan devam eder).</summary>
+        static int NextId()
+        {
+            int v = nextId;
+            nextId = (nextId + 1) % 1000;
+            return v;
+        }
+
+        public int id = NextId();
         public Shop shop;
         public Vector2Int customerTile;
         public Vector2Int customerDoor;
