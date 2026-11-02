@@ -5,12 +5,12 @@ using UnityEngine.SceneManagement;
 namespace KuryeTycoon
 {
     /// <summary>Teslimat dışı giderlerin türü (Finans'ta ayrı gösterilir).</summary>
-    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger }
+    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger, Vergi }
 
     public class PeriodStats
     {
         public static readonly string[] CategoryNames =
-            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer" };
+            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar" };
 
         public long commission;     // dükkan komisyonları
         public long fees;           // müşteriden alınan teslimat ücretleri
@@ -18,7 +18,7 @@ namespace KuryeTycoon
         public long courierPay;     // kurye ödemeleri (paket + km + bonus)
         public long boosts;         // boost ödemeleri (kârdan)
         public long rewards;        // haftalık / aylık hedef ödülleri (kârdan)
-        public readonly long[] byCategory = new long[8];
+        public readonly long[] byCategory = new long[9];
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
         public int deliveries;
 
@@ -41,7 +41,7 @@ namespace KuryeTycoon
     }
 
     /// <summary>
-    /// Para, fiyatlandırma, kurye ödemeleri, vergi kasası ve yıl sonu vergisi.
+    /// Para, fiyatlandırma, kurye ödemeleri, yıl içindeki sürpriz vergiler ve yıl sonu vergisi.
     ///
     /// Kurye ödemesi = paket başı ücret + km başı ücret × km + ek ücret + bonus
     /// Şirket geliri = sepet × komisyon + teslimat ücreti
@@ -54,7 +54,6 @@ namespace KuryeTycoon
 
         [Header("Kasa")]
         public long money = 300000;
-        public long taxVault;
         public long taxDebt;
         /// <summary>Kuryelerden alınan ekipman depozitoları (gelir değil, iade borcu).</summary>
         public long depositsHeld;
@@ -71,7 +70,9 @@ namespace KuryeTycoon
 
         [Header("Vergi")]
         [Range(0f, 0.5f)] public float taxRate = 0.15f;
-        [Range(0f, 0.5f)] public float vaultPercent = 0.2f;
+        [Tooltip("Yıl içinde sürpriz vergi/harç kaç günde bir çıkar (en az–en çok)")]
+        public int surpriseMinDays = 6;
+        public int surpriseMaxDays = 16;
 
         [Header("Sabit giderler")]
         public int officeRentPerDay = 4000;
@@ -165,12 +166,6 @@ namespace KuryeTycoon
             if (o.boostPay > 0) CampaignManager.I.RegisterBoostPaid(o.boostPay);
 
             int profit = o.Profit;
-            if (profit > 0 && vaultPercent > 0f)
-            {
-                long put = Mathf.RoundToInt(profit * vaultPercent);
-                money -= put;
-                taxVault += put;
-            }
             string boost = o.boostPay > 0 ? $", boost {Ft(o.boostPay)}" : "";
             Log($"#{o.id} teslim ({GameData.KmText(o.distance)}): gelir {Ft(o.CompanyIncome)}, kurye {Ft(o.courierPay)}{boost}, kâr {Ft(profit)}");
             CheckBankruptcy();
@@ -246,12 +241,14 @@ namespace KuryeTycoon
             Log($"+{Ft(amount)} {label}");
         }
 
-        public void WithdrawVault()
+        /// <summary>Ceza (vergiden düşülmez).</summary>
+        public void SpendPenalty(long amount, string label)
         {
-            if (taxVault <= 0) return;
-            money += taxVault;
-            Log($"Vergi kasasından ana kasaya {Ft(taxVault)} aktarıldı");
-            taxVault = 0;
+            money -= amount;
+            Year.penalties += amount;
+            Today.penalties += amount;
+            Log($"−{Ft(amount)} {label} (ceza)");
+            CheckBankruptcy();
         }
 
         void Log(string s)
@@ -281,7 +278,128 @@ namespace KuryeTycoon
 
             Yesterday = Today;
             Today = new PeriodStats();
+
+            if (nextSurpriseDay == 0) ScheduleSurprise();
+            else if (GameClock.I.CompanyDay >= nextSurpriseDay)
+            {
+                RollSurpriseTax();
+                ScheduleSurprise();
+            }
         }
+
+        // ---------- Yıl içindeki sürpriz vergiler ve harçlar ----------
+
+        int nextSurpriseDay;
+        long localTaxPaidThisYear;
+
+        void ScheduleSurprise()
+        {
+            nextSurpriseDay = GameClock.I.CompanyDay + Random.Range(surpriseMinDays, surpriseMaxDays + 1);
+        }
+
+        static long Round1000(float v) => (long)(Mathf.Round(v / 1000f) * 1000f);
+
+        /// <summary>Ertelenen vergi: %10 ceza eklenir, borca yazılır (her gün %2 faiz).</summary>
+        void Postpone(long amount)
+        {
+            long withPenalty = Round1000(amount * 1.1f);
+            Year.penalties += withPenalty - amount;
+            taxDebt += withPenalty;
+        }
+
+        void RollSurpriseTax()
+        {
+            int couriers = Mathf.Max(1, CourierManager.I.Couriers.Count);
+            int roll = Random.Range(0, 100);
+
+            if (roll < 22)
+            {
+                // Yerel işletme vergisi: yıl başından beri gelirin %2'si (daha önce ödenen düşülür)
+                long due = Round1000(Year.Income * 0.02f) - localTaxPaidThisYear;
+                if (due < 3000) due = 3000;
+                EventManager.I.Push(new GameEvent("Yerel işletme vergisi",
+                        $"Belediye, yıl başından beri elde ettiğin gelirin %2'si oranında yerel işletme vergisi tahakkuk ettirdi: {Ft(due)}.")
+                    .Add($"Öde (−{Ft(due)})", () => { localTaxPaidThisYear += due; PayFee(due, "Yerel işletme vergisi"); })
+                    .Add("Ertele (+%10 ceza, borca yazılır)", () => { localTaxPaidThisYear += due; Postpone(due); }));
+            }
+            else if (roll < 40)
+            {
+                // KDV/ÁFA farkı: itiraz edilebilir
+                long due = Round1000(Mathf.Max(4000f, Year.fees * Random.Range(0.01f, 0.03f)));
+                EventManager.I.Push(new GameEvent("KDV (ÁFA) farkı",
+                        $"Vergi dairesi teslimat ücretlerindeki KDV hesabında fark buldu ve {Ft(due)} ek ödeme istiyor.")
+                    .Add($"Öde (−{Ft(due)})", () => PayFee(due, "KDV farkı"))
+                    .Add("İtiraz et (%50 iptal, %50 ise 1,5 katı ödersin)", () =>
+                    {
+                        if (Random.value < 0.5f)
+                            EventManager.I.Push(new GameEvent("İtiraz kabul edildi", "Vergi dairesi hatalı hesap yaptığını kabul etti. Ödeme iptal."));
+                        else
+                        {
+                            PayFee(due, "KDV farkı");
+                            SpendPenalty(due / 2, "KDV itirazı reddedildi");
+                            EventManager.I.Push(new GameEvent("İtiraz reddedildi", $"İtirazın reddedildi. {Ft(due)} + {Ft(due / 2)} ceza ödendi."));
+                        }
+                    }));
+            }
+            else if (roll < 55)
+            {
+                // Vergi denetimi
+                long fine = Round1000(Mathf.Max(10000f, Mathf.Max(0f, Year.Profit) * 0.05f + couriers * 2000f));
+                const int accountant = 15000;
+                EventManager.I.Push(new GameEvent("Vergi denetimi!",
+                        "Vergi müfettişleri kapıda. Kurye ödemelerini, depozitoları ve faturaları inceleyecekler.
+" +
+                        $"Eksik belge çıkarsa ceza {Ft(fine)} civarında olabilir.")
+                    .Add($"Muhasebeciye danış (−{Ft(accountant)}, ceza ihtimali düşer)", () =>
+                    {
+                        PayFee(accountant, "Muhasebeci (denetim)");
+                        AuditResult(fine, 0.2f);
+                    })
+                    .Add("Kendin hallet", () => AuditResult(fine, 0.55f)));
+            }
+            else if (roll < 70)
+            {
+                long fee = Round1000(Random.Range(12000f, 25000f));
+                EventManager.I.Push(new GameEvent("Belediye harcı",
+                        $"Merkez ofisin tabelası ve işyeri ruhsatı için yıllık belediye harcı geldi: {Ft(fee)}.")
+                    .Add($"Öde (−{Ft(fee)})", () => PayFee(fee, "Ruhsat ve tabela harcı"))
+                    .Add("Ertele (+%10 ceza, borca yazılır)", () => Postpone(fee)));
+            }
+            else if (roll < 85)
+            {
+                long fee = couriers * 1500L;
+                PayFee(fee, "Kurye iş güvenliği fonu");
+                EventManager.I.Push(new GameEvent("İş güvenliği fonu katkısı",
+                    $"Platform üzerinden çalışan her kurye için 1 500 Ft iş güvenliği fonu katkısı otomatik tahsil edildi.
+{couriers} kurye → {Ft(fee)}"));
+            }
+            else
+            {
+                long refund = Round1000(Random.Range(5000f, 20000f));
+                money += refund;
+                Year.otherIncome += refund;
+                Today.otherIncome += refund;
+                Log($"+{Ft(refund)} vergi iadesi");
+                EventManager.I.Push(new GameEvent("Vergi iadesi!",
+                    $"Geçen dönem fazla vergi ödediğin ortaya çıktı. Hesabına {Ft(refund)} iade yattı."));
+            }
+        }
+
+        void AuditResult(long fine, float chance)
+        {
+            if (Random.value < chance)
+            {
+                SpendPenalty(fine, "Vergi denetimi cezası");
+                CompanyProfile.AddReputation(-0.1f);
+                EventManager.I.Push(new GameEvent("Denetim sonucu: ceza", $"Eksik belgeler bulundu. {Ft(fine)} ceza ödendi, itibar biraz düştü."));
+            }
+            else
+            {
+                EventManager.I.Push(new GameEvent("Denetim sonucu: temiz", "Müfettişler her şeyi düzenli buldu. Ceza yok."));
+            }
+        }
+
+        void PayFee(long amount, string label) => Spend(amount, label, ExpenseCategory.Vergi);
 
         void OnNewYear(int endedYear)
         {
@@ -290,6 +408,7 @@ namespace KuryeTycoon
             LastTaxSummary = $"{endedYear}. yıl → Gelir {Ft(Year.Income)}, Gider {Ft(Year.Expenses)}, " +
                              $"Vergilendirilebilir kâr {Ft(taxable)}, Vergi (%{taxRate * 100f:0}) {Ft(tax)}";
             Year = new PeriodStats();
+            localTaxPaidThisYear = 0;
 
             if (tax <= 0)
             {
@@ -298,23 +417,15 @@ namespace KuryeTycoon
             }
 
             EventManager.I.Push(new GameEvent($"{endedYear}. Yıl Sonu — Vergi Zamanı",
-                    LastTaxSummary + $"\n\nVergi kasanda {Ft(taxVault)} var. Ödeme önce vergi kasasından yapılır.")
+                    LastTaxSummary + $"\n\nAna kasanda {Ft(money)} var.")
                 .Add($"Şimdi öde ({Ft(tax)})", () => PayTax(tax))
-                .Add("Ertele (+%10 ceza, her gün +%2 faiz, itibar düşer)", () =>
-                {
-                    long withPenalty = (long)Mathf.Round(tax * 1.1f);
-                    Year.penalties += withPenalty - tax;
-                    taxDebt += withPenalty;
-                }));
+                .Add("Ertele (+%10 ceza, her gün +%2 faiz, itibar düşer)", () => Postpone(tax)));
         }
 
         public void PayTax(long amount)
         {
-            long fromVault = System.Math.Min(taxVault, amount);
-            taxVault -= fromVault;
-            long rest = amount - fromVault;
-            money -= rest;
-            Log($"Vergi ödendi: {Ft(amount)} (kasadan {Ft(fromVault)}, ana kasadan {Ft(rest)})");
+            money -= amount;
+            Log($"Vergi ödendi: {Ft(amount)}");
             EventManager.I.Notify($"Vergi ödendi: {Ft(amount)}");
             CheckBankruptcy();
         }
@@ -329,10 +440,10 @@ namespace KuryeTycoon
 
         void CheckBankruptcy()
         {
-            if (bankrupt || money + taxVault > bankruptcyLimit) return;
+            if (bankrupt || money > bankruptcyLimit) return;
             bankrupt = true;
             EventManager.I.Push(new GameEvent("İflas!",
-                    $"Şirketin borcu {Ft(-(money + taxVault))} oldu ve iflas ettin.")
+                    $"Şirketin borcu {Ft(-money)} oldu ve iflas ettin.")
                 .Add("Yeniden başla", () => SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex))
                 .Add("Borçla devam et (sadece test için)", () => bankrupt = false));
         }

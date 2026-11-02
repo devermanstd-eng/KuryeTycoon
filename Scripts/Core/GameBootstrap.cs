@@ -83,7 +83,7 @@ namespace KuryeTycoon
                 "• Ekipman eksikse kuryenin kartında ne kaybettiğini görürsün (kışın mont, yazın tişört...).\n" +
                 "• Kampanyalar sekmesinde boostlar ve haftalık hedef ödülü var (kârından ödenir).\n" +
                 "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
-                "• Yıl sonunda vergi ödersin: Vergi kasası kârının bir kısmını kenara ayırır.\n\n" +
+                "• Yıl sonunda vergi ödersin; yıl içinde de habersiz vergi ve harçlar çıkabilir, kasanda yedek tut.\n\n" +
                 "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–5 = hız (1x, 2x, 4x, 8x, 16x)"));
         }
     }

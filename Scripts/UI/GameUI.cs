@@ -256,7 +256,7 @@ namespace KuryeTycoon
 
             GUI.Label(new Rect(14, 0, 260, TopBar), CompanyProfile.Name, barTitle);
 
-            string info = $"Kasa: {Ft(eco.money)}    Vergi kasası: {Ft(eco.taxVault)}    " +
+            string info = $"Kasa: {Ft(eco.money)}    " +
                           $"İtibar: {CompanyProfile.Reputation:0.0}/5    Çevrimiçi: {CourierManager.I.OnlineCount}/{CourierManager.I.Couriers.Count}    {clock.TimeText}    " +
                           $"{clock.SeasonName} · {weather.Name}";
             var boost = CampaignManager.I.ActiveWindow;
@@ -676,7 +676,6 @@ namespace KuryeTycoon
 
             GUILayout.Label("Kasa", header);
             GUILayout.Label($"Ana kasa: {Ft(e.money)}", label);
-            GUILayout.Label($"Vergi kasası: {Ft(e.taxVault)} (her kârın %{e.vaultPercent * 100f:0}'i buraya ayrılır)", label);
             if (e.depositsHeld > 0)
                 GUILayout.Label($"Tutulan ekipman depozitoları: {Ft(e.depositsHeld)} (gelir değil; ekipmanı iade eden kuryeye geri ödenir)", small);
             if (e.taxDebt > 0)
@@ -684,7 +683,6 @@ namespace KuryeTycoon
                 GUILayout.Label($"Vergi borcu: {Ft(e.taxDebt)} — her gün %2 büyür!", warn);
                 if (GUILayout.Button($"Vergi borcunu öde ({Ft(e.taxDebt)})", button)) deferred = () => e.PayDebt();
             }
-            if (e.taxVault > 0 && GUILayout.Button("Vergi kasasını ana kasaya aktar", smallButton)) deferred = () => e.WithdrawVault();
 
             GUILayout.Space(6);
             GUILayout.Label($"Bu vergi yılı (Yıl {clock.Year}: 1 Ocak – 31 Aralık · şirketin {clock.CompanyDay}. günü)", header);
@@ -734,7 +732,8 @@ namespace KuryeTycoon
             }
 
             // 3) Sonuç
-            GUILayout.Label($"Net kâr: {Ft(s.Profit)}" + (s.penalties > 0 ? $" · Cezalar: {Ft(s.penalties)}" : ""), header);
+            if (s.penalties > 0) GUILayout.Label($"Cezalar (vergiden düşülmez): −{Ft(s.penalties)}", warn);
+            GUILayout.Label($"Net kâr: {Ft(s.Profit - s.penalties)}", header);
         }
 
         void DrawSettings()
@@ -761,8 +760,9 @@ namespace KuryeTycoon
 
             GUILayout.Space(8);
             GUILayout.Label("Vergi", header);
-            e.vaultPercent = FloatSlider("Kârdan vergi kasasına", e.vaultPercent, 0f, 0.5f);
-            GUILayout.Label($"Vergi oranı: %{e.taxRate * 100f:0} — yıl sonunda (gelir − giderler) üzerinden ödenir. Giderler vergiden düşülür.", small);
+            GUILayout.Label($"Yıl sonu vergisi: %{e.taxRate * 100f:0} — 31 Aralık'ta (gelir − giderler) üzerinden ödenir. Giderler vergiden düşülür.", small);
+            GUILayout.Label("Yıl içinde de habersiz vergi ve harçlar çıkar: yerel işletme vergisi, KDV farkı, vergi denetimi, " +
+                            "belediye harcı, iş güvenliği fonu. Bazen de vergi iadesi gelir. Kasanda her zaman biraz yedek para tut.", small);
 
             GUILayout.Space(8);
             GUILayout.Label("Örnek hesap (şu anki ayarlarla)", header);

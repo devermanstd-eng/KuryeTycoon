@@ -50,7 +50,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık ve aylık hedef ödülü (örn. ayda 450+ paket → 50 000 Ft); hepsi şirketin kârından |
 | Başlangıç ekipmanı | Her yeni kuryeye termal çanta + şirket tişörtü verilir; şirkete maliyeti kit başı 5 000 Ft. Kurye 30 000 Ft kazanınca 20 000 Ft depozito kesilir (gelir değil, iade borcu). Ayrılırken ekipmanı iade ederse depozito geri ödenir; iade etmezse depozito şirkette kalır |
 | Bahşiş | Müşteriler bazen bahşiş verir (cömert müşteri, iyi puan, kötü hava, gece, ağır paket ihtimali artırır); bahşişin tamamı kuryenin, şirket kasasına girmez |
-| Vergi | Kârın bir kısmı vergi kasasına ayrılır; yıl sonunda öde ya da cezalı ertele |
+| Vergi | Yıl sonunda net kâr üzerinden %15 (öde ya da cezalı ertele). Yıl içinde habersiz vergi/harçlar: yerel işletme vergisi, KDV farkı (itiraz edilebilir), vergi denetimi (muhasebeciye danışılabilir), belediye harcı, iş güvenliği fonu; bazen vergi iadesi |
 | Büyüme | 3 bölge, sözleşmeler, işe alım, seviye atlayan kuryeler |
 
 ## Dosya yapısı
@@ -61,7 +61,7 @@ KuryeTycoon/Scripts/
   World/     CityMap (ızgara şehir, yol bulma, bölgeler), WeatherSystem
   Couriers/  Courier (hareket, yorgunluk, seviye), CourierManager (işe alım, moral, kaza, zam)
   Orders/    Order, OrderManager (sipariş üretme, atama, puan)
-  Economy/   EconomyManager (fiyat formülü, kasa, vergi kasası, yıl sonu vergi, iflas)
+  Economy/   EconomyManager (fiyat formülü, kasa, sürpriz vergiler, yıl sonu vergi, iflas)
   Events/    EventManager (olay kartları, haber akışı)
   UI/        GameUI (kurulum ekranı, üst bar, sekmeler)
 ```
