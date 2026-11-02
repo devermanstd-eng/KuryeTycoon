@@ -17,6 +17,8 @@ namespace KuryeTycoon
         public bool exposed;           // hava şartlarına açık mı (araba hariç hepsi)
         public float accidentRisk;     // günlük kaza ihtimali
         public float maxWeightKg;      // taşıyabileceği en ağır sipariş (kg)
+        public int ownPrice;           // kuryenin kendi cebinden ödediği araç fiyatı (Ft)
+        public float breakdownRisk;    // günlük arıza ihtimali
     }
 
     public class ShopDef
@@ -48,10 +50,10 @@ namespace KuryeTycoon
 
         public static readonly VehicleDef[] Vehicles =
         {
-            new VehicleDef { kind = VehicleKind.Bisiklet,   name = "Bisiklet",   letter = "B", tilesPerMinute = 0.50f, capacity = 2, basePay = 500, payPerKm = 175, exposed = true,  accidentRisk = 0.010f, maxWeightKg = 20f },
-            new VehicleDef { kind = VehicleKind.EScooter,   name = "E-Scooter",  letter = "S", tilesPerMinute = 0.65f, capacity = 2, basePay = 550, payPerKm = 210, exposed = true,  accidentRisk = 0.015f, maxWeightKg = 20f },
-            new VehicleDef { kind = VehicleKind.Motosiklet, name = "Motosiklet", letter = "M", tilesPerMinute = 0.95f, capacity = 3, basePay = 600, payPerKm = 245, exposed = true,  accidentRisk = 0.020f, maxWeightKg = 20f },
-            new VehicleDef { kind = VehicleKind.Araba,      name = "Araba",      letter = "A", tilesPerMinute = 0.85f, capacity = 4, basePay = 650, payPerKm = 286, exposed = false, accidentRisk = 0.008f, maxWeightKg = 999f },
+            new VehicleDef { kind = VehicleKind.Bisiklet,   name = "Bisiklet",   letter = "B", tilesPerMinute = 0.50f, capacity = 2, basePay = 500, payPerKm = 175, exposed = true,  accidentRisk = 0.010f, maxWeightKg = 20f, ownPrice = 60000, breakdownRisk = 0.002f },
+            new VehicleDef { kind = VehicleKind.EScooter,   name = "E-Scooter",  letter = "S", tilesPerMinute = 0.65f, capacity = 2, basePay = 550, payPerKm = 210, exposed = true,  accidentRisk = 0.015f, maxWeightKg = 20f, ownPrice = 180000, breakdownRisk = 0.005f },
+            new VehicleDef { kind = VehicleKind.Motosiklet, name = "Motosiklet", letter = "M", tilesPerMinute = 0.95f, capacity = 3, basePay = 600, payPerKm = 245, exposed = true,  accidentRisk = 0.020f, maxWeightKg = 20f, ownPrice = 450000, breakdownRisk = 0.008f },
+            new VehicleDef { kind = VehicleKind.Araba,      name = "Araba",      letter = "A", tilesPerMinute = 0.85f, capacity = 4, basePay = 650, payPerKm = 286, exposed = false, accidentRisk = 0.008f, maxWeightKg = 999f, ownPrice = 1200000, breakdownRisk = 0.007f },
         };
 
         public static VehicleDef Vehicle(VehicleKind k) => Vehicles[(int)k];

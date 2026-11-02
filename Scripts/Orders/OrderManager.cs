@@ -296,7 +296,7 @@ namespace KuryeTycoon
             if (o.customerType == CustomerType.Comert && o.rating >= 4f)
             {
                 o.tip = GameData.Round10(Random.Range(200f, 800f));
-                c.totalEarned += o.tip;
+                c.Earn(o.tip);
                 c.morale = Mathf.Min(1f, c.morale + 0.02f);
             }
 

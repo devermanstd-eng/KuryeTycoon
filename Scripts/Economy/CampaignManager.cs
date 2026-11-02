@@ -207,7 +207,7 @@ namespace KuryeTycoon
             {
                 c.weeklyRewardClaimed = true;
                 EconomyManager.I.SpendCampaign(weeklyReward, $"Haftalık hedef ödülü: {c.courierName}");
-                c.totalEarned += weeklyReward;
+                c.Earn(weeklyReward);
                 c.morale = Mathf.Min(1f, c.morale + 0.15f);
                 rewardsPaidThisWeek += weeklyReward;
                 rewardsClaimedThisWeek++;
@@ -218,7 +218,7 @@ namespace KuryeTycoon
             {
                 c.monthlyRewardClaimed = true;
                 EconomyManager.I.SpendCampaign(monthlyReward, $"Aylık hedef ödülü: {c.courierName}");
-                c.totalEarned += monthlyReward;
+                c.Earn(monthlyReward);
                 c.morale = Mathf.Min(1f, c.morale + 0.25f);
                 rewardsPaidThisMonth += monthlyReward;
                 rewardsClaimedThisMonth++;

@@ -159,7 +159,7 @@ namespace KuryeTycoon
                 s.boosts += o.boostPay;
                 s.deliveries++;
             }
-            o.courier.totalEarned += o.courierPay + o.boostPay;
+            o.courier.Earn(o.courierPay + o.boostPay);
             if (o.boostPay > 0) CampaignManager.I.RegisterBoostPaid(o.boostPay);
 
             int profit = o.Profit;

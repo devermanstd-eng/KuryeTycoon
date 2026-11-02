@@ -8,17 +8,20 @@ namespace KuryeTycoon
     {
         public string name;
         public VehicleKind vehicle;
-        public WorkRoutine routine;
+        public bool alsoOwnsBike;      // motorlu araç sahibinin yedekte bisikleti de var
+        public Occupation occupation;
         public float speedSkill, care, politeness, stamina;
         public int level = 1;
+        public bool insured;           // kendi parasıyla sigortalı
+        public long savings;           // birikimi
         public string note = "";
-        public float expiresAt;    // başvuru bu oyun dakikasında geçersiz olur
+        public float expiresAt;
     }
 
     /// <summary>
     /// Başvurular, işe alım / çıkarma (ücretsiz), ekipman,
-    /// günlük moral, izin günü, hastalık ve kaza olayları.
-    /// Kuryeler serbest çalışır: zam istemezler, paket başı kazanırlar.
+    /// günlük moral, izin, hastalık, kaza, arıza, araç yükseltme ve sigorta.
+    /// Kuryeler serbest çalışır: zam istemez, kendi araçlarını ve sigortalarını kendileri öder.
     /// </summary>
     public class CourierManager : MonoBehaviour
     {
@@ -27,7 +30,6 @@ namespace KuryeTycoon
         public readonly List<Courier> Couriers = new List<Courier>();
         public readonly List<CourierCandidate> Applications = new List<CourierCandidate>();
         public int maxApplications = 6;
-        public int accidentTreatmentCost = 15000;
 
         Transform root;
         float nextApplicationAt;
@@ -71,13 +73,25 @@ namespace KuryeTycoon
                 {
                     var c = MakeCandidate(RandomVehicle(), true);
                     Applications.Add(c);
-                    EventManager.I.Notify($"Yeni iş başvurusu: {c.name} ({GameData.Vehicle(c.vehicle).name}, seviye {c.level})");
+                    EventManager.I.Notify($"Yeni iş başvurusu: {c.name} ({GameData.Vehicle(c.vehicle).name}, {ShortOccupation(c.occupation)})");
                 }
                 ScheduleNextApplication();
             }
         }
 
-        /// <summary>İtibar ve bonus çarpanı yüksekse başvurular daha sık gelir.</summary>
+        public static string ShortOccupation(Occupation o)
+        {
+            switch (o)
+            {
+                case Occupation.OfisCalisani: return "ofis çalışanı";
+                case Occupation.HaftaSonu: return "hafta sonu";
+                case Occupation.Ogrenci: return "öğrenci";
+                case Occupation.Vardiyali: return "vardiyalı işçi";
+                case Occupation.Emekli: return "emekli";
+                default: return "tam zamanlı";
+            }
+        }
+
         void ScheduleNextApplication()
         {
             float rep = 0.5f + 0.15f * CompanyProfile.Reputation;
@@ -85,14 +99,26 @@ namespace KuryeTycoon
             nextApplicationAt = GameClock.I.TotalMinutes + Random.Range(120f, 360f) / (rep * bonus);
         }
 
-        static WorkRoutine RandomRoutine()
+        static Occupation RandomOccupation()
         {
             float r = Random.value;
-            if (r < 0.30f) return WorkRoutine.TamGun;
-            if (r < 0.50f) return WorkRoutine.Ogrenci;
-            if (r < 0.70f) return WorkRoutine.OgleAksam;
-            if (r < 0.85f) return WorkRoutine.Sabahci;
-            return WorkRoutine.GeceKusu;
+            if (r < 0.20f) return Occupation.TamZamanli;
+            if (r < 0.40f) return Occupation.OfisCalisani;
+            if (r < 0.65f) return Occupation.Ogrenci;
+            if (r < 0.80f) return Occupation.HaftaSonu;
+            if (r < 0.90f) return Occupation.Vardiyali;
+            return Occupation.Emekli;
+        }
+
+        static float InsureChance(VehicleKind v)
+        {
+            switch (v)
+            {
+                case VehicleKind.Bisiklet: return 0.35f;
+                case VehicleKind.EScooter: return 0.5f;
+                case VehicleKind.Motosiklet: return 0.6f;
+                default: return 0.75f;
+            }
         }
 
         public CourierCandidate MakeCandidate(VehicleKind v, bool withExpiry)
@@ -104,8 +130,11 @@ namespace KuryeTycoon
             {
                 name = GameData.RandomName(),
                 vehicle = v,
-                routine = RandomRoutine(),
+                alsoOwnsBike = v != VehicleKind.Bisiklet && Random.value < 0.4f,
+                occupation = RandomOccupation(),
                 level = level,
+                insured = Random.value < InsureChance(v),
+                savings = Mathf.RoundToInt(Random.Range(0f, 60000f) / 1000f) * 1000,
                 speedSkill = Random.Range(0.85f, 1.2f) + skill,
                 care = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
                 politeness = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
@@ -124,16 +153,15 @@ namespace KuryeTycoon
             return VehicleKind.Araba;
         }
 
-        /// <summary>Başlangıç kuryeleri (tam gün çalışan, deneyimsiz).</summary>
+        /// <summary>Başlangıç kuryeleri (tam zamanlı, deneyimsiz).</summary>
         public Courier HireStarter(VehicleKind v)
         {
             var c = MakeCandidate(v, false);
             c.level = 1;
-            c.routine = WorkRoutine.TamGun;
+            c.occupation = Occupation.TamZamanli;
             return Spawn(c);
         }
 
-        /// <summary>Başvuruyu kabul et. Ücretsiz: kurye paket başı kazanır.</summary>
         public void Hire(CourierCandidate c)
         {
             if (!Applications.Remove(c)) return;
@@ -156,7 +184,6 @@ namespace KuryeTycoon
             return courier;
         }
 
-        /// <summary>İşten çıkar. Ücretsiz, ama elinde paket varken olmaz.</summary>
         public bool Fire(Courier c)
         {
             if (c.OrderCount > 0)
@@ -189,19 +216,20 @@ namespace KuryeTycoon
             return n;
         }
 
+        // ================================================================== gün sonu
+
         void OnNewDay()
         {
-            var season = GameClock.I.Season;
-            bool weekend = GameClock.I.IsWeekend;
+            var clock = GameClock.I;
+            var season = clock.Season;
             float bonusM = EconomyManager.I.bonusMultiplier;
-            int daysOff = 0;
+            bool monday = clock.DayOfWeek == 0;
 
             foreach (var c in Couriers.ToArray())
             {
                 int worked = c.deliveriesToday;
-                bool satIdle = c.onlineMinutesToday > 120f && worked == 0; // çevrimiçi bekledi ama iş gelmedi
-                c.NewDay(weekend);
-                if (c.dayOff) daysOff++;
+                bool satIdle = c.onlineMinutesToday > 120f && worked == 0;
+                c.NewDay(clock);
 
                 // --- Moral ---
                 float d = (0.6f - c.morale) * 0.05f + (bonusM - 1f) * 0.08f + c.equipment.Count * 0.004f;
@@ -218,12 +246,44 @@ namespace KuryeTycoon
                     continue;
                 }
 
+                // --- Kendi parası: sigorta ve araç ---
+                if (monday && c.insured && !c.PayInsurance())
+                    EventManager.I.Notify($"{c.courierName} sigorta primini ödeyemedi, sigortası düştü.");
+                if (!c.insured && Random.value < 0.02f && c.TryBuyInsurance())
+                    EventManager.I.Notify($"{c.courierName} şirket platformu üzerinden kendine sigorta yaptırdı.");
+                if (c.OrderCount == 0 && Random.value < 0.25f && c.TryUpgradeVehicle())
+                    VehicleUpgraded(c);
+
                 if (c.State == CourierState.Izinli || c.OrderCount > 0) continue;
                 if (RollSickness(c, season)) continue;
+                if (RollBreakdown(c)) continue;
                 RollAccident(c);
             }
+        }
 
-            if (daysOff > 0) EventManager.I.Notify($"Bugün {daysOff} kurye kendine izin günü yaptı.");
+        void VehicleUpgraded(Courier c)
+        {
+            var v = c.V;
+            string extra = v.kind == VehicleKind.Araba ? " Artık ağır siparişleri de alabilir." : "";
+            EventManager.I.Push(new GameEvent("Yeni araç!",
+                $"{c.courierName} biriktirdiği parayla kendine {v.name} aldı ({Ft(v.ownPrice)}).\n" +
+                $"Artık paket başı {Ft(v.basePay)} + {v.payPerKm} Ft/km kazanıyor ve aynı anda {v.capacity} paket taşıyabiliyor.{extra}"));
+            c.morale = Mathf.Min(1f, c.morale + 0.1f);
+        }
+
+        bool RollBreakdown(Courier c)
+        {
+            if (Random.value >= c.V.breakdownRisk) return false;
+            var broken = c.V;
+            int days = Random.Range(1, 4);
+            int cost = Mathf.RoundToInt(broken.ownPrice * Random.Range(0.03f, 0.08f) / 1000f) * 1000;
+            c.BreakDown(days, cost);
+
+            string after = c.State == CourierState.Izinli
+                ? "Başka aracı olmadığı için tamir bitene kadar çalışamayacak."
+                : $"Tamir bitene kadar {c.V.name} ile çalışacak (kazancı ve taşıma kapasitesi buna göre değişir).";
+            EventManager.I.Notify($"{c.courierName}'ın {broken.name} arızalandı ({days} gün, tamiri {Ft(cost)} kendi cebinden). {after}");
+            return true;
         }
 
         bool RollSickness(Courier c, Season season)
@@ -249,6 +309,10 @@ namespace KuryeTycoon
             Destroy(c.gameObject);
         }
 
+        /// <summary>
+        /// Kaza. Şirket masraf ödemez: sigortalıysa sigorta karşılar,
+        /// değilse kurye kendi öder, daha uzun süre çalışamaz ve morali çok düşer.
+        /// </summary>
         void RollAccident(Courier c)
         {
             float risk = c.V.accidentRisk;
@@ -260,17 +324,27 @@ namespace KuryeTycoon
             if (Random.value >= risk) return;
 
             int days = helmet ? 1 : 3;
+            string helmetText = helmet ? "Kask sayesinde hafif atlattı. " : (c.V.exposed ? "Kaskı olmadığı için yaralanması ağır. " : "");
+
+            if (c.insured)
+            {
+                c.SetOnLeave(days, "kaza");
+                c.morale = Mathf.Max(0f, c.morale - 0.05f);
+                EventManager.I.Notify($"{c.courierName} kaza geçirdi ({days} gün çalışamayacak). {helmetText}Masrafları sigortası karşıladı.");
+                return;
+            }
+
+            days += 2; // sigortasız: tedavi ve tamir daha uzun sürer
             c.SetOnLeave(days, "kaza");
-            int cost = accidentTreatmentCost;
-            string helmetText = helmet ? " Kask sayesinde hafif atlattı." : (c.V.exposed ? " Kaskı olmadığı için yaralanması ağır." : "");
-            EventManager.I.Push(new GameEvent("Kaza!",
-                    $"{c.courierName} ({c.V.name}) kaza geçirdi ve {days} gün çalışamayacak.{helmetText}")
-                .Add($"Tedavi ve onarıma destek ol (−{Ft(cost)}, moral +)", () =>
-                {
-                    EconomyManager.I.Spend(cost, $"Kaza desteği: {c.courierName}", ExpenseCategory.Kaza);
-                    c.morale = Mathf.Min(1f, c.morale + 0.15f);
-                })
-                .Add("Destek olma (moral −)", () => c.morale = Mathf.Max(0f, c.morale - 0.25f)));
+            c.morale = Mathf.Max(0f, c.morale - 0.2f);
+            long cost = Mathf.RoundToInt(c.V.ownPrice * 0.06f / 1000f) * 1000 + 10000;
+            c.savings = System.Math.Max(0L, c.savings - cost);
+            bool buys = Random.value < 0.5f;
+            if (buys) c.insured = true; // iyileşince sigorta yaptırmaya karar verdi (prim Pazartesi kesilir)
+
+            EventManager.I.Notify($"{c.courierName} kaza geçirdi, {days} gün çalışamayacak. {helmetText}" +
+                $"Sigortası olmadığı için ~{Ft(cost)} masrafı kendi ödedi, morali çok düştü." +
+                (buys ? " Sigorta yaptırmaya karar verdi." : ""));
         }
     }
 }

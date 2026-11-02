@@ -385,16 +385,18 @@ namespace KuryeTycoon
         {
             var cm = CourierManager.I;
             GUILayout.Label($"Kuryeler ({cm.Couriers.Count}) · Şu an çevrimiçi: {cm.OnlineCount}", header);
-            GUILayout.Label("Kuryeler serbest çalışır: kendi düzenlerine, yorgunluklarına ve günlük hayatlarına göre istedikleri zaman " +
-                            "çevrimiçi/çevrimdışı olurlar, bazı günler hiç çalışmazlar. Onları zorlayamazsın; boostlar ve iyi moral " +
-                            "çevrimiçi olma isteğini artırır. Moral yüksekse aynı anda daha çok paket alırlar, düşükse sipariş reddedebilirler.", small);
+            GUILayout.Label("Kuryeler serbest çalışır: asıl mesleklerine (öğrenci, ofis çalışanı, vardiyalı işçi...), yorgunluklarına ve " +
+                            "günlük hayatlarına göre istedikleri zaman çevrimiçi/çevrimdışı olurlar. Onları zorlayamazsın; boostlar ve iyi moral " +
+                            "çevrimiçi olma isteğini artırır. Kendi araçlarını ve sigortalarını kendi kazançlarından öderler; " +
+                            "para biriktirince daha iyi araç alırlar.", small);
 
             foreach (var c in cm.Couriers)
             {
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{c.courierName} — {c.V.name} · Seviye {c.level}", header);
                 GUILayout.Label($"{c.StateName} · Teslimat {c.deliveries} (bugün {c.deliveriesToday}) · Kazancı {Ft(c.totalEarned)}", small);
-                GUILayout.Label($"Çalışma düzeni: {c.RoutineName}" + (c.dayOff ? " · Bugün izin günü" : ""), small);
+                GUILayout.Label($"Meslek: {c.OccupationName}", small);
+                GUILayout.Label($"Bugün: {c.OccupationStatus}" + (c.dayOff ? " · İzin günü yapıyor" : ""), small);
                 Bar("Moral", c.morale, Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), c.morale));
                 Bar("Yorgunluk", c.fatigue, new Color(1f, 0.6f, 0.2f));
 
@@ -408,6 +410,16 @@ namespace KuryeTycoon
 
                 GUILayout.Label($"Hız {c.speedSkill:0.00} · Dikkat {c.care:0.00} · Nezaket {c.politeness:0.00} · Dayanıklılık {c.stamina:0.00}", small);
                 GUILayout.Label($"Kazanç: {Ft(c.V.basePay)}/paket + {c.V.payPerKm} Ft/km + bonus · Taşır: {GameData.CarryText(c.V)}", small);
+                GUILayout.Label($"Araçları: {c.VehiclesText}", small);
+                var next = c.NextVehicleToBuy;
+                if (next != null)
+                {
+                    var nv = GameData.Vehicle(next.Value);
+                    Bar($"→ {nv.name}", c.savings / (float)nv.ownPrice, new Color(0.95f, 0.8f, 0.3f), $"{c.savings / 1000}/{nv.ownPrice / 1000}k");
+                }
+                GUILayout.Label(c.insured ? $"Sigorta: var (kendi öder, haftalık {Ft(Courier.InsurancePremium)}; bugüne kadar {Ft(c.insurancePaid)})"
+                                          : "Sigorta: yok (kazada masrafları kendi öder, daha uzun süre çalışamaz)",
+                                c.insured ? small : warn);
                 var camp = CampaignManager.I;
                 if (camp.weeklyChallenge)
                 {
@@ -465,7 +477,9 @@ namespace KuryeTycoon
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{cand.name} — {v.name} · Seviye {cand.level}", header);
                 GUILayout.Label($"\"{cand.note}\"", note);
-                GUILayout.Label($"Çalışma düzeni: {Courier.RoutineLabel(cand.routine)}", small);
+                GUILayout.Label($"Meslek: {Courier.OccupationLabel(cand.occupation)}", small);
+                GUILayout.Label((cand.alsoOwnsBike ? "Yedekte bisikleti de var · " : "") +
+                                (cand.insured ? "Kendi sigortası var" : "Sigortası yok"), small);
                 GUILayout.Label($"Hız {cand.speedSkill:0.00} · Dikkat {cand.care:0.00} · Nezaket {cand.politeness:0.00} · Dayanıklılık {cand.stamina:0.00}", small);
                 GUILayout.Label($"Araç: {v.tilesPerMinute * 60f * GameData.KmPerTile:0} km/saat · {v.capacity} paket · " +
                                 $"Kazanç {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km · Taşır: {GameData.CarryText(v)}", small);

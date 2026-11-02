@@ -5,26 +5,33 @@ namespace KuryeTycoon
 {
     public enum CourierState { Cevrimdisi, Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, Mola, Izinli }
 
-    /// <summary>Kuryenin günlük hayatı: genelde hangi saatlerde çalışmak ister.</summary>
-    public enum WorkRoutine { TamGun, Sabahci, Ogrenci, OgleAksam, GeceKusu }
+    /// <summary>Kuryenin asıl hayatı: ne zaman kuryelik yapabileceğini belirler.</summary>
+    public enum Occupation { TamZamanli, OfisCalisani, HaftaSonu, Ogrenci, Vardiyali, Emekli }
 
     /// <summary>
-    /// Serbest çalışan kurye: istediği zaman çevrimiçi / çevrimdışı olur.
-    /// Kararını çalışma düzeni, yorgunluk, moral, izin günleri ve boostlar belirler.
-    /// Moral ve yorgunluk aynı anda kaç paket aldığını ve reddetme ihtimalini de etkiler.
+    /// Serbest çalışan kurye.
+    /// • Mesleğine, yorgunluğuna, moraline ve günlük hayatına göre kendisi çevrimiçi/çevrimdışı olur.
+    /// • Kazancının bir kısmını biriktirir; parası yetince kendi cebinden daha iyi araç alır.
+    /// • İsterse şirketin platformu üzerinden, kendi parasıyla sigorta yaptırır.
     /// </summary>
     public class Courier : MonoBehaviour
     {
+        /// <summary>Kazancın ne kadarını biriktirir (araç almak için).</summary>
+        public const float SavingRate = 0.3f;
+        /// <summary>Sigorta primi (haftalık, kuryenin kendi cebinden).</summary>
+        public const int InsurancePremium = 2500;
+
         [Header("Kimlik")]
         public string courierName;
-        public VehicleKind vehicle;
-        public WorkRoutine routine;
+        public VehicleKind vehicle;            // şu an kullandığı araç
+        public Occupation occupation;
+        public int fixedDayOff = -1;           // tam zamanlıların haftalık izin günü (0 = Pazartesi)
 
         [Header("Yetenekler")]
-        public float speedSkill;   // 0.85–1.35
-        public float care;         // dikkat: eksik/hasar riski
-        public float politeness;   // nezaket: müşteri puanı
-        public float stamina;      // dayanıklılık: yorulma hızı
+        public float speedSkill;
+        public float care;
+        public float politeness;
+        public float stamina;
 
         [Header("Durum")]
         public float fatigue;
@@ -36,13 +43,21 @@ namespace KuryeTycoon
         public int unavailableDays;
         public long totalEarned;
         public string leaveReason = "";
-        public bool dayOff;                 // bugün hiç çalışmayacak
+        public bool dayOff;
         public float onlineMinutesToday;
-        public int weekDeliveries;          // haftalık hedef için
+        public int weekDeliveries;
         public bool weeklyRewardClaimed;
-        public int monthDeliveries;         // aylık hedef için
+        public int monthDeliveries;
         public bool monthlyRewardClaimed;
 
+        [Header("Kendi parası")]
+        public long savings;                   // araç almak için birikim
+        public bool insured;                   // kendi parasıyla sigortalı mı
+        public long insurancePaid;             // bugüne kadar ödediği prim
+        public int repairDays;                 // aracı tamirde (gün)
+        public VehicleKind repairingVehicle;
+
+        public readonly HashSet<VehicleKind> ownedVehicles = new HashSet<VehicleKind>();
         public readonly HashSet<EquipmentKind> equipment = new HashSet<EquipmentKind>();
 
         public CourierState State { get; private set; }
@@ -57,11 +72,12 @@ namespace KuryeTycoon
         Order current;
         List<Vector2Int> path;
         int pathIndex;
-        float breakUntil;          // telefon şarjı gibi süreli mola
+        float breakUntil;
         string breakReason = "";
         string offlineReason = "";
-        bool wantsOffline;         // elindeki paketler bitince çevrimdışı olacak
+        bool wantsOffline;
         string wantsOfflineReason = "";
+        bool vehicleSwitchPending;
         int lastDecisionHour = -1;
         SpriteRenderer body;
         SpriteRenderer ring;
@@ -70,57 +86,120 @@ namespace KuryeTycoon
         {
             courierName = c.name;
             vehicle = c.vehicle;
-            routine = c.routine;
+            occupation = c.occupation;
+            fixedDayOff = occupation == Occupation.TamZamanli ? Random.Range(0, 7) : -1;
             speedSkill = c.speedSkill;
             care = c.care;
             politeness = c.politeness;
             stamina = c.stamina;
             level = c.level;
+            insured = c.insured;
+            savings = c.savings;
+            ownedVehicles.Add(c.vehicle);
+            if (c.alsoOwnsBike) ownedVehicles.Add(VehicleKind.Bisiklet);
             Position = start;
             transform.position = CityMap.ToWorld(Position);
 
             ring = SpriteFactory.Create("Halka", transform, true, CompanyProfile.Secondary, Vector3.zero, 0.75f, 10);
             body = SpriteFactory.Create("Gövde", transform, true, CompanyProfile.Primary, Vector3.zero, 0.55f, 11);
 
-            // İşe başladığı saatte düzenine uygunsa hemen çevrimiçi olur
-            bool online = RoutinePreference(GameClock.I.Hour, GameClock.I.IsWeekend) >= 0.5f;
+            bool online = Preference() >= 0.5f;
             State = online ? CourierState.Bosta : CourierState.Cevrimdisi;
-            offlineReason = online ? "" : "Çalışma saati değil";
+            offlineReason = online ? "" : OccupationStatus;
             lastDecisionHour = GameClock.I.Hour;
         }
 
-        // ------------------------------------------------------------------ çalışma düzeni
+        // ================================================================== meslek / günlük hayat
 
-        public string RoutineName => RoutineLabel(routine);
-
-        public static string RoutineLabel(WorkRoutine r)
+        public static string OccupationLabel(Occupation o)
         {
+            switch (o)
             {
-                switch (r)
+                case Occupation.OfisCalisani: return "Ofis çalışanı (hafta içi 17:00'den sonra)";
+                case Occupation.HaftaSonu: return "Sadece hafta sonu çalışır";
+                case Occupation.Ogrenci: return "Öğrenci (derslere ve sınavlara göre)";
+                case Occupation.Vardiyali: return "Vardiyalı fabrika işçisi (vardiyası haftalık değişir)";
+                case Occupation.Emekli: return "Emekli (sabahları)";
+                default: return "Tam zamanlı kurye (haftada 1 gün izin)";
+            }
+        }
+
+        public string OccupationName => OccupationLabel(occupation);
+
+        static readonly string[] DayNames = { "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar" };
+
+        public static bool IsExamPeriod(GameClock c)
+        {
+            int m = c.Month, d = c.DayOfMonth;
+            return (m == 1 && d <= 20) || (m == 4 && d <= 10) || (m == 6 && d <= 20) || (m == 11 && d >= 10 && d <= 20);
+        }
+
+        public static bool IsSchoolHoliday(GameClock c)
+        {
+            int m = c.Month, d = c.DayOfMonth;
+            return m == 7 || m == 8 || (m == 1 && d > 20) || (m == 2 && d <= 10) || (m == 12 && d >= 24);
+        }
+
+        /// <summary>Vardiyalı: çift haftalarda fabrikada sabah vardiyası (kuryelik akşam), tek haftalarda tersi.</summary>
+        static bool FactoryMorningWeek(GameClock c) => ((c.CompanyDay - 1) / 7) % 2 == 0;
+
+        /// <summary>Mesleğinin bugünkü durumu (arayüzde gösterilir).</summary>
+        public string OccupationStatus
+        {
+            get
+            {
+                var c = GameClock.I;
+                switch (occupation)
                 {
-                    case WorkRoutine.Sabahci: return "Sabahçı (genelde 06–15)";
-                    case WorkRoutine.Ogrenci: return "Öğrenci (hafta içi 17–01, hafta sonu gündüz)";
-                    case WorkRoutine.OgleAksam: return "Öğle + akşam yoğunluğu (11–14, 17–22)";
-                    case WorkRoutine.GeceKusu: return "Gece kuşu (genelde 20–04)";
-                    default: return "Tam gün (genelde 09–21)";
+                    case Occupation.Ogrenci:
+                        if (IsExamPeriod(c)) return "Sınav haftası, ders çalışıyor";
+                        if (IsSchoolHoliday(c)) return "Okul tatilde, her gün çalışabilir";
+                        return c.IsWeekend ? "Hafta sonu, okul yok" : "Ders dönemi, akşamları çalışır";
+                    case Occupation.OfisCalisani:
+                        return c.IsWeekend ? "Hafta sonu, ofis kapalı" : (c.Hour < 17 ? "Ofiste, mesai 17:00'de bitiyor" : "Mesai bitti");
+                    case Occupation.HaftaSonu:
+                        return c.IsWeekend ? "Hafta sonu, çalışma günü" : "Hafta içi, kendi işinde";
+                    case Occupation.Vardiyali:
+                        return FactoryMorningWeek(c) ? "Bu hafta fabrikada sabah vardiyası (15:00 sonrası kuryelik)"
+                                                     : "Bu hafta fabrikada akşam vardiyası (sabahları kuryelik)";
+                    case Occupation.Emekli:
+                        return "Emekli, sabahları çalışmayı sever";
+                    default:
+                        return fixedDayOff >= 0 ? $"Haftalık izin günü: {DayNames[fixedDayOff]}" : "Tam zamanlı";
                 }
             }
         }
 
-        /// <summary>Bu saatte çalışmayı ne kadar ister (0–1).</summary>
-        public float RoutinePreference(int h, bool weekend)
+        /// <summary>Şu an kuryelik yapmayı ne kadar ister (0–1).</summary>
+        public float Preference()
         {
-            switch (routine)
+            var c = GameClock.I;
+            int h = c.Hour;
+            bool we = c.IsWeekend;
+            switch (occupation)
             {
-                case WorkRoutine.Sabahci:
-                    return (h >= 6 && h < 15) ? 0.9f : (h >= 15 && h < 17 ? 0.35f : 0.05f);
-                case WorkRoutine.Ogrenci:
-                    if (weekend) return (h >= 11 && h < 23) ? 0.85f : 0.08f;
-                    return (h >= 17 || h < 1) ? 0.9f : (h >= 12 && h < 14 ? 0.35f : 0.05f);
-                case WorkRoutine.OgleAksam:
-                    return ((h >= 11 && h < 14) || (h >= 17 && h < 22)) ? 0.9f : 0.08f;
-                case WorkRoutine.GeceKusu:
-                    return (h >= 20 || h < 4) ? 0.9f : (h >= 16 && h < 20 ? 0.35f : 0.05f);
+                case Occupation.OfisCalisani:
+                    if (we) return (h >= 11 && h < 20) ? 0.5f : 0.05f;
+                    return (h >= 17 && h < 23) ? 0.85f : 0.03f;
+
+                case Occupation.HaftaSonu:
+                    return we ? ((h >= 9 && h < 23) ? 0.9f : 0.05f) : 0.02f;
+
+                case Occupation.Ogrenci:
+                    if (IsExamPeriod(c)) return (h >= 20 && h < 23) ? 0.2f : 0.03f;
+                    if (IsSchoolHoliday(c) || we) return (h >= 10 && h < 23) ? 0.85f : 0.05f;
+                    if (h >= 16 && h < 24) return 0.8f;
+                    return (h >= 12 && h < 14) ? 0.3f : 0.03f; // dersler arasında
+
+                case Occupation.Vardiyali:
+                    if (we) return (h >= 10 && h < 20) ? 0.6f : 0.05f;
+                    if (FactoryMorningWeek(c)) return (h >= 15 && h < 23) ? 0.85f : 0.03f;
+                    return (h >= 7 && h < 13) ? 0.85f : 0.03f;
+
+                case Occupation.Emekli:
+                    if (we) return (h >= 9 && h < 13) ? 0.3f : 0.03f;
+                    return (h >= 8 && h < 14) ? 0.85f : ((h >= 14 && h < 17) ? 0.35f : 0.03f);
+
                 default:
                     return (h >= 9 && h < 21) ? 0.9f : ((h >= 7 && h < 23) ? 0.35f : 0.05f);
             }
@@ -130,7 +209,6 @@ namespace KuryeTycoon
         void DecideAvailability()
         {
             if (State == CourierState.Izinli || State == CourierState.Mola) return;
-            var clock = GameClock.I;
             bool boost = CampaignManager.I != null && CampaignManager.I.BoostActive;
 
             if (dayOff)
@@ -139,7 +217,7 @@ namespace KuryeTycoon
                 return;
             }
 
-            float pref = RoutinePreference(clock.Hour, clock.IsWeekend);
+            float pref = Preference();
 
             if (IsOnline)
             {
@@ -148,13 +226,18 @@ namespace KuryeTycoon
                              + (morale < 0.3f ? 0.15f : 0f)
                              - (boost ? 0.35f : 0f);
                 if (Random.value < pOff)
-                    RequestOffline(fatigue >= 0.8f ? "Yoruldu, eve gitti" : "Günlük hayatına döndü");
+                    RequestOffline(fatigue >= 0.8f ? "Yoruldu, eve gitti" : OccupationStatus);
             }
             else
             {
-                if (fatigue > 0.5f) return; // önce dinlenmesi lazım
-                float pOn = pref * (0.4f + morale * 0.6f) + (boost ? 0.35f : 0f);
-                if (Random.value < pOn) GoOnline(boost);
+                if (fatigue > 0.5f) return;
+                // Boost, sadece zaten müsait olabilecek kuryeleri çeker (sınavdaki öğrenciyi değil)
+                float pOn = pref * (0.4f + morale * 0.6f) + (boost && pref >= 0.2f ? 0.35f : 0f);
+                if (Random.value < pOn)
+                {
+                    GoOnline();
+                    if (boost && pref < 0.5f) EventManager.I.Notify($"{ShortName} boost için çevrimiçi oldu.");
+                }
             }
         }
 
@@ -177,23 +260,115 @@ namespace KuryeTycoon
             State = CourierState.Cevrimdisi;
         }
 
-        void GoOnline(bool boost)
+        void GoOnline()
         {
             offlineReason = "";
             State = CourierState.Bosta;
-            if (boost) EventManager.I.Notify($"{ShortName} boost için çevrimiçi oldu.");
         }
 
-        // ------------------------------------------------------------------ kapasite / reddetme
+        // ================================================================== para / araç / sigorta
+
+        /// <summary>Kurye kazanır; bir kısmını biriktirir.</summary>
+        public void Earn(long amount)
+        {
+            totalEarned += amount;
+            savings += (long)(amount * SavingRate);
+        }
+
+        /// <summary>Tamirde olmayan en iyi aracı.</summary>
+        VehicleKind BestUsableVehicle(out bool any)
+        {
+            any = false;
+            VehicleKind best = VehicleKind.Bisiklet;
+            foreach (var v in ownedVehicles)
+            {
+                if (repairDays > 0 && v == repairingVehicle) continue;
+                if (!any || (int)v > (int)best) best = v;
+                any = true;
+            }
+            return best;
+        }
+
+        /// <summary>Kullandığı aracı duruma göre günceller (elinde paket varken bekler).</summary>
+        public void RefreshVehicle()
+        {
+            if (OrderCount > 0)
+            {
+                vehicleSwitchPending = true;
+                return;
+            }
+            vehicleSwitchPending = false;
+            var best = BestUsableVehicle(out bool any);
+            if (!any)
+            {
+                if (State != CourierState.Izinli) SetOnLeave(Mathf.Max(1, repairDays), "aracı tamirde");
+                return;
+            }
+            vehicle = best;
+        }
+
+        public VehicleKind? NextVehicleToBuy
+        {
+            get
+            {
+                int top = -1;
+                foreach (var v in ownedVehicles) top = Mathf.Max(top, (int)v);
+                if (top >= (int)VehicleKind.Araba) return null;
+                return (VehicleKind)(top + 1);
+            }
+        }
+
+        /// <summary>Parası yetiyorsa bir üst aracı kendi cebinden alır.</summary>
+        public bool TryUpgradeVehicle()
+        {
+            var next = NextVehicleToBuy;
+            if (next == null) return false;
+            var def = GameData.Vehicle(next.Value);
+            if (savings < def.ownPrice) return false;
+            savings -= def.ownPrice;
+            ownedVehicles.Add(next.Value);
+            RefreshVehicle();
+            return true;
+        }
+
+        /// <summary>Kullandığı araç arızalanır; tamir parası kuryenin cebinden.</summary>
+        public void BreakDown(int days, int repairCost)
+        {
+            repairingVehicle = vehicle;
+            repairDays = days;
+            savings = System.Math.Max(0L, savings - repairCost);
+            RefreshVehicle();
+        }
+
+        /// <summary>Haftalık sigorta primi (kendi cebinden).</summary>
+        public bool PayInsurance()
+        {
+            if (!insured) return false;
+            if (savings < InsurancePremium)
+            {
+                insured = false; // ödeyemedi, sigortası düştü
+                return false;
+            }
+            savings -= InsurancePremium;
+            insurancePaid += InsurancePremium;
+            return true;
+        }
+
+        public bool TryBuyInsurance()
+        {
+            if (insured || savings < InsurancePremium) return false;
+            insured = true;
+            savings -= InsurancePremium;
+            insurancePaid += InsurancePremium;
+            return true;
+        }
+
+        // ================================================================== kapasite / reddetme
 
         public bool Has(EquipmentKind k) => equipment.Contains(k);
         public int OrderCount => queue.Count + (current != null ? 1 : 0);
         public bool Available => IsOnline && State != CourierState.Mola && !wantsOffline;
 
-        /// <summary>
-        /// Aynı anda taşıyabileceği paket: araç kapasitesi,
-        /// moral yüksekse +1, moral düşükse −1, yorgunsa −1, boost saatinde +1 (en az 1).
-        /// </summary>
         public int EffectiveCapacity
         {
             get
@@ -208,17 +383,13 @@ namespace KuryeTycoon
         }
 
         public bool CanTakeMore => Available && OrderCount < EffectiveCapacity;
-
-        /// <summary>Aracı bu siparişin ağırlığını taşıyabilir mi?</summary>
         public bool CanCarry(Order o) => o.weightKg <= V.maxWeightKg;
         public bool CanCarry(float kg) => kg <= V.maxWeightKg;
 
-        /// <summary>Düşük moral ve yüksek yorgunlukta sipariş reddetme ihtimali. Boost saatinde reddetmez.</summary>
         public float RejectChance =>
             (CampaignManager.I != null && CampaignManager.I.BoostActive) ? 0f
             : Mathf.Clamp01((0.45f - morale) * 1.2f) + (fatigue >= 0.75f ? 0.15f : 0f);
 
-        /// <summary>Elindeki işler bitince nerede olacak (atama tahmini için).</summary>
         public Vector2Int FreeTile
         {
             get
@@ -241,12 +412,11 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>Kare / oyun dakikası.</summary>
         public float Speed =>
             V.tilesPerMinute * speedSkill * (1f + 0.04f * (level - 1)) *
             WeatherSystem.I.SpeedFactor(this) * (1f - 0.3f * fatigue) * TrafficFactor;
 
-        // ------------------------------------------------------------------ teslimat akışı
+        // ================================================================== teslimat akışı
 
         public void Assign(Order o)
         {
@@ -260,6 +430,8 @@ namespace KuryeTycoon
             {
                 current = null;
                 path = null;
+                if (vehicleSwitchPending) RefreshVehicle();
+                if (State == CourierState.Izinli) return;
                 if (wantsOffline) GoOffline(wantsOfflineReason);
                 else if (fatigue >= 0.95f) GoOffline("Çok yoruldu, eve gitti");
                 else if (State != CourierState.Mola) State = CourierState.Bosta;
@@ -374,7 +546,6 @@ namespace KuryeTycoon
                 AddXp();
                 OrderManager.I.CompleteDelivery(done, this);
 
-                // Powerbank yoksa telefon kapanabilir (elinde başka paket yoksa)
                 if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && !wantsOffline && Random.value < 0.05f)
                 {
                     breakUntil = GameClock.I.TotalMinutes + 60f;
@@ -407,31 +578,45 @@ namespace KuryeTycoon
 
         public void SetOnLeave(int days, string reason)
         {
-            unavailableDays = days;
+            unavailableDays = Mathf.Max(unavailableDays, days);
             leaveReason = reason;
             State = CourierState.Izinli;
         }
 
-        /// <summary>Gece yarısı çağrılır. Bugün izin günü mü, kurye kendisi karar verir.</summary>
-        public void NewDay(bool weekend)
+        /// <summary>Gece yarısı çağrılır.</summary>
+        public void NewDay(GameClock clock)
         {
             deliveriesToday = 0;
             onlineMinutesToday = 0f;
 
+            if (repairDays > 0)
+            {
+                repairDays--;
+                if (repairDays == 0)
+                {
+                    EventManager.I.Notify($"{courierName}'ın {GameData.Vehicle(repairingVehicle).name} tamirden çıktı.");
+                    RefreshVehicle();
+                }
+            }
+
             if (unavailableDays > 0)
             {
                 unavailableDays--;
-                if (unavailableDays == 0 && State == CourierState.Izinli) GoOffline("İyileşti, dinleniyor");
+                if (unavailableDays == 0 && State == CourierState.Izinli) GoOffline("İzinden döndü, dinleniyor");
             }
 
-            float chance = weekend ? 0.2f : 0.1f;
-            if (morale < 0.4f) chance *= 1.5f;
-            dayOff = Random.value < chance;
+            // İzin günü
+            if (occupation == Occupation.TamZamanli && clock.DayOfWeek == fixedDayOff) dayOff = true;
+            else
+            {
+                float chance = clock.IsWeekend ? 0.12f : 0.06f;
+                if (morale < 0.4f) chance *= 1.5f;
+                dayOff = Random.value < chance;
+            }
         }
 
-        // ------------------------------------------------------------------ arayüz
+        // ================================================================== arayüz
 
-        /// <summary>Eksik ekipman yüzünden şu an yaşanan kayıplar (arayüzde gösterilir).</summary>
         public List<string> ActivePenalties()
         {
             var list = new List<string>();
@@ -447,11 +632,27 @@ namespace KuryeTycoon
                 if ((season == Season.Ilkbahar || season == Season.Sonbahar) && !Has(EquipmentKind.Yagmurluk)) list.Add("Yağmur sezonu, yağmurluğu yok: %4 hastalanma riski");
                 if (w.IsHot && !Has(EquipmentKind.YazTisort)) list.Add("Sıcak, tişörtü yok: %8 yavaş, 1,5 kat hızlı yoruluyor");
                 if (season == Season.Yaz && !Has(EquipmentKind.YazTisort)) list.Add("Yazın tişörtsüz: her gün moral düşüyor");
-                if (!Has(EquipmentKind.Kask)) list.Add("Kask yok: kaza riski yüksek, kazada 3 gün izin");
+                if (!Has(EquipmentKind.Kask)) list.Add("Kask yok: kaza riski yüksek, kazada daha uzun süre çalışamaz");
             }
             if (!Has(EquipmentKind.TermalCanta)) list.Add("Termal çanta yok: 2 km üstü sıcak yemek soğuk gidiyor");
             if (!Has(EquipmentKind.Powerbank)) list.Add("Powerbank yok: telefonu kapanabilir");
             return list;
+        }
+
+        public string VehiclesText
+        {
+            get
+            {
+                string s = "";
+                for (int i = (int)VehicleKind.Araba; i >= 0; i--)
+                {
+                    var k = (VehicleKind)i;
+                    if (!ownedVehicles.Contains(k)) continue;
+                    string tag = k == vehicle ? " (kullanıyor)" : (repairDays > 0 && k == repairingVehicle ? $" (tamirde, {repairDays} gün)" : "");
+                    s += (s.Length > 0 ? ", " : "") + GameData.Vehicle(k).name + tag;
+                }
+                return s;
+            }
         }
 
         public string StateName
@@ -465,7 +666,7 @@ namespace KuryeTycoon
                     case CourierState.Bekliyor: return "Dükkanda bekliyor";
                     case CourierState.MusteriyeGidiyor: return wantsOffline ? "Son paketini götürüyor, sonra çıkacak" : "Müşteriye gidiyor";
                     case CourierState.Mola: return "Mola: " + breakReason;
-                    case CourierState.Izinli: return $"İzinli ({leaveReason}, {unavailableDays} gün)";
+                    case CourierState.Izinli: return $"Çalışamıyor ({leaveReason}, {unavailableDays} gün)";
                     default: return "Çevrimiçi, sipariş bekliyor";
                 }
             }
