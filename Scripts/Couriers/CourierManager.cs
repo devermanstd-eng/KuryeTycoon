@@ -100,7 +100,7 @@ namespace KuryeTycoon
         {
             float rep = 0.5f + 0.15f * CompanyProfile.Reputation;
             float bonus = Mathf.Lerp(0.8f, 1.3f, (EconomyManager.I.bonusMultiplier - 0.5f) / 1.5f);
-            nextApplicationAt = GameClock.I.TotalMinutes + Random.Range(120f, 360f) / (rep * bonus);
+            nextApplicationAt = GameClock.I.TotalMinutes + Random.Range(120f, 360f) / (rep * bonus * UpgradeManager.I.ApplicationMultiplier);
         }
 
         static Occupation RandomOccupation()
@@ -179,6 +179,11 @@ namespace KuryeTycoon
 
         public void Hire(CourierCandidate c)
         {
+            if (UpgradeManager.I.CourierCapFull)
+            {
+                EventManager.I.Notify($"Ofisin kapasitesi dolu ({UpgradeManager.I.CourierCap} kurye). Daha fazla kurye için Geliştirmeler'den ofisi büyüt.");
+                return;
+            }
             if (!Applications.Remove(c)) return;
             Spawn(c);
             EventManager.I.Notify($"{c.name} ({GameData.Vehicle(c.vehicle).name}) ekibe katıldı!");
@@ -365,7 +370,7 @@ namespace KuryeTycoon
 
         bool RollBreakdown(Courier c)
         {
-            if (Random.value >= c.V.breakdownRisk) return false;
+            if (Random.value >= c.V.breakdownRisk * UpgradeManager.I.BreakdownMultiplier) return false;
             var broken = c.V;
             int days = Random.Range(1, 4);
             int cost = Mathf.RoundToInt(broken.ownPrice * Random.Range(0.03f, 0.08f) / 1000f) * 1000;

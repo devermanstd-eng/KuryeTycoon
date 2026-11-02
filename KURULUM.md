@@ -54,6 +54,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Hijyen | Her teslimatta çanta kirlenir (sıcak yemek, ağır paket, yağmur, dikkatsizlik hızlandırır). Titiz kuryeler kendisi temizler. %60 altında müşteri şikayeti, düşük puan ve itibar kaybı. Temizlik hatırlatması, şirkete temizletme (1 500 Ft) veya toplu temizlik; 400 teslimattan sonra çanta yıpranır, yenisi gerekir |
 | Adres sorunları | Siparişlerin ~%4'ünde adres yanlış işaretlenmiş, ~%3'ünde müşteri evde yok. Kurye kapıda 10 dk uğraşır. Yanlış adreste vardiyadaki destek müşteriyi arayıp doğru adresi bulur (itibar artar), yoksa kurye kendisi dener; evde yoksa müşteri gelebilir ya da destek arar. Gecikme müşterinin hatası sayılır. Hepsi tutmazsa (çok nadir) sipariş kuryede kalır: müşteri öder, yemek kuryenin |
 | Teklif ve iptal | Kurye teklifte tahmini kazancını ve süresini görür; seçiciliğine göre az kazandıran/uzak işleri reddeder, sipariş başka kuryeyi bekler (bonus/boost kabul ettirmeyi kolaylaştırır). Dükkanda bazen sıra olur; uzun bekleyen kurye teslim almayı iptal edebilir (kurye başı ayda en fazla 10), sipariş bekleyenlere döner |
+| Geliştirmeler | Kalıcı şirket geliştirmeleri (Taksimetre'deki garaj geliştirmeleri gibi). Ofis büyütme kurye kapasitesini belirler (4 → 8 → 14 → 22 → 32) ama kirayı da artırır. Ayrıca: akıllı dispatcher, kurye uygulaması 2.0, dinlenme alanı, bakım/şarj istasyonu, hijyen istasyonu, marka bilinirliği |
 | Bahşiş | Müşteriler bazen bahşiş verir (cömert müşteri, iyi puan, kötü hava, gece, ağır paket ihtimali artırır); bahşişin tamamı kuryenin, şirket kasasına girmez |
 | Vergi | Yıl sonunda net kâr üzerinden %15 (öde ya da cezalı ertele). Yıl içinde habersiz vergi/harçlar: yerel işletme vergisi, KDV farkı (itiraz edilebilir), vergi denetimi (muhasebeciye danışılabilir), belediye harcı, iş güvenliği fonu; bazen vergi iadesi |
 | Büyüme | 3 bölge, sözleşmeler, işe alım, seviye atlayan kuryeler |
@@ -66,7 +67,8 @@ KuryeTycoon/Scripts/
   World/     CityMap (ızgara şehir, yol bulma, bölgeler), WeatherSystem
   Couriers/  Courier (hareket, yorgunluk, seviye), CourierManager (işe alım, moral, kaza, zam)
   Orders/    Order, OrderManager (sipariş üretme, atama, puan)
-  Economy/   EconomyManager (fiyat formülü, kasa, sürpriz vergiler, yıl sonu vergi, iflas)
+  Economy/   UpgradeManager (kalıcı geliştirmeler, ofis kapasitesi), CampaignManager (boost, hedefler)
+             EconomyManager (fiyat formülü, kasa, sürpriz vergiler, yıl sonu vergi, iflas)
   Events/    EventManager (olay kartları, haber akışı)
   Staff/     SupportManager (maaşlı destek ekibi, vardiyalar)
   Story/     FamilyLoan (hikaye, aile borcu, taksitler, sonlar)

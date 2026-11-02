@@ -5,12 +5,12 @@ using UnityEngine.SceneManagement;
 namespace KuryeTycoon
 {
     /// <summary>Teslimat dışı giderlerin türü (Finans'ta ayrı gösterilir).</summary>
-    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger, Vergi, Maas }
+    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger, Vergi, Maas, Gelistirme }
 
     public class PeriodStats
     {
         public static readonly string[] CategoryNames =
-            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar", "Destek maaşları" };
+            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar", "Destek maaşları", "Geliştirmeler" };
 
         public long commission;     // dükkan komisyonları
         public long fees;           // müşteriden alınan teslimat ücretleri
@@ -18,7 +18,7 @@ namespace KuryeTycoon
         public long courierPay;     // kurye ödemeleri (paket + km + bonus)
         public long boosts;         // boost ödemeleri (kârdan)
         public long rewards;        // haftalık / aylık hedef ödülleri (kârdan)
-        public readonly long[] byCategory = new long[10];
+        public readonly long[] byCategory = new long[11];
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
         public int deliveries;
 
@@ -272,7 +272,7 @@ namespace KuryeTycoon
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
 
             // Kuryeler kendi araçlarıyla, serbest çalışır: şirketin günlük gideri sadece ofis
-            Spend(officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
+            Spend(UpgradeManager.I != null ? UpgradeManager.I.RentPerDay : officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
 
             if (taxDebt > 0)
             {

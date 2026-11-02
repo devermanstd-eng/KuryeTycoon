@@ -80,7 +80,7 @@ namespace KuryeTycoon
                 if (s.contracted && CityMap.I.IsUnlocked(s.tile.x)) contracted++;
 
             float rate = baseRatePerShop * contracted * HourCurve(GameClock.I.Hour)
-                         * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor;
+                         * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier;
             spawnAcc += rate * dm;
             while (spawnAcc >= 1f)
             {
@@ -331,7 +331,13 @@ namespace KuryeTycoon
                     int profit = EconomyManager.I.ProfitIf(o, c);
                     if (profit < 0) continue; // asla zararına iş yok
                     float score = EstimateEta(c, o);
-                    if (prioritizeProfit) score -= profit / 40f;
+                    if (UpgradeManager.I.SmartDispatch)
+                    {
+                        // Akıllı dispatcher: teklifi beğenmesi muhtemel kuryeyi öne alır
+                        int courierGets = EconomyManager.I.CourierPay(c, o.distance) + CampaignManager.I.BoostAmount(EconomyManager.I.CourierPay(c, o.distance));
+                        if (!c.LikesOffer(o, courierGets)) score += 30f;
+                        if (prioritizeProfit) score -= profit / 40f;
+                    }
                     if (score < bestScore)
                     {
                         bestScore = score;

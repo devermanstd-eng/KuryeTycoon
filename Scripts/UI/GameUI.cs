@@ -9,8 +9,8 @@ namespace KuryeTycoon
     /// </summary>
     public class GameUI : MonoBehaviour
     {
-        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar }
-        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar" };
+        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar }
+        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar" };
 
         public float panelWidth = 440f;
         const float TopBar = 48f;
@@ -304,6 +304,7 @@ namespace KuryeTycoon
                 case Tab.Ekipman: DrawEquipment(); break;
                 case Tab.Kampanyalar: DrawCampaigns(); break;
                 case Tab.Destek: DrawSupport(); break;
+                case Tab.Gelistirmeler: DrawUpgrades(); break;
                 case Tab.Finans: DrawFinance(); break;
                 case Tab.Ayarlar: DrawSettings(); break;
             }
@@ -319,7 +320,10 @@ namespace KuryeTycoon
             float now = GameClock.I.TotalMinutes;
 
             om.autoAssign = GUILayout.Toggle(om.autoAssign, " Otomatik atama (dispatcher)", toggle);
-            om.prioritizeProfit = GUILayout.Toggle(om.prioritizeProfit, " Atamada kârı öncele (kapalıysa en hızlı kurye)", toggle);
+            if (UpgradeManager.I.SmartDispatch)
+                om.prioritizeProfit = GUILayout.Toggle(om.prioritizeProfit, " Atamada kârı öncele (kapalıysa en hızlı kurye)", toggle);
+            else
+                GUILayout.Label("Basit dispatcher: en yakın kuryeye teklif eder. Akıllı atama için Geliştirmeler'e bak.", small);
             GUILayout.Label($"Bugün: vazgeçen müşteri (ücret pahalı) {om.lostToday} · iptal (kurye yok) {om.cancelledToday} · " +
                             $"kuryelerin reddettiği {om.rejectedToday} · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday}", small);
             GUILayout.Label($"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; {GameData.HeavyKg:0} kg ve üstü sadece araba.", small);
@@ -398,7 +402,7 @@ namespace KuryeTycoon
         void DrawCouriers()
         {
             var cm = CourierManager.I;
-            GUILayout.Label($"Kuryeler ({cm.Couriers.Count}) · Şu an çevrimiçi: {cm.OnlineCount}", header);
+            GUILayout.Label($"Kuryeler ({cm.Couriers.Count}/{UpgradeManager.I.CourierCap} kapasite) · Şu an çevrimiçi: {cm.OnlineCount}", header);
             GUILayout.Label("Kuryeler serbest çalışır: asıl mesleklerine (öğrenci, ofis çalışanı, vardiyalı işçi...), yorgunluklarına ve " +
                             "günlük hayatlarına göre istedikleri zaman çevrimiçi/çevrimdışı olurlar. Onları zorlayamazsın; boostlar ve iyi moral " +
                             "çevrimiçi olma isteğini artırır. Kendi araçlarını ve sigortalarını kendi kazançlarından öderler; " +
@@ -497,6 +501,11 @@ namespace KuryeTycoon
         {
             var cm = CourierManager.I;
             float now = GameClock.I.TotalMinutes;
+            var up = UpgradeManager.I;
+            GUILayout.Label($"Kurye kapasitesi: {cm.Couriers.Count}/{up.CourierCap} (ofis: {UpgradeManager.Def(UpgradeKind.Ofis).levelText[up.Level(UpgradeKind.Ofis)]})",
+                up.CourierCapFull ? warn : label);
+            if (up.CourierCapFull)
+                GUILayout.Label("Ofisin dolu. Yeni kurye almak için Geliştirmeler sekmesinden ofisi büyüt ya da çalışmayan bir kuryeyle yollarını ayır.", warn);
             GUILayout.Label($"Gelen başvurular ({cm.Applications.Count}/{cm.maxApplications})", header);
             GUILayout.Label("Başvurular zamanla gelir; itibarın ve bonus çarpanın yüksekse daha sık gelir. Her başvuru 1 gün geçerlidir. " +
                             "Kuryeler paket ve km başı kazandığı için işe alım ve çıkarma ücretsizdir; her yeni kuryeye başlangıç kiti verilir. " +
@@ -522,7 +531,9 @@ namespace KuryeTycoon
 
                 GUILayout.BeginHorizontal();
                 var c = cand;
-                if (GUILayout.Button("İşe al", button)) deferred = () => cm.Hire(c);
+                GUI.enabled = modalFree && !up.CourierCapFull;
+                if (GUILayout.Button(up.CourierCapFull ? "İşe al (ofis dolu)" : "İşe al", button)) deferred = () => cm.Hire(c);
+                GUI.enabled = modalFree;
                 if (GUILayout.Button("Reddet", button)) deferred = () => cm.Reject(c);
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
@@ -706,6 +717,36 @@ namespace KuryeTycoon
                 GUI.Label(new Rect(x - labelW / 2f, r.y + 22f, labelW, 16f), h.ToString("00"), small);
             }
             small.alignment = old;
+        }
+
+        void DrawUpgrades()
+        {
+            var up = UpgradeManager.I;
+            var e = EconomyManager.I;
+            GUILayout.Label("Kalıcı geliştirmeler şirketini büyütür. En önemlisi ofis: kaç kurye çalıştırabileceğini belirler; " +
+                            "büyük ofisin kirası da yüksek, bu yüzden sadece gerçekten ihtiyacın olduğunda büyüt. " +
+                            "Geliştirmeler gider olarak vergiden düşülür. Aile borcunu unutma!", small);
+            GUILayout.Label($"Kasa: {Ft(e.money)} · Kurye: {CourierManager.I.Couriers.Count}/{up.CourierCap} · Günlük kira: {Ft(up.RentPerDay)}", label);
+
+            foreach (var d in UpgradeManager.Defs)
+            {
+                int lv = up.Level(d.kind);
+                GUILayout.BeginVertical(box);
+                string lvText = d.MaxLevel > 1 ? $" · Seviye {lv}/{d.MaxLevel}" : (lv > 0 ? " · ALINDI" : "");
+                GUILayout.Label(d.name + lvText, header);
+                GUILayout.Label(d.summary, small);
+                GUILayout.Label("Şu an: " + d.levelText[lv], label);
+                int cost = up.NextCost(d.kind);
+                if (cost >= 0)
+                {
+                    GUILayout.Label("Sonraki: " + d.levelText[lv + 1], small);
+                    var kind = d.kind;
+                    GUI.enabled = modalFree && e.money >= cost;
+                    if (GUILayout.Button($"Satın al — {Ft(cost)}", button)) deferred = () => up.Buy(kind);
+                    GUI.enabled = modalFree;
+                }
+                GUILayout.EndVertical();
+            }
         }
 
         void DrawSupportCandidates()

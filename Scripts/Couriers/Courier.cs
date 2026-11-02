@@ -425,7 +425,7 @@ namespace KuryeTycoon
 
         public float Speed =>
             V.tilesPerMinute * speedSkill * (1f + 0.04f * (level - 1)) *
-            WeatherSystem.I.SpeedFactor(this) * (1f - 0.3f * fatigue) * TrafficFactor;
+            WeatherSystem.I.SpeedFactor(this) * (1f - 0.3f * fatigue) * TrafficFactor * UpgradeManager.I.SpeedMultiplier;
 
         // ================================================================== teslimat akışı
 
@@ -498,11 +498,11 @@ namespace KuryeTycoon
                         }
                         break;
                     case CourierState.Bosta:
-                        fatigue = Mathf.Max(0f, fatigue - dm * 0.0015f);
+                        fatigue = Mathf.Max(0f, fatigue - dm * 0.0015f * UpgradeManager.I.RestMultiplier);
                         break;
                     case CourierState.Cevrimdisi:
                     case CourierState.Izinli:
-                        fatigue = Mathf.Max(0f, fatigue - dm * 0.006f);
+                        fatigue = Mathf.Max(0f, fatigue - dm * 0.006f * UpgradeManager.I.RestMultiplier);
                         break;
                 }
             }
@@ -638,6 +638,7 @@ namespace KuryeTycoon
             float t = Mathf.Lerp(0.35f, 0.8f, pickiness);
             if (IdleMinutes > 20f) t *= 0.8f;      // uzun süredir iş yok: daha az seçici
             if (o.secondRound) t *= 0.75f;         // sipariş uzun beklemiş: pazarlık payı
+            t *= UpgradeManager.I.OfferThresholdMultiplier; // kurye uygulaması 2.0
             return t;
         }
 
@@ -697,7 +698,7 @@ namespace KuryeTycoon
                 if (kept) OrderManager.I.CompleteKept(done, this);
                 else OrderManager.I.CompleteDelivery(done, this);
 
-                if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && !wantsOffline && Random.value < 0.05f)
+                if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && !wantsOffline && Random.value < 0.05f * UpgradeManager.I.PhoneDieMultiplier)
                 {
                     breakUntil = GameClock.I.TotalMinutes + 60f;
                     breakReason = "Telefonu kapandı, şarj ediyor";
@@ -786,6 +787,7 @@ namespace KuryeTycoon
             if (o.IsHeavy || o.weightKg > 10f) d *= 1.3f;
             if (WeatherSystem.I.IsRainy && V.exposed) d *= 1.5f;
             d *= Mathf.Lerp(1.4f, 0.8f, care);              // dikkatsiz kurye daha çok döker
+            d *= UpgradeManager.I.DirtMultiplier;
             hygiene = Mathf.Max(0f, hygiene - d);
         }
 
