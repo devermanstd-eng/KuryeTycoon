@@ -49,6 +49,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |
 | Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık ve aylık hedef ödülü (örn. ayda 450+ paket → 50 000 Ft); hepsi şirketin kârından |
 | Başlangıç ekipmanı | Her yeni kuryeye termal çanta + şirket tişörtü verilir; şirkete maliyeti kit başı 5 000 Ft. Kurye 30 000 Ft kazanınca 20 000 Ft depozito kesilir (gelir değil, iade borcu). Ayrılırken ekipmanı iade ederse depozito geri ödenir; iade etmezse depozito şirkette kalır |
+| Destek ekibi | Maaşlı destek personeli (aylık maaş, ay sonunda çalışılan gün kadar ödenir). Sabit vardiya: sabah 06–14, öğle 14–22, gece 22–06; Pzt–Cum veya Çar–Paz. Vardiyadayken eksik/hasarlı sipariş şikayetlerini pazarlıkla ucuza kendisi çözer, kurye bulunamayan siparişte müşteriyi arayıp ek süre alır, kurye moralini artırır |
 | Bahşiş | Müşteriler bazen bahşiş verir (cömert müşteri, iyi puan, kötü hava, gece, ağır paket ihtimali artırır); bahşişin tamamı kuryenin, şirket kasasına girmez |
 | Vergi | Yıl sonunda net kâr üzerinden %15 (öde ya da cezalı ertele). Yıl içinde habersiz vergi/harçlar: yerel işletme vergisi, KDV farkı (itiraz edilebilir), vergi denetimi (muhasebeciye danışılabilir), belediye harcı, iş güvenliği fonu; bazen vergi iadesi |
 | Büyüme | 3 bölge, sözleşmeler, işe alım, seviye atlayan kuryeler |
@@ -63,6 +64,7 @@ KuryeTycoon/Scripts/
   Orders/    Order, OrderManager (sipariş üretme, atama, puan)
   Economy/   EconomyManager (fiyat formülü, kasa, sürpriz vergiler, yıl sonu vergi, iflas)
   Events/    EventManager (olay kartları, haber akışı)
+  Staff/     SupportManager (maaşlı destek ekibi, vardiyalar)
   UI/        GameUI (kurulum ekranı, üst bar, sekmeler)
 ```
 

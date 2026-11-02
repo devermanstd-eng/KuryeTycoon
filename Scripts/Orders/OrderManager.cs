@@ -198,7 +198,9 @@ namespace KuryeTycoon
             for (int i = Pending.Count - 1; i >= 0; i--)
             {
                 var o = Pending[i];
-                if (now - o.createdAt < pendingTimeout) continue;
+                float limit = pendingTimeout + (o.supportCalled ? SupportManager.I.extraWaitMinutes : 0f);
+                if (now - o.createdAt < limit) continue;
+                if (SupportManager.I.TryCallCustomer(o)) continue; // destek müşteriyi arayıp oyalar
                 o.status = OrderStatus.Iptal;
                 if (o.marker != null) Destroy(o.marker.gameObject);
                 Pending.RemoveAt(i);

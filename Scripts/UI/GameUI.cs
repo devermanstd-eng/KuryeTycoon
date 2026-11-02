@@ -9,8 +9,8 @@ namespace KuryeTycoon
     /// </summary>
     public class GameUI : MonoBehaviour
     {
-        enum Tab { Siparisler, Kuryeler, IseAlim, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar }
-        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar" };
+        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar }
+        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar" };
 
         public float panelWidth = 440f;
         const float TopBar = 48f;
@@ -287,7 +287,7 @@ namespace KuryeTycoon
             if (apps > 0) names[(int)Tab.IseAlim] = $"İşe Alım ({apps})";
 
             GUILayout.BeginArea(new Rect(r.x + 8, r.y + 8, r.width - 16, r.height - 16));
-            int newTab = GUILayout.SelectionGrid((int)tab, names, 4, smallButton, GUILayout.Height(48));
+            int newTab = GUILayout.SelectionGrid((int)tab, names, 5, smallButton, GUILayout.Height(48));
             if (newTab != (int)tab) { var t = (Tab)newTab; deferred = () => { tab = t; scroll = Vector2.zero; }; }
             GUILayout.Space(6);
             scroll = GUILayout.BeginScrollView(scroll);
@@ -300,6 +300,7 @@ namespace KuryeTycoon
                 case Tab.Dukkanlar: DrawShops(); break;
                 case Tab.Ekipman: DrawEquipment(); break;
                 case Tab.Kampanyalar: DrawCampaigns(); break;
+                case Tab.Destek: DrawSupport(); break;
                 case Tab.Finans: DrawFinance(); break;
                 case Tab.Ayarlar: DrawSettings(); break;
             }
@@ -585,6 +586,80 @@ namespace KuryeTycoon
                 }
                 if (GUILayout.Button("Eksik olan herkese al", smallButton)) deferred = () => cm.BuyForAll(kind);
                 GUILayout.EndHorizontal();
+                GUILayout.EndVertical();
+            }
+        }
+
+        void DrawSupport()
+        {
+            var sm = SupportManager.I;
+            var clock = GameClock.I;
+
+            GUILayout.Label("Destek ekibi maaşlıdır ve sabit vardiyada, haftada 5 gün çalışır. Vardiyadaki destek eksik ürün/hasarlı " +
+                            "sipariş şikayetlerini kendisi pazarlıkla çözer (sana kart gelmez), kurye bulunamayan siparişlerde müşteriyi " +
+                            "arayıp ek süre alır ve kuryelere destek olur. Vardiyada kimse yoksa kararlar sana kalır.", small);
+
+            // Bugünün 24 saatlik kapsama çizelgesi
+            GUILayout.Space(6);
+            int covered = sm.CoveredHours(clock.DayOfWeek);
+            var onDuty = sm.OnDutyAgent();
+            GUILayout.Label($"Bugün ({clock.DayName}) destek kapsaması: {covered}/24 saat" +
+                            (onDuty != null ? $" · Şu an vardiyada: {onDuty.name}" : " · Şu an vardiyada kimse yok"), header);
+            Rect r = GUILayoutUtility.GetRect(100, 22, GUILayout.ExpandWidth(true));
+            float cw = r.width / 24f;
+            for (int h = 0; h < 24; h++)
+            {
+                var cell = new Rect(r.x + h * cw + 1, r.y, cw - 2, 14);
+                Fill(cell, sm.CoveredAt(clock.DayOfWeek, h) ? new Color(0.3f, 0.8f, 0.45f) : new Color(1f, 1f, 1f, 0.1f));
+                if (h == clock.Hour) Fill(new Rect(cell.x, cell.y + 15, cell.width, 3), Color.white);
+            }
+            GUILayout.Label("00          06          12          18          24", small);
+
+            GUILayout.Space(6);
+            GUILayout.Label($"Aylık maaş toplamı: {Ft(sm.MonthlyPayroll)} · Bu ay şu ana kadar birikmiş maaş: {Ft(sm.AccruedThisMonth)} " +
+                            $"(ay sonunda ödenir) · Bu ay çözülen: {sm.handledThisMonth}", label);
+
+            GUILayout.Space(6);
+            GUILayout.Label($"Destek ekibi ({sm.Agents.Count})", header);
+            if (sm.Agents.Count == 0) GUILayout.Label("Henüz destek personelin yok.", small);
+            foreach (var a in sm.Agents)
+            {
+                GUILayout.BeginVertical(box);
+                bool duty = a.IsOnDuty(clock);
+                GUILayout.Label($"{a.name}{(duty ? "  — VARDİYADA" : "")}", header);
+                GUILayout.Label($"{a.ShiftText} · {a.DaysText} · Maaş {Ft(a.monthlySalary)}/ay", small);
+                Bar("Yetenek", a.skill, new Color(0.4f, 0.75f, 1f));
+                GUILayout.Label($"Çözdüğü: {a.handledTotal} · Pazarlıkla kazandırdığı: {Ft(a.savedTotal)}", small);
+                var agent = a;
+                if (GUILayout.Button("İşten çıkar (bu ayın maaşı ödenir)", smallButton)) deferred = () => sm.Fire(agent);
+                GUILayout.EndVertical();
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label("Başvurular (her Pazartesi yenilenir)", header);
+            foreach (var cand in sm.Candidates)
+            {
+                GUILayout.BeginVertical(box);
+                GUILayout.Label($"{cand.name} — Maaş beklentisi {Ft(cand.monthlySalary)}/ay", header);
+                GUILayout.Label($"\"{cand.note}\"", note);
+                Bar("Yetenek", cand.skill, new Color(0.4f, 0.75f, 1f));
+                GUILayout.Label("Yetenekli personel şikayetleri daha ucuza kapatır (iade değerinin %30'u ile %60'ı arası).", small);
+
+                GUILayout.Label("Vardiya:", small);
+                GUILayout.BeginHorizontal();
+                var c = cand;
+                for (int s = 0; s < 3; s++)
+                {
+                    var shift = (SupportShift)s;
+                    if (SelectButton(c.chosenShift == shift, SupportManager.ShiftLabel(shift), smallButton)) deferred = () => c.chosenShift = shift;
+                }
+                GUILayout.EndHorizontal();
+                GUILayout.BeginHorizontal();
+                if (SelectButton(c.chosenDays == WorkDays.PztCum, "Pazartesi–Cuma", smallButton)) deferred = () => c.chosenDays = WorkDays.PztCum;
+                if (SelectButton(c.chosenDays == WorkDays.CarPaz, "Çarşamba–Pazar", smallButton)) deferred = () => c.chosenDays = WorkDays.CarPaz;
+                GUILayout.EndHorizontal();
+                if (GUILayout.Button($"İşe al ({SupportManager.ShiftLabel(c.chosenShift)}, {(c.chosenDays == WorkDays.PztCum ? "Pzt–Cum" : "Çar–Paz")})", button))
+                    deferred = () => sm.Hire(c);
                 GUILayout.EndVertical();
             }
         }

@@ -31,6 +31,7 @@ namespace KuryeTycoon
             Make<CourierManager>("Kurye Yönetimi");
             Make<OrderManager>("Siparişler");
             Make<CampaignManager>("Kampanyalar");
+            Make<SupportManager>("Destek Ekibi");
             Make<EventManager>("Olaylar");
             Make<GameUI>("Arayüz");
         }
@@ -69,6 +70,7 @@ namespace KuryeTycoon
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v);
             OrderManager.I.Init();
             CampaignManager.I.Init();
+            SupportManager.I.Init();
 
             Started = true;
             GameClock.I.Paused = false;
@@ -82,6 +84,7 @@ namespace KuryeTycoon
                 "• Moralsiz ve yorgun kuryeler daha az paket alır, sipariş reddedebilir.\n" +
                 "• Ekipman eksikse kuryenin kartında ne kaybettiğini görürsün (kışın mont, yazın tişört...).\n" +
                 "• Kampanyalar sekmesinde boostlar ve haftalık hedef ödülü var (kârından ödenir).\n" +
+                "• Destek sekmesinden maaşlı destek personeli al: vardiyalarında şikayetleri kendileri çözer.\n" +
                 "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
                 "• Yıl sonunda vergi ödersin; yıl içinde de habersiz vergi ve harçlar çıkabilir, kasanda yedek tut.\n\n" +
                 "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–5 = hız (1x, 2x, 4x, 8x, 16x)"));

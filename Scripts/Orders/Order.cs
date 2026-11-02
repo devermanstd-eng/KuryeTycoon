@@ -57,6 +57,8 @@ namespace KuryeTycoon
 
         /// <summary>Bu siparişi reddeden kuryeler (tekrar teklif edilmez).</summary>
         public readonly HashSet<Courier> rejectedBy = new HashSet<Courier>();
+        /// <summary>Destek müşteriyi arayıp ek süre aldı mı.</summary>
+        public bool supportCalled;
 
         public int CompanyIncome => commissionIncome + deliveryFee;
         public int Profit => CompanyIncome - courierPay - boostPay;
