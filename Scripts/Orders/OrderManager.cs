@@ -43,6 +43,16 @@ namespace KuryeTycoon
 
         static float HourCurve(int h)
         {
+            if (GameClock.I.IsWeekend)
+            {
+                // Hafta sonu: sabahlar sakin, öğle ve akşam yoğun
+                if (h < 8) return 0.1f;
+                if (h < 11) return 0.3f;
+                if (h < 15) return 1.6f;
+                if (h < 18) return 0.9f;
+                if (h < 22) return 1.7f;
+                return 0.8f;
+            }
             if (h < 7) return 0.15f;
             if (h < 11) return 0.5f;
             if (h < 14) return 1.4f;
@@ -223,6 +233,7 @@ namespace KuryeTycoon
             }
 
             o.courierPay = pay;
+            o.boostPay = CampaignManager.I.BoostAmount(pay); // müşteriye yansımaz, kârdan ödenir
             o.courier = c;
             o.status = OrderStatus.Atandi;
             Pending.Remove(o);
@@ -264,6 +275,7 @@ namespace KuryeTycoon
             History.Insert(0, o);
             if (History.Count > 50) History.RemoveAt(History.Count - 1);
 
+            CampaignManager.I.OnDelivered(c);
             EventManager.I.RollDeliveryIncident(o, c);
         }
     }

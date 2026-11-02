@@ -33,6 +33,8 @@ namespace KuryeTycoon
         public int unavailableDays;
         public long totalEarned;
         public string leaveReason = "";
+        public int weekDeliveries;          // haftalık hedef için
+        public bool weeklyRewardClaimed;
 
         public readonly HashSet<EquipmentKind> equipment = new HashSet<EquipmentKind>();
 
@@ -86,6 +88,7 @@ namespace KuryeTycoon
                 if (morale >= 0.8f) cap += 1;
                 if (morale < 0.35f) cap -= 1;
                 if (fatigue >= 0.6f) cap -= 1;
+                if (CampaignManager.I != null && CampaignManager.I.BoostActive) cap += 1; // boost saatinde daha çok paket alır
                 return Mathf.Max(1, cap);
             }
         }
@@ -94,7 +97,8 @@ namespace KuryeTycoon
 
         /// <summary>Düşük moral ve yüksek yorgunlukta sipariş reddetme ihtimali.</summary>
         public float RejectChance =>
-            Mathf.Clamp01((0.45f - morale) * 1.2f) + (fatigue >= 0.75f ? 0.15f : 0f);
+            (CampaignManager.I != null && CampaignManager.I.BoostActive) ? 0f // boost saatinde reddetmez
+            : Mathf.Clamp01((0.45f - morale) * 1.2f) + (fatigue >= 0.75f ? 0.15f : 0f);
 
         /// <summary>Elindeki işler bitince nerede olacak (atama tahmini için).</summary>
         public Vector2Int FreeTile

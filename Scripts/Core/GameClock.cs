@@ -4,15 +4,20 @@ namespace KuryeTycoon
 {
     public enum Season { Kis, Ilkbahar, Yaz, Sonbahar }
 
-    /// <summary>Oyun içi zaman: dakika, gün, yıl, mevsim. Hız ve duraklatma burada.</summary>
+    /// <summary>
+    /// Oyun içi zaman: dakika, gün, haftanın günü, yıl, mevsim. Hız ve duraklatma burada.
+    /// Varsayılan takvim: 1 yıl = 28 gün = 4 hafta; her mevsim 1 hafta. Gün 1 = Pazartesi.
+    /// </summary>
     public class GameClock : MonoBehaviour
     {
         public static GameClock I { get; private set; }
 
+        static readonly string[] DayNames = { "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar" };
+
         [Tooltip("1x hızda gerçek 1 saniyede geçen oyun dakikası")]
         public float minutesPerSecond = 2f;
-        [Tooltip("Bir oyun yılı kaç gün (vergi her yıl sonunda ödenir)")]
-        public int daysPerYear = 12;
+        [Tooltip("Bir oyun yılı kaç gün (vergi her yıl sonunda ödenir). 7'nin katı olması önerilir.")]
+        public int daysPerYear = 28;
         public int startHour = 8;
 
         public float TotalMinutes { get; private set; }
@@ -25,6 +30,11 @@ namespace KuryeTycoon
         public int Day => (int)(TotalMinutes / 1440f) + 1;
         public int Year => (Day - 1) / daysPerYear + 1;
         public int DayOfYear => (Day - 1) % daysPerYear + 1;
+        public int Week => (Day - 1) / 7 + 1;
+        /// <summary>0 = Pazartesi ... 6 = Pazar</summary>
+        public int DayOfWeek => (Day - 1) % 7;
+        public bool IsWeekend => DayOfWeek >= 5;
+        public string DayName => DayNames[DayOfWeek];
         public int Hour => (int)(TotalMinutes % 1440f) / 60;
         public int Minute => (int)(TotalMinutes % 60f);
         public Season Season => (Season)Mathf.Min(3, (DayOfYear - 1) * 4 / daysPerYear);
@@ -59,14 +69,20 @@ namespace KuryeTycoon
             }
         }
 
-        public string SeasonName => Season switch
+        public string SeasonName
         {
-            Season.Kis => "Kış",
-            Season.Ilkbahar => "İlkbahar",
-            Season.Yaz => "Yaz",
-            _ => "Sonbahar"
-        };
+            get
+            {
+                switch (Season)
+                {
+                    case Season.Kis: return "Kış";
+                    case Season.Ilkbahar: return "İlkbahar";
+                    case Season.Yaz: return "Yaz";
+                    default: return "Sonbahar";
+                }
+            }
+        }
 
-        public string TimeText => $"Yıl {Year} · Gün {DayOfYear}/{daysPerYear} · {Hour:00}:{Minute:00}";
+        public string TimeText => $"Yıl {Year} · Gün {DayOfYear}/{daysPerYear} · {DayName} {Hour:00}:{Minute:00}";
     }
 }

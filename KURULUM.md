@@ -44,6 +44,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Olaylar | Eksik ürün, hasarlı sipariş, kaza, zam talebi, istifa, yavaş dükkan, viral yorum, komisyon teklifi |
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |
+| Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık hedef ödülü; hepsi şirketin kârından |
 | Vergi | Kârın bir kısmı vergi kasasına ayrılır; yıl sonunda öde ya da cezalı ertele |
 | Büyüme | 3 bölge, sözleşmeler, işe alım, seviye atlayan kuryeler |
 

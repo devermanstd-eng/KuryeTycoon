@@ -38,6 +38,7 @@ namespace KuryeTycoon
         public int commissionIncome;  // sepet × komisyon oranı (bize kalır)
         public int deliveryFee;       // müşteriden alınan teslimat ücreti (bize kalır)
         public int courierPay;        // atama anında sabitlenen kurye ödemesi
+        public int boostPay;          // boost saatindeki ek ödeme (şirketin kârından)
         public int tip;               // bahşiş (kuryeye gider)
         public float rating;
 
@@ -49,7 +50,7 @@ namespace KuryeTycoon
         public readonly HashSet<Courier> rejectedBy = new HashSet<Courier>();
 
         public int CompanyIncome => commissionIncome + deliveryFee;
-        public int Profit => CompanyIncome - courierPay;
+        public int Profit => CompanyIncome - courierPay - boostPay;
         public float DistanceKm => GameData.Km(distance);
 
         public string CustomerTypeName

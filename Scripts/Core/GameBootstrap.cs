@@ -30,6 +30,7 @@ namespace KuryeTycoon
             Make<CityMap>("Şehir Haritası");
             Make<CourierManager>("Kurye Yönetimi");
             Make<OrderManager>("Siparişler");
+            Make<CampaignManager>("Kampanyalar");
             Make<EventManager>("Olaylar");
             Make<GameUI>("Arayüz");
         }
@@ -67,6 +68,7 @@ namespace KuryeTycoon
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v);
             OrderManager.I.Init();
+            CampaignManager.I.Init();
 
             Started = true;
             GameClock.I.Paused = false;
@@ -78,6 +80,7 @@ namespace KuryeTycoon
                 "• Kuryeler paket başı + km başı kazanır. Gelen başvuruları İşe Alım sekmesinden kabul et.\n" +
                 "• Moralsiz ve yorgun kuryeler daha az paket alır, sipariş reddedebilir.\n" +
                 "• Ekipman eksikse kuryenin kartında ne kaybettiğini görürsün (kışın mont, yazın tişört...).\n" +
+                "• Kampanyalar sekmesinde boostlar ve haftalık hedef ödülü var (kârından ödenir).\n" +
                 "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
                 "• Yıl sonunda vergi ödersin: Vergi kasası kârının bir kısmını kenara ayırır.\n\n" +
                 "Kısayollar: Boşluk = duraklat, 1/2/3 = hız"));

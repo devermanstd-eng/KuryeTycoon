@@ -11,11 +11,12 @@ namespace KuryeTycoon
         public long otherIncome;    // kurye kesintileri vb.
         public long courierPay;     // kurye ödemeleri
         public long otherExpenses;  // kira, ekipman, sözleşme, iade, kaza masrafı...
+        public long campaigns;      // boostlar ve haftalık hedef ödülleri
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
         public int deliveries;
 
         public long Income => commission + fees + otherIncome;
-        public long Expenses => courierPay + otherExpenses;
+        public long Expenses => courierPay + otherExpenses + campaigns;
         /// <summary>Vergilendirilebilir kâr (giderler düşülmüş, cezalar hariç).</summary>
         public long Profit => Income - Expenses;
     }
@@ -115,15 +116,17 @@ namespace KuryeTycoon
 
         public void RegisterDelivery(Order o)
         {
-            money += o.CompanyIncome - o.courierPay;
+            money += o.CompanyIncome - o.courierPay - o.boostPay;
             foreach (var s in new[] { Year, Today })
             {
                 s.commission += o.commissionIncome;
                 s.fees += o.deliveryFee;
                 s.courierPay += o.courierPay;
+                s.campaigns += o.boostPay;
                 s.deliveries++;
             }
-            o.courier.totalEarned += o.courierPay;
+            o.courier.totalEarned += o.courierPay + o.boostPay;
+            if (o.boostPay > 0) CampaignManager.I.RegisterBoostPaid(o.boostPay);
 
             int profit = o.Profit;
             if (profit > 0 && vaultPercent > 0f)
@@ -132,7 +135,8 @@ namespace KuryeTycoon
                 money -= put;
                 taxVault += put;
             }
-            Log($"#{o.id} teslim ({GameData.KmText(o.distance)}): gelir {Ft(o.CompanyIncome)}, kurye {Ft(o.courierPay)}, kâr {Ft(profit)}");
+            string boost = o.boostPay > 0 ? $", boost {Ft(o.boostPay)}" : "";
+            Log($"#{o.id} teslim ({GameData.KmText(o.distance)}): gelir {Ft(o.CompanyIncome)}, kurye {Ft(o.courierPay)}{boost}, kâr {Ft(profit)}");
             CheckBankruptcy();
         }
 
@@ -162,6 +166,16 @@ namespace KuryeTycoon
                 Year.otherExpenses += amount;
                 Today.otherExpenses += amount;
             }
+            Log($"−{Ft(amount)} {label}");
+            CheckBankruptcy();
+        }
+
+        /// <summary>Kampanya gideri (haftalık hedef ödülü vb.). Zarara girse de ödenir.</summary>
+        public void SpendCampaign(long amount, string label)
+        {
+            money -= amount;
+            Year.campaigns += amount;
+            Today.campaigns += amount;
             Log($"−{Ft(amount)} {label}");
             CheckBankruptcy();
         }

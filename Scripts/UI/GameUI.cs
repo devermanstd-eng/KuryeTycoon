@@ -9,8 +9,8 @@ namespace KuryeTycoon
     /// </summary>
     public class GameUI : MonoBehaviour
     {
-        enum Tab { Siparisler, Kuryeler, IseAlim, Dukkanlar, Ekipman, Finans, Ayarlar }
-        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Dükkanlar", "Ekipman", "Finans", "Ayarlar" };
+        enum Tab { Siparisler, Kuryeler, IseAlim, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar }
+        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar" };
 
         public float panelWidth = 440f;
         const float TopBar = 48f;
@@ -257,6 +257,8 @@ namespace KuryeTycoon
             string info = $"Kasa: {Ft(eco.money)}    Vergi kasası: {Ft(eco.taxVault)}    " +
                           $"İtibar: {CompanyProfile.Reputation:0.0}/5    {clock.TimeText}    " +
                           $"{clock.SeasonName} · {weather.Name}";
+            var boost = CampaignManager.I.ActiveWindow;
+            if (boost != null) info += $"    BOOST %{boost.percent * 100f:0} ({boost.TimeText})";
             if (eco.taxDebt > 0) info += $"    VERGİ BORCU: {Ft(eco.taxDebt)}";
             GUI.Label(new Rect(280, 0, sw - 280 - 240, TopBar), info, barText);
 
@@ -292,6 +294,7 @@ namespace KuryeTycoon
                 case Tab.IseAlim: DrawHiring(); break;
                 case Tab.Dukkanlar: DrawShops(); break;
                 case Tab.Ekipman: DrawEquipment(); break;
+                case Tab.Kampanyalar: DrawCampaigns(); break;
                 case Tab.Finans: DrawFinance(); break;
                 case Tab.Ayarlar: DrawSettings(); break;
             }
@@ -332,8 +335,10 @@ namespace KuryeTycoon
                     GUI.enabled = modalFree && p >= 0 && !rejected;
                     var order = o;
                     var courier = c;
+                    int boostCost = CampaignManager.I.BoostAmount(eco.CourierPay(c, o.distance));
+                    string boostTxt = boostCost > 0 ? $" (boost −{Ft(boostCost)})" : "";
                     string txt = rejected ? $"{c.ShortName}: reddetti"
-                               : p >= 0 ? $"{c.ShortName} ({c.V.letter}) kâr +{Ft(p)}"
+                               : p >= 0 ? $"{c.ShortName} ({c.V.letter}) kâr +{Ft(p)}{boostTxt}"
                                : $"{c.ShortName}: zarar {Ft(p)}";
                     if (GUILayout.Button(txt, smallButton)) deferred = () => om.Assign(order, courier);
                     GUI.enabled = modalFree;
@@ -395,6 +400,15 @@ namespace KuryeTycoon
 
                 GUILayout.Label($"Hız {c.speedSkill:0.00} · Dikkat {c.care:0.00} · Nezaket {c.politeness:0.00} · Dayanıklılık {c.stamina:0.00}", small);
                 GUILayout.Label($"Kazanç: {Ft(c.V.basePay + c.extraPay)}/paket + {c.V.payPerKm} Ft/km + bonus", small);
+                var camp = CampaignManager.I;
+                if (camp.weeklyChallenge)
+                {
+                    if (c.weeklyRewardClaimed)
+                        GUILayout.Label($"Haftalık hedef tamamlandı! ({Ft(camp.weeklyReward)} ödendi)", label);
+                    else
+                        Bar("Haftalık", c.weekDeliveries / (float)Mathf.Max(1, camp.weeklyTarget), new Color(0.4f, 0.7f, 1f),
+                            $"{c.weekDeliveries}/{camp.weeklyTarget}");
+                }
                 GUILayout.Label($"Ekipman: {EquipmentText(c)}", small);
                 foreach (var p in c.ActivePenalties()) GUILayout.Label("• " + p, warn);
 
@@ -541,6 +555,74 @@ namespace KuryeTycoon
             }
         }
 
+        void DrawCampaigns()
+        {
+            var camp = CampaignManager.I;
+            var clock = GameClock.I;
+            var eco = EconomyManager.I;
+
+            GUILayout.Label("Kampanyalar şirketin kârından ödenir; müşterinin teslimat ücretine yansımaz. " +
+                            "Boost saatinde kuryeler sipariş reddetmez ve aynı anda +1 paket alır.", small);
+
+            GUILayout.Space(6);
+            GUILayout.Label($"Bugün: {clock.DayName}{(clock.IsWeekend ? " (hafta sonu)" : "")}", header);
+            var today = camp.TodayWindows();
+            var active = camp.ActiveWindow;
+            if (today.Count == 0) GUILayout.Label("Bugün boost yok.", label);
+            foreach (var w in today)
+            {
+                bool on = active != null && w.startHour == active.startHour && w.percent == active.percent;
+                bool past = clock.Hour >= w.endHour;
+                string state = on ? "  ŞU AN AKTİF" : (past ? "  (bitti)" : "");
+                GUILayout.Label($"{w.TimeText}  %{w.percent * 100f:0}  — {w.label}{state}", on ? header : (past ? small : label));
+            }
+
+            GUILayout.Space(8);
+            GUILayout.Label("Hafta sonu boostları", header);
+            camp.weekendMorningBoost = GUILayout.Toggle(camp.weekendMorningBoost,
+                $" Sabah boostu {camp.weekendMorningStart:00}:00–{camp.weekendMorningEnd:00}:00 (sipariş az olduğu için)", toggle);
+            camp.weekendMorningPercent = PercentSlider("Sabah yüzdesi", camp.weekendMorningPercent, 0.05f, 0.60f);
+            camp.weekendLunchBoost = GUILayout.Toggle(camp.weekendLunchBoost,
+                $" Öğle boostu {camp.weekendLunchStart:00}:00–{camp.weekendLunchEnd:00}:00", toggle);
+            camp.weekendLunchPercent = PercentSlider("Öğle yüzdesi", camp.weekendLunchPercent, 0.05f, 0.60f);
+
+            GUILayout.Space(8);
+            GUILayout.Label("Hafta içi rastgele boostlar", header);
+            camp.weekdayRandomBoosts = GUILayout.Toggle(camp.weekdayRandomBoosts, " Gün içine serpiştirilmiş boostlar", toggle);
+            camp.weekdayBoostCount = IntSlider("Günde kaç tane", camp.weekdayBoostCount, 0, 4, 1);
+            camp.weekdayMaxPercent = PercentSlider("En yüksek yüzde", camp.weekdayMaxPercent, 0.10f, 0.60f);
+            GUILayout.Label("Hafta içi boost saatleri her gün yeniden belirlenir; değişiklikler ertesi gün geçerli olur.", small);
+
+            GUILayout.Space(8);
+            GUILayout.Label("Haftalık hedef ödülü", header);
+            camp.weeklyChallenge = GUILayout.Toggle(camp.weeklyChallenge, " Haftalık hedef açık (her Pazartesi sıfırlanır)", toggle);
+            camp.weeklyTarget = IntSlider("Hedef paket", camp.weeklyTarget, 10, 200, 5);
+            camp.weeklyReward = IntSlider("Ödül (Ft)", camp.weeklyReward, 0, 100000, 1000);
+
+            // Ödülün kârla karşılaştırması
+            int samples = 0;
+            long sum = 0;
+            foreach (var o in OrderManager.I.History) { sum += o.Profit; samples++; }
+            float avg = samples > 0 ? sum / (float)samples : 300f;
+            long targetProfit = (long)(avg * camp.weeklyTarget);
+            GUILayout.Label($"Ortalama sipariş kârı ~{Ft((long)avg)} → {camp.weeklyTarget} paket ≈ {Ft(targetProfit)} kâr, ödül {Ft(camp.weeklyReward)}.",
+                small);
+            if (camp.weeklyReward > targetProfit)
+                GUILayout.Label("Bu ödül, o paketlerden kazandığından fazla: hedefe ulaşan her kurye zarar ettirir.", warn);
+
+            GUILayout.Space(8);
+            GUILayout.Label($"Bu hafta (Hafta {clock.Week})", header);
+            GUILayout.Label($"Boost ödemeleri: {Ft(camp.boostPaidThisWeek)}", label);
+            GUILayout.Label($"Hedef ödülleri: {Ft(camp.rewardsPaidThisWeek)} ({camp.rewardsClaimedThisWeek} kurye)", label);
+            GUILayout.Label($"Bugünkü kampanya gideri: {Ft(eco.Today.campaigns)}", small);
+        }
+
+        float PercentSlider(string name, float v, float min, float max)
+        {
+            float f = SliderRow(name, v, min, max, $"%{v * 100f:0}", 140);
+            return Mathf.Round(f * 20f) / 20f; // %5 adımlar
+        }
+
         void DrawFinance()
         {
             var e = EconomyManager.I;
@@ -585,7 +667,7 @@ namespace KuryeTycoon
         {
             GUILayout.Label($"Teslimat: {s.deliveries}", small);
             GUILayout.Label($"Gelir: {Ft(s.Income)} (komisyon {Ft(s.commission)}, teslimat ücreti {Ft(s.fees)}, diğer {Ft(s.otherIncome)})", small);
-            GUILayout.Label($"Gider: {Ft(s.Expenses)} (kurye {Ft(s.courierPay)}, diğer {Ft(s.otherExpenses)})", small);
+            GUILayout.Label($"Gider: {Ft(s.Expenses)} (kurye {Ft(s.courierPay)}, kampanya {Ft(s.campaigns)}, diğer {Ft(s.otherExpenses)})", small);
             GUILayout.Label($"Kâr: {Ft(s.Profit)}" + (s.penalties > 0 ? $" · Cezalar: {Ft(s.penalties)}" : ""), label);
         }
 
@@ -674,7 +756,9 @@ namespace KuryeTycoon
             return Mathf.Round(f * 100f) / 100f;
         }
 
-        void Bar(string name, float v, Color c)
+        void Bar(string name, float v, Color c) => Bar(name, v, c, $"%{v * 100f:0}");
+
+        void Bar(string name, float v, Color c, string valueText)
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label(name, small, GUILayout.Width(70));
@@ -683,7 +767,7 @@ namespace KuryeTycoon
             r.height = 10;
             Fill(r, new Color(0f, 0f, 0f, 0.4f));
             Fill(new Rect(r.x, r.y, r.width * Mathf.Clamp01(v), r.height), c);
-            GUILayout.Label($"%{v * 100f:0}", small, GUILayout.Width(44));
+            GUILayout.Label(valueText, small, GUILayout.Width(52));
             GUILayout.EndHorizontal();
         }
 
