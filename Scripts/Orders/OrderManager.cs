@@ -311,9 +311,18 @@ namespace KuryeTycoon
 
         void AutoAssign()
         {
+            float now = GameClock.I.TotalMinutes;
             for (int i = 0; i < Pending.Count; i++)
             {
                 var o = Pending[i];
+
+                // 10 dk'dan uzun bekleyen ve fiyat yüzünden reddedilen sipariş: reddedenlere bir kez daha, daha esnek sorulur
+                if (!o.secondRound && o.priceDeclines > 0 && now - o.createdAt > 10f)
+                {
+                    o.secondRound = true;
+                    o.rejectedBy.Clear();
+                }
+
                 Courier best = null;
                 float bestScore = float.MaxValue;
                 foreach (var c in CourierManager.I.Couriers)
@@ -357,7 +366,7 @@ namespace KuryeTycoon
 
             // Kurye tahmini kazancı görür; beğenmezse reddeder, sipariş başka kuryeyi bekler
             int boost = CampaignManager.I.BoostAmount(pay);
-            if (!c.LikesOffer(o, pay + boost))
+            if (!c.WillAcceptOffer(o, pay + boost))
             {
                 o.rejectedBy.Add(c);
                 o.priceDeclines++;

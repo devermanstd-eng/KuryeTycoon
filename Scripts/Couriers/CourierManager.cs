@@ -145,7 +145,7 @@ namespace KuryeTycoon
                 politeness = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
                 stamina = Random.Range(0.7f, 1.2f) + skill,
                 tidiness = Random.Range(0.2f, 1f),
-                pickiness = Random.Range(0.1f, 0.95f),
+                pickiness = Random.Range(0.05f, 0.85f),
                 note = GameData.RandomNote(),
                 expiresAt = withExpiry ? GameClock.I.TotalMinutes + 1440f : float.MaxValue
             };
@@ -173,6 +173,7 @@ namespace KuryeTycoon
             var c = MakeCandidate(v, false);
             c.level = 1;
             c.occupation = Occupation.TamZamanli;
+            c.pickiness = Random.Range(0.1f, 0.35f); // ilk kuryeler pek seçici değil
             return Spawn(c);
         }
 

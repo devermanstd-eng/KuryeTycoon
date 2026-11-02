@@ -431,6 +431,7 @@ namespace KuryeTycoon
 
         public void Assign(Order o)
         {
+            lastBusyAt = GameClock.I.TotalMinutes;
             queue.Enqueue(o);
             if (current == null) StartNext();
         }
@@ -605,7 +606,7 @@ namespace KuryeTycoon
         public float EstimateMinutes(Order o)
         {
             float speed = Mathf.Max(0.05f, V.tilesPerMinute * speedSkill);
-            float toShop = CityMap.Manhattan(FreeTile, o.shop.door) / speed + OrderCount * 12f;
+            float toShop = CityMap.Manhattan(FreeTile, o.shop.door) / speed + OrderCount * 6f;
             float wait = Mathf.Max(0f, o.readyAt - (GameClock.I.TotalMinutes + toShop));
             return toShop + wait + o.distance / speed;
         }
@@ -613,22 +614,47 @@ namespace KuryeTycoon
         /// <summary>Teklifin tahmini saatlik kazancı.</summary>
         public float OfferHourly(Order o, int pay) => pay / Mathf.Max(5f, EstimateMinutes(o)) * 60f;
 
-        /// <summary>Bu aracın "normal" bir işten saatlik kazancı (8 kare gidiş, 12 kare teslimat, bonus yok).</summary>
+        /// <summary>Bu aracın "normal" bir işten saatlik kazancı (10 kare gidiş, 5 dk bekleme, 12 kare teslimat, bonus yok).</summary>
         public float ReferenceHourly
         {
             get
             {
                 float speed = Mathf.Max(0.05f, V.tilesPerMinute * speedSkill);
                 float pay = V.basePay + V.payPerKm * GameData.Km(12);
-                return pay / (20f / speed) * 60f;
+                return pay / (22f / speed + 5f) * 60f;
             }
         }
 
-        /// <summary>Kurye tahmini kazancı görür; seçiciliğine göre beğenmezse reddeder.</summary>
-        public bool LikesOffer(Order o, int pay)
+        /// <summary>Boşta ne kadar süredir iş bekliyor (dk). Uzun bekleyen kurye daha az seçici olur.</summary>
+        public float IdleMinutes => State == CourierState.Bosta && OrderCount == 0 ? GameClock.I.TotalMinutes - lastBusyAt : 0f;
+        float lastBusyAt;
+
+        /// <summary>Teklifin kuryenin beklentisine oranı (1 = normal bir iş kadar iyi).</summary>
+        public float OfferRatio(Order o, int pay) => OfferHourly(o, pay) / Mathf.Max(1f, ReferenceHourly);
+
+        /// <summary>Kuryenin bu teklif için beklediği en düşük oran.</summary>
+        public float OfferThreshold(Order o)
         {
-            float threshold = Mathf.Lerp(0.55f, 1.0f, pickiness);
-            return OfferHourly(o, pay) >= ReferenceHourly * threshold;
+            float t = Mathf.Lerp(0.35f, 0.8f, pickiness);
+            if (IdleMinutes > 20f) t *= 0.8f;      // uzun süredir iş yok: daha az seçici
+            if (o.secondRound) t *= 0.75f;         // sipariş uzun beklemiş: pazarlık payı
+            return t;
+        }
+
+        /// <summary>Arayüz için: teklif kuryenin beklentisinin altında mı (kesin değil, reddedebilir).</summary>
+        public bool LikesOffer(Order o, int pay) => OfferRatio(o, pay) >= OfferThreshold(o);
+
+        /// <summary>
+        /// Kurye tahmini kazancı görür ve karar verir. Beklentisinin üstündeyse kabul eder;
+        /// altındaysa yine de bir ihtimalle kabul eder (az seçici olanlar daha sık).
+        /// </summary>
+        public bool WillAcceptOffer(Order o, int pay)
+        {
+            float ratio = OfferRatio(o, pay);
+            float thr = OfferThreshold(o);
+            if (ratio >= thr) return true;
+            float chance = (ratio / thr) * (1f - pickiness * 0.7f);
+            return Random.value < chance;
         }
 
         public string PickinessText =>
@@ -660,6 +686,7 @@ namespace KuryeTycoon
 
         void DeliverCurrent(bool kept)
         {
+            lastBusyAt = GameClock.I.TotalMinutes;
             {
                 var done = current;
                 current = null;
