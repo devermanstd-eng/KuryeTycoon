@@ -655,15 +655,7 @@ namespace KuryeTycoon
             var onDuty = sm.OnDutyAgent();
             GUILayout.Label($"Bugün ({clock.DayName}) destek kapsaması: {covered}/24 saat" +
                             (onDuty != null ? $" · Şu an vardiyada: {onDuty.name}" : " · Şu an vardiyada kimse yok"), header);
-            Rect r = GUILayoutUtility.GetRect(100, 22, GUILayout.ExpandWidth(true));
-            float cw = r.width / 24f;
-            for (int h = 0; h < 24; h++)
-            {
-                var cell = new Rect(r.x + h * cw + 1, r.y, cw - 2, 14);
-                Fill(cell, sm.CoveredAt(clock.DayOfWeek, h) ? new Color(0.3f, 0.8f, 0.45f) : new Color(1f, 1f, 1f, 0.1f));
-                if (h == clock.Hour) Fill(new Rect(cell.x, cell.y + 15, cell.width, 3), Color.white);
-            }
-            GUILayout.Label("00          06          12          18          24", small);
+            DrawCoverageChart(sm, clock);
 
             GUILayout.Space(6);
             GUILayout.Label($"Aylık maaş toplamı: {Ft(sm.MonthlyPayroll)} · Bu ay şu ana kadar birikmiş maaş: {Ft(sm.AccruedThisMonth)} " +
@@ -686,6 +678,34 @@ namespace KuryeTycoon
             }
 
             DrawSupportCandidates();
+        }
+
+        /// <summary>24 saatlik destek kapsama çizelgesi: saat etiketleri hücrelerle tam hizalı.</summary>
+        void DrawCoverageChart(SupportManager sm, GameClock clock)
+        {
+            Rect r = GUILayoutUtility.GetRect(100, 40, GUILayout.ExpandWidth(true));
+            const float labelW = 28f;
+            float left = r.x + labelW / 2f;               // etiketler kenardan taşmasın
+            float width = r.width - labelW;
+            float cw = width / 24f;
+
+            for (int h = 0; h < 24; h++)
+            {
+                var cell = new Rect(left + h * cw + 1f, r.y, cw - 2f, 16f);
+                Fill(cell, sm.CoveredAt(clock.DayOfWeek, h) ? new Color(0.3f, 0.8f, 0.45f) : new Color(1f, 1f, 1f, 0.12f));
+                if (h == clock.Hour) Fill(new Rect(cell.x, cell.y + 18f, cell.width, 3f), Color.white);
+            }
+
+            // Saat çizgileri ve etiketleri (00, 06, 12, 18, 24) tam hücre sınırlarında
+            var old = small.alignment;
+            small.alignment = TextAnchor.UpperCenter;
+            for (int h = 0; h <= 24; h += 6)
+            {
+                float x = left + h * cw;
+                Fill(new Rect(x - 0.5f, r.y - 2f, 1f, 20f), new Color(1f, 1f, 1f, 0.35f));
+                GUI.Label(new Rect(x - labelW / 2f, r.y + 22f, labelW, 16f), h.ToString("00"), small);
+            }
+            small.alignment = old;
         }
 
         void DrawSupportCandidates()
