@@ -380,8 +380,13 @@ namespace KuryeTycoon
             {
                 var o = om.History[i];
                 string tip = o.tip > 0 ? $" · bahşiş {Ft(o.tip)}" : "";
+                string issue = o.keptByCourier ? " · müşteriye ulaşılamadı, kuryede kaldı"
+                             : o.addressIssue == AddressIssue.YanlisAdres ? " · adres yanlıştı, çözüldü"
+                             : o.addressIssue == AddressIssue.EvdeYok ? " · müşteri evde yoktu, çözüldü" : "";
+                string stars = o.keptByCourier ? "puan yok" : $"{o.rating:0.0} yıldız";
                 GUILayout.Label($"#{o.id} {o.shop.Name} → {o.courier.ShortName} · {GameData.KmText(o.distance)} · " +
-                                $"{o.rating:0.0} yıldız · kurye {Ft(o.courierPay)} · kâr {Ft(o.Profit)}{tip}", small);
+                                $"{stars} · kurye {Ft(o.courierPay)} · kâr {Ft(o.Profit)}{tip}{issue}",
+                                o.keptByCourier ? warn : small);
             }
         }
 

@@ -265,6 +265,39 @@ namespace KuryeTycoon
             return true;
         }
 
+        /// <summary>
+        /// Yanlış işaretlenmiş adres: vardiyadaki destek müşteriyi arayıp doğru adresi bulur.
+        /// Başarı yeteneğe bağlı (%70–95). Başarırsa müşterinin şirkete güveni (itibar) artar.
+        /// </summary>
+        public bool TryResolveWrongAddress(Order o)
+        {
+            var a = OnDutyAgent();
+            if (a == null) return false;
+            a.handledTotal++;
+            handledThisMonth++;
+            if (Random.value > Mathf.Lerp(0.7f, 0.95f, Mathf.InverseLerp(0.5f, 1f, a.skill)))
+            {
+                EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisine ulaşamadı.");
+                return false;
+            }
+            CompanyProfile.AddReputation(0.05f);
+            EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisini arayıp doğru adresi buldu, kurye yönlendirildi. Müşterinin güveni arttı (itibar +0.05).");
+            return true;
+        }
+
+        /// <summary>Müşteri evde yok: destek arar, %80 müşteri döner (itibar biraz artar).</summary>
+        public bool TryReachAbsentCustomer(Order o)
+        {
+            var a = OnDutyAgent();
+            if (a == null) return false;
+            a.handledTotal++;
+            handledThisMonth++;
+            if (Random.value > 0.8f) return false;
+            CompanyProfile.AddReputation(0.03f);
+            EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisini aradı, müşteri eve döndü ve siparişini aldı (itibar +0.03).");
+            return true;
+        }
+
         /// <summary>Kurye bulunamayan sipariş: destek müşteriyi arayıp bekletir.</summary>
         public bool TryCallCustomer(Order o)
         {

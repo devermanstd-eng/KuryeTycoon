@@ -118,6 +118,98 @@ namespace KuryeTycoon
             return null;
         }
 
+        [Header("Adres sorunları")]
+        [Range(0f, 0.2f)] public float wrongAddressChance = 0.04f;
+        [Range(0f, 0.2f)] public float notHomeChance = 0.03f;
+
+        AddressIssue RandomAddressIssue()
+        {
+            float r = Random.value;
+            if (r < wrongAddressChance) return AddressIssue.YanlisAdres;
+            if (r < wrongAddressChance + notHomeChance) return AddressIssue.EvdeYok;
+            return AddressIssue.Yok;
+        }
+
+        /// <summary>
+        /// Kurye kapıda 10 dk uğraştıktan sonra çağrılır.
+        /// Yanlış adres: vardiyadaki destek müşteriyi arayıp doğru adresi bulur (itibar artar);
+        /// yoksa kurye kendisi dener. Evde yok: müşteri gelebilir; gelmezse destek arar.
+        /// Hepsi başarısızsa sipariş kuryede kalır (çok nadir).
+        /// </summary>
+        public void ResolveAddressIssue(Order o, Courier c)
+        {
+            if (o == null) return;
+            o.issueResolved = true;
+            o.customerFault = true;
+
+            if (o.addressIssue == AddressIssue.YanlisAdres)
+            {
+                bool solved = SupportManager.I.TryResolveWrongAddress(o);
+                if (!solved && Random.value < 0.75f)
+                {
+                    solved = true;
+                    EventManager.I.Notify($"{c.ShortName} müşteriye kendisi ulaştı ve doğru adresi öğrendi (#{o.id}).");
+                }
+                if (solved)
+                {
+                    // Doğru adres: yakınlardaki başka bir bina
+                    var map = CityMap.I;
+                    var realTile = map.RandomCustomerTile(o.shop.tile);
+                    for (int i = 0; i < 10 && CityMap.Manhattan(realTile, o.customerTile) > 8; i++)
+                        realTile = map.RandomCustomerTile(o.shop.tile);
+                    var realDoor = map.GetDoor(realTile);
+                    int extra = Mathf.Max(1, map.FindPath(o.customerDoor, realDoor).Count - 1);
+
+                    // Ek yol için kuryeye km ücreti (şirket öder)
+                    int extraPay = Mathf.RoundToInt(c.V.payPerKm * GameData.Km(extra));
+                    o.courierPay += extraPay;
+                    o.distance += extra;
+                    o.customerTile = realTile;
+                    if (o.marker != null) o.marker.transform.position = CityMap.ToWorld(realTile);
+                    c.RedirectTo(realDoor);
+                    return;
+                }
+            }
+            else // Evde yok
+            {
+                if (Random.value < 0.7f)
+                {
+                    EventManager.I.Notify($"#{o.id} müşterisi birkaç dakika sonra geldi, sipariş teslim edildi.");
+                    c.DeliverHere();
+                    return;
+                }
+                if (SupportManager.I.TryReachAbsentCustomer(o))
+                {
+                    c.DeliverHere();
+                    return;
+                }
+            }
+
+            // Hiçbir şekilde ulaşılamadı
+            c.KeepOrder();
+        }
+
+        /// <summary>
+        /// Müşteriye ulaşılamadı: müşteri yine ücreti öder (iade yok), kurye ücretini alır
+        /// ve yemek kuryeye kalır. Puan ve itibar etkilenmez.
+        /// </summary>
+        public void CompleteKept(Order o, Courier c)
+        {
+            o.status = OrderStatus.Teslim;
+            o.keptByCourier = true;
+            o.deliveredAt = GameClock.I.TotalMinutes;
+            o.rating = 0f;
+            EconomyManager.I.RegisterDelivery(o);
+            c.morale = Mathf.Min(1f, c.morale + 0.03f); // bedava yemek :)
+            if (o.marker != null) Destroy(o.marker.gameObject);
+            Active.Remove(o);
+            History.Insert(0, o);
+            if (History.Count > 50) History.RemoveAt(History.Count - 1);
+            CampaignManager.I.OnDelivered(c);
+            EventManager.I.Notify($"#{o.id} müşterisine hiçbir şekilde ulaşılamadı. Sipariş {c.ShortName}'da kaldı " +
+                                  "(müşteri ücreti ödedi, yemek kuryenin oldu).");
+        }
+
         static CustomerType RandomCustomerType()
         {
             float r = Random.value;
@@ -175,6 +267,7 @@ namespace KuryeTycoon
                 customerTile = custTile,
                 customerDoor = custDoor,
                 customerType = RandomCustomerType(),
+                addressIssue = RandomAddressIssue(),
                 basket = basket,
                 distance = dist,
                 weightKg = kg,
@@ -326,7 +419,7 @@ namespace KuryeTycoon
             o.status = OrderStatus.Teslim;
             o.deliveredAt = now;
 
-            float late = now - o.deadlineAt;
+            float late = o.customerFault ? 0f : now - o.deadlineAt; // müşterinin adres hatası gecikmesi sayılmaz
             float rating = 5f;
             if (late > 0f) rating -= Mathf.Min(3f, late / 10f);
             rating += (c.politeness - 0.75f) * 2f;

@@ -5,6 +5,7 @@ namespace KuryeTycoon
 {
     public enum CustomerType { Normal, Aceleci, Comert, Zor }
     public enum OrderStatus { Bekliyor, Atandi, Alindi, Teslim, Iptal }
+    public enum AddressIssue { Yok, YanlisAdres, EvdeYok }
 
     /// <summary>Haritadaki bir dükkan ve onunla yapılan sözleşme.</summary>
     public class Shop
@@ -59,6 +60,12 @@ namespace KuryeTycoon
         public readonly HashSet<Courier> rejectedBy = new HashSet<Courier>();
         /// <summary>Destek müşteriyi arayıp ek süre aldı mı.</summary>
         public bool supportCalled;
+
+        /// <summary>Adres sorunu: yanlış işaretlenmiş adres ya da müşteri evde yok.</summary>
+        public AddressIssue addressIssue;
+        public bool issueResolved;
+        public bool customerFault;     // gecikme müşterinin hatası: puan düşmez
+        public bool keptByCourier;     // müşteriye ulaşılamadı, sipariş kuryede kaldı
 
         public int CompanyIncome => commissionIncome + deliveryFee;
         public int Profit => CompanyIncome - courierPay - boostPay;

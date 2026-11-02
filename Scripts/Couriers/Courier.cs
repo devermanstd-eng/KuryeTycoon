@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    public enum CourierState { Cevrimdisi, Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, Mola, Izinli }
+    public enum CourierState { Cevrimdisi, Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, AdresSorunu, Mola, Izinli }
 
     /// <summary>Kuryenin asıl hayatı: ne zaman kuryelik yapabileceğini belirler.</summary>
     public enum Occupation { TamZamanli, OfisCalisani, HaftaSonu, Ogrenci, Vardiyali, Emekli }
@@ -480,6 +480,10 @@ namespace KuryeTycoon
                         Work(dm);
                         if (clock.TotalMinutes >= current.readyAt) PickUp();
                         break;
+                    case CourierState.AdresSorunu:
+                        Work(dm);
+                        if (clock.TotalMinutes >= issueWaitUntil) OrderManager.I.ResolveAddressIssue(current, this);
+                        break;
                     case CourierState.Mola:
                         fatigue = Mathf.Max(0f, fatigue - dm * 0.002f);
                         if (clock.TotalMinutes >= breakUntil)
@@ -546,13 +550,56 @@ namespace KuryeTycoon
             }
             else if (State == CourierState.MusteriyeGidiyor)
             {
+                // Adreste sorun var mı? (yanlış işaretlenmiş adres / müşteri evde yok)
+                if (current.addressIssue != AddressIssue.Yok && !current.issueResolved)
+                {
+                    State = CourierState.AdresSorunu;
+                    issueWaitUntil = GameClock.I.TotalMinutes + 10f; // kapıda bekler, arar
+                    EventManager.I.Notify(current.addressIssue == AddressIssue.YanlisAdres
+                        ? $"{ShortName} #{current.id} adresine vardı ama adres yanlış işaretlenmiş, müşteriye ulaşmaya çalışıyor."
+                        : $"{ShortName} #{current.id} adresine vardı ama müşteri evde değil, bekliyor.");
+                    return;
+                }
+                DeliverCurrent(false);
+            }
+        }
+
+        float issueWaitUntil;
+
+        /// <summary>Adres sorunu çözüldü: kurye doğru adrese yönlenir.</summary>
+        public void RedirectTo(Vector2Int door)
+        {
+            if (current == null) return;
+            current.customerDoor = door;
+            State = CourierState.MusteriyeGidiyor;
+            GoTo(door);
+        }
+
+        /// <summary>Adreste teslim (sorun çözüldüyse de buradan geçer).</summary>
+        public void DeliverHere()
+        {
+            if (current == null) return;
+            DeliverCurrent(false);
+        }
+
+        /// <summary>Müşteriye hiç ulaşılamadı: sipariş kuryede kalır (çok nadir).</summary>
+        public void KeepOrder()
+        {
+            if (current == null) return;
+            DeliverCurrent(true);
+        }
+
+        void DeliverCurrent(bool kept)
+        {
+            {
                 var done = current;
                 current = null;
                 deliveries++;
                 deliveriesToday++;
                 AddXp();
                 DirtyBag(done);
-                OrderManager.I.CompleteDelivery(done, this);
+                if (kept) OrderManager.I.CompleteKept(done, this);
+                else OrderManager.I.CompleteDelivery(done, this);
 
                 if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && !wantsOffline && Random.value < 0.05f)
                 {
@@ -716,6 +763,9 @@ namespace KuryeTycoon
                     case CourierState.DukkanaGidiyor: return "Dükkana gidiyor";
                     case CourierState.Bekliyor: return "Dükkanda bekliyor";
                     case CourierState.MusteriyeGidiyor: return wantsOffline ? "Son paketini götürüyor, sonra çıkacak" : "Müşteriye gidiyor";
+                    case CourierState.AdresSorunu:
+                        return current != null && current.addressIssue == AddressIssue.YanlisAdres
+                            ? "Adres yanlış, müşteriye ulaşmaya çalışıyor" : "Müşteri evde yok, kapıda bekliyor";
                     case CourierState.Mola: return "Mola: " + breakReason;
                     case CourierState.Izinli: return $"Çalışamıyor ({leaveReason}, {unavailableDays} gün)";
                     default: return "Çevrimiçi, sipariş bekliyor";
