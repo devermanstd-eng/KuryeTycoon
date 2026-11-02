@@ -277,6 +277,47 @@ namespace KuryeTycoon
             return true;
         }
 
+        /// <summary>
+        /// Müşteri bazen bahşiş verir. Bahşiş tamamen kuryenin; şirket kasasına girmez.
+        /// İhtimal: müşteri tipi, puan, hava, gece ve ağır paket etkiler.
+        /// </summary>
+        void RollTip(Order o, Courier c, float late)
+        {
+            float chance;
+            switch (o.customerType)
+            {
+                case CustomerType.Comert: chance = 0.70f; break;
+                case CustomerType.Aceleci: chance = late > 0f ? 0f : 0.15f; break;
+                case CustomerType.Zor: chance = 0.03f; break;
+                default: chance = 0.15f; break;
+            }
+            if (o.rating < 3f) chance = 0f;
+            else if (o.rating >= 4.5f) chance *= 1.5f;
+
+            var w = WeatherSystem.I;
+            bool badWeather = w.IsRainy || w.Current == WeatherKind.Karli || w.Current == WeatherKind.Soguk;
+            int h = GameClock.I.Hour;
+            if (badWeather) chance *= 1.5f;           // "bu havada geldin, sağ ol"
+            if (h >= 22 || h < 6) chance *= 1.3f;     // gece teslimatı
+            if (o.IsHeavy) chance *= 1.5f;            // ağır paketi kapıya kadar taşıdı
+
+            if (Random.value >= Mathf.Min(0.95f, chance)) return;
+
+            float max = o.customerType == CustomerType.Comert ? 1500f : 800f;
+            if (o.basket > 15000) max += 500f;
+            o.tip = Mathf.RoundToInt(Random.Range(200f, max) / 50f) * 50;
+
+            c.Earn(o.tip);
+            c.tipsTotal += o.tip;
+            c.tipsToday += o.tip;
+            c.morale = Mathf.Min(1f, c.morale + (o.tip >= 800 ? 0.04f : 0.02f));
+            if (o.tip >= 800)
+            {
+                string why = badWeather ? " (kötü havada geldiği için)" : (o.IsHeavy ? " (ağır paketi kapıya taşıdığı için)" : "");
+                EventManager.I.Notify($"{c.ShortName} müşteriden {GameData.Ft(o.tip)} bahşiş aldı{why}!");
+            }
+        }
+
         public void CompleteDelivery(Order o, Courier c)
         {
             float now = GameClock.I.TotalMinutes;
@@ -293,12 +334,7 @@ namespace KuryeTycoon
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
             o.rating = Mathf.Clamp(rating, 1f, 5f);
 
-            if (o.customerType == CustomerType.Comert && o.rating >= 4f)
-            {
-                o.tip = GameData.Round10(Random.Range(200f, 800f));
-                c.Earn(o.tip);
-                c.morale = Mathf.Min(1f, c.morale + 0.02f);
-            }
+            RollTip(o, c, late);
 
             EconomyManager.I.RegisterDelivery(o);
             CompanyProfile.Reputation = Mathf.Lerp(CompanyProfile.Reputation, o.rating, 0.04f);

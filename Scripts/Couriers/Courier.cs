@@ -42,6 +42,8 @@ namespace KuryeTycoon
         public float xp;
         public int unavailableDays;
         public long totalEarned;
+        public long tipsTotal;             // müşterilerden aldığı bahşişler (tamamen kendisinin)
+        public long tipsToday;
         public string leaveReason = "";
         public bool dayOff;
         public float onlineMinutesToday;
@@ -587,6 +589,7 @@ namespace KuryeTycoon
         public void NewDay(GameClock clock)
         {
             deliveriesToday = 0;
+            tipsToday = 0;
             onlineMinutesToday = 0f;
 
             if (repairDays > 0)

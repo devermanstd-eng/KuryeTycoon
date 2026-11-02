@@ -395,6 +395,8 @@ namespace KuryeTycoon
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{c.courierName} — {c.V.name} · Seviye {c.level}", header);
                 GUILayout.Label($"{c.StateName} · Teslimat {c.deliveries} (bugün {c.deliveriesToday}) · Kazancı {Ft(c.totalEarned)}", small);
+                if (c.tipsTotal > 0)
+                    GUILayout.Label($"Bahşişler: toplam {Ft(c.tipsTotal)}" + (c.tipsToday > 0 ? $" (bugün {Ft(c.tipsToday)})" : "") + " — tamamı kuryenin", small);
                 GUILayout.Label($"Meslek: {c.OccupationName}", small);
                 GUILayout.Label($"Bugün: {c.OccupationStatus}" + (c.dayOff ? " · İzin günü yapıyor" : ""), small);
                 Bar("Moral", c.morale, Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), c.morale));
