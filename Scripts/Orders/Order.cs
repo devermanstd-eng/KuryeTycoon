@@ -35,6 +35,7 @@ namespace KuryeTycoon
 
         public int basket;            // müşterinin sepet tutarı (dükkana gider)
         public int distance;          // kare cinsinden yol uzunluğu (1 kare = 0,2 km)
+        public float weightKg;        // sipariş ağırlığı
         public int commissionIncome;  // sepet × komisyon oranı (bize kalır)
         public int deliveryFee;       // müşteriden alınan teslimat ücreti (bize kalır)
         public int courierPay;        // atama anında sabitlenen kurye ödemesi
@@ -52,6 +53,8 @@ namespace KuryeTycoon
         public int CompanyIncome => commissionIncome + deliveryFee;
         public int Profit => CompanyIncome - courierPay - boostPay;
         public float DistanceKm => GameData.Km(distance);
+        /// <summary>20 kg ve üstü: sadece arabalı kuryeler alabilir.</summary>
+        public bool IsHeavy => weightKg >= GameData.HeavyKg;
 
         public string CustomerTypeName
         {

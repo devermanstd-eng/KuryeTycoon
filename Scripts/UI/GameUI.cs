@@ -317,7 +317,8 @@ namespace KuryeTycoon
             om.autoAssign = GUILayout.Toggle(om.autoAssign, " Otomatik atama (dispatcher)", toggle);
             om.prioritizeProfit = GUILayout.Toggle(om.prioritizeProfit, " Atamada kârı öncele (kapalıysa en hızlı kurye)", toggle);
             GUILayout.Label($"Bugün: vazgeçen müşteri (ücret pahalı) {om.lostToday} · iptal (kurye yok) {om.cancelledToday} · " +
-                            $"kuryelerin reddettiği {om.rejectedToday}", small);
+                            $"kuryelerin reddettiği {om.rejectedToday} · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday}", small);
+            GUILayout.Label($"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; yürüyerek 3 kg'a kadar; {GameData.HeavyKg:0} kg ve üstü sadece araba.", small);
 
             GUILayout.Space(6);
             GUILayout.Label($"Bekleyen siparişler ({om.Pending.Count})", header);
@@ -326,7 +327,8 @@ namespace KuryeTycoon
             {
                 if (shown++ >= 12) break;
                 GUILayout.BeginVertical(box);
-                GUILayout.Label($"#{o.id} {o.shop.Name} · {GameData.KmText(o.distance)} · {o.CustomerTypeName}", label);
+                GUILayout.Label($"#{o.id} {o.shop.Name} · {GameData.KmText(o.distance)} · {GameData.KgText(o.weightKg)} · {o.CustomerTypeName}", label);
+                if (o.IsHeavy) GUILayout.Label("AĞIR SİPARİŞ — sadece arabalı kuryeler alabilir", warn);
                 GUILayout.Label($"Sepet {Ft(o.basket)} · Komisyon {Ft(o.commissionIncome)} + Teslimat ücreti {Ft(o.deliveryFee)} " +
                                 $"= Gelir {Ft(o.CompanyIncome)} · İptale {Mathf.Max(0f, o.createdAt + om.pendingTimeout - now):0} dk", small);
 
@@ -334,7 +336,7 @@ namespace KuryeTycoon
                 int count = 0;
                 foreach (var c in CourierManager.I.Couriers)
                 {
-                    if (!c.CanTakeMore) continue;
+                    if (!c.CanTakeMore || !c.CanCarry(o)) continue;
                     bool rejected = o.rejectedBy.Contains(c);
                     int p = eco.ProfitIf(o, c);
                     GUI.enabled = modalFree && p >= 0 && !rejected;
@@ -353,7 +355,7 @@ namespace KuryeTycoon
                         GUILayout.BeginHorizontal();
                     }
                 }
-                if (count == 0) GUILayout.Label("Müsait kurye yok — başvuruları kontrol et.", small);
+                if (count == 0) GUILayout.Label(o.IsHeavy ? "Müsait arabalı kurye yok." : "Bu ağırlığı taşıyabilecek müsait kurye yok.", small);
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }
@@ -405,7 +407,7 @@ namespace KuryeTycoon
                     GUILayout.Label($"Siparişlerin yaklaşık %{c.RejectChance * 100f:0}'ini reddedebilir.", warn);
 
                 GUILayout.Label($"Hız {c.speedSkill:0.00} · Dikkat {c.care:0.00} · Nezaket {c.politeness:0.00} · Dayanıklılık {c.stamina:0.00}", small);
-                GUILayout.Label($"Kazanç: {Ft(c.V.basePay + c.extraPay)}/paket + {c.V.payPerKm} Ft/km + bonus", small);
+                GUILayout.Label($"Kazanç: {Ft(c.V.basePay + c.extraPay)}/paket + {c.V.payPerKm} Ft/km + bonus · Taşır: {GameData.CarryText(c.V)}", small);
                 var camp = CampaignManager.I;
                 if (camp.weeklyChallenge)
                 {
@@ -466,7 +468,7 @@ namespace KuryeTycoon
                 GUILayout.Label($"Çalışma düzeni: {Courier.RoutineLabel(cand.routine)}", small);
                 GUILayout.Label($"Hız {cand.speedSkill:0.00} · Dikkat {cand.care:0.00} · Nezaket {cand.politeness:0.00} · Dayanıklılık {cand.stamina:0.00}", small);
                 GUILayout.Label($"Araç: {v.tilesPerMinute * 60f * GameData.KmPerTile:0} km/saat · {v.capacity} paket · " +
-                                $"Kazanç {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km", small);
+                                $"Kazanç {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km · Taşır: {GameData.CarryText(v)}", small);
                 if (cand.askExtraPay > 0)
                     GUILayout.Label($"Deneyimli: paket başı +{Ft(cand.askExtraPay)} ek ücret istiyor.", warn);
                 GUILayout.Label($"Başvuru {Mathf.Max(0f, (cand.expiresAt - now) / 60f):0} saat sonra geçersiz olacak.", small);
@@ -497,7 +499,9 @@ namespace KuryeTycoon
                 GUILayout.BeginVertical(box);
                 GUILayout.Label(s.Name + (s.contracted ? "  [Sözleşmeli]" : ""), header);
                 GUILayout.Label($"Komisyon %{s.Commission * 100f:0.#} · Hazırlık ~{s.def.prepMinutes:0} dk · " +
-                                $"Sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · Toplam sipariş {s.ordersTotal}", small);
+                                $"Sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · Ağırlık {GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)} · Toplam sipariş {s.ordersTotal}", small);
+                if (s.def.kgMax >= GameData.HeavyKg)
+                    GUILayout.Label($"{GameData.HeavyKg:0} kg üstü ağır siparişler gelir: bunlar için arabalı kurye gerekir.", warn);
                 if (!map.IsUnlocked(s.tile.x))
                 {
                     GUILayout.Label($"Kilitli: önce \"{CityMap.DistrictNames[s.def.unlockLevel]}\" bölgesini aç.", small);
@@ -730,7 +734,7 @@ namespace KuryeTycoon
             GUILayout.Space(8);
             GUILayout.Label("Kurye ücretleri (araca göre)", header);
             foreach (var v in GameData.Vehicles)
-                GUILayout.Label($"{v.name}: {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km", small);
+                GUILayout.Label($"{v.name}: {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km · {GameData.CarryText(v)}", small);
 
             GUILayout.Space(8);
             GUILayout.Label("Kurye bonusları", header);
@@ -748,8 +752,8 @@ namespace KuryeTycoon
             const int basket = 5000;
             const int tiles = 15;
             int commission = Mathf.RoundToInt(basket * 0.10f);
-            int fee = e.QuoteDeliveryFee(commission, tiles);
-            int pay = e.MaxCourierPay(tiles);
+            int fee = e.QuoteDeliveryFee(commission, tiles, 2f);
+            int pay = e.MaxCourierPay(tiles, 2f);
             GUILayout.Label($"Sepet {Ft(basket)}, komisyon %10 = {Ft(commission)}", small);
             GUILayout.Label($"Mesafe {GameData.KmText(tiles)} → teslimat ücreti {Ft(fee)}", small);
             GUILayout.Label($"Şirket geliri = {Ft(commission + fee)}", small);

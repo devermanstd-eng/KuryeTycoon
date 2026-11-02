@@ -16,6 +16,7 @@ namespace KuryeTycoon
         public int payPerKm;           // kuryeye km başı ödeme (Ft) — 175–286 arası
         public bool exposed;           // hava şartlarına açık mı (araba hariç hepsi)
         public float accidentRisk;     // günlük kaza ihtimali
+        public float maxWeightKg;      // taşıyabileceği en ağır sipariş (kg)
     }
 
     public class ShopDef
@@ -29,6 +30,7 @@ namespace KuryeTycoon
         public int contractCost;       // sözleşme imza bedeli (0 = başlangıçta sözleşmeli)
         public int unlockLevel;        // hangi bölgede
         public bool hotFood;
+        public float kgMin, kgMax;     // sipariş ağırlığı aralığı (sepet büyüdükçe artar)
     }
 
     public class EquipmentDef
@@ -46,11 +48,11 @@ namespace KuryeTycoon
 
         public static readonly VehicleDef[] Vehicles =
         {
-            new VehicleDef { kind = VehicleKind.Yuruyerek,  name = "Yürüyerek",  letter = "Y", tilesPerMinute = 0.25f, capacity = 1, basePay = 450, payPerKm = 175, exposed = true,  accidentRisk = 0.002f },
-            new VehicleDef { kind = VehicleKind.Bisiklet,   name = "Bisiklet",   letter = "B", tilesPerMinute = 0.50f, capacity = 2, basePay = 500, payPerKm = 195, exposed = true,  accidentRisk = 0.010f },
-            new VehicleDef { kind = VehicleKind.EScooter,   name = "E-Scooter",  letter = "S", tilesPerMinute = 0.65f, capacity = 2, basePay = 550, payPerKm = 220, exposed = true,  accidentRisk = 0.015f },
-            new VehicleDef { kind = VehicleKind.Motosiklet, name = "Motosiklet", letter = "M", tilesPerMinute = 0.95f, capacity = 3, basePay = 600, payPerKm = 250, exposed = true,  accidentRisk = 0.020f },
-            new VehicleDef { kind = VehicleKind.Araba,      name = "Araba",      letter = "A", tilesPerMinute = 0.85f, capacity = 4, basePay = 650, payPerKm = 286, exposed = false, accidentRisk = 0.008f },
+            new VehicleDef { kind = VehicleKind.Yuruyerek,  name = "Yürüyerek",  letter = "Y", tilesPerMinute = 0.25f, capacity = 1, basePay = 450, payPerKm = 175, exposed = true,  accidentRisk = 0.002f, maxWeightKg = 3f },
+            new VehicleDef { kind = VehicleKind.Bisiklet,   name = "Bisiklet",   letter = "B", tilesPerMinute = 0.50f, capacity = 2, basePay = 500, payPerKm = 195, exposed = true,  accidentRisk = 0.010f, maxWeightKg = 20f },
+            new VehicleDef { kind = VehicleKind.EScooter,   name = "E-Scooter",  letter = "S", tilesPerMinute = 0.65f, capacity = 2, basePay = 550, payPerKm = 220, exposed = true,  accidentRisk = 0.015f, maxWeightKg = 20f },
+            new VehicleDef { kind = VehicleKind.Motosiklet, name = "Motosiklet", letter = "M", tilesPerMinute = 0.95f, capacity = 3, basePay = 600, payPerKm = 250, exposed = true,  accidentRisk = 0.020f, maxWeightKg = 20f },
+            new VehicleDef { kind = VehicleKind.Araba,      name = "Araba",      letter = "A", tilesPerMinute = 0.85f, capacity = 4, basePay = 650, payPerKm = 286, exposed = false, accidentRisk = 0.008f, maxWeightKg = 999f },
         };
 
         public static VehicleDef Vehicle(VehicleKind k) => Vehicles[(int)k];
@@ -58,16 +60,18 @@ namespace KuryeTycoon
         public static readonly ShopDef[] Shops =
         {
             // Bölge 1 — Merkez Mahalle
-            new ShopDef { name = "Burger Queen",  color = new Color(0.95f, 0.45f, 0.15f), prepMinutes = 8,  basketMin = 2500, basketMax = 6000,  commission = 0.10f, weight = 1.2f, contractCost = 0,      unlockLevel = 1, hotFood = true },
-            new ShopDef { name = "Döner Kral",    color = new Color(0.80f, 0.20f, 0.20f), prepMinutes = 6,  basketMin = 1800, basketMax = 4500,  commission = 0.12f, weight = 1.0f, contractCost = 0,      unlockLevel = 1, hotFood = true },
-            new ShopDef { name = "Starbocks",     color = new Color(0.10f, 0.55f, 0.35f), prepMinutes = 5,  basketMin = 1500, basketMax = 4000,  commission = 0.12f, weight = 0.8f, contractCost = 20000,  unlockLevel = 1, hotFood = false },
-            new ShopDef { name = "Market 24",     color = new Color(0.25f, 0.45f, 0.90f), prepMinutes = 5,  basketMin = 3000, basketMax = 12000, commission = 0.08f, weight = 0.6f, contractCost = 25000,  unlockLevel = 1, hotFood = false },
+            new ShopDef { name = "Burger Queen",  color = new Color(0.95f, 0.45f, 0.15f), prepMinutes = 8,  basketMin = 2500, basketMax = 6000,  commission = 0.10f, weight = 1.2f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.5f, kgMax = 2.5f },
+            new ShopDef { name = "Döner Kral",    color = new Color(0.80f, 0.20f, 0.20f), prepMinutes = 6,  basketMin = 1800, basketMax = 4500,  commission = 0.12f, weight = 1.0f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.4f, kgMax = 2f },
+            new ShopDef { name = "Starbocks",     color = new Color(0.10f, 0.55f, 0.35f), prepMinutes = 5,  basketMin = 1500, basketMax = 4000,  commission = 0.12f, weight = 0.8f, contractCost = 20000,  unlockLevel = 1, hotFood = false, kgMin = 0.3f, kgMax = 1.5f },
+            new ShopDef { name = "Szpar Express", color = new Color(0.15f, 0.62f, 0.30f), prepMinutes = 10, basketMin = 3000, basketMax = 15000, commission = 0.08f, weight = 0.7f, contractCost = 30000,  unlockLevel = 1, hotFood = false, kgMin = 2f, kgMax = 18f },
+            new ShopDef { name = "Market 24",     color = new Color(0.25f, 0.45f, 0.90f), prepMinutes = 5,  basketMin = 3000, basketMax = 12000, commission = 0.08f, weight = 0.6f, contractCost = 25000,  unlockLevel = 1, hotFood = false, kgMin = 1f, kgMax = 12f },
             // Bölge 2 — Doğu İlçesi
-            new ShopDef { name = "McDanold's",    color = new Color(0.95f, 0.80f, 0.10f), prepMinutes = 7,  basketMin = 2500, basketMax = 6500,  commission = 0.10f, weight = 1.4f, contractCost = 60000,  unlockLevel = 2, hotFood = true },
-            new ShopDef { name = "Pizza Hat",     color = new Color(0.85f, 0.10f, 0.35f), prepMinutes = 18, basketMin = 3500, basketMax = 9000,  commission = 0.11f, weight = 1.0f, contractCost = 50000,  unlockLevel = 2, hotFood = true },
+            new ShopDef { name = "McDanold's",    color = new Color(0.95f, 0.80f, 0.10f), prepMinutes = 7,  basketMin = 2500, basketMax = 6500,  commission = 0.10f, weight = 1.4f, contractCost = 60000,  unlockLevel = 2, hotFood = true, kgMin = 0.5f, kgMax = 2.5f },
+            new ShopDef { name = "Pizza Hat",     color = new Color(0.85f, 0.10f, 0.35f), prepMinutes = 18, basketMin = 3500, basketMax = 9000,  commission = 0.11f, weight = 1.0f, contractCost = 50000,  unlockLevel = 2, hotFood = true, kgMin = 1f, kgMax = 4f },
+            new ShopDef { name = "InterSzpar",    color = new Color(0.85f, 0.12f, 0.18f), prepMinutes = 20, basketMin = 8000, basketMax = 45000, commission = 0.07f, weight = 0.8f, contractCost = 70000,  unlockLevel = 2, hotFood = false, kgMin = 6f, kgMax = 40f },
             // Bölge 3 — Sanayi & Kampüs
-            new ShopDef { name = "KFG",           color = new Color(0.70f, 0.15f, 0.10f), prepMinutes = 10, basketMin = 3000, basketMax = 7500,  commission = 0.11f, weight = 1.1f, contractCost = 80000,  unlockLevel = 3, hotFood = true },
-            new ShopDef { name = "Sushi Samurai", color = new Color(0.95f, 0.95f, 0.95f), prepMinutes = 20, basketMin = 5000, basketMax = 15000, commission = 0.13f, weight = 0.7f, contractCost = 100000, unlockLevel = 3, hotFood = false },
+            new ShopDef { name = "KFG",           color = new Color(0.70f, 0.15f, 0.10f), prepMinutes = 10, basketMin = 3000, basketMax = 7500,  commission = 0.11f, weight = 1.1f, contractCost = 80000,  unlockLevel = 3, hotFood = true, kgMin = 0.7f, kgMax = 3f },
+            new ShopDef { name = "Sushi Samurai", color = new Color(0.95f, 0.95f, 0.95f), prepMinutes = 20, basketMin = 5000, basketMax = 15000, commission = 0.13f, weight = 0.7f, contractCost = 100000, unlockLevel = 3, hotFood = false, kgMin = 0.5f, kgMax = 2.5f },
         };
 
         public static readonly EquipmentDef[] Equipment =
@@ -109,6 +113,16 @@ namespace KuryeTycoon
         public static string RandomNote() => ApplicationNotes[Random.Range(0, ApplicationNotes.Length)];
 
         public static float Km(int tiles) => tiles * KmPerTile;
+
+        /// <summary>Bu ağırlık ve üstü "ağır sipariş": sadece arabalı kuryeler alır.</summary>
+        public const float HeavyKg = 20f;
+
+        /// <summary>12.5 → "12,5 kg"</summary>
+        public static string KgText(float kg) =>
+            kg.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',') + " kg";
+
+        public static string CarryText(VehicleDef v) =>
+            v.maxWeightKg >= 900f ? "ağır siparişler dahil her ağırlık" : $"{v.maxWeightKg:0} kg'a kadar";
 
         /// <summary>15 kare → "3,0 km"</summary>
         public static string KmText(int tiles) =>

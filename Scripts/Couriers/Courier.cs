@@ -211,6 +211,10 @@ namespace KuryeTycoon
 
         public bool CanTakeMore => Available && OrderCount < EffectiveCapacity;
 
+        /// <summary>Aracı bu siparişin ağırlığını taşıyabilir mi?</summary>
+        public bool CanCarry(Order o) => o.weightKg <= V.maxWeightKg;
+        public bool CanCarry(float kg) => kg <= V.maxWeightKg;
+
         /// <summary>Düşük moral ve yüksek yorgunlukta sipariş reddetme ihtimali. Boost saatinde reddetmez.</summary>
         public float RejectChance =>
             (CampaignManager.I != null && CampaignManager.I.BoostActive) ? 0f

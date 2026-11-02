@@ -41,7 +41,8 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Ödeme | Paket başı sabit + km başı (175–286 Ft, araca göre) + hava/gece/yoğun saat bonusu × bonus çarpanı |
 | Kâr kuralı | Teslimat ücreti, en pahalı kuryeye bile verilse min. kâr kalacak şekilde hesaplanır; zararına atama engellenir |
 | Siparişler | Sözleşmeli dükkanlardan gelir; pahalı ücrette müşteri vazgeçer, kurye bulunmazsa iptal olur |
-| Dükkanlar | Burger Queen, Döner Kral, Starbocks, Market 24, McDanold's, Pizza Hat, KFG, Sushi Samurai |
+| Dükkanlar | Burger Queen, Döner Kral, Starbocks, Szpar Express, Market 24, McDanold's, Pizza Hat, InterSzpar, KFG, Sushi Samurai |
+| Sipariş ağırlığı | Yürüyerek 3 kg'a kadar; bisiklet, scooter, motor ve araba 20 kg'a kadar; 20 kg ve üstü "ağır sipariş", sadece araba. Taşıyacak kurye yoksa sipariş alınamaz |
 | Olaylar | Eksik ürün, hasarlı sipariş, kaza, hastalık, kuryenin ayrılması, yavaş dükkan, viral yorum, komisyon teklifi |
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |

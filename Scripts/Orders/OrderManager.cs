@@ -25,6 +25,8 @@ namespace KuryeTycoon
         public int lostToday;       // ücret pahalı geldiği için vazgeçen müşteri
         public int cancelledToday;  // kurye bulunamadığı için iptal
         public int rejectedToday;   // kuryelerin reddettiği teklif
+        public int heavyLostToday;  // taşıyabilecek kurye olmadığı için alınamayan ağır sipariş
+        bool heavyWarnedToday;
 
         float spawnAcc;
         float assignTimer;
@@ -38,7 +40,7 @@ namespace KuryeTycoon
         {
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { lostToday = 0; cancelledToday = 0; rejectedToday = 0; };
+            GameClock.I.OnNewDay += () => { lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; };
         }
 
         static float HourCurve(int h)
@@ -136,8 +138,27 @@ namespace KuryeTycoon
             int dist = Mathf.Max(1, map.FindPath(shop.door, custDoor).Count - 1);
 
             int basket = GameData.Round10(Random.Range(shop.def.basketMin, shop.def.basketMax));
+
+            // Ağırlık: sepet büyüdükçe artar, biraz da rastgelelik
+            float t = Mathf.InverseLerp(shop.def.basketMin, shop.def.basketMax, basket);
+            float kg = Mathf.Round(Mathf.Lerp(shop.def.kgMin, shop.def.kgMax, t * 0.7f + Random.value * 0.3f) * 10f) / 10f;
+
+            // Ekipte bu ağırlığı taşıyabilecek kurye yoksa sipariş kabul edilmez
+            if (!EconomyManager.AnyoneCanCarry(kg))
+            {
+                heavyLostToday++;
+                if (!heavyWarnedToday)
+                {
+                    heavyWarnedToday = true;
+                    EventManager.I.Notify(kg >= GameData.HeavyKg
+                        ? $"{shop.Name}'dan {GameData.KgText(kg)} ağır sipariş geldi ama arabalı kuryen yok, alınamadı."
+                        : $"{shop.Name}'dan {GameData.KgText(kg)} sipariş geldi ama taşıyabilecek kurye yok, alınamadı.");
+                }
+                return;
+            }
+
             int commission = Mathf.RoundToInt(basket * shop.Commission);
-            int fee = EconomyManager.I.QuoteDeliveryFee(commission, dist);
+            int fee = EconomyManager.I.QuoteDeliveryFee(commission, dist, kg);
 
             // Pahalı teslimat ücreti = müşteri vazgeçebilir
             float accept = Mathf.Clamp(1.35f - fee / 2200f, 0.15f, 1f);
@@ -156,6 +177,7 @@ namespace KuryeTycoon
                 customerType = RandomCustomerType(),
                 basket = basket,
                 distance = dist,
+                weightKg = kg,
                 commissionIncome = commission,
                 deliveryFee = fee,
                 createdAt = now
@@ -163,7 +185,8 @@ namespace KuryeTycoon
             o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);
             o.deadlineAt = o.readyAt + dist / 0.45f + (o.customerType == CustomerType.Aceleci ? 7f : 15f);
             o.marker = SpriteFactory.Create($"Müşteri #{o.id}", markerRoot, true,
-                new Color(1f, 0.6f, 0.2f), CityMap.ToWorld(custTile), 0.45f, 3);
+                o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f),
+                CityMap.ToWorld(custTile), o.IsHeavy ? 0.6f : 0.45f, 3);
 
             Pending.Add(o);
             shop.ordersTotal++;
@@ -200,7 +223,7 @@ namespace KuryeTycoon
                 float bestScore = float.MaxValue;
                 foreach (var c in CourierManager.I.Couriers)
                 {
-                    if (!c.CanTakeMore || o.rejectedBy.Contains(c)) continue;
+                    if (!c.CanTakeMore || !c.CanCarry(o) || o.rejectedBy.Contains(c)) continue;
                     int profit = EconomyManager.I.ProfitIf(o, c);
                     if (profit < 0) continue; // asla zararına iş yok
                     float score = EstimateEta(c, o);
@@ -222,6 +245,11 @@ namespace KuryeTycoon
         public bool Assign(Order o, Courier c)
         {
             if (o.status != OrderStatus.Bekliyor || c == null || !c.CanTakeMore || o.rejectedBy.Contains(c)) return false;
+            if (!c.CanCarry(o))
+            {
+                EventManager.I.Notify($"#{o.id} ({GameData.KgText(o.weightKg)}) {c.ShortName}'ın aracına fazla ağır.");
+                return false;
+            }
 
             int pay = EconomyManager.I.CourierPay(c, o.distance);
             if (o.CompanyIncome - pay < 0)
@@ -244,7 +272,7 @@ namespace KuryeTycoon
             o.status = OrderStatus.Atandi;
             Pending.Remove(o);
             Active.Add(o);
-            if (o.marker != null) o.marker.color = new Color(1f, 0.85f, 0.3f);
+            if (o.marker != null) o.marker.color = o.IsHeavy ? new Color(0.9f, 0.65f, 1f) : new Color(1f, 0.85f, 0.3f);
             c.Assign(o);
             return true;
         }

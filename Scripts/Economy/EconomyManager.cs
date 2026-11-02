@@ -113,23 +113,38 @@ namespace KuryeTycoon
 
         public int ProfitIf(Order o, Courier c) => o.CompanyIncome - CourierPay(c, o.distance);
 
-        /// <summary>Ekipteki en pahalı kuryenin bu mesafe için ücreti.</summary>
-        public int MaxCourierPay(int tiles)
+        /// <summary>
+        /// Bu ağırlığı taşıyabilen kuryeler arasında en pahalısının bu mesafe için ücreti.
+        /// Ekipte taşıyabilen kurye yoksa, taşıyabilecek en ucuz araç tipine göre hesaplanır.
+        /// </summary>
+        public int MaxCourierPay(int tiles, float weightKg)
         {
             int max = 0;
-            foreach (var c in CourierManager.I.Couriers) max = Mathf.Max(max, CourierPay(c, tiles));
-            if (max == 0) max = PayFor(GameData.Vehicle(VehicleKind.Bisiklet), 0, tiles);
+            foreach (var c in CourierManager.I.Couriers)
+                if (c.CanCarry(weightKg)) max = Mathf.Max(max, CourierPay(c, tiles));
+            if (max == 0)
+            {
+                foreach (var v in GameData.Vehicles)
+                    if (weightKg <= v.maxWeightKg && v.kind != VehicleKind.Yuruyerek) { max = PayFor(v, 0, tiles); break; }
+            }
             return max;
+        }
+
+        /// <summary>Ekipte bu ağırlığı taşıyabilecek kurye var mı?</summary>
+        public static bool AnyoneCanCarry(float weightKg)
+        {
+            foreach (var c in CourierManager.I.Couriers) if (c.CanCarry(weightKg)) return true;
+            return false;
         }
 
         /// <summary>
         /// Müşteriden alınacak teslimat ücreti:
         /// en büyüğü( taban + km ücreti × km , en pahalı kurye ücreti + min. kâr − komisyon )
         /// </summary>
-        public int QuoteDeliveryFee(int commissionIncome, int tiles)
+        public int QuoteDeliveryFee(int commissionIncome, int tiles, float weightKg)
         {
             int normal = baseFee + Mathf.RoundToInt(feePerKm * GameData.Km(tiles));
-            int required = MaxCourierPay(tiles) + minProfit - commissionIncome;
+            int required = MaxCourierPay(tiles, weightKg) + minProfit - commissionIncome;
             return GameData.CeilTo10(Mathf.Max(normal, required, 0));
         }
 
