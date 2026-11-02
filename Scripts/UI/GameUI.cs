@@ -1,0 +1,728 @@
+using UnityEngine;
+
+namespace KuryeTycoon
+{
+    /// <summary>
+    /// Prototip arayüzü (Unity IMGUI). Kurulum ekranı, üst bar, sol panel sekmeleri,
+    /// haber akışı ve olay kartları. Hiçbir Canvas / prefab gerektirmez.
+    /// </summary>
+    public class GameUI : MonoBehaviour
+    {
+        enum Tab { Siparisler, Kuryeler, IseAlim, Dukkanlar, Ekipman, Finans, Ayarlar }
+        static readonly string[] TabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Dükkanlar", "Ekipman", "Finans", "Ayarlar" };
+
+        public float panelWidth = 420f;
+        const float TopBar = 48f;
+
+        static readonly Color[] Presets =
+        {
+            new Color(0.00f, 0.62f, 0.87f), new Color(0.89f, 0.20f, 0.20f), new Color(1.00f, 0.50f, 0.10f),
+            new Color(1.00f, 0.80f, 0.10f), new Color(0.20f, 0.72f, 0.35f), new Color(0.10f, 0.60f, 0.60f),
+            new Color(0.55f, 0.30f, 0.85f), new Color(0.95f, 0.35f, 0.60f), new Color(0.10f, 0.10f, 0.12f),
+            new Color(0.97f, 0.97f, 0.97f)
+        };
+
+        Tab tab;
+        Vector2 scroll;
+        float uiScale = 1f;
+        bool modalFree = true;
+        System.Action deferred; // listeleri değiştiren işlemler bir sonraki Update'te yapılır
+
+        // Kurulum ekranı
+        string companyName = "Hızlı Kurye";
+        Color primary, secondary;
+        int editingColor;
+
+        Courier selectedCourier;
+
+        GUIStyle title, header, label, small, box, button, smallButton, bigButton, toggle, textField,
+                 worldLabel, barTitle, barText, logoLetter;
+        bool stylesReady;
+
+        static string Ft(long v) => GameData.Ft(v);
+
+        void Start()
+        {
+            primary = CompanyProfile.Primary;
+            secondary = CompanyProfile.Secondary;
+        }
+
+        void Update()
+        {
+            if (deferred != null)
+            {
+                var a = deferred;
+                deferred = null;
+                a();
+            }
+        }
+
+        void LateUpdate() { FitCamera(); }
+
+        void FitCamera()
+        {
+            var cam = Camera.main;
+            if (cam == null || GameBootstrap.I == null) return;
+            if (!GameBootstrap.I.Started)
+            {
+                cam.rect = new Rect(0, 0, 1, 1);
+                return;
+            }
+            float left = Mathf.Clamp01(panelWidth * uiScale / Screen.width);
+            float top = Mathf.Clamp01(TopBar * uiScale / Screen.height);
+            cam.rect = new Rect(left, 0f, 1f - left, 1f - top);
+            float w = CityMap.Width + 1f, h = CityMap.Height + 1f;
+            cam.orthographicSize = Mathf.Max(h / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
+            cam.transform.position = new Vector3((CityMap.Width - 1) / 2f, (CityMap.Height - 1) / 2f, -10f);
+        }
+
+        // =====================================================================
+        void OnGUI()
+        {
+            uiScale = Mathf.Clamp(Screen.height / 900f, 0.8f, 2f);
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(uiScale, uiScale, 1f));
+            float sw = Screen.width / uiScale;
+            float sh = Screen.height / uiScale;
+            InitStyles();
+
+            if (GameBootstrap.I == null) return;
+            if (!GameBootstrap.I.Started)
+            {
+                DrawSetup(sw, sh);
+                return;
+            }
+
+            modalFree = EventManager.I.Current == null;
+            if (modalFree) HandleKeys();
+
+            GUI.enabled = modalFree;
+            DrawWorldLabels();
+            DrawTopBar(sw);
+            DrawPanel(sh);
+            DrawFeed(sw, sh);
+            GUI.enabled = true;
+            DrawEvent(sw, sh);
+        }
+
+        // ---------------------------------------------------------------- kurulum
+        void DrawSetup(float sw, float sh)
+        {
+            Fill(new Rect(0, 0, sw, sh), new Color(0.08f, 0.09f, 0.11f));
+            float w = 620f, h = 680f;
+            var r = new Rect((sw - w) / 2f, Mathf.Max(10f, (sh - h) / 2f), w, h);
+            Fill(r, new Color(0.14f, 0.15f, 0.18f));
+
+            GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 40));
+            GUILayout.Label("Kurye Şirketini Kur", title);
+            GUILayout.Label("Küçük bir sermaye ve 2 kuryeyle başlıyorsun. Önce şirketine bir isim ve renk ver.", label);
+            GUILayout.Space(12);
+
+            GUILayout.Label("Şirket adı", header);
+            companyName = GUILayout.TextField(companyName, 24, textField);
+            GUILayout.Space(12);
+
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Toggle(editingColor == 0, "Ana renk", button)) editingColor = 0;
+            if (GUILayout.Toggle(editingColor == 1, "İkincil renk", button)) editingColor = 1;
+            GUILayout.EndHorizontal();
+            GUILayout.Space(6);
+
+            Color c = editingColor == 0 ? primary : secondary;
+            GUILayout.BeginHorizontal();
+            foreach (var p in Presets)
+            {
+                Rect sr = GUILayoutUtility.GetRect(42, 42, GUILayout.Width(42), GUILayout.Height(42));
+                bool selected = Mathf.Abs(p.r - c.r) + Mathf.Abs(p.g - c.g) + Mathf.Abs(p.b - c.b) < 0.02f;
+                if (selected) Fill(sr, Color.white);
+                Fill(new Rect(sr.x + 3, sr.y + 3, sr.width - 6, sr.height - 6), p);
+                if (GUI.Button(sr, GUIContent.none, GUIStyle.none)) c = p;
+            }
+            GUILayout.EndHorizontal();
+
+            c.r = ColorSlider("Kırmızı", c.r);
+            c.g = ColorSlider("Yeşil", c.g);
+            c.b = ColorSlider("Mavi", c.b);
+            c.a = 1f;
+            if (editingColor == 0) primary = c; else secondary = c;
+
+            GUILayout.Space(12);
+            GUILayout.Label("Önizleme", header);
+            Rect pr = GUILayoutUtility.GetRect(100, 130, GUILayout.ExpandWidth(true));
+            Fill(pr, primary);
+            var logo = new Rect(pr.x + 18, pr.y + 18, 94, 94);
+            Fill(logo, secondary);
+            Fill(new Rect(logo.x + 7, logo.y + 7, logo.width - 14, logo.height - 14), primary);
+            logoLetter.normal.textColor = secondary;
+            string initial = string.IsNullOrEmpty(companyName.Trim()) ? "K" : companyName.Trim().Substring(0, 1).ToUpper();
+            GUI.Label(logo, initial, logoLetter);
+            barTitle.normal.textColor = secondary;
+            GUI.Label(new Rect(pr.x + 130, pr.y + 30, pr.width - 260, 40), companyName, barTitle);
+            barText.normal.textColor = secondary;
+            GUI.Label(new Rect(pr.x + 130, pr.y + 66, pr.width - 260, 30), "Kurye montu, çanta ve araçlar bu renklerde olacak", barText);
+            // kurye önizlemesi
+            var courier = new Rect(pr.xMax - 100, pr.y + 35, 60, 60);
+            Fill(courier, secondary);
+            Fill(new Rect(courier.x + 10, courier.y + 10, 40, 40), primary);
+
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("Şirketi Kur ve Başla", bigButton, GUILayout.Height(50)))
+            {
+                CompanyProfile.Name = string.IsNullOrEmpty(companyName.Trim()) ? "Hızlı Kurye" : companyName.Trim();
+                CompanyProfile.Primary = primary;
+                CompanyProfile.Secondary = secondary;
+                deferred = () => GameBootstrap.I.StartGame();
+            }
+            GUILayout.EndArea();
+        }
+
+        float ColorSlider(string name, float v)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(name, label, GUILayout.Width(80));
+            v = GUILayout.HorizontalSlider(v, 0f, 1f, GUILayout.Height(20));
+            GUILayout.Label(Mathf.RoundToInt(v * 255f).ToString(), label, GUILayout.Width(40));
+            GUILayout.EndHorizontal();
+            return v;
+        }
+
+        // ---------------------------------------------------------------- klavye
+        void HandleKeys()
+        {
+            var e = Event.current;
+            if (e.type != EventType.KeyDown) return;
+            var clk = GameClock.I;
+            switch (e.keyCode)
+            {
+                case KeyCode.Space: clk.Paused = !clk.Paused; e.Use(); break;
+                case KeyCode.Alpha1: SetSpeed(1f); e.Use(); break;
+                case KeyCode.Alpha2: SetSpeed(2f); e.Use(); break;
+                case KeyCode.Alpha3: SetSpeed(4f); e.Use(); break;
+            }
+        }
+
+        static void SetSpeed(float s)
+        {
+            GameClock.I.SpeedMultiplier = s;
+            GameClock.I.Paused = false;
+        }
+
+        // ---------------------------------------------------------------- harita etiketleri
+        void DrawWorldLabels()
+        {
+            var cam = Camera.main;
+            if (cam == null || CityMap.I == null) return;
+
+            foreach (var s in CityMap.I.Shops)
+            {
+                if (!CityMap.I.IsUnlocked(s.tile.x)) continue;
+                WorldLabel(cam, CityMap.ToWorld(s.tile) + Vector3.up * 0.7f,
+                    s.contracted ? s.Name : s.Name + " (sözleşmesiz)",
+                    s.contracted ? Color.white : new Color(0.7f, 0.7f, 0.7f));
+            }
+
+            WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile), CompanyProfile.Initial, CompanyProfile.Secondary);
+            WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + Vector3.up * 0.7f, "Merkez", Color.white);
+
+            foreach (var c in CourierManager.I.Couriers)
+                WorldLabel(cam, CityMap.ToWorld(c.Position) + Vector3.up * 0.55f, $"{c.ShortName} ({c.V.letter})", Color.white);
+        }
+
+        void WorldLabel(Camera cam, Vector3 world, string text, Color color)
+        {
+            Vector3 sp = cam.WorldToScreenPoint(world);
+            if (sp.z < 0f) return;
+            float x = sp.x / uiScale;
+            float y = (Screen.height - sp.y) / uiScale;
+            var r = new Rect(x - 90f, y - 10f, 180f, 20f);
+            worldLabel.normal.textColor = new Color(0f, 0f, 0f, 0.85f);
+            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, worldLabel);
+            worldLabel.normal.textColor = color;
+            GUI.Label(r, text, worldLabel);
+        }
+
+        // ---------------------------------------------------------------- üst bar
+        void DrawTopBar(float sw)
+        {
+            var clock = GameClock.I;
+            var eco = EconomyManager.I;
+            var weather = WeatherSystem.I;
+
+            Fill(new Rect(0, 0, sw, TopBar), CompanyProfile.Primary);
+            barTitle.normal.textColor = CompanyProfile.Secondary;
+            barText.normal.textColor = CompanyProfile.Secondary;
+
+            GUI.Label(new Rect(14, 0, 260, TopBar), CompanyProfile.Name, barTitle);
+
+            string info = $"Kasa: {Ft(eco.money)}    Vergi kasası: {Ft(eco.taxVault)}    " +
+                          $"İtibar: {CompanyProfile.Reputation:0.0}/5    {clock.TimeText}    " +
+                          $"{clock.SeasonName} · {weather.Name}";
+            if (eco.taxDebt > 0) info += $"    VERGİ BORCU: {Ft(eco.taxDebt)}";
+            GUI.Label(new Rect(280, 0, sw - 280 - 240, TopBar), info, barText);
+
+            float bx = sw - 230f;
+            if (GUI.Button(new Rect(bx, 9, 50, 30), clock.Paused ? ">" : "II", button)) clock.Paused = !clock.Paused;
+            if (GUI.Button(new Rect(bx + 56, 9, 50, 30), Speed(clock, 1f) + "1x", button)) SetSpeed(1f);
+            if (GUI.Button(new Rect(bx + 112, 9, 50, 30), Speed(clock, 2f) + "2x", button)) SetSpeed(2f);
+            if (GUI.Button(new Rect(bx + 168, 9, 50, 30), Speed(clock, 4f) + "4x", button)) SetSpeed(4f);
+        }
+
+        static string Speed(GameClock c, float s) => !c.Paused && Mathf.Approximately(c.SpeedMultiplier, s) ? "*" : "";
+
+        // ---------------------------------------------------------------- sol panel
+        void DrawPanel(float sh)
+        {
+            var r = new Rect(0, TopBar, panelWidth, sh - TopBar);
+            Fill(r, new Color(0.12f, 0.13f, 0.16f, 0.98f));
+
+            GUILayout.BeginArea(new Rect(r.x + 8, r.y + 8, r.width - 16, r.height - 16));
+            int newTab = GUILayout.SelectionGrid((int)tab, TabNames, 4, smallButton);
+            if (newTab != (int)tab) { var t = (Tab)newTab; deferred = () => { tab = t; scroll = Vector2.zero; }; }
+            GUILayout.Space(6);
+            scroll = GUILayout.BeginScrollView(scroll);
+
+            switch (tab)
+            {
+                case Tab.Siparisler: DrawOrders(); break;
+                case Tab.Kuryeler: DrawCouriers(); break;
+                case Tab.IseAlim: DrawHiring(); break;
+                case Tab.Dukkanlar: DrawShops(); break;
+                case Tab.Ekipman: DrawEquipment(); break;
+                case Tab.Finans: DrawFinance(); break;
+                case Tab.Ayarlar: DrawSettings(); break;
+            }
+
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+        }
+
+        void DrawOrders()
+        {
+            var om = OrderManager.I;
+            var eco = EconomyManager.I;
+            float now = GameClock.I.TotalMinutes;
+
+            om.autoAssign = GUILayout.Toggle(om.autoAssign, " Otomatik atama (dispatcher)", toggle);
+            om.prioritizeProfit = GUILayout.Toggle(om.prioritizeProfit, " Atamada kârı öncele (kapalıysa en hızlı kurye)", toggle);
+            GUILayout.Label($"Bugün: vazgeçen müşteri (ücret pahalı) {om.lostToday} · iptal (kurye yok) {om.cancelledToday}", small);
+
+            GUILayout.Space(6);
+            GUILayout.Label($"Bekleyen siparişler ({om.Pending.Count})", header);
+            int shown = 0;
+            foreach (var o in om.Pending)
+            {
+                if (shown++ >= 12) break;
+                GUILayout.BeginVertical(box);
+                GUILayout.Label($"#{o.id} {o.shop.Name} · {o.distance} kare · {o.CustomerTypeName}", label);
+                GUILayout.Label($"Sepet {Ft(o.basket)} · Komisyon {Ft(o.commissionIncome)} + Teslimat ücreti {Ft(o.deliveryFee)} " +
+                                $"= Gelir {Ft(o.CompanyIncome)} · İptale {Mathf.Max(0f, o.createdAt + om.pendingTimeout - now):0} dk", small);
+
+                GUILayout.BeginHorizontal();
+                int count = 0;
+                foreach (var c in CourierManager.I.Couriers)
+                {
+                    if (!c.CanTakeMore) continue;
+                    int p = eco.ProfitIf(o, c);
+                    GUI.enabled = modalFree && p >= 0;
+                    var order = o;
+                    var courier = c;
+                    string txt = p >= 0 ? $"{c.ShortName} ({c.V.letter}) kâr +{Ft(p)}" : $"{c.ShortName}: zarar {Ft(p)}";
+                    if (GUILayout.Button(txt, smallButton)) deferred = () => om.Assign(order, courier);
+                    GUI.enabled = modalFree;
+                    if (++count % 2 == 0)
+                    {
+                        GUILayout.EndHorizontal();
+                        GUILayout.BeginHorizontal();
+                    }
+                }
+                if (count == 0) GUILayout.Label("Müsait kurye yok — işe alım yap.", small);
+                GUILayout.EndHorizontal();
+                GUILayout.EndVertical();
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label($"Yolda ({om.Active.Count})", header);
+            foreach (var c in CourierManager.I.Couriers)
+            {
+                if (c.OrderCount == 0) continue;
+                string ids = c.CurrentOrder != null ? "#" + c.CurrentOrder.id : "";
+                foreach (var q in c.QueuedOrders) ids += " #" + q.id;
+                GUILayout.Label($"{c.ShortName} ({c.V.letter}): {c.StateName} — {ids}", small);
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label("Son teslimatlar", header);
+            for (int i = 0; i < Mathf.Min(8, om.History.Count); i++)
+            {
+                var o = om.History[i];
+                string tip = o.tip > 0 ? $" · bahşiş {Ft(o.tip)}" : "";
+                GUILayout.Label($"#{o.id} {o.shop.Name} → {o.courier.ShortName} · {o.rating:0.0} yıldız · kâr {Ft(o.Profit)}{tip}", small);
+            }
+        }
+
+        void DrawCouriers()
+        {
+            var cm = CourierManager.I;
+            GUILayout.Label($"Kuryeler ({cm.Couriers.Count})", header);
+            foreach (var c in cm.Couriers)
+            {
+                GUILayout.BeginVertical(box);
+                GUILayout.Label($"{c.courierName} — {c.V.name} · Seviye {c.level}", header);
+                GUILayout.Label($"{c.StateName} · Teslimat {c.deliveries} (bugün {c.deliveriesToday}) · Kazancı {Ft(c.totalEarned)}", small);
+                Bar("Moral", c.morale, Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), c.morale));
+                Bar("Yorgunluk", c.fatigue, new Color(1f, 0.6f, 0.2f));
+                GUILayout.Label($"Hız {c.speedSkill:0.00} · Dikkat {c.care:0.00} · Nezaket {c.politeness:0.00} · Dayanıklılık {c.stamina:0.00}", small);
+                GUILayout.Label($"Ücret: {Ft(c.V.basePay + c.extraPay)} + {c.V.payPerTile} Ft/kare + bonus · Ekipman: {EquipmentText(c)}", small);
+
+                GUILayout.BeginHorizontal();
+                var courier = c;
+                if (GUILayout.Button("Ekipman", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; scroll = Vector2.zero; };
+                if (GUILayout.Button("Dinlendir", smallButton)) deferred = () => courier.ForceRest();
+                if (GUILayout.Button($"İşten çıkar (−{Ft(cm.SeveranceFor(c))})", smallButton)) deferred = () => cm.Fire(courier);
+                GUILayout.EndHorizontal();
+                GUILayout.EndVertical();
+            }
+        }
+
+        static string EquipmentText(Courier c)
+        {
+            if (c.equipment.Count == 0) return "yok";
+            string s = "";
+            foreach (var k in c.equipment) s += (s.Length > 0 ? ", " : "") + GameData.Equip(k).name;
+            return s;
+        }
+
+        void DrawHiring()
+        {
+            var cm = CourierManager.I;
+            GUILayout.Label("İş başvuruları (her gün yenilenir)", header);
+            GUILayout.Label("Araba hızlı ve çok taşır ama pahalıdır; bisiklet ucuzdur ama kötü havada yavaşlar.", small);
+            foreach (var cand in cm.Candidates)
+            {
+                var v = GameData.Vehicle(cand.vehicle);
+                GUILayout.BeginVertical(box);
+                GUILayout.Label($"{cand.name} — {v.name}", header);
+                GUILayout.Label($"Hız {cand.speedSkill:0.00} · Dikkat {cand.care:0.00} · Nezaket {cand.politeness:0.00} · Dayanıklılık {cand.stamina:0.00}", small);
+                GUILayout.Label($"Araç hızı {v.tilesPerMinute * 60f:0} kare/saat · Kapasite {v.capacity} · " +
+                                $"Ücret {Ft(v.basePay)} + {v.payPerTile} Ft/kare · Günlük gider {Ft(v.dailyCost)}", small);
+                var c = cand;
+                if (GUILayout.Button($"İşe al — prim {Ft(cand.hireCost)}", button)) deferred = () => cm.Hire(c);
+                GUILayout.EndVertical();
+            }
+        }
+
+        void DrawShops()
+        {
+            var map = CityMap.I;
+            GUILayout.Label($"Açık bölge: {map.UnlockLevel}/{map.MaxLevel} — {CityMap.DistrictNames[map.UnlockLevel]}", header);
+            if (map.UnlockLevel < map.MaxLevel)
+            {
+                int next = map.UnlockLevel + 1;
+                if (GUILayout.Button($"Yeni bölge aç: {CityMap.DistrictNames[next]} — {Ft(CityMap.UnlockCost[next])}", button))
+                    deferred = () => map.TryUnlockNext();
+            }
+            GUILayout.Space(6);
+
+            foreach (var s in map.Shops)
+            {
+                GUILayout.BeginVertical(box);
+                GUILayout.Label(s.Name + (s.contracted ? "  [Sözleşmeli]" : ""), header);
+                GUILayout.Label($"Komisyon %{s.Commission * 100f:0.#} · Hazırlık ~{s.def.prepMinutes:0} dk · " +
+                                $"Sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · Toplam sipariş {s.ordersTotal}", small);
+                if (!map.IsUnlocked(s.tile.x))
+                {
+                    GUILayout.Label($"Kilitli: önce \"{CityMap.DistrictNames[s.def.unlockLevel]}\" bölgesini aç.", small);
+                }
+                else if (!s.contracted)
+                {
+                    var shop = s;
+                    if (GUILayout.Button($"Sözleşme imzala — {Ft(s.def.contractCost)}", button))
+                        deferred = () => map.SignContract(shop);
+                }
+                GUILayout.EndVertical();
+            }
+        }
+
+        void DrawEquipment()
+        {
+            var cm = CourierManager.I;
+            switch (GameClock.I.Season)
+            {
+                case Season.Kis: GUILayout.Label("KIŞ: Açık araçlı kuryelere mont almazsan morali her gün düşer.", header); break;
+                case Season.Yaz: GUILayout.Label("YAZ: Tişörtsüz kuryeler sıcakta yavaşlar ve morali düşer.", header); break;
+                case Season.Sonbahar: GUILayout.Label("SONBAHAR: Kış yaklaşıyor, montları şimdiden al. Yağmurluk da işe yarar.", header); break;
+                default: GUILayout.Label("İLKBAHAR: Yağmur sezonu, yağmurluk faydalı.", header); break;
+            }
+            GUILayout.Label("Ekipman kısa vadede kârı düşürür ama gider olarak vergiden düşülür; moral ve hız olarak geri döner.", small);
+
+            if (selectedCourier == null || !cm.Couriers.Contains(selectedCourier))
+                selectedCourier = cm.Couriers.Count > 0 ? cm.Couriers[0] : null;
+
+            GUILayout.Space(4);
+            GUILayout.Label("Kurye seç:", label);
+            GUILayout.BeginHorizontal();
+            int n = 0;
+            foreach (var c in cm.Couriers)
+            {
+                var courier = c;
+                bool on = c == selectedCourier;
+                if (GUILayout.Toggle(on, c.ShortName, smallButton) && !on) deferred = () => selectedCourier = courier;
+                if (++n % 4 == 0)
+                {
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            foreach (var e in GameData.Equipment)
+            {
+                GUILayout.BeginVertical(box);
+                GUILayout.Label($"{e.name} — {Ft(e.price)}", header);
+                GUILayout.Label(e.effect, small);
+                GUILayout.BeginHorizontal();
+                var kind = e.kind;
+                if (selectedCourier != null)
+                {
+                    var sc = selectedCourier;
+                    if (sc.Has(kind)) GUILayout.Label($"{sc.ShortName}: var", small);
+                    else if (GUILayout.Button($"{sc.ShortName}'a al", smallButton)) deferred = () => cm.BuyEquipment(sc, kind);
+                }
+                if (GUILayout.Button("Eksik olan herkese al", smallButton)) deferred = () => cm.BuyForAll(kind);
+                GUILayout.EndHorizontal();
+                GUILayout.EndVertical();
+            }
+        }
+
+        void DrawFinance()
+        {
+            var e = EconomyManager.I;
+            var clock = GameClock.I;
+
+            GUILayout.Label("Kasa", header);
+            GUILayout.Label($"Ana kasa: {Ft(e.money)}", label);
+            GUILayout.Label($"Vergi kasası: {Ft(e.taxVault)} (her kârın %{e.vaultPercent * 100f:0}'i buraya ayrılır)", label);
+            if (e.taxDebt > 0)
+            {
+                GUILayout.Label($"Vergi borcu: {Ft(e.taxDebt)} — her gün %2 büyür!", label);
+                if (GUILayout.Button($"Vergi borcunu öde ({Ft(e.taxDebt)})", button)) deferred = () => e.PayDebt();
+            }
+            if (e.taxVault > 0 && GUILayout.Button("Vergi kasasını ana kasaya aktar", smallButton)) deferred = () => e.WithdrawVault();
+
+            GUILayout.Space(6);
+            GUILayout.Label($"Bu yıl (Yıl {clock.Year}, gün {clock.DayOfYear}/{clock.daysPerYear})", header);
+            Stats(e.Year);
+            long est = (long)Mathf.Round(Mathf.Max(0f, e.Year.Profit) * e.taxRate);
+            GUILayout.Label($"Tahmini yıl sonu vergisi (%{e.taxRate * 100f:0}): {Ft(est)}", label);
+
+            GUILayout.Space(6);
+            GUILayout.Label("Bugün", header);
+            Stats(e.Today);
+            if (e.Yesterday != null)
+            {
+                GUILayout.Label("Dün", header);
+                Stats(e.Yesterday);
+            }
+            if (!string.IsNullOrEmpty(e.LastTaxSummary))
+            {
+                GUILayout.Label("Son vergi dönemi", header);
+                GUILayout.Label(e.LastTaxSummary, small);
+            }
+
+            GUILayout.Space(6);
+            GUILayout.Label("Hesap hareketleri", header);
+            for (int i = 0; i < Mathf.Min(25, e.Ledger.Count); i++) GUILayout.Label(e.Ledger[i], small);
+        }
+
+        void Stats(PeriodStats s)
+        {
+            GUILayout.Label($"Teslimat: {s.deliveries}", small);
+            GUILayout.Label($"Gelir: {Ft(s.Income)} (komisyon {Ft(s.commission)}, teslimat ücreti {Ft(s.fees)}, diğer {Ft(s.otherIncome)})", small);
+            GUILayout.Label($"Gider: {Ft(s.Expenses)} (kurye {Ft(s.courierPay)}, diğer {Ft(s.otherExpenses)})", small);
+            GUILayout.Label($"Kâr: {Ft(s.Profit)}" + (s.penalties > 0 ? $" · Cezalar: {Ft(s.penalties)}" : ""), label);
+        }
+
+        void DrawSettings()
+        {
+            var e = EconomyManager.I;
+
+            GUILayout.Label("Fiyatlandırma (müşteriden alınan teslimat ücreti)", header);
+            e.baseFee = IntSlider("Taban ücret", e.baseFee, 200, 1500, 10);
+            e.feePerTile = IntSlider("Kare başı", e.feePerTile, 0, 100, 5);
+            e.minProfit = IntSlider("Min. kâr/sipariş", e.minProfit, 0, 1000, 50);
+            GUILayout.Label("Kural: Teslimat ücreti = en büyüğü( taban + kare × mesafe , en pahalı kuryenin ücreti + min. kâr − komisyon ). " +
+                            "Böylece hiçbir siparişte zarar edilmez. Ücret yükseldikçe vazgeçen müşteri artar.", small);
+
+            GUILayout.Space(8);
+            GUILayout.Label("Kurye bonusları", header);
+            e.bonusMultiplier = FloatSlider("Bonus çarpanı", e.bonusMultiplier, 0.5f, 2f);
+            GUILayout.Label($"Şu anki bonus: {Ft(e.CurrentBonus)} (hava {WeatherSystem.I.Name}: {WeatherSystem.I.WeatherBonus} Ft, saat: {e.TimeBonus()} Ft) × çarpan. " +
+                            "Yüksek bonus moral getirir ama kârı düşürür.", small);
+
+            GUILayout.Space(8);
+            GUILayout.Label("Vergi", header);
+            e.vaultPercent = FloatSlider("Kârdan vergi kasasına", e.vaultPercent, 0f, 0.5f);
+            GUILayout.Label($"Vergi oranı: %{e.taxRate * 100f:0} — yıl sonunda (gelir − giderler) üzerinden ödenir. Giderler vergiden düşülür.", small);
+
+            GUILayout.Space(8);
+            GUILayout.Label("Örnek hesap (şu anki ayarlarla)", header);
+            const int basket = 5000;
+            const int dist = 15;
+            int commission = Mathf.RoundToInt(basket * 0.10f);
+            int fee = e.QuoteDeliveryFee(commission, dist);
+            int pay = e.MaxCourierPay(dist);
+            GUILayout.Label($"Sepet {Ft(basket)}, komisyon %10 = {Ft(commission)}", small);
+            GUILayout.Label($"Mesafe {dist} kare → teslimat ücreti {Ft(fee)}", small);
+            GUILayout.Label($"Şirket geliri = {Ft(commission + fee)}", small);
+            GUILayout.Label($"En pahalı kuryeye ödeme = {Ft(pay)} → kâr {Ft(commission + fee - pay)}", label);
+        }
+
+        int IntSlider(string name, int v, int min, int max, int step)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(name, label, GUILayout.Width(140));
+            float f = GUILayout.HorizontalSlider(v, min, max, GUILayout.Height(20));
+            GUILayout.Label(v.ToString(), label, GUILayout.Width(50));
+            GUILayout.EndHorizontal();
+            return Mathf.RoundToInt(f / step) * step;
+        }
+
+        float FloatSlider(string name, float v, float min, float max)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(name, label, GUILayout.Width(140));
+            float f = GUILayout.HorizontalSlider(v, min, max, GUILayout.Height(20));
+            GUILayout.Label(v.ToString("0.00"), label, GUILayout.Width(50));
+            GUILayout.EndHorizontal();
+            return Mathf.Round(f * 100f) / 100f;
+        }
+
+        void Bar(string name, float v, Color c)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(name, small, GUILayout.Width(70));
+            Rect r = GUILayoutUtility.GetRect(100, 16, GUILayout.ExpandWidth(true));
+            r.y += 3;
+            r.height = 10;
+            Fill(r, new Color(0f, 0f, 0f, 0.4f));
+            Fill(new Rect(r.x, r.y, r.width * Mathf.Clamp01(v), r.height), c);
+            GUILayout.Label($"%{v * 100f:0}", small, GUILayout.Width(44));
+            GUILayout.EndHorizontal();
+        }
+
+        // ---------------------------------------------------------------- haber akışı
+        void DrawFeed(float sw, float sh)
+        {
+            var feed = EventManager.I.Feed;
+            if (feed.Count == 0) return;
+            int lines = Mathf.Min(5, feed.Count);
+            var r = new Rect(sw - 470f, sh - 22f * lines - 16f, 460f, 22f * lines + 8f);
+            Fill(r, new Color(0f, 0f, 0f, 0.55f));
+            for (int i = 0; i < lines; i++)
+                GUI.Label(new Rect(r.x + 8, r.y + 4 + i * 22f, r.width - 16, 22f), feed[i], small);
+        }
+
+        // ---------------------------------------------------------------- olay kartı
+        void DrawEvent(float sw, float sh)
+        {
+            var ev = EventManager.I.Current;
+            if (ev == null) return;
+
+            Fill(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.55f));
+            float w = 560f;
+            float bodyH = label.CalcHeight(new GUIContent(ev.body), w - 48f);
+            float h = 100f + bodyH + ev.choices.Count * 44f;
+            var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
+            Fill(r, new Color(0.15f, 0.16f, 0.20f));
+            Fill(new Rect(r.x, r.y, r.width, 6f), CompanyProfile.Primary);
+
+            GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 30));
+            GUILayout.Label(ev.title, title);
+            GUILayout.Label(ev.body, label);
+            GUILayout.Space(10);
+            for (int i = 0; i < ev.choices.Count; i++)
+            {
+                int idx = i;
+                if (GUILayout.Button(ev.choices[i].label, button, GUILayout.Height(36)))
+                    deferred = () => EventManager.I.Choose(idx);
+            }
+            GUILayout.EndArea();
+        }
+
+        // ---------------------------------------------------------------- yardımcılar
+        static void Fill(Rect r, Color c)
+        {
+            if (Event.current.type != EventType.Repaint) return;
+            var old = GUI.color;
+            GUI.color = c;
+            GUI.DrawTexture(r, Texture2D.whiteTexture);
+            GUI.color = old;
+        }
+
+        static Texture2D MakeTex(Color c)
+        {
+            var t = new Texture2D(1, 1);
+            t.SetPixel(0, 0, c);
+            t.Apply();
+            return t;
+        }
+
+        void InitStyles()
+        {
+            if (stylesReady) return;
+            stylesReady = true;
+
+            var text = new Color(0.92f, 0.93f, 0.95f);
+
+            label = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true };
+            label.normal.textColor = text;
+
+            small = new GUIStyle(label) { fontSize = 11 };
+            small.normal.textColor = new Color(0.72f, 0.74f, 0.79f);
+
+            header = new GUIStyle(label) { fontSize = 15, fontStyle = FontStyle.Bold };
+            header.normal.textColor = Color.white;
+
+            title = new GUIStyle(header) { fontSize = 24 };
+
+            box = new GUIStyle(GUI.skin.box)
+            {
+                padding = new RectOffset(8, 8, 6, 6),
+                margin = new RectOffset(0, 0, 4, 4)
+            };
+            box.normal.background = MakeTex(new Color(1f, 1f, 1f, 0.06f));
+
+            button = new GUIStyle(GUI.skin.button) { fontSize = 13, wordWrap = true };
+            smallButton = new GUIStyle(GUI.skin.button) { fontSize = 11, wordWrap = true };
+            bigButton = new GUIStyle(GUI.skin.button) { fontSize = 18, fontStyle = FontStyle.Bold };
+
+            toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 13 };
+            toggle.normal.textColor = text;
+            toggle.onNormal.textColor = text;
+            toggle.hover.textColor = Color.white;
+            toggle.onHover.textColor = Color.white;
+
+            textField = new GUIStyle(GUI.skin.textField) { fontSize = 18 };
+
+            worldLabel = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+
+            barTitle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 20,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleLeft
+            };
+            barText = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.MiddleLeft };
+            logoLetter = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 48,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+        }
+    }
+}
