@@ -407,7 +407,7 @@ namespace KuryeTycoon
                     GUILayout.Label($"Siparişlerin yaklaşık %{c.RejectChance * 100f:0}'ini reddedebilir.", warn);
 
                 GUILayout.Label($"Hız {c.speedSkill:0.00} · Dikkat {c.care:0.00} · Nezaket {c.politeness:0.00} · Dayanıklılık {c.stamina:0.00}", small);
-                GUILayout.Label($"Kazanç: {Ft(c.V.basePay + c.extraPay)}/paket + {c.V.payPerKm} Ft/km + bonus · Taşır: {GameData.CarryText(c.V)}", small);
+                GUILayout.Label($"Kazanç: {Ft(c.V.basePay)}/paket + {c.V.payPerKm} Ft/km + bonus · Taşır: {GameData.CarryText(c.V)}", small);
                 var camp = CampaignManager.I;
                 if (camp.weeklyChallenge)
                 {
@@ -469,8 +469,6 @@ namespace KuryeTycoon
                 GUILayout.Label($"Hız {cand.speedSkill:0.00} · Dikkat {cand.care:0.00} · Nezaket {cand.politeness:0.00} · Dayanıklılık {cand.stamina:0.00}", small);
                 GUILayout.Label($"Araç: {v.tilesPerMinute * 60f * GameData.KmPerTile:0} km/saat · {v.capacity} paket · " +
                                 $"Kazanç {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km · Taşır: {GameData.CarryText(v)}", small);
-                if (cand.askExtraPay > 0)
-                    GUILayout.Label($"Deneyimli: paket başı +{Ft(cand.askExtraPay)} ek ücret istiyor.", warn);
                 GUILayout.Label($"Başvuru {Mathf.Max(0f, (cand.expiresAt - now) / 60f):0} saat sonra geçersiz olacak.", small);
 
                 GUILayout.BeginHorizontal();

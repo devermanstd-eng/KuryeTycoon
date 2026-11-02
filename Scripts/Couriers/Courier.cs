@@ -33,7 +33,6 @@ namespace KuryeTycoon
         public int deliveriesToday;
         public int level = 1;
         public float xp;
-        public int extraPay;       // paket başı ek ücret (deneyim)
         public int unavailableDays;
         public long totalEarned;
         public string leaveReason = "";
@@ -77,7 +76,6 @@ namespace KuryeTycoon
             politeness = c.politeness;
             stamina = c.stamina;
             level = c.level;
-            extraPay = c.askExtraPay;
             Position = start;
             transform.position = CityMap.ToWorld(Position);
 

@@ -105,11 +105,11 @@ namespace KuryeTycoon
 
         public int CurrentBonus => Mathf.RoundToInt((WeatherSystem.I.WeatherBonus + TimeBonus()) * bonusMultiplier);
 
-        public int PayFor(VehicleDef v, int extraPay, int tiles) =>
-            v.basePay + Mathf.RoundToInt(v.payPerKm * GameData.Km(tiles)) + extraPay + CurrentBonus;
+        public int PayFor(VehicleDef v, int tiles) =>
+            v.basePay + Mathf.RoundToInt(v.payPerKm * GameData.Km(tiles)) + CurrentBonus;
 
         /// <summary>Bu kuryeye bu mesafe için şu an ödenecek tutar (boost hariç).</summary>
-        public int CourierPay(Courier c, int tiles) => PayFor(c.V, c.extraPay, tiles);
+        public int CourierPay(Courier c, int tiles) => PayFor(c.V, tiles);
 
         public int ProfitIf(Order o, Courier c) => o.CompanyIncome - CourierPay(c, o.distance);
 
@@ -125,7 +125,7 @@ namespace KuryeTycoon
             if (max == 0)
             {
                 foreach (var v in GameData.Vehicles)
-                    if (weightKg <= v.maxWeightKg) { max = PayFor(v, 0, tiles); break; }
+                    if (weightKg <= v.maxWeightKg) { max = PayFor(v, tiles); break; }
             }
             return max;
         }

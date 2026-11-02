@@ -11,7 +11,6 @@ namespace KuryeTycoon
         public WorkRoutine routine;
         public float speedSkill, care, politeness, stamina;
         public int level = 1;
-        public int askExtraPay;    // deneyimliler paket başı ek ücret ister
         public string note = "";
         public float expiresAt;    // başvuru bu oyun dakikasında geçersiz olur
     }
@@ -107,7 +106,6 @@ namespace KuryeTycoon
                 vehicle = v,
                 routine = RandomRoutine(),
                 level = level,
-                askExtraPay = (level - 1) * 75,
                 speedSkill = Random.Range(0.85f, 1.2f) + skill,
                 care = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
                 politeness = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
@@ -131,7 +129,6 @@ namespace KuryeTycoon
         {
             var c = MakeCandidate(v, false);
             c.level = 1;
-            c.askExtraPay = 0;
             c.routine = WorkRoutine.TamGun;
             return Spawn(c);
         }
