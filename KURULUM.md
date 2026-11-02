@@ -34,15 +34,15 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Sistem | Ne yapar |
 |---|---|
 | Şirket kurulumu | İsim, ana/ikincil renk; kuryeler ve merkez ofis bu renklerde |
-| Kuryeler | Yürüyerek, bisiklet, e-scooter, motosiklet, araba; hız, kapasite ve ücret farklı |
+| Kuryeler | Bisiklet, e-scooter, motosiklet, araba; hız, kapasite ve ücret farklı |
 | İşe alım | Başvurular zamanla gelir, kabul/red edersin; işe alım ve çıkarma ücretsiz |
 | Serbest kuryeler | Her kuryenin çalışma düzeni var (sabahçı, öğrenci, gece kuşu...); yorgunluğuna, moraline ve günlük hayatına göre kendisi çevrimiçi/çevrimdışı olur, izin günü yapar. Boostlar çevrimiçi olmayı teşvik eder |
 | Moral ve yorgunluk | Aynı anda kaç paket alacağını ve sipariş reddetme ihtimalini belirler |
-| Ödeme | Paket başı sabit + km başı (175–286 Ft, araca göre) + hava/gece/yoğun saat bonusu × bonus çarpanı |
+| Ödeme | Paket başı sabit + km başı (bisiklet 175 → araba 286 Ft) + hava/gece/yoğun saat bonusu × bonus çarpanı |
 | Kâr kuralı | Teslimat ücreti, en pahalı kuryeye bile verilse min. kâr kalacak şekilde hesaplanır; zararına atama engellenir |
 | Siparişler | Sözleşmeli dükkanlardan gelir; pahalı ücrette müşteri vazgeçer, kurye bulunmazsa iptal olur |
 | Dükkanlar | Burger Queen, Döner Kral, Starbocks, Szpar Express, Market 24, McDanold's, Pizza Hat, InterSzpar, KFG, Sushi Samurai |
-| Sipariş ağırlığı | Yürüyerek 3 kg'a kadar; bisiklet, scooter, motor ve araba 20 kg'a kadar; 20 kg ve üstü "ağır sipariş", sadece araba. Taşıyacak kurye yoksa sipariş alınamaz |
+| Sipariş ağırlığı | Bisiklet, scooter, motor ve araba 20 kg'a kadar; 20 kg ve üstü "ağır sipariş", sadece araba. Taşıyacak kurye yoksa sipariş alınamaz |
 | Olaylar | Eksik ürün, hasarlı sipariş, kaza, hastalık, kuryenin ayrılması, yavaş dükkan, viral yorum, komisyon teklifi |
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |

@@ -125,7 +125,7 @@ namespace KuryeTycoon
             if (max == 0)
             {
                 foreach (var v in GameData.Vehicles)
-                    if (weightKg <= v.maxWeightKg && v.kind != VehicleKind.Yuruyerek) { max = PayFor(v, 0, tiles); break; }
+                    if (weightKg <= v.maxWeightKg) { max = PayFor(v, 0, tiles); break; }
             }
             return max;
         }

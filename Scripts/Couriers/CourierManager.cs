@@ -120,7 +120,6 @@ namespace KuryeTycoon
         VehicleKind RandomVehicle()
         {
             float r = Random.value;
-            if (r < 0.10f) return VehicleKind.Yuruyerek;
             if (r < 0.45f) return VehicleKind.Bisiklet;
             if (r < 0.65f) return VehicleKind.EScooter;
             if (r < 0.83f) return VehicleKind.Motosiklet;

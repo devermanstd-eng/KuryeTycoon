@@ -318,7 +318,7 @@ namespace KuryeTycoon
             om.prioritizeProfit = GUILayout.Toggle(om.prioritizeProfit, " Atamada kârı öncele (kapalıysa en hızlı kurye)", toggle);
             GUILayout.Label($"Bugün: vazgeçen müşteri (ücret pahalı) {om.lostToday} · iptal (kurye yok) {om.cancelledToday} · " +
                             $"kuryelerin reddettiği {om.rejectedToday} · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday}", small);
-            GUILayout.Label($"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; yürüyerek 3 kg'a kadar; {GameData.HeavyKg:0} kg ve üstü sadece araba.", small);
+            GUILayout.Label($"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; {GameData.HeavyKg:0} kg ve üstü sadece araba.", small);
 
             GUILayout.Space(6);
             GUILayout.Label($"Bekleyen siparişler ({om.Pending.Count})", header);

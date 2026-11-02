@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    public enum VehicleKind { Yuruyerek, Bisiklet, EScooter, Motosiklet, Araba }
+    public enum VehicleKind { Bisiklet, EScooter, Motosiklet, Araba }
     public enum EquipmentKind { KisMontu, Yagmurluk, YazTisort, TermalCanta, Kask, Powerbank }
 
     public class VehicleDef
@@ -48,10 +48,9 @@ namespace KuryeTycoon
 
         public static readonly VehicleDef[] Vehicles =
         {
-            new VehicleDef { kind = VehicleKind.Yuruyerek,  name = "Yürüyerek",  letter = "Y", tilesPerMinute = 0.25f, capacity = 1, basePay = 450, payPerKm = 175, exposed = true,  accidentRisk = 0.002f, maxWeightKg = 3f },
-            new VehicleDef { kind = VehicleKind.Bisiklet,   name = "Bisiklet",   letter = "B", tilesPerMinute = 0.50f, capacity = 2, basePay = 500, payPerKm = 195, exposed = true,  accidentRisk = 0.010f, maxWeightKg = 20f },
-            new VehicleDef { kind = VehicleKind.EScooter,   name = "E-Scooter",  letter = "S", tilesPerMinute = 0.65f, capacity = 2, basePay = 550, payPerKm = 220, exposed = true,  accidentRisk = 0.015f, maxWeightKg = 20f },
-            new VehicleDef { kind = VehicleKind.Motosiklet, name = "Motosiklet", letter = "M", tilesPerMinute = 0.95f, capacity = 3, basePay = 600, payPerKm = 250, exposed = true,  accidentRisk = 0.020f, maxWeightKg = 20f },
+            new VehicleDef { kind = VehicleKind.Bisiklet,   name = "Bisiklet",   letter = "B", tilesPerMinute = 0.50f, capacity = 2, basePay = 500, payPerKm = 175, exposed = true,  accidentRisk = 0.010f, maxWeightKg = 20f },
+            new VehicleDef { kind = VehicleKind.EScooter,   name = "E-Scooter",  letter = "S", tilesPerMinute = 0.65f, capacity = 2, basePay = 550, payPerKm = 210, exposed = true,  accidentRisk = 0.015f, maxWeightKg = 20f },
+            new VehicleDef { kind = VehicleKind.Motosiklet, name = "Motosiklet", letter = "M", tilesPerMinute = 0.95f, capacity = 3, basePay = 600, payPerKm = 245, exposed = true,  accidentRisk = 0.020f, maxWeightKg = 20f },
             new VehicleDef { kind = VehicleKind.Araba,      name = "Araba",      letter = "A", tilesPerMinute = 0.85f, capacity = 4, basePay = 650, payPerKm = 286, exposed = false, accidentRisk = 0.008f, maxWeightKg = 999f },
         };
 
