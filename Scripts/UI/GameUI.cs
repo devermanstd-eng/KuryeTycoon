@@ -333,6 +333,9 @@ namespace KuryeTycoon
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"#{o.id} {o.shop.Name} · {GameData.KmText(o.distance)} · {GameData.KgText(o.weightKg)} · {o.CustomerTypeName}", label);
                 if (o.IsHeavy) GUILayout.Label("AĞIR SİPARİŞ — sadece arabalı kuryeler alabilir", warn);
+                if (o.priceDeclines > 0)
+                    GUILayout.Label($"{o.priceDeclines} kurye kazancı beğenmeyip reddetti. Bonus çarpanı veya boost kabul edilmesini kolaylaştırır.", warn);
+                if (o.shopQueue) GUILayout.Label("Önceki kurye dükkandaki sıra yüzünden bıraktı.", small);
                 GUILayout.Label($"Sepet {Ft(o.basket)} · Komisyon {Ft(o.commissionIncome)} + Teslimat ücreti {Ft(o.deliveryFee)} " +
                                 $"= Gelir {Ft(o.CompanyIncome)} · İptale {Mathf.Max(0f, o.createdAt + om.pendingTimeout - now):0} dk", small);
 
@@ -348,10 +351,12 @@ namespace KuryeTycoon
                     var courier = c;
                     int boostCost = CampaignManager.I.BoostAmount(eco.CourierPay(c, o.distance));
                     string boostTxt = boostCost > 0 ? $" (boost −{Ft(boostCost)})" : "";
+                    int courierGets = eco.CourierPay(c, o.distance) + boostCost;
+                    string mood = c.LikesOffer(o, courierGets) ? "" : " · beğenmeyebilir";
                     string txt = rejected ? $"{c.ShortName}: reddetti"
-                               : p >= 0 ? $"{c.ShortName} ({c.V.letter}) kâr +{Ft(p)}{boostTxt}"
+                               : p >= 0 ? $"{c.ShortName} ({c.V.letter}) kurye ~{Ft(courierGets)} · kâr +{Ft(p)}{boostTxt}{mood}"
                                : $"{c.ShortName}: zarar {Ft(p)}";
-                    if (GUILayout.Button(txt, smallButton)) deferred = () => om.Assign(order, courier);
+                    if (GUILayout.Button(txt, smallButton)) deferred = () => om.Assign(order, courier, true);
                     GUI.enabled = modalFree;
                     if (++count % 2 == 0)
                     {
@@ -452,6 +457,8 @@ namespace KuryeTycoon
                 Color hc = c.hygiene >= 0.8f ? new Color(0.3f, 0.85f, 0.4f)
                          : c.hygiene >= Courier.HygieneLimit ? new Color(0.95f, 0.8f, 0.3f) : new Color(0.95f, 0.35f, 0.3f);
                 Bar("Hijyen", c.hygiene, hc);
+                GUILayout.Label($"Teklif seçiciliği: {c.PickinessText} · Dükkanda sıra yüzünden iptal: bu ay {c.pickupCancelsThisMonth}/{Courier.MaxPickupCancels}",
+                                c.pickupCancelsThisMonth >= Courier.MaxPickupCancels ? warn : small);
                 GUILayout.Label($"Çanta: {c.HygieneText} · Titizlik {c.tidiness:0.00} · Çanta kullanımı {c.bagUses}/{Courier.BagWornUses}" +
                                 (c.cleanRequested ? " · Temizlik hatırlatıldı" : ""),
                                 c.hygiene < Courier.HygieneLimit ? warn : small);
@@ -505,6 +512,7 @@ namespace KuryeTycoon
                 GUILayout.Label($"{cand.name} — {v.name} · Tecrübe {cand.level}", header);
                 GUILayout.Label($"\"{cand.note}\"", note);
                 GUILayout.Label($"Meslek: {Courier.OccupationLabel(cand.occupation)}", small);
+                GUILayout.Label(cand.pickiness >= 0.75f ? "Teklif konusunda çok seçici" : cand.pickiness >= 0.45f ? "Teklif konusunda normal" : "Teklif konusunda pek seçici değil", small);
                 GUILayout.Label((cand.alsoOwnsBike ? "Yedekte bisikleti de var · " : "") +
                                 (cand.insured ? "Kendi sigortası var" : "Sigortası yok"), small);
                 GUILayout.Label($"Hız {cand.speedSkill:0.00} · Dikkat {cand.care:0.00} · Nezaket {cand.politeness:0.00} · Dayanıklılık {cand.stamina:0.00}", small);

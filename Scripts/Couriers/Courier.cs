@@ -32,6 +32,7 @@ namespace KuryeTycoon
         public float politeness;
         public float stamina;
         public float tidiness;     // titizlik: çantasını ne sıklıkla kendisi temizler
+        public float pickiness;    // seçicilik: az kazandıran / uzak teklifleri reddetme eğilimi (0–1)
 
         [Header("Durum")]
         public float fatigue;
@@ -56,6 +57,8 @@ namespace KuryeTycoon
         public bool weeklyRewardClaimed;
         public int monthDeliveries;
         public bool monthlyRewardClaimed;
+        public int pickupCancelsThisMonth;      // dükkanda sıra yüzünden teslim almayı iptal (ayda en fazla 10)
+        public const int MaxPickupCancels = 10;
 
         [Header("Kendi parası")]
         public long savings;                   // araç almak için birikim
@@ -105,6 +108,7 @@ namespace KuryeTycoon
             politeness = c.politeness;
             stamina = c.stamina;
             tidiness = c.tidiness;
+            pickiness = c.pickiness;
             level = c.level;
             insured = c.insured;
             savings = c.savings;
@@ -545,8 +549,26 @@ namespace KuryeTycoon
         {
             if (State == CourierState.DukkanaGidiyor)
             {
-                if (GameClock.I.TotalMinutes >= current.readyAt) PickUp();
-                else State = CourierState.Bekliyor;
+                float now = GameClock.I.TotalMinutes;
+
+                // Dükkanda bazen sıra olur
+                if (Random.value < 0.25f)
+                {
+                    current.readyAt = Mathf.Max(current.readyAt, now) + Random.Range(5f, 20f);
+                    current.shopQueue = true;
+                }
+
+                if (now >= current.readyAt) { PickUp(); return; }
+
+                // Uzun bekleme: kurye teslim almayı iptal edebilir (ayda en fazla 10 kez)
+                float wait = current.readyAt - now;
+                if (wait > 8f && pickupCancelsThisMonth < MaxPickupCancels &&
+                    Random.value < Mathf.Clamp01((wait - 8f) / 20f) * Mathf.Lerp(0.3f, 1f, pickiness))
+                {
+                    CancelPickup(wait);
+                    return;
+                }
+                State = CourierState.Bekliyor;
             }
             else if (State == CourierState.MusteriyeGidiyor)
             {
@@ -565,6 +587,53 @@ namespace KuryeTycoon
         }
 
         float issueWaitUntil;
+
+        void CancelPickup(float wait)
+        {
+            var o = current;
+            current = null;
+            pickupCancelsThisMonth++;
+            OrderManager.I.ReturnToPending(o, this);
+            EventManager.I.Notify($"{ShortName} {o.shop.Name}'da {wait:0} dk sıra olduğu için #{o.id} teslim almayı iptal etti " +
+                                  $"(bu ay {pickupCancelsThisMonth}/{MaxPickupCancels}). Sipariş yeni kurye bekliyor.");
+            StartNext();
+        }
+
+        // ================================================================== teklif değerlendirme
+
+        /// <summary>Teklifin tahmini süresi (dk): dükkana gidiş + hazırlık beklemesi + müşteriye gidiş.</summary>
+        public float EstimateMinutes(Order o)
+        {
+            float speed = Mathf.Max(0.05f, V.tilesPerMinute * speedSkill);
+            float toShop = CityMap.Manhattan(FreeTile, o.shop.door) / speed + OrderCount * 12f;
+            float wait = Mathf.Max(0f, o.readyAt - (GameClock.I.TotalMinutes + toShop));
+            return toShop + wait + o.distance / speed;
+        }
+
+        /// <summary>Teklifin tahmini saatlik kazancı.</summary>
+        public float OfferHourly(Order o, int pay) => pay / Mathf.Max(5f, EstimateMinutes(o)) * 60f;
+
+        /// <summary>Bu aracın "normal" bir işten saatlik kazancı (8 kare gidiş, 12 kare teslimat, bonus yok).</summary>
+        public float ReferenceHourly
+        {
+            get
+            {
+                float speed = Mathf.Max(0.05f, V.tilesPerMinute * speedSkill);
+                float pay = V.basePay + V.payPerKm * GameData.Km(12);
+                return pay / (20f / speed) * 60f;
+            }
+        }
+
+        /// <summary>Kurye tahmini kazancı görür; seçiciliğine göre beğenmezse reddeder.</summary>
+        public bool LikesOffer(Order o, int pay)
+        {
+            float threshold = Mathf.Lerp(0.55f, 1.0f, pickiness);
+            return OfferHourly(o, pay) >= ReferenceHourly * threshold;
+        }
+
+        public string PickinessText =>
+            pickiness >= 0.75f ? "Çok seçici (az kazandıran/uzak işleri sık reddeder)"
+            : pickiness >= 0.45f ? "Normal" : "Pek seçmez (çoğu işi kabul eder)";
 
         /// <summary>Adres sorunu çözüldü: kurye doğru adrese yönlenir.</summary>
         public void RedirectTo(Vector2Int door)

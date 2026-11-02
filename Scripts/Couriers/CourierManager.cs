@@ -13,6 +13,7 @@ namespace KuryeTycoon
         public Occupation occupation;
         public float speedSkill, care, politeness, stamina;
         public float tidiness;
+        public float pickiness;
         public int level = 1;
         public bool insured;           // kendi parasıyla sigortalı
         public long savings;           // birikimi
@@ -48,6 +49,7 @@ namespace KuryeTycoon
             for (int i = 0; i < 2; i++) Applications.Add(MakeCandidate(RandomVehicle(), true));
             ScheduleNextApplication();
             GameClock.I.OnNewDay += OnNewDay;
+            GameClock.I.OnNewMonth += () => { foreach (var c in Couriers) c.pickupCancelsThisMonth = 0; };
             ready = true;
         }
 
@@ -143,6 +145,7 @@ namespace KuryeTycoon
                 politeness = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
                 stamina = Random.Range(0.7f, 1.2f) + skill,
                 tidiness = Random.Range(0.2f, 1f),
+                pickiness = Random.Range(0.1f, 0.95f),
                 note = GameData.RandomNote(),
                 expiresAt = withExpiry ? GameClock.I.TotalMinutes + 1440f : float.MaxValue
             };

@@ -66,6 +66,8 @@ namespace KuryeTycoon
         public bool issueResolved;
         public bool customerFault;     // gecikme müşterinin hatası: puan düşmez
         public bool keptByCourier;     // müşteriye ulaşılamadı, sipariş kuryede kaldı
+        public int priceDeclines;      // fiyatı beğenmeyip reddeden kurye sayısı
+        public bool shopQueue;         // dükkanda sıra vardı
 
         public int CompanyIncome => commissionIncome + deliveryFee;
         public int Profit => CompanyIncome - courierPay - boostPay;

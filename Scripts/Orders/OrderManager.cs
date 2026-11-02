@@ -337,7 +337,9 @@ namespace KuryeTycoon
         /// Siparişi kuryeye teklif eder. Zararına ise reddedilir.
         /// Moralsiz / yorgun kurye teklifi geri çevirebilir.
         /// </summary>
-        public bool Assign(Order o, Courier c)
+        public bool Assign(Order o, Courier c) => Assign(o, c, false);
+
+        public bool Assign(Order o, Courier c, bool manual)
         {
             if (o.status != OrderStatus.Bekliyor || c == null || !c.CanTakeMore || o.rejectedBy.Contains(c)) return false;
             if (!c.CanCarry(o))
@@ -350,6 +352,19 @@ namespace KuryeTycoon
             if (o.CompanyIncome - pay < 0)
             {
                 EventManager.I.Notify($"#{o.id} {c.ShortName}'a atanamadı: zararına iş olur ({Ft(o.CompanyIncome - pay)}).");
+                return false;
+            }
+
+            // Kurye tahmini kazancı görür; beğenmezse reddeder, sipariş başka kuryeyi bekler
+            int boost = CampaignManager.I.BoostAmount(pay);
+            if (!c.LikesOffer(o, pay + boost))
+            {
+                o.rejectedBy.Add(c);
+                o.priceDeclines++;
+                rejectedToday++;
+                if (manual)
+                    EventManager.I.Notify($"{c.ShortName} #{o.id} teklifini beğenmedi: tahmini {Ft(pay + boost)} için ~{c.EstimateMinutes(o):0} dk " +
+                                          $"(saatlik ~{Ft((long)c.OfferHourly(o, pay + boost))}).");
                 return false;
             }
 
@@ -411,6 +426,21 @@ namespace KuryeTycoon
                 string why = badWeather ? " (kötü havada geldiği için)" : (o.IsHeavy ? " (ağır paketi kapıya taşıdığı için)" : "");
                 EventManager.I.Notify($"{c.ShortName} müşteriden {GameData.Ft(o.tip)} bahşiş aldı{why}!");
             }
+        }
+
+        /// <summary>Kurye teslim almayı iptal etti: sipariş tekrar bekleyenlere döner, o kuryeye bir daha teklif edilmez.</summary>
+        public void ReturnToPending(Order o, Courier c)
+        {
+            o.status = OrderStatus.Bekliyor;
+            o.courier = null;
+            o.courierPay = 0;
+            o.boostPay = 0;
+            o.rejectedBy.Add(c);
+            o.createdAt = GameClock.I.TotalMinutes; // yeni kurye için süre baştan başlar
+            o.supportCalled = false;
+            Active.Remove(o);
+            if (!Pending.Contains(o)) Pending.Insert(0, o);
+            if (o.marker != null) o.marker.color = o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f);
         }
 
         public void CompleteDelivery(Order o, Courier c)
