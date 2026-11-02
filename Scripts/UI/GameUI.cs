@@ -442,6 +442,24 @@ namespace KuryeTycoon
                             $"{c.monthDeliveries}/{camp.monthlyTarget}");
                 }
                 GUILayout.Label($"Ekipman: {EquipmentText(c)}", small);
+
+                // Çanta hijyeni
+                Color hc = c.hygiene >= 0.8f ? new Color(0.3f, 0.85f, 0.4f)
+                         : c.hygiene >= Courier.HygieneLimit ? new Color(0.95f, 0.8f, 0.3f) : new Color(0.95f, 0.35f, 0.3f);
+                Bar("Hijyen", c.hygiene, hc);
+                GUILayout.Label($"Çanta: {c.HygieneText} · Titizlik {c.tidiness:0.00} · Çanta kullanımı {c.bagUses}/{Courier.BagWornUses}" +
+                                (c.cleanRequested ? " · Temizlik hatırlatıldı" : ""),
+                                c.hygiene < Courier.HygieneLimit ? warn : small);
+                GUILayout.BeginHorizontal();
+                var hcour = c;
+                GUI.enabled = modalFree && !c.cleanRequested && c.hygiene < c.MaxHygiene - 0.05f;
+                if (GUILayout.Button("Temizlik hatırlat", smallButton)) deferred = () => cm.RequestCleaning(hcour);
+                GUI.enabled = modalFree && c.hygiene < c.MaxHygiene - 0.05f;
+                if (GUILayout.Button($"Şirket temizletsin (−{Ft(CourierManager.CompanyCleaningCost)})", smallButton)) deferred = () => cm.CompanyClean(hcour);
+                GUI.enabled = modalFree && c.BagWorn;
+                if (GUILayout.Button($"Yeni çanta (−{Ft(GameData.Equip(EquipmentKind.TermalCanta).price)})", smallButton)) deferred = () => cm.ReplaceBag(hcour);
+                GUI.enabled = modalFree;
+                GUILayout.EndHorizontal();
                 foreach (var p in c.ActivePenalties()) GUILayout.Label("• " + p, warn);
 
                 GUILayout.BeginHorizontal();
@@ -551,6 +569,18 @@ namespace KuryeTycoon
             GUILayout.Label($"Başlangıç kiti ({GameData.StarterKitText}) her yeni kuryeye verilir; şirkete maliyeti kit başı {Ft(GameData.StarterKitCost)}. " +
                             $"Kuryeden de {Ft(GameData.DepositThreshold)} kazanınca {Ft(GameData.DepositAmount)} depozito kesilir, " +
                             "ayrılırken ekipmanı iade ederse geri ödenir.", label);
+
+            // Hijyen özeti
+            int dirty = 0, worn = 0;
+            foreach (var hc in cm.Couriers) { if (hc.hygiene < Courier.HygieneLimit) dirty++; if (hc.BagWorn) worn++; }
+            GUILayout.Space(4);
+            GUILayout.Label($"Hijyen: {dirty} kuryenin çantası kirli (%{Courier.HygieneLimit * 100f:0} altı), {worn} çanta yıpranmış.",
+                dirty > 0 ? warn : label);
+            GUILayout.Label("Kirli çanta müşteri şikayeti ve düşük puan getirir. Titiz kuryeler kendisi temizler; " +
+                            $"diğerlerine hatırlatma gönder ya da şirkete temizlet ({Ft(CourierManager.CompanyCleaningCost)}/kurye). " +
+                            $"{Courier.BagWornUses} teslimattan sonra çanta yıpranır, yenisi gerekir.", small);
+            if (GUILayout.Button($"Kirli çantaların hepsini temizlet ({Ft(CourierManager.CompanyCleaningCost)}/kurye)", smallButton))
+                deferred = () => cm.CleanAll();
 
             if (selectedCourier == null || !cm.Couriers.Contains(selectedCourier))
                 selectedCourier = cm.Couriers.Count > 0 ? cm.Couriers[0] : null;

@@ -87,6 +87,28 @@ namespace KuryeTycoon
             else if (r < missing + damage) Damaged(o, c);
         }
 
+        /// <summary>Kirli çanta: hijyen %60'ın altındaysa müşteri şikayet edebilir.</summary>
+        public void RollHygieneComplaint(Order o, Courier c)
+        {
+            if (c.hygiene >= Courier.HygieneLimit) return;
+            float chance = (Courier.HygieneLimit - c.hygiene) * 1.2f;
+            if (Random.value >= chance) return;
+
+            CompanyProfile.AddReputation(-0.03f);
+            int value = GameData.Round10(Mathf.Max(300f, o.basket * 0.1f));
+            if (SupportManager.I.TryHandleIncident(o, c, value, "hijyen")) return;
+
+            string worn = c.BagWorn ? " Çanta yıpranmış, temizlik yetmeyebilir." : "";
+            Push(new GameEvent("Hijyen şikayeti!",
+                    $"#{o.id} müşterisi, kurye {c.courierName}'ın çantasının kirli olduğunu ve yemeğin kötü koktuğunu söylüyor.\n" +
+                    $"Çanta hijyeni: %{c.hygiene * 100f:0}.{worn}")
+                .Add($"Özür dile + %10 kupon (−{Ft(value)})", () =>
+                    EconomyManager.I.Spend(value, $"Hijyen kuponu #{o.id}", ExpenseCategory.Iade))
+                .Add("Kuryeyi uyar (yarın temizler, moral biraz düşer)", () => CourierManager.I.RequestCleaning(c))
+                .Add($"Şirket hemen temizletsin (−{Ft(CourierManager.CompanyCleaningCost)})", () => CourierManager.I.CompanyClean(c))
+                .Add("Görmezden gel (itibar −0.1)", () => CompanyProfile.AddReputation(-0.1f)));
+        }
+
         void MissingItem(Order o, Courier c)
         {
             int value = GameData.Round10(o.basket * Random.Range(0.15f, 0.4f));

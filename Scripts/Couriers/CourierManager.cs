@@ -12,6 +12,7 @@ namespace KuryeTycoon
         public VehicleKind dreamVehicle; // parası olursa almak istediği araç
         public Occupation occupation;
         public float speedSkill, care, politeness, stamina;
+        public float tidiness;
         public int level = 1;
         public bool insured;           // kendi parasıyla sigortalı
         public long savings;           // birikimi
@@ -141,6 +142,7 @@ namespace KuryeTycoon
                 care = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
                 politeness = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
                 stamina = Random.Range(0.7f, 1.2f) + skill,
+                tidiness = Random.Range(0.2f, 1f),
                 note = GameData.RandomNote(),
                 expiresAt = withExpiry ? GameClock.I.TotalMinutes + 1440f : float.MaxValue
             };
@@ -252,6 +254,44 @@ namespace KuryeTycoon
             if (!EconomyManager.I.TrySpend(e.price, $"{e.name} → {c.courierName}", ExpenseCategory.Ekipman)) return false;
             c.equipment.Add(k);
             c.morale = Mathf.Min(1f, c.morale + 0.03f);
+            return true;
+        }
+
+        // ---------- Hijyen ----------
+
+        public const int CompanyCleaningCost = 1500;
+
+        /// <summary>Kuryeye temizlik hatırlatması: bir sonraki gün çantasını temizler (moral biraz düşer).</summary>
+        public void RequestCleaning(Courier c)
+        {
+            c.cleanRequested = true;
+            EventManager.I.Notify($"{c.ShortName}'a çanta temizliği hatırlatması gönderildi.");
+        }
+
+        /// <summary>Şirket hemen temizletir (ücret şirketten).</summary>
+        public bool CompanyClean(Courier c)
+        {
+            if (!EconomyManager.I.TrySpend(CompanyCleaningCost, $"Çanta temizliği: {c.courierName}", ExpenseCategory.Ekipman)) return false;
+            c.CleanBag(true);
+            return true;
+        }
+
+        public int CleanAll()
+        {
+            int n = 0;
+            foreach (var c in Couriers.ToArray())
+                if (c.hygiene < c.MaxHygiene - 0.05f && CompanyClean(c)) n++;
+            if (n > 0) EventManager.I.Notify($"{n} kuryenin çantası temizletildi.");
+            return n;
+        }
+
+        /// <summary>Yıpranan çantayı yenisiyle değiştir (termal çanta fiyatı).</summary>
+        public bool ReplaceBag(Courier c)
+        {
+            var e = GameData.Equip(EquipmentKind.TermalCanta);
+            if (!EconomyManager.I.TrySpend(e.price, $"Yeni çanta: {c.courierName}", ExpenseCategory.Ekipman)) return false;
+            c.ReplaceBag();
+            EventManager.I.Notify($"{c.ShortName}'a yeni termal çanta verildi.");
             return true;
         }
 

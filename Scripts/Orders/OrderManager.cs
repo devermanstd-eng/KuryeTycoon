@@ -334,6 +334,7 @@ namespace KuryeTycoon
             if (o.shop.def.hotFood && !c.Has(EquipmentKind.TermalCanta) && o.DistanceKm > 2f) rating -= 0.8f;
             if (o.customerType == CustomerType.Zor) rating -= 0.7f;
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
+            if (c.hygiene < Courier.HygieneLimit) rating -= (Courier.HygieneLimit - c.hygiene) * 3f; // kirli çanta
             o.rating = Mathf.Clamp(rating, 1f, 5f);
 
             RollTip(o, c, late);
@@ -348,6 +349,7 @@ namespace KuryeTycoon
             if (History.Count > 50) History.RemoveAt(History.Count - 1);
 
             CampaignManager.I.OnDelivered(c);
+            EventManager.I.RollHygieneComplaint(o, c);
             EventManager.I.RollDeliveryIncident(o, c);
         }
     }

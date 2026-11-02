@@ -31,6 +31,7 @@ namespace KuryeTycoon
         public float care;
         public float politeness;
         public float stamina;
+        public float tidiness;     // titizlik: çantasını ne sıklıkla kendisi temizler
 
         [Header("Durum")]
         public float fatigue;
@@ -43,6 +44,11 @@ namespace KuryeTycoon
         public long totalEarned;
         public long tipsTotal;             // müşterilerden aldığı bahşişler (tamamen kendisinin)
         public long tipsToday;
+
+        [Header("Hijyen")]
+        public float hygiene = 1f;             // çanta temizliği (0–1); %60 altı müşteri şikayeti
+        public int bagUses;                    // mevcut çantayla yapılan teslimat (yıpranma)
+        public bool cleanRequested;            // şirket temizlik hatırlatması gönderdi
         public string leaveReason = "";
         public bool dayOff;
         public float onlineMinutesToday;
@@ -98,6 +104,7 @@ namespace KuryeTycoon
             care = c.care;
             politeness = c.politeness;
             stamina = c.stamina;
+            tidiness = c.tidiness;
             level = c.level;
             insured = c.insured;
             savings = c.savings;
@@ -544,6 +551,7 @@ namespace KuryeTycoon
                 deliveries++;
                 deliveriesToday++;
                 AddXp();
+                DirtyBag(done);
                 OrderManager.I.CompleteDelivery(done, this);
 
                 if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && !wantsOffline && Random.value < 0.05f)
@@ -588,6 +596,9 @@ namespace KuryeTycoon
         {
             deliveriesToday = 0;
             tipsToday = 0;
+
+            // Çanta temizliği: hatırlatma gönderildiyse kesin, değilse titizliğine göre
+            if (cleanRequested || Random.value < tidiness * 0.3f) CleanBag(false);
             onlineMinutesToday = 0f;
 
             if (repairDays > 0)
@@ -615,6 +626,46 @@ namespace KuryeTycoon
 
         // ================================================================== arayüz
 
+        // ================================================================== hijyen
+
+        public const float HygieneLimit = 0.6f;
+        public const int BagWornUses = 400;
+
+        /// <summary>Çok kullanılan çanta yıpranır: temizlense de en fazla %75'e çıkar.</summary>
+        public bool BagWorn => bagUses >= BagWornUses;
+        public float MaxHygiene => BagWorn ? 0.75f : 1f;
+
+        void DirtyBag(Order o)
+        {
+            bagUses++;
+            float d = 0.012f;
+            if (o.shop.def.hotFood) d *= 1.5f;              // yağ, sos
+            if (o.IsHeavy || o.weightKg > 10f) d *= 1.3f;
+            if (WeatherSystem.I.IsRainy && V.exposed) d *= 1.5f;
+            d *= Mathf.Lerp(1.4f, 0.8f, care);              // dikkatsiz kurye daha çok döker
+            hygiene = Mathf.Max(0f, hygiene - d);
+        }
+
+        /// <summary>Çantayı temizler (kurye kendisi ya da şirket temizletir).</summary>
+        public void CleanBag(bool byCompany)
+        {
+            hygiene = MaxHygiene;
+            if (cleanRequested && !byCompany) morale = Mathf.Max(0f, morale - 0.02f); // uyarılmak hoşuna gitmez
+            cleanRequested = false;
+        }
+
+        /// <summary>Yeni termal çanta: yıpranma sıfırlanır, hijyen tam.</summary>
+        public void ReplaceBag()
+        {
+            bagUses = 0;
+            hygiene = 1f;
+            cleanRequested = false;
+            equipment.Add(EquipmentKind.TermalCanta);
+        }
+
+        public string HygieneText =>
+            hygiene >= 0.8f ? "Temiz" : hygiene >= HygieneLimit ? "Biraz kirli" : hygiene >= 0.35f ? "Kirli — müşteriler şikayet ediyor" : "Çok kirli — sık şikayet";
+
         public List<string> ActivePenalties()
         {
             var list = new List<string>();
@@ -634,6 +685,8 @@ namespace KuryeTycoon
             }
             if (!Has(EquipmentKind.TermalCanta)) list.Add("Termal çanta yok: 2 km üstü sıcak yemek soğuk gidiyor");
             if (!Has(EquipmentKind.Powerbank)) list.Add("Powerbank yok: telefonu kapanabilir");
+            if (hygiene < HygieneLimit) list.Add($"Çanta hijyeni %{hygiene * 100f:0}: müşteri şikayeti ve düşük puan riski");
+            if (BagWorn) list.Add("Çantası yıprandı: temizlense de tam temiz olmuyor, yeni çanta gerekli");
             return list;
         }
 
