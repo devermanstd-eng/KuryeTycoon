@@ -116,23 +116,27 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Prototip maaşları (aylık): yeteneğe göre 120 / 150 / 180 bin Ft.</summary>
+        public static int SalaryFor(float skill) => skill >= 0.85f ? 180000 : (skill >= 0.7f ? 150000 : 120000);
+
         void RefreshCandidates()
         {
             Candidates.Clear();
-            for (int i = 0; i < candidatesPerWeek; i++)
+            for (int i = 0; i < candidatesPerWeek; i++) AddCandidate();
+        }
+
+        void AddCandidate()
+        {
+            float skill = Random.Range(0.5f, 1f);
+            Candidates.Add(new SupportCandidate
             {
-                float skill = Random.Range(0.5f, 1f);
-                int salary = skill >= 0.85f ? 460000 : (skill >= 0.7f ? 380000 : 300000);
-                Candidates.Add(new SupportCandidate
-                {
-                    name = GameData.RandomName(),
-                    skill = skill,
-                    monthlySalary = salary,
-                    note = Notes[Random.Range(0, Notes.Length)],
-                    chosenShift = (SupportShift)Random.Range(0, 3),
-                    chosenDays = Random.value < 0.5f ? WorkDays.PztCum : WorkDays.CarPaz
-                });
-            }
+                name = GameData.RandomName(),
+                skill = skill,
+                monthlySalary = SalaryFor(skill),
+                note = Notes[Random.Range(0, Notes.Length)],
+                chosenShift = (SupportShift)Random.Range(0, 3),
+                chosenDays = Random.value < 0.5f ? WorkDays.PztCum : WorkDays.CarPaz
+            });
         }
 
         public void Hire(SupportCandidate c)
@@ -188,6 +192,7 @@ namespace KuryeTycoon
         {
             foreach (var a in Agents) a.daysEmployedThisMonth++;
             if (GameClock.I.DayOfWeek == 0) RefreshCandidates();
+            else if (Candidates.Count < 2) AddCandidate(); // işe alınan adayın yerine yenisi gelir
 
             // Gün boyunca en az 8 saat destek varsa kuryelerin morali biraz artar
             if (CoveredHours(GameClock.I.DayOfWeek) >= 8)

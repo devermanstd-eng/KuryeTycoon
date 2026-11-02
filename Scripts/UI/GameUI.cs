@@ -496,6 +496,10 @@ namespace KuryeTycoon
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }
+
+            // Destek personeli de buradan işe alınabilir
+            GUILayout.Space(10);
+            DrawSupportCandidates();
         }
 
         void DrawShops()
@@ -638,8 +642,15 @@ namespace KuryeTycoon
                 GUILayout.EndVertical();
             }
 
+            DrawSupportCandidates();
+        }
+
+        void DrawSupportCandidates()
+        {
+            var sm = SupportManager.I;
             GUILayout.Space(6);
-            GUILayout.Label("Başvurular (her Pazartesi yenilenir)", header);
+            GUILayout.Label($"Destek personeli başvuruları ({SupportManager.I.Candidates.Count}) — maaşlı, sabit vardiya", header);
+            if (SupportManager.I.Candidates.Count == 0) GUILayout.Label("Şu an destek başvurusu yok; ertesi gün yenisi gelir.", small);
             foreach (var cand in sm.Candidates)
             {
                 GUILayout.BeginVertical(box);
