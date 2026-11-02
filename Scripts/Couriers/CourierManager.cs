@@ -3,25 +3,34 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
+    /// <summary>İş başvurusu yapan aday.</summary>
     public class CourierCandidate
     {
         public string name;
         public VehicleKind vehicle;
         public float speedSkill, care, politeness, stamina;
-        public int hireCost;
+        public int level = 1;
+        public int askExtraPay;    // deneyimliler paket başı ek ücret ister
+        public string note = "";
+        public float expiresAt;    // başvuru bu oyun dakikasında geçersiz olur
     }
 
-    /// <summary>İşe alım, işten çıkarma, ekipman, günlük moral / kaza / zam olayları.</summary>
+    /// <summary>
+    /// Başvurular, işe alım / çıkarma (ücretsiz), ekipman,
+    /// günlük moral, hastalık, kaza ve zam olayları.
+    /// </summary>
     public class CourierManager : MonoBehaviour
     {
         public static CourierManager I { get; private set; }
 
         public readonly List<Courier> Couriers = new List<Courier>();
-        public readonly List<CourierCandidate> Candidates = new List<CourierCandidate>();
-        public int candidatesPerDay = 3;
+        public readonly List<CourierCandidate> Applications = new List<CourierCandidate>();
+        public int maxApplications = 6;
         public int accidentTreatmentCost = 15000;
 
         Transform root;
+        float nextApplicationAt;
+        bool ready;
 
         static string Ft(long v) => GameData.Ft(v);
 
@@ -31,22 +40,57 @@ namespace KuryeTycoon
         {
             root = new GameObject("Kuryeler").transform;
             root.SetParent(transform, false);
-            RefreshCandidates();
+            for (int i = 0; i < 2; i++) Applications.Add(MakeCandidate(RandomVehicle(), true));
+            ScheduleNextApplication();
             GameClock.I.OnNewDay += OnNewDay;
+            ready = true;
         }
 
-        public CourierCandidate MakeCandidate(VehicleKind v)
+        void Update()
         {
-            var def = GameData.Vehicle(v);
+            if (!ready || GameClock.I.DeltaMinutes <= 0f) return;
+            float now = GameClock.I.TotalMinutes;
+
+            for (int i = Applications.Count - 1; i >= 0; i--)
+                if (now >= Applications[i].expiresAt) Applications.RemoveAt(i);
+
+            if (now >= nextApplicationAt)
+            {
+                if (Applications.Count < maxApplications)
+                {
+                    var c = MakeCandidate(RandomVehicle(), true);
+                    Applications.Add(c);
+                    EventManager.I.Notify($"Yeni iş başvurusu: {c.name} ({GameData.Vehicle(c.vehicle).name}, seviye {c.level})");
+                }
+                ScheduleNextApplication();
+            }
+        }
+
+        /// <summary>İtibar ve bonus çarpanı yüksekse başvurular daha sık gelir.</summary>
+        void ScheduleNextApplication()
+        {
+            float rep = 0.5f + 0.15f * CompanyProfile.Reputation;
+            float bonus = Mathf.Lerp(0.8f, 1.3f, (EconomyManager.I.bonusMultiplier - 0.5f) / 1.5f);
+            nextApplicationAt = GameClock.I.TotalMinutes + Random.Range(120f, 360f) / (rep * bonus);
+        }
+
+        public CourierCandidate MakeCandidate(VehicleKind v, bool withExpiry)
+        {
+            float r = Random.value;
+            int level = r < 0.70f ? 1 : (r < 0.92f ? 2 : 3);
+            float skill = 0.05f * (level - 1);
             return new CourierCandidate
             {
                 name = GameData.RandomName(),
                 vehicle = v,
-                speedSkill = Random.Range(0.85f, 1.2f),
-                care = Random.Range(0.55f, 0.98f),
-                politeness = Random.Range(0.55f, 0.98f),
-                stamina = Random.Range(0.7f, 1.2f),
-                hireCost = Mathf.RoundToInt(def.hireCost * Random.Range(0.8f, 1.3f) / 1000f) * 1000
+                level = level,
+                askExtraPay = (level - 1) * 75,
+                speedSkill = Random.Range(0.85f, 1.2f) + skill,
+                care = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
+                politeness = Mathf.Min(1f, Random.Range(0.55f, 0.95f) + skill),
+                stamina = Random.Range(0.7f, 1.2f) + skill,
+                note = GameData.RandomNote(),
+                expiresAt = withExpiry ? GameClock.I.TotalMinutes + 1440f : float.MaxValue
             };
         }
 
@@ -60,22 +104,26 @@ namespace KuryeTycoon
             return VehicleKind.Araba;
         }
 
-        public void RefreshCandidates()
+        /// <summary>Başlangıç kuryeleri.</summary>
+        public Courier HireStarter(VehicleKind v)
         {
-            Candidates.Clear();
-            for (int i = 0; i < candidatesPerDay; i++) Candidates.Add(MakeCandidate(RandomVehicle()));
+            var c = MakeCandidate(v, false);
+            c.level = 1;
+            c.askExtraPay = 0;
+            return Spawn(c);
         }
 
-        /// <summary>Başlangıç kuryeleri (ücretsiz).</summary>
-        public Courier HireFree(VehicleKind v) => Spawn(MakeCandidate(v));
-
-        public bool Hire(CourierCandidate c)
+        /// <summary>Başvuruyu kabul et. Ücretsiz: kurye paket başı kazanır.</summary>
+        public void Hire(CourierCandidate c)
         {
-            if (!EconomyManager.I.TrySpend(c.hireCost, $"İşe alım primi: {c.name}")) return false;
-            Candidates.Remove(c);
+            if (!Applications.Remove(c)) return;
             Spawn(c);
             EventManager.I.Notify($"{c.name} ({GameData.Vehicle(c.vehicle).name}) ekibe katıldı!");
-            return true;
+        }
+
+        public void Reject(CourierCandidate c)
+        {
+            Applications.Remove(c);
         }
 
         Courier Spawn(CourierCandidate c)
@@ -88,16 +136,15 @@ namespace KuryeTycoon
             return courier;
         }
 
-        public int SeveranceFor(Courier c) => c.V.hireCost / 5;
-
+        /// <summary>İşten çıkar. Ücretsiz, ama elinde paket varken olmaz.</summary>
         public bool Fire(Courier c)
         {
             if (c.OrderCount > 0)
             {
-                EventManager.I.Notify($"{c.courierName} elinde sipariş varken işten çıkarılamaz.");
+                EventManager.I.Notify($"{c.courierName} elinde paket varken işten çıkarılamaz.");
                 return false;
             }
-            EconomyManager.I.Spend(SeveranceFor(c), $"Tazminat: {c.courierName}");
+            EventManager.I.Notify($"{c.courierName} ile yollar ayrıldı.");
             Couriers.Remove(c);
             Destroy(c.gameObject);
             return true;
@@ -124,17 +171,19 @@ namespace KuryeTycoon
 
         void OnNewDay()
         {
-            RefreshCandidates();
             var season = GameClock.I.Season;
             float bonusM = EconomyManager.I.bonusMultiplier;
 
             foreach (var c in Couriers.ToArray())
             {
+                int worked = c.deliveriesToday;
                 c.NewDay();
 
+                // --- Moral ---
                 float d = (0.6f - c.morale) * 0.05f + (bonusM - 1f) * 0.08f + c.equipment.Count * 0.004f;
-                if (season == Season.Kis && c.V.exposed && !c.Has(EquipmentKind.KisMontu)) d -= 0.06f;
-                if (season == Season.Yaz && !c.Has(EquipmentKind.YazTisort)) d -= 0.03f;
+                d += worked == 0 ? -0.02f : Mathf.Min(0.05f, worked * 0.004f); // paket başı kazanan kurye iş ister
+                if (c.V.exposed && season == Season.Kis && !c.Has(EquipmentKind.KisMontu)) d -= 0.06f;
+                if (c.V.exposed && season == Season.Yaz && !c.Has(EquipmentKind.YazTisort)) d -= 0.03f;
                 if (c.fatigue > 0.7f) d -= 0.03f;
                 c.morale = Mathf.Clamp01(c.morale + d);
 
@@ -143,36 +192,53 @@ namespace KuryeTycoon
                     Quit(c);
                     continue;
                 }
+
+                if (c.State == CourierState.Izinli || c.OrderCount > 0) continue;
+                if (RollSickness(c, season)) continue;
                 RollAccident(c);
             }
             RollRaiseRequest();
+        }
+
+        bool RollSickness(Courier c, Season season)
+        {
+            if (!c.V.exposed) return false;
+            float risk = 0f;
+            string cause = "";
+            if (season == Season.Kis && !c.Has(EquipmentKind.KisMontu)) { risk = 0.10f; cause = "montsuz çalışırken üşüttü"; }
+            else if ((season == Season.Ilkbahar || season == Season.Sonbahar) && !c.Has(EquipmentKind.Yagmurluk)) { risk = 0.04f; cause = "yağmurda ıslanıp hastalandı"; }
+            if (Random.value >= risk) return false;
+
+            c.SetOnLeave(1, "hasta");
+            EventManager.I.Notify($"{c.courierName} {cause}, bugün çalışamıyor.");
+            return true;
         }
 
         void Quit(Courier c)
         {
             EventManager.I.Push(new GameEvent("İstifa",
                 $"{c.courierName} moralinin çok düşük olduğunu söyleyerek istifa etti. " +
-                "Mevsime uygun ekipman, bonuslar ve dinlenme moral için önemli."));
+                "Yeterince sipariş, mevsime uygun ekipman ve bonuslar moral için önemli."));
             Couriers.Remove(c);
             Destroy(c.gameObject);
         }
 
         void RollAccident(Courier c)
         {
-            if (c.State == CourierState.Izinli || c.OrderCount > 0) return;
-
             float risk = c.V.accidentRisk;
             var w = WeatherSystem.I;
             if (w.Current == WeatherKind.Karli) risk *= 2f;
             else if (w.IsRainy) risk *= 1.5f;
-            if (c.V.exposed && c.Has(EquipmentKind.Kask)) risk *= 0.4f;
+            bool helmet = c.V.exposed && c.Has(EquipmentKind.Kask);
+            if (helmet) risk *= 0.4f;
             if (Random.value >= risk) return;
 
-            c.SetOnLeave(2);
+            int days = helmet ? 1 : 3;
+            c.SetOnLeave(days, "kaza");
             int cost = accidentTreatmentCost;
-            string helmet = c.Has(EquipmentKind.Kask) ? " Kask sayesinde yaralanma hafif." : "";
+            string helmetText = helmet ? " Kask sayesinde hafif atlattı." : (c.V.exposed ? " Kaskı olmadığı için yaralanması ağır." : "");
             EventManager.I.Push(new GameEvent("Kaza!",
-                    $"{c.courierName} ({c.V.name}) küçük bir kaza geçirdi ve 2 gün çalışamayacak.{helmet}")
+                    $"{c.courierName} ({c.V.name}) kaza geçirdi ve {days} gün çalışamayacak.{helmetText}")
                 .Add($"Tedavi ve onarımı karşıla (−{Ft(cost)}, moral +)", () =>
                 {
                     EconomyManager.I.Spend(cost, $"Kaza masrafı: {c.courierName}");
@@ -190,8 +256,8 @@ namespace KuryeTycoon
 
             var k = eligible[Random.Range(0, eligible.Count)];
             EventManager.I.Push(new GameEvent("Zam talebi",
-                    $"{k.courierName} toplam {k.deliveries} teslimat yaptı ve teslimat başına +100 Ft zam istiyor.")
-                .Add("Zam ver (+100 Ft/teslimat, moral +)", () =>
+                    $"{k.courierName} toplam {k.deliveries} teslimat yaptı ve paket başına +100 Ft zam istiyor.")
+                .Add("Zam ver (+100 Ft/paket, moral +)", () =>
                 {
                     k.extraPay += 100;
                     k.morale = Mathf.Min(1f, k.morale + 0.2f);

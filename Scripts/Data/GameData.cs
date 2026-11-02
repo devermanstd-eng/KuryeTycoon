@@ -10,12 +10,10 @@ namespace KuryeTycoon
         public VehicleKind kind;
         public string name;
         public string letter;
-        public float tilesPerMinute;   // oyun dakikasında kaç kare gider
-        public int capacity;           // aynı anda kaç sipariş taşır
-        public int basePay;            // kuryeye teslimat başı sabit ödeme (Ft)
-        public int payPerTile;         // kuryeye kare başı ödeme (Ft)
-        public int hireCost;           // işe alım primi (Ft)
-        public int dailyCost;          // şirketin günlük gideri: yakıt, sigorta, telefon (Ft)
+        public float tilesPerMinute;   // oyun dakikasında kaç kare gider (1 kare = 0,2 km)
+        public int capacity;           // normal moralde aynı anda kaç paket taşır
+        public int basePay;            // kuryeye paket başı sabit ödeme (Ft)
+        public int payPerKm;           // kuryeye km başı ödeme (Ft) — 175–286 arası
         public bool exposed;           // hava şartlarına açık mı (araba hariç hepsi)
         public float accidentRisk;     // günlük kaza ihtimali
     }
@@ -43,13 +41,16 @@ namespace KuryeTycoon
 
     public static class GameData
     {
+        /// <summary>Haritada bir kare kaç km.</summary>
+        public const float KmPerTile = 0.2f;
+
         public static readonly VehicleDef[] Vehicles =
         {
-            new VehicleDef { kind = VehicleKind.Yuruyerek,  name = "Yürüyerek",  letter = "Y", tilesPerMinute = 0.25f, capacity = 1, basePay = 500,  payPerTile = 20, hireCost = 5000,  dailyCost = 300,  exposed = true,  accidentRisk = 0.002f },
-            new VehicleDef { kind = VehicleKind.Bisiklet,   name = "Bisiklet",   letter = "B", tilesPerMinute = 0.50f, capacity = 2, basePay = 700,  payPerTile = 25, hireCost = 10000, dailyCost = 500,  exposed = true,  accidentRisk = 0.010f },
-            new VehicleDef { kind = VehicleKind.EScooter,   name = "E-Scooter",  letter = "S", tilesPerMinute = 0.65f, capacity = 2, basePay = 800,  payPerTile = 30, hireCost = 20000, dailyCost = 900,  exposed = true,  accidentRisk = 0.015f },
-            new VehicleDef { kind = VehicleKind.Motosiklet, name = "Motosiklet", letter = "M", tilesPerMinute = 0.95f, capacity = 3, basePay = 950,  payPerTile = 35, hireCost = 35000, dailyCost = 1800, exposed = true,  accidentRisk = 0.020f },
-            new VehicleDef { kind = VehicleKind.Araba,      name = "Araba",      letter = "A", tilesPerMinute = 0.85f, capacity = 4, basePay = 1100, payPerTile = 45, hireCost = 50000, dailyCost = 3000, exposed = false, accidentRisk = 0.008f },
+            new VehicleDef { kind = VehicleKind.Yuruyerek,  name = "Yürüyerek",  letter = "Y", tilesPerMinute = 0.25f, capacity = 1, basePay = 450, payPerKm = 175, exposed = true,  accidentRisk = 0.002f },
+            new VehicleDef { kind = VehicleKind.Bisiklet,   name = "Bisiklet",   letter = "B", tilesPerMinute = 0.50f, capacity = 2, basePay = 500, payPerKm = 195, exposed = true,  accidentRisk = 0.010f },
+            new VehicleDef { kind = VehicleKind.EScooter,   name = "E-Scooter",  letter = "S", tilesPerMinute = 0.65f, capacity = 2, basePay = 550, payPerKm = 220, exposed = true,  accidentRisk = 0.015f },
+            new VehicleDef { kind = VehicleKind.Motosiklet, name = "Motosiklet", letter = "M", tilesPerMinute = 0.95f, capacity = 3, basePay = 600, payPerKm = 250, exposed = true,  accidentRisk = 0.020f },
+            new VehicleDef { kind = VehicleKind.Araba,      name = "Araba",      letter = "A", tilesPerMinute = 0.85f, capacity = 4, basePay = 650, payPerKm = 286, exposed = false, accidentRisk = 0.008f },
         };
 
         public static VehicleDef Vehicle(VehicleKind k) => Vehicles[(int)k];
@@ -71,12 +72,12 @@ namespace KuryeTycoon
 
         public static readonly EquipmentDef[] Equipment =
         {
-            new EquipmentDef { kind = EquipmentKind.KisMontu,    name = "Kış Montu",    price = 9000, effect = "Kar/soğukta yavaşlama azalır, kışın moral düşmez." },
-            new EquipmentDef { kind = EquipmentKind.Yagmurluk,   name = "Yağmurluk",    price = 5000, effect = "Yağmurda yavaşlama neredeyse yok." },
-            new EquipmentDef { kind = EquipmentKind.YazTisort,   name = "Yaz Tişörtü",  price = 3000, effect = "Sıcakta yavaşlamaz, yazın moral düşmez." },
-            new EquipmentDef { kind = EquipmentKind.TermalCanta, name = "Termal Çanta", price = 7000, effect = "Hasar riski −%40, sıcak yemek soğuk gitmez." },
-            new EquipmentDef { kind = EquipmentKind.Kask,        name = "Kask",         price = 8000, effect = "Kaza riski −%60." },
-            new EquipmentDef { kind = EquipmentKind.Powerbank,   name = "Powerbank",    price = 4000, effect = "Kurye %20 daha geç yorulur." },
+            new EquipmentDef { kind = EquipmentKind.KisMontu,    name = "Kış Montu",    price = 9000, effect = "Soğukta yavaşlamaz, karda %10 yavaş (montsuz %30). Kışın hastalanmaz (montsuz günde %10) ve morali düşmez. Araba hariç." },
+            new EquipmentDef { kind = EquipmentKind.Yagmurluk,   name = "Yağmurluk",    price = 5000, effect = "Yağmurda yavaşlamaz (yoksa %18), paket ıslanmaz (yoksa hasar riski 2 kat), yağmur sezonunda hastalanmaz. Araba hariç." },
+            new EquipmentDef { kind = EquipmentKind.YazTisort,   name = "Yaz Tişörtü",  price = 3000, effect = "Sıcakta yavaşlamaz ve 1,5 kat hızlı yorulmaz. Yazın morali düşmez. Araba hariç." },
+            new EquipmentDef { kind = EquipmentKind.TermalCanta, name = "Termal Çanta", price = 7000, effect = "2 km'den uzak sıcak yemek soğumaz (yoksa −0,8 yıldız). Hasar riski −%40." },
+            new EquipmentDef { kind = EquipmentKind.Kask,        name = "Kask",         price = 8000, effect = "Kaza riski −%60. Kazada 3 gün yerine 1 gün izin." },
+            new EquipmentDef { kind = EquipmentKind.Powerbank,   name = "Powerbank",    price = 4000, effect = "Telefon kapanmaz (yoksa teslimatların %5'inde 1 saat çevrimdışı). %20 daha geç yorulur." },
         };
 
         public static EquipmentDef Equip(EquipmentKind k) => Equipment[(int)k];
@@ -94,6 +95,24 @@ namespace KuryeTycoon
 
         public static string RandomName() =>
             FirstNames[Random.Range(0, FirstNames.Length)] + " " + LastNames[Random.Range(0, LastNames.Length)];
+
+        static readonly string[] ApplicationNotes =
+        {
+            "Öğrenciyim, akşamları ve hafta sonları çalışabilirim.",
+            "Daha önce başka bir kurye şirketinde çalıştım.",
+            "Şehri avucumun içi gibi bilirim.",
+            "İlk kuryelik deneyimim olacak ama çok hevesliyim.",
+            "Yağmurda karda fark etmez, her gün çalışırım.",
+            "Ek gelir için yarı zamanlı çalışmak istiyorum."
+        };
+
+        public static string RandomNote() => ApplicationNotes[Random.Range(0, ApplicationNotes.Length)];
+
+        public static float Km(int tiles) => tiles * KmPerTile;
+
+        /// <summary>15 kare → "3,0 km"</summary>
+        public static string KmText(int tiles) =>
+            Km(tiles).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',') + " km";
 
         /// <summary>5000 → "5 000 Ft"</summary>
         public static string Ft(long v) =>

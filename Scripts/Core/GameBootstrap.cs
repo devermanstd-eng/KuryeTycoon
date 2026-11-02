@@ -65,7 +65,7 @@ namespace KuryeTycoon
             EconomyManager.I.money = startingMoney;
             CityMap.I.Generate();
             CourierManager.I.Init();
-            foreach (var v in starterCouriers) CourierManager.I.HireFree(v);
+            foreach (var v in starterCouriers) CourierManager.I.HireStarter(v);
             OrderManager.I.Init();
 
             Started = true;
@@ -75,8 +75,10 @@ namespace KuryeTycoon
                 "Merkez ofisin haritanın sol alt köşesinde. 2 kuryen ve 2 sözleşmeli dükkanın var.\n\n" +
                 "• Siparişler otomatik atanır; istersen Siparişler sekmesinden kendin ata.\n" +
                 "• Zararına iş yapılmaz: teslimat ücreti her zaman kurye ücretini karşılar.\n" +
-                "• Kurye al, dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
-                "• Kışın mont, yazın tişört almayı unutma.\n" +
+                "• Kuryeler paket başı + km başı kazanır. Gelen başvuruları İşe Alım sekmesinden kabul et.\n" +
+                "• Moralsiz ve yorgun kuryeler daha az paket alır, sipariş reddedebilir.\n" +
+                "• Ekipman eksikse kuryenin kartında ne kaybettiğini görürsün (kışın mont, yazın tişört...).\n" +
+                "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
                 "• Yıl sonunda vergi ödersin: Vergi kasası kârının bir kısmını kenara ayırır.\n\n" +
                 "Kısayollar: Boşluk = duraklat, 1/2/3 = hız"));
         }

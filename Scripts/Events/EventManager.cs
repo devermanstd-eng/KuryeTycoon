@@ -78,7 +78,8 @@ namespace KuryeTycoon
             float careRisk = 1f - c.care;
             float missing = 0.02f + careRisk * 0.10f;
             float damage = 0.015f + careRisk * 0.08f;
-            if (WeatherSystem.I.IsRainy) damage *= 1.5f;
+            // Yağmurluğu olmayan açık araçlı kuryenin paketi ıslanır
+            if (WeatherSystem.I.IsRainy && c.V.exposed && !c.Has(EquipmentKind.Yagmurluk)) damage *= 2f;
             if (c.Has(EquipmentKind.TermalCanta)) damage *= 0.6f;
 
             float r = Random.value;

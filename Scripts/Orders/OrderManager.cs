@@ -24,6 +24,7 @@ namespace KuryeTycoon
 
         public int lostToday;       // ücret pahalı geldiği için vazgeçen müşteri
         public int cancelledToday;  // kurye bulunamadığı için iptal
+        public int rejectedToday;   // kuryelerin reddettiği teklif
 
         float spawnAcc;
         float assignTimer;
@@ -37,7 +38,7 @@ namespace KuryeTycoon
         {
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { lostToday = 0; cancelledToday = 0; };
+            GameClock.I.OnNewDay += () => { lostToday = 0; cancelledToday = 0; rejectedToday = 0; };
         }
 
         static float HourCurve(int h)
@@ -183,7 +184,7 @@ namespace KuryeTycoon
                 float bestScore = float.MaxValue;
                 foreach (var c in CourierManager.I.Couriers)
                 {
-                    if (!c.CanTakeMore) continue;
+                    if (!c.CanTakeMore || o.rejectedBy.Contains(c)) continue;
                     int profit = EconomyManager.I.ProfitIf(o, c);
                     if (profit < 0) continue; // asla zararına iş yok
                     float score = EstimateEta(c, o);
@@ -198,16 +199,29 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>Siparişi kuryeye atar. Zararına ise reddeder.</summary>
+        /// <summary>
+        /// Siparişi kuryeye teklif eder. Zararına ise reddedilir.
+        /// Moralsiz / yorgun kurye teklifi geri çevirebilir.
+        /// </summary>
         public bool Assign(Order o, Courier c)
         {
-            if (o.status != OrderStatus.Bekliyor || c == null || !c.CanTakeMore) return false;
+            if (o.status != OrderStatus.Bekliyor || c == null || !c.CanTakeMore || o.rejectedBy.Contains(c)) return false;
+
             int pay = EconomyManager.I.CourierPay(c, o.distance);
             if (o.CompanyIncome - pay < 0)
             {
                 EventManager.I.Notify($"#{o.id} {c.ShortName}'a atanamadı: zararına iş olur ({Ft(o.CompanyIncome - pay)}).");
                 return false;
             }
+
+            if (Random.value < c.RejectChance)
+            {
+                o.rejectedBy.Add(c);
+                rejectedToday++;
+                EventManager.I.Notify($"{c.ShortName} #{o.id} siparişini reddetti (moral %{c.morale * 100f:0}, yorgunluk %{c.fatigue * 100f:0}).");
+                return false;
+            }
+
             o.courierPay = pay;
             o.courier = c;
             o.status = OrderStatus.Atandi;
@@ -228,7 +242,8 @@ namespace KuryeTycoon
             float rating = 5f;
             if (late > 0f) rating -= Mathf.Min(3f, late / 10f);
             rating += (c.politeness - 0.75f) * 2f;
-            if (o.shop.def.hotFood && !c.Has(EquipmentKind.TermalCanta) && o.distance > 12) rating -= 0.5f;
+            rating += (c.morale - 0.6f) * 0.8f; // mutlu kurye güler yüzlüdür
+            if (o.shop.def.hotFood && !c.Has(EquipmentKind.TermalCanta) && o.DistanceKm > 2f) rating -= 0.8f;
             if (o.customerType == CustomerType.Zor) rating -= 0.7f;
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
             o.rating = Mathf.Clamp(rating, 1f, 5f);

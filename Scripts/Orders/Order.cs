@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace KuryeTycoon
@@ -33,7 +34,7 @@ namespace KuryeTycoon
         public OrderStatus status = OrderStatus.Bekliyor;
 
         public int basket;            // müşterinin sepet tutarı (dükkana gider)
-        public int distance;          // kare cinsinden yol uzunluğu
+        public int distance;          // kare cinsinden yol uzunluğu (1 kare = 0,2 km)
         public int commissionIncome;  // sepet × komisyon oranı (bize kalır)
         public int deliveryFee;       // müşteriden alınan teslimat ücreti (bize kalır)
         public int courierPay;        // atama anında sabitlenen kurye ödemesi
@@ -44,8 +45,12 @@ namespace KuryeTycoon
         public Courier courier;
         public SpriteRenderer marker;
 
+        /// <summary>Bu siparişi reddeden kuryeler (tekrar teklif edilmez).</summary>
+        public readonly HashSet<Courier> rejectedBy = new HashSet<Courier>();
+
         public int CompanyIncome => commissionIncome + deliveryFee;
         public int Profit => CompanyIncome - courierPay;
+        public float DistanceKm => GameData.Km(distance);
 
         public string CustomerTypeName
         {

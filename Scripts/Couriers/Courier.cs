@@ -3,9 +3,13 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    public enum CourierState { Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, Dinleniyor, Izinli }
+    public enum CourierState { Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, Mola, Izinli }
 
-    /// <summary>Haritada hareket eden tek bir kurye.</summary>
+    /// <summary>
+    /// Haritada hareket eden tek bir kurye.
+    /// Moral ve yorgunluk; aynı anda kaç paket aldığını ve sipariş reddetme ihtimalini belirler.
+    /// Çok yorulunca kendisi mola verir.
+    /// </summary>
     public class Courier : MonoBehaviour
     {
         [Header("Kimlik")]
@@ -13,7 +17,7 @@ namespace KuryeTycoon
         public VehicleKind vehicle;
 
         [Header("Yetenekler")]
-        public float speedSkill;   // 0.85–1.2
+        public float speedSkill;   // 0.85–1.35
         public float care;         // dikkat: eksik/hasar riski
         public float politeness;   // nezaket: müşteri puanı
         public float stamina;      // dayanıklılık: yorulma hızı
@@ -25,9 +29,10 @@ namespace KuryeTycoon
         public int deliveriesToday;
         public int level = 1;
         public float xp;
-        public int extraPay;       // zamlar (teslimat başı)
+        public int extraPay;       // paket başı ek ücret (deneyim / zam)
         public int unavailableDays;
         public long totalEarned;
+        public string leaveReason = "";
 
         public readonly HashSet<EquipmentKind> equipment = new HashSet<EquipmentKind>();
 
@@ -42,6 +47,8 @@ namespace KuryeTycoon
         Order current;
         List<Vector2Int> path;
         int pathIndex;
+        float breakUntil;          // > 0 ise süreli mola (telefon şarjı)
+        string breakReason = "";
         SpriteRenderer body;
         SpriteRenderer ring;
 
@@ -53,6 +60,8 @@ namespace KuryeTycoon
             care = c.care;
             politeness = c.politeness;
             stamina = c.stamina;
+            level = c.level;
+            extraPay = c.askExtraPay;
             Position = start;
             transform.position = CityMap.ToWorld(Position);
 
@@ -63,8 +72,29 @@ namespace KuryeTycoon
 
         public bool Has(EquipmentKind k) => equipment.Contains(k);
         public int OrderCount => queue.Count + (current != null ? 1 : 0);
-        public bool Available => State != CourierState.Dinleniyor && State != CourierState.Izinli && fatigue < 0.85f;
-        public bool CanTakeMore => Available && OrderCount < V.capacity;
+        public bool Available => State != CourierState.Mola && State != CourierState.Izinli;
+
+        /// <summary>
+        /// Aynı anda taşıyabileceği paket: araç kapasitesi,
+        /// moral yüksekse +1, moral düşükse −1, yorgunsa −1 (en az 1).
+        /// </summary>
+        public int EffectiveCapacity
+        {
+            get
+            {
+                int cap = V.capacity;
+                if (morale >= 0.8f) cap += 1;
+                if (morale < 0.35f) cap -= 1;
+                if (fatigue >= 0.6f) cap -= 1;
+                return Mathf.Max(1, cap);
+            }
+        }
+
+        public bool CanTakeMore => Available && OrderCount < EffectiveCapacity;
+
+        /// <summary>Düşük moral ve yüksek yorgunlukta sipariş reddetme ihtimali.</summary>
+        public float RejectChance =>
+            Mathf.Clamp01((0.45f - morale) * 1.2f) + (fatigue >= 0.75f ? 0.15f : 0f);
 
         /// <summary>Elindeki işler bitince nerede olacak (atama tahmini için).</summary>
         public Vector2Int FreeTile
@@ -106,12 +136,28 @@ namespace KuryeTycoon
             {
                 current = null;
                 path = null;
-                State = fatigue >= 0.85f ? CourierState.Dinleniyor : CourierState.Bosta;
+                if (fatigue >= 0.9f)
+                {
+                    StartBreak(0f, "Çok yorgun, mola veriyor");
+                    EventManager.I.Notify($"{courierName} çok yoruldu ve mola verdi.");
+                }
+                else if (State != CourierState.Mola)
+                {
+                    State = CourierState.Bosta;
+                }
                 return;
             }
             current = queue.Dequeue();
             State = CourierState.DukkanaGidiyor;
             GoTo(current.shop.door);
+        }
+
+        /// <summary>minutes = 0 ise yorgunluk %30'a inene kadar sürer.</summary>
+        void StartBreak(float minutes, string reason)
+        {
+            breakUntil = minutes > 0f ? GameClock.I.TotalMinutes + minutes : 0f;
+            breakReason = reason;
+            State = CourierState.Mola;
         }
 
         void GoTo(Vector2Int target)
@@ -138,9 +184,15 @@ namespace KuryeTycoon
                         Work(dm);
                         if (clock.TotalMinutes >= current.readyAt) PickUp();
                         break;
-                    case CourierState.Dinleniyor:
+                    case CourierState.Mola:
                         fatigue = Mathf.Max(0f, fatigue - dm * 0.004f);
-                        if (fatigue <= 0.1f) State = CourierState.Bosta;
+                        bool done = breakUntil > 0f ? clock.TotalMinutes >= breakUntil : fatigue <= 0.3f;
+                        if (done)
+                        {
+                            breakUntil = 0f;
+                            State = CourierState.Bosta;
+                            if (queue.Count > 0) StartNext();
+                        }
                         break;
                     case CourierState.Bosta:
                         fatigue = Mathf.Max(0f, fatigue - dm * 0.0015f);
@@ -149,7 +201,7 @@ namespace KuryeTycoon
             }
 
             transform.position = CityMap.ToWorld(Position);
-            bool off = State == CourierState.Dinleniyor || State == CourierState.Izinli;
+            bool off = State == CourierState.Mola || State == CourierState.Izinli;
             ring.color = CompanyProfile.Secondary;
             body.color = off ? Color.Lerp(CompanyProfile.Primary, Color.gray, 0.6f) : CompanyProfile.Primary;
         }
@@ -157,6 +209,7 @@ namespace KuryeTycoon
         void Work(float dm)
         {
             float rate = 0.0011f / Mathf.Max(0.3f, stamina);
+            if (V.exposed && WeatherSystem.I.IsHot && !Has(EquipmentKind.YazTisort)) rate *= 1.5f;
             if (Has(EquipmentKind.Powerbank)) rate *= 0.8f;
             fatigue = Mathf.Min(1f, fatigue + rate * dm);
         }
@@ -200,6 +253,14 @@ namespace KuryeTycoon
                 deliveriesToday++;
                 AddXp();
                 OrderManager.I.CompleteDelivery(done, this);
+
+                // Powerbank yoksa telefon kapanabilir (elinde başka paket yoksa)
+                if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && Random.value < 0.05f)
+                {
+                    StartBreak(60f, "Telefonu kapandı, şarj ediyor");
+                    EventManager.I.Notify($"{courierName}'ın telefonu kapandı, 1 saat çevrimdışı. (Powerbank alınmalı)");
+                    return;
+                }
                 StartNext();
             }
         }
@@ -222,15 +283,11 @@ namespace KuryeTycoon
             }
         }
 
-        public void SetOnLeave(int days)
+        public void SetOnLeave(int days, string reason)
         {
             unavailableDays = days;
+            leaveReason = reason;
             State = CourierState.Izinli;
-        }
-
-        public void ForceRest()
-        {
-            if (OrderCount == 0 && State == CourierState.Bosta) State = CourierState.Dinleniyor;
         }
 
         public void NewDay()
@@ -243,6 +300,29 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Eksik ekipman yüzünden şu an yaşanan kayıplar (arayüzde gösterilir).</summary>
+        public List<string> ActivePenalties()
+        {
+            var list = new List<string>();
+            var w = WeatherSystem.I;
+            var season = GameClock.I.Season;
+
+            if (V.exposed)
+            {
+                if (w.Current == WeatherKind.Karli && !Has(EquipmentKind.KisMontu)) list.Add("Kar yağıyor, montu yok: %30 yavaş");
+                else if (w.Current == WeatherKind.Soguk && !Has(EquipmentKind.KisMontu)) list.Add("Hava soğuk, montu yok: %10 yavaş");
+                if (season == Season.Kis && !Has(EquipmentKind.KisMontu)) list.Add("Kışın montsuz: her gün moral düşüyor, %10 hastalanma riski");
+                if (w.IsRainy && !Has(EquipmentKind.Yagmurluk)) list.Add("Yağmur var, yağmurluğu yok: %18 yavaş, paket ıslanabilir");
+                if ((season == Season.Ilkbahar || season == Season.Sonbahar) && !Has(EquipmentKind.Yagmurluk)) list.Add("Yağmur sezonu, yağmurluğu yok: %4 hastalanma riski");
+                if (w.IsHot && !Has(EquipmentKind.YazTisort)) list.Add("Sıcak, tişörtü yok: %8 yavaş, 1,5 kat hızlı yoruluyor");
+                if (season == Season.Yaz && !Has(EquipmentKind.YazTisort)) list.Add("Yazın tişörtsüz: her gün moral düşüyor");
+                if (!Has(EquipmentKind.Kask)) list.Add("Kask yok: kaza riski yüksek, kazada 3 gün izin");
+            }
+            if (!Has(EquipmentKind.TermalCanta)) list.Add("Termal çanta yok: 2 km üstü sıcak yemek soğuk gidiyor");
+            if (!Has(EquipmentKind.Powerbank)) list.Add("Powerbank yok: telefonu kapanabilir");
+            return list;
+        }
+
         public string StateName
         {
             get
@@ -252,8 +332,8 @@ namespace KuryeTycoon
                     case CourierState.DukkanaGidiyor: return "Dükkana gidiyor";
                     case CourierState.Bekliyor: return "Dükkanda bekliyor";
                     case CourierState.MusteriyeGidiyor: return "Müşteriye gidiyor";
-                    case CourierState.Dinleniyor: return "Dinleniyor";
-                    case CourierState.Izinli: return $"İzinli ({unavailableDays} gün)";
+                    case CourierState.Mola: return "Mola: " + breakReason;
+                    case CourierState.Izinli: return $"İzinli ({leaveReason}, {unavailableDays} gün)";
                     default: return "Boşta";
                 }
             }

@@ -10,7 +10,7 @@ namespace KuryeTycoon
         public long fees;           // müşteriden alınan teslimat ücretleri
         public long otherIncome;    // kurye kesintileri vb.
         public long courierPay;     // kurye ödemeleri
-        public long otherExpenses;  // kira, ekipman, sözleşme, iade, tazminat...
+        public long otherExpenses;  // kira, ekipman, sözleşme, iade, kaza masrafı...
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
         public int deliveries;
 
@@ -23,9 +23,9 @@ namespace KuryeTycoon
     /// <summary>
     /// Para, fiyatlandırma, kurye ödemeleri, vergi kasası ve yıl sonu vergisi.
     ///
-    /// Sipariş başı:
-    ///   Şirket geliri = sepet × komisyon + teslimat ücreti
-    ///   Net kâr       = şirket geliri − kurye ödemesi
+    /// Kurye ödemesi = paket başı ücret + km başı ücret × km + ek ücret + bonus
+    /// Şirket geliri = sepet × komisyon + teslimat ücreti
+    /// Net kâr       = şirket geliri − kurye ödemesi
     /// Teslimat ücreti, en pahalı kuryeye bile verilse min. kâr kalacak şekilde hesaplanır.
     /// </summary>
     public class EconomyManager : MonoBehaviour
@@ -39,7 +39,7 @@ namespace KuryeTycoon
 
         [Header("Fiyatlandırma (müşteriden)")]
         public int baseFee = 590;
-        public int feePerTile = 30;
+        public int feePerKm = 150;
         public int minProfit = 200;
 
         [Header("Kurye bonusları")]
@@ -73,7 +73,7 @@ namespace KuryeTycoon
             GameClock.I.OnNewYear += OnNewYear;
         }
 
-        // ---------- Ödemeler ----------
+        // ---------- Kurye ödemeleri ----------
 
         public int TimeBonus()
         {
@@ -85,33 +85,31 @@ namespace KuryeTycoon
 
         public int CurrentBonus => Mathf.RoundToInt((WeatherSystem.I.WeatherBonus + TimeBonus()) * bonusMultiplier);
 
+        public int PayFor(VehicleDef v, int extraPay, int tiles) =>
+            v.basePay + Mathf.RoundToInt(v.payPerKm * GameData.Km(tiles)) + extraPay + CurrentBonus;
+
         /// <summary>Bu kuryeye bu mesafe için şu an ödenecek tutar.</summary>
-        public int CourierPay(Courier c, int distance) =>
-            c.V.basePay + c.V.payPerTile * distance + c.extraPay + CurrentBonus;
+        public int CourierPay(Courier c, int tiles) => PayFor(c.V, c.extraPay, tiles);
 
         public int ProfitIf(Order o, Courier c) => o.CompanyIncome - CourierPay(c, o.distance);
 
         /// <summary>Ekipteki en pahalı kuryenin bu mesafe için ücreti.</summary>
-        public int MaxCourierPay(int distance)
+        public int MaxCourierPay(int tiles)
         {
             int max = 0;
-            foreach (var c in CourierManager.I.Couriers) max = Mathf.Max(max, CourierPay(c, distance));
-            if (max == 0)
-            {
-                var v = GameData.Vehicle(VehicleKind.Bisiklet);
-                max = v.basePay + v.payPerTile * distance + CurrentBonus;
-            }
+            foreach (var c in CourierManager.I.Couriers) max = Mathf.Max(max, CourierPay(c, tiles));
+            if (max == 0) max = PayFor(GameData.Vehicle(VehicleKind.Bisiklet), 0, tiles);
             return max;
         }
 
         /// <summary>
         /// Müşteriden alınacak teslimat ücreti:
-        /// max(taban + kare × mesafe, en pahalı kurye ücreti + min. kâr − komisyon)
+        /// en büyüğü( taban + km ücreti × km , en pahalı kurye ücreti + min. kâr − komisyon )
         /// </summary>
-        public int QuoteDeliveryFee(int commissionIncome, int distance)
+        public int QuoteDeliveryFee(int commissionIncome, int tiles)
         {
-            int normal = baseFee + feePerTile * distance;
-            int required = MaxCourierPay(distance) + minProfit - commissionIncome;
+            int normal = baseFee + Mathf.RoundToInt(feePerKm * GameData.Km(tiles));
+            int required = MaxCourierPay(tiles) + minProfit - commissionIncome;
             return GameData.CeilTo10(Mathf.Max(normal, required, 0));
         }
 
@@ -134,7 +132,7 @@ namespace KuryeTycoon
                 money -= put;
                 taxVault += put;
             }
-            Log($"#{o.id} teslim: gelir {Ft(o.CompanyIncome)}, kurye {Ft(o.courierPay)}, kâr {Ft(profit)}");
+            Log($"#{o.id} teslim ({GameData.KmText(o.distance)}): gelir {Ft(o.CompanyIncome)}, kurye {Ft(o.courierPay)}, kâr {Ft(profit)}");
             CheckBankruptcy();
         }
 
@@ -197,10 +195,8 @@ namespace KuryeTycoon
         {
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
 
-            long courierCosts = 0;
-            foreach (var c in CourierManager.I.Couriers) courierCosts += c.V.dailyCost;
+            // Kuryeler kendi araçlarıyla, paket başı çalışır: şirketin günlük gideri sadece ofis
             Spend(officeRentPerDay, "Ofis kirası");
-            if (courierCosts > 0) Spend(courierCosts, "Kurye günlük giderleri (yakıt, sigorta, telefon)");
 
             if (taxDebt > 0)
             {

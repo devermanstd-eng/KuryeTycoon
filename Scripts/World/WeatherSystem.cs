@@ -92,8 +92,8 @@ namespace KuryeTycoon
             float f = 1f;
             if (c.V.exposed)
             {
-                if (IsRainy) f *= c.Has(EquipmentKind.Yagmurluk) ? 0.95f : 0.82f;
-                if (Current == WeatherKind.Karli) f *= c.Has(EquipmentKind.KisMontu) ? 0.85f : 0.70f;
+                if (IsRainy) f *= c.Has(EquipmentKind.Yagmurluk) ? 1f : 0.82f;
+                if (Current == WeatherKind.Karli) f *= c.Has(EquipmentKind.KisMontu) ? 0.90f : 0.70f;
                 if (Current == WeatherKind.Soguk && !c.Has(EquipmentKind.KisMontu)) f *= 0.90f;
                 if (Current == WeatherKind.Sicak && !c.Has(EquipmentKind.YazTisort)) f *= 0.92f;
             }

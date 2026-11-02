@@ -35,12 +35,14 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 |---|---|
 | Şirket kurulumu | İsim, ana/ikincil renk; kuryeler ve merkez ofis bu renklerde |
 | Kuryeler | Yürüyerek, bisiklet, e-scooter, motosiklet, araba; hız, kapasite ve ücret farklı |
-| Ödeme | Teslimat başı sabit + kare başı + hava/gece/yoğun saat bonusu × bonus çarpanı |
+| İşe alım | Başvurular zamanla gelir, kabul/red edersin; işe alım ve çıkarma ücretsiz |
+| Moral ve yorgunluk | Aynı anda kaç paket alacağını ve sipariş reddetme ihtimalini belirler; çok yorulan kurye mola verir |
+| Ödeme | Paket başı sabit + km başı (175–286 Ft, araca göre) + hava/gece/yoğun saat bonusu × bonus çarpanı |
 | Kâr kuralı | Teslimat ücreti, en pahalı kuryeye bile verilse min. kâr kalacak şekilde hesaplanır; zararına atama engellenir |
 | Siparişler | Sözleşmeli dükkanlardan gelir; pahalı ücrette müşteri vazgeçer, kurye bulunmazsa iptal olur |
 | Dükkanlar | Burger Queen, Döner Kral, Starbocks, Market 24, McDanold's, Pizza Hat, KFG, Sushi Samurai |
 | Olaylar | Eksik ürün, hasarlı sipariş, kaza, zam talebi, istifa, yavaş dükkan, viral yorum, komisyon teklifi |
-| Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank |
+| Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |
 | Vergi | Kârın bir kısmı vergi kasasına ayrılır; yıl sonunda öde ya da cezalı ertele |
 | Büyüme | 3 bölge, sözleşmeler, işe alım, seviye atlayan kuryeler |
