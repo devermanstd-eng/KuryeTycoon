@@ -181,7 +181,7 @@ namespace KuryeTycoon
         {
             if (UpgradeManager.I.CourierCapFull)
             {
-                EventManager.I.Notify($"Ofisin kapasitesi dolu ({UpgradeManager.I.CourierCap} kurye). Daha fazla kurye için Geliştirmeler'den ofisi büyüt.");
+                EventManager.I.Notify($"Platform paketindeki kurye hesapları dolu ({UpgradeManager.I.CourierCap}). Daha fazla kurye için Geliştirmeler'den paketi yükselt.");
                 return;
             }
             if (!Applications.Remove(c)) return;

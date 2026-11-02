@@ -402,7 +402,7 @@ namespace KuryeTycoon
         void DrawCouriers()
         {
             var cm = CourierManager.I;
-            GUILayout.Label($"Kuryeler ({cm.Couriers.Count}/{UpgradeManager.I.CourierCap} kapasite) · Şu an çevrimiçi: {cm.OnlineCount}", header);
+            GUILayout.Label($"Kuryeler ({cm.Couriers.Count}/{UpgradeManager.I.CourierCap} hesap) · Şu an çevrimiçi: {cm.OnlineCount}", header);
             GUILayout.Label("Kuryeler serbest çalışır: asıl mesleklerine (öğrenci, ofis çalışanı, vardiyalı işçi...), yorgunluklarına ve " +
                             "günlük hayatlarına göre istedikleri zaman çevrimiçi/çevrimdışı olurlar. Onları zorlayamazsın; boostlar ve iyi moral " +
                             "çevrimiçi olma isteğini artırır. Kendi araçlarını ve sigortalarını kendi kazançlarından öderler; " +
@@ -502,10 +502,10 @@ namespace KuryeTycoon
             var cm = CourierManager.I;
             float now = GameClock.I.TotalMinutes;
             var up = UpgradeManager.I;
-            GUILayout.Label($"Kurye kapasitesi: {cm.Couriers.Count}/{up.CourierCap} (ofis: {UpgradeManager.Def(UpgradeKind.Ofis).levelText[up.Level(UpgradeKind.Ofis)]})",
+            GUILayout.Label($"Kurye hesapları: {cm.Couriers.Count}/{up.CourierCap} ({up.PlatformName})",
                 up.CourierCapFull ? warn : label);
             if (up.CourierCapFull)
-                GUILayout.Label("Ofisin dolu. Yeni kurye almak için Geliştirmeler sekmesinden ofisi büyüt ya da çalışmayan bir kuryeyle yollarını ayır.", warn);
+                GUILayout.Label("Platform paketindeki kurye hesapları dolu. Yeni kurye için Geliştirmeler'den paketi yükselt ya da çalışmayan bir kuryeyle yollarını ayır.", warn);
             GUILayout.Label($"Gelen başvurular ({cm.Applications.Count}/{cm.maxApplications})", header);
             GUILayout.Label("Başvurular zamanla gelir; itibarın ve bonus çarpanın yüksekse daha sık gelir. Her başvuru 1 gün geçerlidir. " +
                             "Kuryeler paket ve km başı kazandığı için işe alım ve çıkarma ücretsizdir; her yeni kuryeye başlangıç kiti verilir. " +
@@ -532,7 +532,7 @@ namespace KuryeTycoon
                 GUILayout.BeginHorizontal();
                 var c = cand;
                 GUI.enabled = modalFree && !up.CourierCapFull;
-                if (GUILayout.Button(up.CourierCapFull ? "İşe al (ofis dolu)" : "İşe al", button)) deferred = () => cm.Hire(c);
+                if (GUILayout.Button(up.CourierCapFull ? "İşe al (hesaplar dolu)" : "İşe al", button)) deferred = () => cm.Hire(c);
                 GUI.enabled = modalFree;
                 if (GUILayout.Button("Reddet", button)) deferred = () => cm.Reject(c);
                 GUILayout.EndHorizontal();
@@ -723,10 +723,11 @@ namespace KuryeTycoon
         {
             var up = UpgradeManager.I;
             var e = EconomyManager.I;
-            GUILayout.Label("Kalıcı geliştirmeler şirketini büyütür. En önemlisi ofis: kaç kurye çalıştırabileceğini belirler; " +
-                            "büyük ofisin kirası da yüksek, bu yüzden sadece gerçekten ihtiyacın olduğunda büyüt. " +
+            GUILayout.Label("Kalıcı geliştirmeler şirketini büyütür. En önemlisi platform paketi: kuryeler serbest çalışır ama " +
+                            "her biri uygulamanda bir hesap ister; paket kaç kurye hesabı olabileceğini belirler ve büyük paketin " +
+                            "günlük sunucu ücreti de yüksektir. Sadece gerçekten ihtiyacın olduğunda yükselt. " +
                             "Geliştirmeler gider olarak vergiden düşülür. Aile borcunu unutma!", small);
-            GUILayout.Label($"Kasa: {Ft(e.money)} · Kurye: {CourierManager.I.Couriers.Count}/{up.CourierCap} · Günlük kira: {Ft(up.RentPerDay)}", label);
+            GUILayout.Label($"Kasa: {Ft(e.money)} · Kurye: {CourierManager.I.Couriers.Count}/{up.CourierCap} · Günlük platform ücreti: {Ft(up.PlatformFeePerDay)}", label);
 
             foreach (var d in UpgradeManager.Defs)
             {

@@ -271,8 +271,10 @@ namespace KuryeTycoon
         {
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
 
-            // Kuryeler kendi araçlarıyla, serbest çalışır: şirketin günlük gideri sadece ofis
-            Spend(UpgradeManager.I != null ? UpgradeManager.I.RentPerDay : officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
+            // Kuryeler kendi araçlarıyla, serbest çalışır: şirketin günlük gideri ofis kirası + platform sunucu ücreti
+            Spend(officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
+            int fee = UpgradeManager.I != null ? UpgradeManager.I.PlatformFeePerDay : 0;
+            if (fee > 0) Spend(fee, "Platform sunucu ve lisans ücreti", ExpenseCategory.Gelistirme);
 
             if (taxDebt > 0)
             {

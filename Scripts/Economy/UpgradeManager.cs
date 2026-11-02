@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    public enum UpgradeKind { Ofis, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama }
+    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama }
 
     public class UpgradeDef
     {
@@ -18,29 +18,31 @@ namespace KuryeTycoon
 
     /// <summary>
     /// Kalıcı şirket geliştirmeleri (Taksimetre'deki garaj geliştirmeleri gibi).
-    /// En önemlisi ofis: kaç kurye çalıştırabileceğini ve günlük kirayı belirler.
+    /// En önemlisi platform paketi: kuryeler serbest çalışır ama her biri uygulamada bir hesap ister;
+    /// paket kaç aktif kurye hesabı olabileceğini ve günlük sunucu/lisans ücretini belirler.
     /// </summary>
     public class UpgradeManager : MonoBehaviour
     {
         public static UpgradeManager I { get; private set; }
 
-        static readonly int[] OfficeCap = { 4, 8, 14, 22, 32 };
-        static readonly int[] OfficeRent = { 4000, 6000, 9000, 13000, 18000 };
+        static readonly int[] AccountCap = { 6, 12, 20, 35, 60 };
+        static readonly int[] PlatformFee = { 0, 1500, 3000, 5000, 8000 };
 
         public static readonly UpgradeDef[] Defs =
         {
             new UpgradeDef
             {
-                kind = UpgradeKind.Ofis, name = "Ofis büyütme",
-                summary = "Kaç kurye çalıştırabileceğini belirler. Büyük ofisin kirası da yüksek.",
+                kind = UpgradeKind.Platform, name = "Kurye platformu paketi",
+                summary = "Kuryeler kendi işinin patronu ama her biri uygulamanda bir hesapla çalışır. Paket kaç aktif kurye " +
+                          "hesabını kaldırabileceğini belirler; büyük paketin sunucu ve lisans ücreti de yüksek.",
                 costs = new[] { 80000, 200000, 450000, 900000 },
                 levelText = new[]
                 {
-                    "Küçük oda: 4 kurye, kira 4 000 Ft/gün",
-                    "Dükkan ofis: 8 kurye, kira 6 000 Ft/gün",
-                    "İki katlı ofis: 14 kurye, kira 9 000 Ft/gün",
-                    "Kurye merkezi: 22 kurye, kira 13 000 Ft/gün",
-                    "Bölge merkezi: 32 kurye, kira 18 000 Ft/gün"
+                    "Başlangıç paketi: 6 kurye hesabı, ücretsiz",
+                    "Büyüme paketi: 12 kurye hesabı, sunucu 1 500 Ft/gün",
+                    "Profesyonel paket: 20 kurye hesabı, sunucu 3 000 Ft/gün",
+                    "Şehir paketi: 35 kurye hesabı, sunucu 5 000 Ft/gün",
+                    "Kurumsal paket: 60 kurye hesabı, sunucu 8 000 Ft/gün"
                 }
             },
             new UpgradeDef
@@ -99,8 +101,9 @@ namespace KuryeTycoon
         public int Level(UpgradeKind k) => levels[(int)k];
         public bool Has(UpgradeKind k) => levels[(int)k] > 0;
 
-        public int CourierCap => OfficeCap[Level(UpgradeKind.Ofis)];
-        public int RentPerDay => OfficeRent[Level(UpgradeKind.Ofis)];
+        public int CourierCap => AccountCap[Level(UpgradeKind.Platform)];
+        public int PlatformFeePerDay => PlatformFee[Level(UpgradeKind.Platform)];
+        public string PlatformName => Def(UpgradeKind.Platform).levelText[Level(UpgradeKind.Platform)];
         public bool CourierCapFull => CourierManager.I.Couriers.Count >= CourierCap;
 
         public int NextCost(UpgradeKind k)
@@ -118,7 +121,6 @@ namespace KuryeTycoon
             if (!EconomyManager.I.TrySpend(d.costs[lv], $"Geliştirme: {d.name} ({lv + 1}. seviye)", ExpenseCategory.Gelistirme)) return false;
             levels[(int)k] = lv + 1;
             EventManager.I.Notify($"{d.name} tamamlandı: {d.levelText[lv + 1]}");
-            if (k == UpgradeKind.Ofis) CityMap.I.RefreshColors();
             return true;
         }
 
