@@ -55,9 +55,9 @@ namespace KuryeTycoon
         public int officeRentPerDay = 4000;
         public long bankruptcyLimit = -200000;
 
-        public PeriodStats Year = new PeriodStats();
-        public PeriodStats Today = new PeriodStats();
-        public PeriodStats Yesterday;
+        [System.NonSerialized] public PeriodStats Year = new PeriodStats();
+        [System.NonSerialized] public PeriodStats Today = new PeriodStats();
+        [System.NonSerialized] public PeriodStats Yesterday;
         public string LastTaxSummary = "";
         public readonly List<string> Ledger = new List<string>();
 
