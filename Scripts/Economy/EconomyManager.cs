@@ -347,8 +347,7 @@ namespace KuryeTycoon
                 long fine = Round1000(Mathf.Max(10000f, Mathf.Max(0f, Year.Profit) * 0.05f + couriers * 2000f));
                 const int accountant = 15000;
                 EventManager.I.Push(new GameEvent("Vergi denetimi!",
-                        "Vergi müfettişleri kapıda. Kurye ödemelerini, depozitoları ve faturaları inceleyecekler.
-" +
+                        "Vergi müfettişleri kapıda. Kurye ödemelerini, depozitoları ve faturaları inceleyecekler.\n" +
                         $"Eksik belge çıkarsa ceza {Ft(fine)} civarında olabilir.")
                     .Add($"Muhasebeciye danış (−{Ft(accountant)}, ceza ihtimali düşer)", () =>
                     {
@@ -370,8 +369,7 @@ namespace KuryeTycoon
                 long fee = couriers * 1500L;
                 PayFee(fee, "Kurye iş güvenliği fonu");
                 EventManager.I.Push(new GameEvent("İş güvenliği fonu katkısı",
-                    $"Platform üzerinden çalışan her kurye için 1 500 Ft iş güvenliği fonu katkısı otomatik tahsil edildi.
-{couriers} kurye → {Ft(fee)}"));
+                    $"Platform üzerinden çalışan her kurye için 1 500 Ft iş güvenliği fonu katkısı otomatik tahsil edildi.\n{couriers} kurye → {Ft(fee)}"));
             }
             else
             {
