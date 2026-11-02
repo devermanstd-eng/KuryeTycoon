@@ -393,7 +393,7 @@ namespace KuryeTycoon
             foreach (var c in cm.Couriers)
             {
                 GUILayout.BeginVertical(box);
-                GUILayout.Label($"{c.courierName} — {c.V.name} · Seviye {c.level}", header);
+                GUILayout.Label($"{c.courierName} — {c.V.name} · Tecrübe {c.level}", header);
                 GUILayout.Label($"{c.StateName} · Teslimat {c.deliveries} (bugün {c.deliveriesToday}) · Kazancı {Ft(c.totalEarned)}", small);
                 if (c.tipsTotal > 0)
                     GUILayout.Label($"Bahşişler: toplam {Ft(c.tipsTotal)}" + (c.tipsToday > 0 ? $" (bugün {Ft(c.tipsToday)})" : "") + " — tamamı kuryenin", small);
@@ -413,12 +413,10 @@ namespace KuryeTycoon
                 GUILayout.Label($"Hız {c.speedSkill:0.00} · Dikkat {c.care:0.00} · Nezaket {c.politeness:0.00} · Dayanıklılık {c.stamina:0.00}", small);
                 GUILayout.Label($"Kazanç: {Ft(c.V.basePay)}/paket + {c.V.payPerKm} Ft/km + bonus · Taşır: {GameData.CarryText(c.V)}", small);
                 GUILayout.Label($"Araçları: {c.VehiclesText}", small);
-                var next = c.NextVehicleToBuy;
-                if (next != null)
-                {
-                    var nv = GameData.Vehicle(next.Value);
-                    Bar($"→ {nv.name}", c.savings / (float)nv.ownPrice, new Color(0.95f, 0.8f, 0.3f), $"{c.savings / 1000}/{nv.ownPrice / 1000}k");
-                }
+                if (c.hasCompanyKit)
+                    GUILayout.Label($"Şirket ekipmanı: {GameData.StarterKitText} · " +
+                                    (c.depositPaid ? $"depozito alındı ({Ft(GameData.DepositAmount)}, ayrılırken iade edilir)"
+                                                   : $"depozito {Ft(GameData.DepositThreshold)} kazanınca kesilecek (şu an {Ft(c.totalEarned)})"), small);
                 GUILayout.Label(c.insured ? $"Sigorta: var (kendi öder, haftalık {Ft(Courier.InsurancePremium)}; bugüne kadar {Ft(c.insurancePaid)})"
                                           : "Sigorta: yok (kazada masrafları kendi öder, daha uzun süre çalışamaz)",
                                 c.insured ? small : warn);
@@ -467,7 +465,7 @@ namespace KuryeTycoon
             float now = GameClock.I.TotalMinutes;
             GUILayout.Label($"Gelen başvurular ({cm.Applications.Count}/{cm.maxApplications})", header);
             GUILayout.Label("Başvurular zamanla gelir; itibarın ve bonus çarpanın yüksekse daha sık gelir. Her başvuru 1 gün geçerlidir. " +
-                            "Kuryeler paket ve km başı kazandığı için işe alım ve çıkarma ücretsizdir. " +
+                            "Kuryeler paket ve km başı kazandığı için işe alım ve çıkarma ücretsizdir; her yeni kuryeye başlangıç kiti verilir. " +
                             "Ama çok kurye = kişi başı az paket = düşük moral.", small);
 
             if (cm.Applications.Count == 0)
@@ -477,7 +475,7 @@ namespace KuryeTycoon
             {
                 var v = GameData.Vehicle(cand.vehicle);
                 GUILayout.BeginVertical(box);
-                GUILayout.Label($"{cand.name} — {v.name} · Seviye {cand.level}", header);
+                GUILayout.Label($"{cand.name} — {v.name} · Tecrübe {cand.level}", header);
                 GUILayout.Label($"\"{cand.note}\"", note);
                 GUILayout.Label($"Meslek: {Courier.OccupationLabel(cand.occupation)}", small);
                 GUILayout.Label((cand.alsoOwnsBike ? "Yedekte bisikleti de var · " : "") +
@@ -542,6 +540,9 @@ namespace KuryeTycoon
             }
             GUILayout.Label("Ekipman kısa vadede kârı düşürür ama gider olarak vergiden düşülür; hız, moral, puan ve " +
                             "daha az hastalık/kaza olarak geri döner. Kuryeler sekmesinde her kuryenin eksikleri yazar.", small);
+            GUILayout.Label($"Başlangıç kiti ({GameData.StarterKitText}) her yeni kuryeye otomatik verilir. " +
+                            $"Kurye {Ft(GameData.DepositThreshold)} kazanınca {Ft(GameData.DepositAmount)} depozito kesilir; " +
+                            $"ayrılırken iade ederse geri ödenir. Depodaki iade edilmiş kit: {cm.kitsInStock}", label);
 
             if (selectedCourier == null || !cm.Couriers.Contains(selectedCourier))
                 selectedCourier = cm.Couriers.Count > 0 ? cm.Couriers[0] : null;
@@ -676,6 +677,8 @@ namespace KuryeTycoon
             GUILayout.Label("Kasa", header);
             GUILayout.Label($"Ana kasa: {Ft(e.money)}", label);
             GUILayout.Label($"Vergi kasası: {Ft(e.taxVault)} (her kârın %{e.vaultPercent * 100f:0}'i buraya ayrılır)", label);
+            if (e.depositsHeld > 0)
+                GUILayout.Label($"Tutulan ekipman depozitoları: {Ft(e.depositsHeld)} (gelir değil; ekipmanı iade eden kuryeye geri ödenir)", small);
             if (e.taxDebt > 0)
             {
                 GUILayout.Label($"Vergi borcu: {Ft(e.taxDebt)} — her gün %2 büyür!", warn);

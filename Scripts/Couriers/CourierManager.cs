@@ -9,6 +9,7 @@ namespace KuryeTycoon
         public string name;
         public VehicleKind vehicle;
         public bool alsoOwnsBike;      // motorlu araç sahibinin yedekte bisikleti de var
+        public VehicleKind dreamVehicle; // parası olursa almak istediği araç
         public Occupation occupation;
         public float speedSkill, care, politeness, stamina;
         public int level = 1;
@@ -30,6 +31,8 @@ namespace KuryeTycoon
         public readonly List<Courier> Couriers = new List<Courier>();
         public readonly List<CourierCandidate> Applications = new List<CourierCandidate>();
         public int maxApplications = 6;
+        /// <summary>Depoda bekleyen, iade edilmiş başlangıç kitleri (yeni kuryeye bedava verilir).</summary>
+        public int kitsInStock;
 
         Transform root;
         float nextApplicationAt;
@@ -131,6 +134,7 @@ namespace KuryeTycoon
                 name = GameData.RandomName(),
                 vehicle = v,
                 alsoOwnsBike = v != VehicleKind.Bisiklet && Random.value < 0.4f,
+                dreamVehicle = RandomDream(v),
                 occupation = RandomOccupation(),
                 level = level,
                 insured = Random.value < InsureChance(v),
@@ -142,6 +146,13 @@ namespace KuryeTycoon
                 note = GameData.RandomNote(),
                 expiresAt = withExpiry ? GameClock.I.TotalMinutes + 1440f : float.MaxValue
             };
+        }
+
+        /// <summary>Yarısı aracından memnun; diğerleri parası olursa daha iyi bir araç ister (illa bir üstü değil).</summary>
+        static VehicleKind RandomDream(VehicleKind current)
+        {
+            if (current == VehicleKind.Araba || Random.value < 0.5f) return current;
+            return (VehicleKind)Random.Range((int)current + 1, (int)VehicleKind.Araba + 1);
         }
 
         VehicleKind RandomVehicle()
@@ -180,8 +191,45 @@ namespace KuryeTycoon
             go.transform.SetParent(root, false);
             var courier = go.AddComponent<Courier>();
             courier.Init(c, CityMap.I.HQDoor);
+            GiveStarterKit(courier);
             Couriers.Add(courier);
             return courier;
+        }
+
+        /// <summary>Giriş seviyesi ekipman: depoda iade edilmiş kit varsa o, yoksa şirket yenisini alır.</summary>
+        void GiveStarterKit(Courier c)
+        {
+            if (kitsInStock > 0) kitsInStock--;
+            else EconomyManager.I.Spend(GameData.StarterKitCost, $"Başlangıç ekipmanı: {c.courierName}", ExpenseCategory.Ekipman);
+            foreach (var k in GameData.StarterKit) c.equipment.Add(k);
+            c.hasCompanyKit = true;
+        }
+
+        /// <summary>
+        /// Ayrılan kurye ekipmanı iade ederse depozitosu geri ödenir ve kit depoya döner.
+        /// İade etmezse depozito şirkette kalır.
+        /// </summary>
+        void HandleLeaving(Courier c)
+        {
+            if (!c.hasCompanyKit) return;
+            bool returns = Random.value < (c.depositPaid ? 0.9f : 0.7f);
+            if (returns)
+            {
+                kitsInStock++;
+                if (c.depositPaid)
+                {
+                    EconomyManager.I.RefundDeposit(c);
+                    EventManager.I.Notify($"{c.courierName} ekipmanı iade etti, {GameData.Ft(GameData.DepositAmount)} depozitosu geri ödendi. Kit depoya döndü.");
+                }
+                else EventManager.I.Notify($"{c.courierName} ekipmanı iade etti (depozito henüz kesilmemişti). Kit depoya döndü.");
+            }
+            else if (c.depositPaid)
+            {
+                EconomyManager.I.KeepDeposit(c);
+                EventManager.I.Notify($"{c.courierName} ekipmanı iade etmedi, {GameData.Ft(GameData.DepositAmount)} depozito şirkette kaldı.");
+            }
+            else EventManager.I.Notify($"{c.courierName} ekipmanı iade etmedi (depozito kesilmemişti, kit kayıp).");
+            c.hasCompanyKit = false;
         }
 
         public bool Fire(Courier c)
@@ -192,6 +240,7 @@ namespace KuryeTycoon
                 return false;
             }
             EventManager.I.Notify($"{c.courierName} ile yollar ayrıldı.");
+            HandleLeaving(c);
             Couriers.Remove(c);
             Destroy(c.gameObject);
             return true;
@@ -251,7 +300,7 @@ namespace KuryeTycoon
                     EventManager.I.Notify($"{c.courierName} sigorta primini ödeyemedi, sigortası düştü.");
                 if (!c.insured && Random.value < 0.02f && c.TryBuyInsurance())
                     EventManager.I.Notify($"{c.courierName} şirket platformu üzerinden kendine sigorta yaptırdı.");
-                if (c.OrderCount == 0 && Random.value < 0.25f && c.TryUpgradeVehicle())
+                if (c.OrderCount == 0 && Random.value < 0.25f && c.TryBuyDreamVehicle())
                     VehicleUpgraded(c);
 
                 if (c.State == CourierState.Izinli || c.OrderCount > 0) continue;
@@ -305,6 +354,7 @@ namespace KuryeTycoon
             EventManager.I.Push(new GameEvent("Kurye ayrıldı",
                 $"{c.courierName} moralinin çok düşük olduğunu söyleyerek seninle çalışmayı bıraktı. " +
                 "Yeterince sipariş, mevsime uygun ekipman ve bonuslar moral için önemli."));
+            HandleLeaving(c);
             Couriers.Remove(c);
             Destroy(c.gameObject);
         }

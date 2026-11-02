@@ -87,6 +87,34 @@ namespace KuryeTycoon
 
         public static EquipmentDef Equip(EquipmentKind k) => Equipment[(int)k];
 
+        /// <summary>İşe giren her kuryeye verilen giriş seviyesi şirket ekipmanı.</summary>
+        public static readonly EquipmentKind[] StarterKit = { EquipmentKind.TermalCanta, EquipmentKind.YazTisort };
+
+        /// <summary>Kurye toplam bu kadar kazanınca depozito kesilir.</summary>
+        public const int DepositThreshold = 30000;
+        /// <summary>Ekipman depozitosu (ayrılırken ekipmanı iade ederse geri ödenir).</summary>
+        public const int DepositAmount = 20000;
+
+        public static int StarterKitCost
+        {
+            get
+            {
+                int sum = 0;
+                foreach (var k in StarterKit) sum += Equip(k).price;
+                return sum;
+            }
+        }
+
+        public static string StarterKitText
+        {
+            get
+            {
+                string s = "";
+                foreach (var k in StarterKit) s += (s.Length > 0 ? " + " : "") + Equip(k).name;
+                return s;
+            }
+        }
+
         static readonly string[] FirstNames =
         {
             "Ahmet", "Mehmet", "Ayşe", "Zeynep", "Can", "Elif", "Emre", "Selin",

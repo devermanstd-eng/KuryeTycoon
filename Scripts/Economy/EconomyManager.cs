@@ -56,6 +56,8 @@ namespace KuryeTycoon
         public long money = 300000;
         public long taxVault;
         public long taxDebt;
+        /// <summary>Kuryelerden alınan ekipman depozitoları (gelir değil, iade borcu).</summary>
+        public long depositsHeld;
 
         [Header("Fiyatlandırma (müşteriden)")]
         public int baseFee = 590;
@@ -204,6 +206,36 @@ namespace KuryeTycoon
             Today.rewards += amount;
             Log($"−{Ft(amount)} {label}");
             CheckBankruptcy();
+        }
+
+        // ---------- Ekipman depozitosu (gelir sayılmaz, vergilendirilmez) ----------
+
+        public void CollectDeposit(Courier c)
+        {
+            if (c.depositPaid) return;
+            c.depositPaid = true;
+            c.savings = System.Math.Max(0L, c.savings - GameData.DepositAmount);
+            money += GameData.DepositAmount;
+            depositsHeld += GameData.DepositAmount;
+            Log($"+{Ft(GameData.DepositAmount)} ekipman depozitosu: {c.courierName} (iade borcu)");
+            EventManager.I.Notify($"{c.courierName} {Ft(GameData.DepositThreshold)} kazanca ulaştı, {Ft(GameData.DepositAmount)} ekipman depozitosu kesildi.");
+        }
+
+        public void RefundDeposit(Courier c)
+        {
+            money -= GameData.DepositAmount;
+            depositsHeld -= GameData.DepositAmount;
+            Log($"−{Ft(GameData.DepositAmount)} depozito iadesi: {c.courierName}");
+            CheckBankruptcy();
+        }
+
+        /// <summary>Ekipmanı iade etmeyen kuryenin depozitosu şirkete gelir olarak kalır.</summary>
+        public void KeepDeposit(Courier c)
+        {
+            depositsHeld -= GameData.DepositAmount;
+            Year.otherIncome += GameData.DepositAmount;
+            Today.otherIncome += GameData.DepositAmount;
+            Log($"İade edilmeyen ekipman: {c.courierName} depozitosu gelire geçti ({Ft(GameData.DepositAmount)})");
         }
 
         public void AddIncome(long amount, string label)

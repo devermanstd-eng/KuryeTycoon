@@ -58,6 +58,12 @@ namespace KuryeTycoon
         public int repairDays;                 // aracı tamirde (gün)
         public VehicleKind repairingVehicle;
 
+        public VehicleKind dreamVehicle;       // parası olursa almak istediği araç (kendisininkiyle aynıysa hiç yükseltmez)
+
+        [Header("Şirket ekipmanı")]
+        public bool hasCompanyKit;             // başlangıç kitini taşıyor
+        public bool depositPaid;               // 20 000 Ft depozito kesildi mi
+
         public readonly HashSet<VehicleKind> ownedVehicles = new HashSet<VehicleKind>();
         public readonly HashSet<EquipmentKind> equipment = new HashSet<EquipmentKind>();
 
@@ -96,6 +102,7 @@ namespace KuryeTycoon
             insured = c.insured;
             savings = c.savings;
             ownedVehicles.Add(c.vehicle);
+            dreamVehicle = c.dreamVehicle;
             if (c.alsoOwnsBike) ownedVehicles.Add(VehicleKind.Bisiklet);
             Position = start;
             transform.position = CityMap.ToWorld(Position);
@@ -271,6 +278,10 @@ namespace KuryeTycoon
         {
             totalEarned += amount;
             savings += (long)(amount * SavingRate);
+
+            // Toplam kazancı eşiğe ulaşınca ekipman depozitosu kesilir
+            if (hasCompanyKit && !depositPaid && totalEarned >= GameData.DepositThreshold)
+                EconomyManager.I.CollectDeposit(this);
         }
 
         /// <summary>Tamirde olmayan en iyi aracı.</summary>
@@ -305,26 +316,17 @@ namespace KuryeTycoon
             vehicle = best;
         }
 
-        public VehicleKind? NextVehicleToBuy
+        /// <summary>
+        /// Araç yükseltmek zorunlu değil: kurye sadece istediği bir araç varsa
+        /// ve parası yetiyorsa onu (ara basamakları atlayarak) kendi cebinden alır.
+        /// </summary>
+        public bool TryBuyDreamVehicle()
         {
-            get
-            {
-                int top = -1;
-                foreach (var v in ownedVehicles) top = Mathf.Max(top, (int)v);
-                if (top >= (int)VehicleKind.Araba) return null;
-                return (VehicleKind)(top + 1);
-            }
-        }
-
-        /// <summary>Parası yetiyorsa bir üst aracı kendi cebinden alır.</summary>
-        public bool TryUpgradeVehicle()
-        {
-            var next = NextVehicleToBuy;
-            if (next == null) return false;
-            var def = GameData.Vehicle(next.Value);
+            if (ownedVehicles.Contains(dreamVehicle)) return false;
+            var def = GameData.Vehicle(dreamVehicle);
             if (savings < def.ownPrice) return false;
             savings -= def.ownPrice;
-            ownedVehicles.Add(next.Value);
+            ownedVehicles.Add(dreamVehicle);
             RefreshVehicle();
             return true;
         }
@@ -570,7 +572,7 @@ namespace KuryeTycoon
             {
                 xp = 0f;
                 level++;
-                EventManager.I.Notify($"{courierName} seviye {level} oldu! (daha hızlı)");
+                EventManager.I.Notify($"{courierName} tecrübe kazandı (tecrübe {level}): artık daha hızlı.");
             }
         }
 

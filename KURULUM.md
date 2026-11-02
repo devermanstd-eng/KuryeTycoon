@@ -37,7 +37,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Kuryeler | Bisiklet, e-scooter, motosiklet, araba; hız, kapasite ve ücret farklı |
 | İşe alım | Başvurular zamanla gelir, kabul/red edersin; işe alım ve çıkarma ücretsiz |
 | Serbest kuryeler | Her kuryenin asıl mesleği var: tam zamanlı (her gün çalışabilir, zorunlu izin yok), ofis çalışanı (17:00 sonrası), sadece hafta sonu, öğrenci (sınav haftalarında çalışmaz, tatilde çok çalışır), vardiyalı işçi (haftalık değişen vardiya), emekli (sabahları). Yorgunluğuna ve moraline göre kendisi çevrimiçi/çevrimdışı olur. Boostlar çevrimiçi olmayı teşvik eder |
-| Kuryenin kendi parası | Kazancının %30'unu biriktirir, parası yetince kendi cebinden daha iyi araç alır (bisiklet → scooter → motor → araba). Araç arızalanırsa yedek aracıyla çalışır. İsterse platform üzerinden kendi parasıyla sigorta yaptırır; şirket kaza masrafı ödemez |
+| Kuryenin kendi parası | Kazancının %30'unu biriktirir. Araç yükseltmek zorunlu değil: aracından memnun olanlar hiç değiştirmez, istediği bir araç olan kurye parası yetince onu kendi cebinden alır. Araç arızalanırsa yedek aracıyla çalışır. İsterse platform üzerinden kendi parasıyla sigorta yaptırır; şirket kaza masrafı ödemez |
 | Moral ve yorgunluk | Aynı anda kaç paket alacağını ve sipariş reddetme ihtimalini belirler |
 | Ödeme | Paket başı sabit + km başı (bisiklet 175 → araba 286 Ft) + hava/gece/yoğun saat bonusu × bonus çarpanı |
 | Kâr kuralı | Teslimat ücreti, en pahalı kuryeye bile verilse min. kâr kalacak şekilde hesaplanır; zararına atama engellenir |
@@ -48,6 +48,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |
 | Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık ve aylık hedef ödülü (örn. ayda 450+ paket → 50 000 Ft); hepsi şirketin kârından |
+| Başlangıç ekipmanı | Her yeni kuryeye termal çanta + şirket tişörtü verilir. Kurye 30 000 Ft kazanınca 20 000 Ft depozito kesilir (gelir değil, iade borcu). Ayrılırken ekipmanı iade ederse depozito geri ödenir ve kit depoya döner; iade etmezse depozito şirkette kalır |
 | Bahşiş | Müşteriler bazen bahşiş verir (cömert müşteri, iyi puan, kötü hava, gece, ağır paket ihtimali artırır); bahşişin tamamı kuryenin, şirket kasasına girmez |
 | Vergi | Kârın bir kısmı vergi kasasına ayrılır; yıl sonunda öde ya da cezalı ertele |
 | Büyüme | 3 bölge, sözleşmeler, işe alım, seviye atlayan kuryeler |
