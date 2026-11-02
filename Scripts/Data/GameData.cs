@@ -95,15 +95,8 @@ namespace KuryeTycoon
         /// <summary>Ekipman depozitosu (ayrılırken ekipmanı iade ederse geri ödenir).</summary>
         public const int DepositAmount = 20000;
 
-        public static int StarterKitCost
-        {
-            get
-            {
-                int sum = 0;
-                foreach (var k in StarterKit) sum += Equip(k).price;
-                return sum;
-            }
-        }
+        /// <summary>Her başlangıç kitinin şirkete maliyeti (Ft).</summary>
+        public const int StarterKitCost = 5000;
 
         public static string StarterKitText
         {

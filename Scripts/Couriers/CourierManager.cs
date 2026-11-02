@@ -195,11 +195,12 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Giriş seviyesi ekipman. Şirkete maliyeti yok: bedeli kuryeden depozito olarak alınır
-        /// (kurye 30 000 Ft kazanınca 20 000 Ft kesilir).
+        /// Giriş seviyesi ekipman. Şirkete maliyeti kit başı 5 000 Ft;
+        /// kuryeden de 30 000 Ft kazanınca 20 000 Ft depozito alınır.
         /// </summary>
         void GiveStarterKit(Courier c)
         {
+            EconomyManager.I.Spend(GameData.StarterKitCost, $"Başlangıç kiti: {c.courierName}", ExpenseCategory.Ekipman);
             foreach (var k in GameData.StarterKit) c.equipment.Add(k);
             c.hasCompanyKit = true;
         }

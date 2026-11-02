@@ -48,7 +48,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |
 | Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık ve aylık hedef ödülü (örn. ayda 450+ paket → 50 000 Ft); hepsi şirketin kârından |
-| Başlangıç ekipmanı | Her yeni kuryeye termal çanta + şirket tişörtü verilir; şirkete maliyeti yok, bedeli depozitoyla kuryeden alınır. Kurye 30 000 Ft kazanınca 20 000 Ft depozito kesilir (gelir değil, iade borcu). Ayrılırken ekipmanı iade ederse depozito geri ödenir; iade etmezse depozito şirkette kalır |
+| Başlangıç ekipmanı | Her yeni kuryeye termal çanta + şirket tişörtü verilir; şirkete maliyeti kit başı 5 000 Ft. Kurye 30 000 Ft kazanınca 20 000 Ft depozito kesilir (gelir değil, iade borcu). Ayrılırken ekipmanı iade ederse depozito geri ödenir; iade etmezse depozito şirkette kalır |
 | Bahşiş | Müşteriler bazen bahşiş verir (cömert müşteri, iyi puan, kötü hava, gece, ağır paket ihtimali artırır); bahşişin tamamı kuryenin, şirket kasasına girmez |
 | Vergi | Kârın bir kısmı vergi kasasına ayrılır; yıl sonunda öde ya da cezalı ertele |
 | Büyüme | 3 bölge, sözleşmeler, işe alım, seviye atlayan kuryeler |
