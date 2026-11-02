@@ -35,6 +35,8 @@ namespace KuryeTycoon
         public string leaveReason = "";
         public int weekDeliveries;          // haftalık hedef için
         public bool weeklyRewardClaimed;
+        public int monthDeliveries;         // aylık hedef için
+        public bool monthlyRewardClaimed;
 
         public readonly HashSet<EquipmentKind> equipment = new HashSet<EquipmentKind>();
 

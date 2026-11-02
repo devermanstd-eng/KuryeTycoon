@@ -45,20 +45,26 @@ namespace KuryeTycoon
         {
             if (GameClock.I.IsWeekend)
             {
-                // Hafta sonu: sabahlar sakin, öğle ve akşam yoğun
-                if (h < 8) return 0.1f;
-                if (h < 11) return 0.3f;
-                if (h < 15) return 1.6f;
+                // Hafta sonu: gece ve sabah çok sakin (insanlar uyuyor), öğle ve akşam yoğun
+                if (h < 2) return 0.08f;
+                if (h < 8) return 0.02f;
+                if (h < 11) return 0.12f;
+                if (h < 15) return 1.5f;
                 if (h < 18) return 0.9f;
-                if (h < 22) return 1.7f;
-                return 0.8f;
+                if (h < 22) return 1.6f;
+                return 0.4f;
             }
-            if (h < 7) return 0.15f;
-            if (h < 11) return 0.5f;
+            // Hafta içi: gece yarısından sonra ve sabah erken çok az sipariş
+            if (h < 2) return 0.1f;
+            if (h < 6) return 0.03f;
+            if (h < 8) return 0.15f;
+            if (h < 10) return 0.4f;
+            if (h < 11) return 0.7f;
             if (h < 14) return 1.4f;
-            if (h < 18) return 0.7f;
-            if (h < 22) return 1.5f;
-            return 0.6f;
+            if (h < 17) return 0.7f;
+            if (h < 21) return 1.5f;
+            if (h < 23) return 0.7f;
+            return 0.3f;
         }
 
         void Update()

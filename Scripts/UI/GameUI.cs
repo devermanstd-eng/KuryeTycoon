@@ -190,6 +190,8 @@ namespace KuryeTycoon
                 case KeyCode.Alpha1: SetSpeed(1f); e.Use(); break;
                 case KeyCode.Alpha2: SetSpeed(2f); e.Use(); break;
                 case KeyCode.Alpha3: SetSpeed(4f); e.Use(); break;
+                case KeyCode.Alpha4: SetSpeed(8f); e.Use(); break;
+                case KeyCode.Alpha5: SetSpeed(16f); e.Use(); break;
             }
         }
 
@@ -260,13 +262,16 @@ namespace KuryeTycoon
             var boost = CampaignManager.I.ActiveWindow;
             if (boost != null) info += $"    BOOST %{boost.percent * 100f:0} ({boost.TimeText})";
             if (eco.taxDebt > 0) info += $"    VERGİ BORCU: {Ft(eco.taxDebt)}";
-            GUI.Label(new Rect(280, 0, sw - 280 - 240, TopBar), info, barText);
+            GUI.Label(new Rect(280, 0, sw - 280 - 290, TopBar), info, barText);
 
-            float bx = sw - 230f;
-            if (SelectButtonAt(new Rect(bx, 9, 50, 30), clock.Paused, "II")) clock.Paused = !clock.Paused;
-            if (SelectButtonAt(new Rect(bx + 56, 9, 50, 30), IsSpeed(clock, 1f), "1x")) SetSpeed(1f);
-            if (SelectButtonAt(new Rect(bx + 112, 9, 50, 30), IsSpeed(clock, 2f), "2x")) SetSpeed(2f);
-            if (SelectButtonAt(new Rect(bx + 168, 9, 50, 30), IsSpeed(clock, 4f), "4x")) SetSpeed(4f);
+            float bx = sw - 282f;
+            if (SelectButtonAt(new Rect(bx, 9, 42, 30), clock.Paused, "II")) clock.Paused = !clock.Paused;
+            float[] speeds = { 1f, 2f, 4f, 8f, 16f };
+            for (int i = 0; i < speeds.Length; i++)
+            {
+                float s = speeds[i];
+                if (SelectButtonAt(new Rect(bx + 46 + i * 46, 9, 42, 30), IsSpeed(clock, s), s + "x")) SetSpeed(s);
+            }
         }
 
         static bool IsSpeed(GameClock c, float s) => !c.Paused && Mathf.Approximately(c.SpeedMultiplier, s);
@@ -408,6 +413,14 @@ namespace KuryeTycoon
                     else
                         Bar("Haftalık", c.weekDeliveries / (float)Mathf.Max(1, camp.weeklyTarget), new Color(0.4f, 0.7f, 1f),
                             $"{c.weekDeliveries}/{camp.weeklyTarget}");
+                }
+                if (camp.monthlyChallenge)
+                {
+                    if (c.monthlyRewardClaimed)
+                        GUILayout.Label($"Aylık hedef tamamlandı! ({Ft(camp.monthlyReward)} ödendi)", label);
+                    else
+                        Bar("Aylık", c.monthDeliveries / (float)Mathf.Max(1, camp.monthlyTarget), new Color(0.75f, 0.55f, 1f),
+                            $"{c.monthDeliveries}/{camp.monthlyTarget}");
                 }
                 GUILayout.Label($"Ekipman: {EquipmentText(c)}", small);
                 foreach (var p in c.ActivePenalties()) GUILayout.Label("• " + p, warn);
@@ -604,17 +617,29 @@ namespace KuryeTycoon
             long sum = 0;
             foreach (var o in OrderManager.I.History) { sum += o.Profit; samples++; }
             float avg = samples > 0 ? sum / (float)samples : 300f;
-            long targetProfit = (long)(avg * camp.weeklyTarget);
-            GUILayout.Label($"Ortalama sipariş kârı ~{Ft((long)avg)} → {camp.weeklyTarget} paket ≈ {Ft(targetProfit)} kâr, ödül {Ft(camp.weeklyReward)}.",
-                small);
-            if (camp.weeklyReward > targetProfit)
-                GUILayout.Label("Bu ödül, o paketlerden kazandığından fazla: hedefe ulaşan her kurye zarar ettirir.", warn);
+            RewardCheck(avg, camp.weeklyTarget, camp.weeklyReward);
 
             GUILayout.Space(8);
-            GUILayout.Label($"Bu hafta (Hafta {clock.Week})", header);
+            GUILayout.Label("Aylık hedef ödülü", header);
+            camp.monthlyChallenge = GUILayout.Toggle(camp.monthlyChallenge, " Aylık hedef açık (her ayın başında sıfırlanır)", toggle);
+            camp.monthlyTarget = IntSlider("Hedef paket", camp.monthlyTarget, 50, 1000, 10);
+            camp.monthlyReward = IntSlider("Ödül (Ft)", camp.monthlyReward, 0, 200000, 1000);
+            RewardCheck(avg, camp.monthlyTarget, camp.monthlyReward);
+
+            GUILayout.Space(8);
+            GUILayout.Label($"Bu hafta ({clock.MonthName}, {clock.WeekOfMonth}. hafta)", header);
             GUILayout.Label($"Boost ödemeleri: {Ft(camp.boostPaidThisWeek)}", label);
-            GUILayout.Label($"Hedef ödülleri: {Ft(camp.rewardsPaidThisWeek)} ({camp.rewardsClaimedThisWeek} kurye)", label);
+            GUILayout.Label($"Haftalık hedef ödülleri: {Ft(camp.rewardsPaidThisWeek)} ({camp.rewardsClaimedThisWeek} kurye)", label);
+            GUILayout.Label($"Bu ay aylık hedef ödülleri: {Ft(camp.rewardsPaidThisMonth)} ({camp.rewardsClaimedThisMonth} kurye)", label);
             GUILayout.Label($"Bugünkü kampanya gideri: {Ft(eco.Today.campaigns)}", small);
+        }
+
+        void RewardCheck(float avgProfit, int target, int reward)
+        {
+            long targetProfit = (long)(avgProfit * target);
+            GUILayout.Label($"Ortalama sipariş kârı ~{Ft((long)avgProfit)} → {target} paket ≈ {Ft(targetProfit)} kâr, ödül {Ft(reward)}.", small);
+            if (reward > targetProfit)
+                GUILayout.Label("Bu ödül, o paketlerden kazandığından fazla: hedefe ulaşan her kurye zarar ettirir.", warn);
         }
 
         float PercentSlider(string name, float v, float min, float max)
@@ -639,7 +664,7 @@ namespace KuryeTycoon
             if (e.taxVault > 0 && GUILayout.Button("Vergi kasasını ana kasaya aktar", smallButton)) deferred = () => e.WithdrawVault();
 
             GUILayout.Space(6);
-            GUILayout.Label($"Bu yıl (Yıl {clock.Year}, gün {clock.DayOfYear}/{clock.daysPerYear})", header);
+            GUILayout.Label($"Bu yıl (Yıl {clock.Year}, {clock.MonthName}, gün {clock.DayOfYear}/{clock.DaysPerYear})", header);
             Stats(e.Year);
             long est = (long)Mathf.Round(Mathf.Max(0f, e.Year.Profit) * e.taxRate);
             GUILayout.Label($"Tahmini yıl sonu vergisi (%{e.taxRate * 100f:0}): {Ft(est)}", label);

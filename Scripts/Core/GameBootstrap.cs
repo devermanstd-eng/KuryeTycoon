@@ -83,7 +83,7 @@ namespace KuryeTycoon
                 "• Kampanyalar sekmesinde boostlar ve haftalık hedef ödülü var (kârından ödenir).\n" +
                 "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
                 "• Yıl sonunda vergi ödersin: Vergi kasası kârının bir kısmını kenara ayırır.\n\n" +
-                "Kısayollar: Boşluk = duraklat, 1/2/3 = hız"));
+                "Takvim: 1 ay = 28 gün, 1 yıl = 12 ay. Oyun Mart ayında başlar.\nKısayollar: Boşluk = duraklat, 1–5 = hız (1x, 2x, 4x, 8x, 16x)"));
         }
     }
 }

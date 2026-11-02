@@ -27,7 +27,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 ## 5. Oyna
 1. **Play**'e bas.
 2. Şirket adını yaz, ana ve ikincil rengini seç → **Şirketi Kur ve Başla**.
-3. Kısayollar: **Boşluk** = duraklat, **1 / 2 / 3** = 1x / 2x / 4x hız.
+3. Kısayollar: **Boşluk** = duraklat, **1–5** = 1x / 2x / 4x / 8x / 16x hız. Takvim: 1 ay = 28 gün, 1 yıl = 12 ay.
 4. Game penceresi küçükse üstteki **Free Aspect**'i **Full HD (1920x1080)** yap.
 
 ## Oyunda neler var
@@ -44,7 +44,7 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 | Olaylar | Eksik ürün, hasarlı sipariş, kaza, zam talebi, istifa, yavaş dükkan, viral yorum, komisyon teklifi |
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Hava ve mevsim | Mevsime göre hava; kötü havada talep artar, açık araçlar yavaşlar |
-| Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık hedef ödülü; hepsi şirketin kârından |
+| Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık ve aylık hedef ödülü (örn. ayda 450+ paket → 50 000 Ft); hepsi şirketin kârından |
 | Vergi | Kârın bir kısmı vergi kasasına ayrılır; yıl sonunda öde ya da cezalı ertele |
 | Büyüme | 3 bölge, sözleşmeler, işe alım, seviye atlayan kuryeler |
 

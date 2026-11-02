@@ -45,6 +45,14 @@ namespace KuryeTycoon
         public int weeklyTarget = 80;
         public int weeklyReward = 25000;
 
+        [Header("Aylık hedef")]
+        public bool monthlyChallenge = true;
+        public int monthlyTarget = 450;
+        public int monthlyReward = 50000;
+
+        public long rewardsPaidThisMonth;
+        public int rewardsClaimedThisMonth;
+
         /// <summary>Hafta içi bugün için planlanan rastgele boostlar.</summary>
         public readonly List<BoostWindow> WeekdayBoosts = new List<BoostWindow>();
 
@@ -61,6 +69,7 @@ namespace KuryeTycoon
         public void Init()
         {
             GameClock.I.OnNewDay += OnNewDay;
+            GameClock.I.OnNewMonth += StartNewMonth;
             PlanDay();
             ready = true;
         }
@@ -69,6 +78,19 @@ namespace KuryeTycoon
         {
             if (GameClock.I.DayOfWeek == 0) StartNewWeek();
             PlanDay();
+        }
+
+        void StartNewMonth()
+        {
+            foreach (var c in CourierManager.I.Couriers)
+            {
+                c.monthDeliveries = 0;
+                c.monthlyRewardClaimed = false;
+            }
+            rewardsPaidThisMonth = 0;
+            rewardsClaimedThisMonth = 0;
+            if (monthlyChallenge)
+                EventManager.I.Notify($"{GameClock.I.MonthName} başladı! Aylık hedef: {monthlyTarget} paket → {Ft(monthlyReward)} ödül.");
         }
 
         void StartNewWeek()
@@ -179,15 +201,30 @@ namespace KuryeTycoon
         public void OnDelivered(Courier c)
         {
             c.weekDeliveries++;
-            if (!weeklyChallenge || c.weeklyRewardClaimed || c.weekDeliveries < weeklyTarget) return;
+            c.monthDeliveries++;
 
-            c.weeklyRewardClaimed = true;
-            EconomyManager.I.SpendCampaign(weeklyReward, $"Haftalık hedef ödülü: {c.courierName}");
-            c.totalEarned += weeklyReward;
-            c.morale = Mathf.Min(1f, c.morale + 0.15f);
-            rewardsPaidThisWeek += weeklyReward;
-            rewardsClaimedThisWeek++;
-            EventManager.I.Notify($"{c.courierName} haftalık hedefe ulaştı ({weeklyTarget} paket) ve {Ft(weeklyReward)} ödül aldı!");
+            if (weeklyChallenge && !c.weeklyRewardClaimed && c.weekDeliveries >= weeklyTarget)
+            {
+                c.weeklyRewardClaimed = true;
+                EconomyManager.I.SpendCampaign(weeklyReward, $"Haftalık hedef ödülü: {c.courierName}");
+                c.totalEarned += weeklyReward;
+                c.morale = Mathf.Min(1f, c.morale + 0.15f);
+                rewardsPaidThisWeek += weeklyReward;
+                rewardsClaimedThisWeek++;
+                EventManager.I.Notify($"{c.courierName} haftalık hedefe ulaştı ({weeklyTarget} paket) ve {Ft(weeklyReward)} ödül aldı!");
+            }
+
+            if (monthlyChallenge && !c.monthlyRewardClaimed && c.monthDeliveries >= monthlyTarget)
+            {
+                c.monthlyRewardClaimed = true;
+                EconomyManager.I.SpendCampaign(monthlyReward, $"Aylık hedef ödülü: {c.courierName}");
+                c.totalEarned += monthlyReward;
+                c.morale = Mathf.Min(1f, c.morale + 0.25f);
+                rewardsPaidThisMonth += monthlyReward;
+                rewardsClaimedThisMonth++;
+                EventManager.I.Push(new GameEvent("Ayın kuryesi!",
+                    $"{c.courierName} bu ay {monthlyTarget}+ paket teslim etti ve {Ft(monthlyReward)} ekstra kazandı. Morali tavan yaptı!"));
+            }
         }
     }
 }
