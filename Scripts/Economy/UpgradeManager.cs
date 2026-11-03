@@ -115,6 +115,19 @@ namespace KuryeTycoon
             return null;
         }
         public int Level(UpgradeKind k) => levels[(int)k];
+
+        // ---------- Kayıt ----------
+        public int[] CaptureLevels() => (int[])levels.Clone();
+
+        public void RestoreLevels(int[] saved)
+        {
+            if (saved == null) return;
+            for (int i = 0; i < levels.Length && i < saved.Length; i++)
+            {
+                var d = Def((UpgradeKind)i);
+                levels[i] = Mathf.Clamp(saved[i], 0, d != null ? d.MaxLevel : 0);
+            }
+        }
         public bool Has(UpgradeKind k) => levels[(int)k] > 0;
 
         public int CourierCap => AccountCap[Level(UpgradeKind.Platform)];

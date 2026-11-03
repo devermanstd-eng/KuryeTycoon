@@ -145,6 +145,13 @@ namespace KuryeTycoon
             if (hq != null) hq.color = CompanyProfile.Primary;
         }
 
+        /// <summary>Kayıttan yüklerken açık bölge seviyesini geri koyar.</summary>
+        public void RestoreUnlockLevel(int level)
+        {
+            UnlockLevel = Mathf.Clamp(level, 1, MaxLevel);
+            RefreshColors();
+        }
+
         public bool TryUnlockNext()
         {
             if (UnlockLevel >= MaxLevel) return false;

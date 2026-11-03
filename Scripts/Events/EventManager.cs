@@ -50,6 +50,9 @@ namespace KuryeTycoon
             if (GameClock.I != null) GameClock.I.EventPause = Current != null;
         }
 
+        /// <summary>Açık ya da sırada bekleyen olay kartı yok (kayıt sistemi bekleyen kararları kaybetmemek için bakar).</summary>
+        public bool Idle => Current == null && queue.Count == 0;
+
         public void Push(GameEvent e)
         {
             if (e.choices.Count == 0) e.Add("Tamam", null);

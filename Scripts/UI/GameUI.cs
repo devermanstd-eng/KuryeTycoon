@@ -88,9 +88,10 @@ namespace KuryeTycoon
                 return;
             }
 
-            modalFree = EventManager.I.Current == null;
+            if (EventManager.I.Current == null) HandleMenuKey();
+            modalFree = EventManager.I.Current == null && !pauseMenuOpen;
             if (modalFree) HandleKeys();
-            HandleMapMouse(sw, sh);
+            if (!pauseMenuOpen) HandleMapMouse(sw, sh);
 
             GUI.enabled = modalFree;
             DrawWorldLabels();
@@ -101,17 +102,118 @@ namespace KuryeTycoon
             DrawCourierPopup(sw, sh);
             GUI.enabled = true;
             DrawEvent(sw, sh);
+            if (pauseMenuOpen) DrawPauseMenu(sw, sh);
+        }
+
+        // ---------------------------------------------------------------- ESC menüsü (kaydet / ana menü / çık)
+        bool pauseMenuOpen, menuWasPaused, confirmMainMenu;
+
+        void HandleMenuKey()
+        {
+            var e = Event.current;
+            if (e.type != EventType.KeyDown || e.keyCode != KeyCode.Escape) return;
+            e.Use();
+            SetPauseMenu(!pauseMenuOpen);
+        }
+
+        void SetPauseMenu(bool open)
+        {
+            if (open == pauseMenuOpen) return;
+            pauseMenuOpen = open;
+            confirmMainMenu = false;
+            var clk = GameClock.I;
+            if (clk == null) return;
+            if (open) { menuWasPaused = clk.Paused; clk.Paused = true; }
+            else clk.Paused = menuWasPaused;
+        }
+
+        void DrawPauseMenu(float sw, float sh)
+        {
+            Fill(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.55f));
+            float w = 400f, h = 420f;
+            var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
+            Fill(r, new Color(0.14f, 0.15f, 0.18f));
+            GUILayout.BeginArea(new Rect(r.x + 20, r.y + 16, w - 40, h - 32));
+            GUILayout.Label("Menü", title);
+            GUILayout.Label("Oyun duraklatıldı. Esc ile kapanır.", small);
+            GUILayout.Space(8);
+            if (GUILayout.Button("Devam et", button, GUILayout.Height(34))) deferred = () => SetPauseMenu(false);
+
+            var save = SaveSystem.I;
+            if (save != null)
+            {
+                GUI.enabled = SaveSystem.CanSaveNow;
+                if (GUILayout.Button("Kaydet", button, GUILayout.Height(34))) deferred = () => save.Save(false);
+                GUI.enabled = true;
+                GUILayout.Label(string.IsNullOrEmpty(save.LastSaveText) ? "Bu oturumda henüz kaydedilmedi." : $"Son kayıt: {save.LastSaveText}", small);
+                save.autoSave = GUILayout.Toggle(save.autoSave, " Her gece otomatik kaydet", toggle);
+            }
+
+            GUILayout.Space(10);
+            if (!confirmMainMenu)
+            {
+                if (GUILayout.Button("Ana menüye dön", button, GUILayout.Height(30))) deferred = () => confirmMainMenu = true;
+            }
+            else
+            {
+                GUILayout.Label("Son kayıttan sonraki ilerleme kaybolur. Emin misin?", warn);
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Evet, ana menüye dön", smallButton)) deferred = () => { SetPauseMenu(false); GameBootstrap.Restart(); };
+                if (GUILayout.Button("Vazgeç", smallButton)) deferred = () => confirmMainMenu = false;
+                GUILayout.EndHorizontal();
+            }
+
+            if (save != null)
+            {
+                GUI.enabled = SaveSystem.CanSaveNow;
+                if (GUILayout.Button("Kaydet ve çık", button, GUILayout.Height(30)))
+                    deferred = () => { if (save.Save(false)) QuitGame(); };
+                GUI.enabled = true;
+            }
+            if (GUILayout.Button("Kaydetmeden çık", button, GUILayout.Height(30))) deferred = QuitGame;
+            GUILayout.EndArea();
+        }
+
+        static void QuitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         // ---------------------------------------------------------------- kurulum
+        SaveData setupSave;
+        bool setupSaveChecked;
+
         void DrawSetup(float sw, float sh)
         {
+            if (!setupSaveChecked)
+            {
+                setupSaveChecked = true;
+                setupSave = SaveSystem.ReadSave();
+            }
+            bool hasError = !string.IsNullOrEmpty(GameBootstrap.LastLoadError);
+
             Fill(new Rect(0, 0, sw, sh), new Color(0.08f, 0.09f, 0.11f));
-            float w = 620f, h = 680f;
+            float w = 620f, h = 680f + (setupSave != null ? 120f : 0f) + (hasError ? 40f : 0f);
             var r = new Rect((sw - w) / 2f, Mathf.Max(10f, (sh - h) / 2f), w, h);
             Fill(r, new Color(0.14f, 0.15f, 0.18f));
 
             GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 40));
+            if (hasError) GUILayout.Label(GameBootstrap.LastLoadError, warn);
+            if (setupSave != null)
+            {
+                GUILayout.BeginVertical(box);
+                GUILayout.Label("Kayıtlı oyun", header);
+                GUILayout.Label(SaveSystem.Summary(setupSave), small);
+                if (GUILayout.Button("Kayıtlı oyuna devam et", bigButton, GUILayout.Height(40)))
+                    deferred = () => { if (!GameBootstrap.I.LoadGame()) setupSaveChecked = false; };
+                GUILayout.EndVertical();
+                GUILayout.Label("Ya da yeni bir şirket kur (yeni oyun ilk gece kaydedilince eski kaydın yerini alır):", small);
+                GUILayout.Space(6);
+            }
             GUILayout.Label("Kurye Şirketini Kur", title);
             GUILayout.Label($"Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan {Ft(GameBootstrap.I.familyLoanAmount)} ile kendi kurye " +
                             "şirketini kuruyorsun. Bu parayı Temmuz sonuna kadar taksitlerle geri ödemen gerekiyor.", label);

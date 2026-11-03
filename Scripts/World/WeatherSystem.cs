@@ -37,6 +37,13 @@ namespace KuryeTycoon
             if (GameClock.I != null && GameClock.I.TotalMinutes >= nextChange) Roll();
         }
 
+        /// <summary>Kayıttan yüklerken havayı geri koyar (bir sonraki değişim yeniden belirlenir).</summary>
+        public void Restore(WeatherKind k)
+        {
+            Current = k;
+            nextChange = GameClock.I.TotalMinutes + Random.Range(240f, 480f);
+        }
+
         void Roll()
         {
             int s = (int)GameClock.I.Season;

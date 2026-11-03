@@ -7,6 +7,7 @@ namespace KuryeTycoon
     public enum WorkDays { PztCum, CarPaz }
 
     /// <summary>Maaşlı destek personeli: sabit vardiya, haftada 5 gün.</summary>
+    [System.Serializable]
     public class SupportAgent
     {
         public string name;

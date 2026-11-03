@@ -4,6 +4,7 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>Operasyon sorumlusu (aday ya da çalışan).</summary>
+    [System.Serializable]
     public class OpsPerson
     {
         public string name;
@@ -268,6 +269,33 @@ namespace KuryeTycoon
             }
             dayWarned += n;
             if (n > 0) EventManager.I.Notify($"Operasyon ({FirstName}): {n} kuryeyi çanta temizliği için uyardı.");
+        }
+
+        // ---------- Kayıt ----------
+
+        public OpsSave CaptureSave() => new OpsSave
+        {
+            hasManager = HasManager,
+            manager = Manager,
+            offerKinds = (bool[])offerKinds.Clone(),
+            minDeliveries = minDeliveries,
+            monthlyBudget = monthlyBudget,
+            replaceWornBags = replaceWornBags,
+            warnDirtyBags = warnDirtyBags,
+            spentThisMonth = spentThisMonth
+        };
+
+        public void RestoreSave(OpsSave s)
+        {
+            Manager = s.hasManager && s.manager != null && !string.IsNullOrEmpty(s.manager.name) ? s.manager : null;
+            if (s.offerKinds != null)
+                for (int i = 0; i < offerKinds.Length && i < s.offerKinds.Length; i++) offerKinds[i] = s.offerKinds[i];
+            minDeliveries = s.minDeliveries;
+            monthlyBudget = s.monthlyBudget;
+            replaceWornBags = s.replaceWornBags;
+            warnDirtyBags = s.warnDirtyBags;
+            spentThisMonth = s.spentThisMonth;
+            lastPassDay = -1;
         }
 
         /// <summary>Gün sonu raporu için bugünün özeti. Çağrılınca günlük sayaçlar sıfırlanır.</summary>

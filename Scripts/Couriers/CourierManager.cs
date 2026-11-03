@@ -218,6 +218,20 @@ namespace KuryeTycoon
         }
 
         /// <summary>
+        /// Kayıttan yüklenecek kurye: merkez ofiste oluşturulur, başlangıç kiti verilmez ve para kesilmez.
+        /// Alanlarını SaveSystem doldurur, sonra Courier.AfterLoad çağrılır.
+        /// </summary>
+        public Courier SpawnRestored()
+        {
+            var go = new GameObject("Kurye");
+            go.transform.SetParent(root, false);
+            var courier = go.AddComponent<Courier>();
+            courier.Init(MakeCandidate(VehicleKind.Bisiklet, false), CityMap.I.HQDoor);
+            Couriers.Add(courier);
+            return courier;
+        }
+
+        /// <summary>
         /// Giriş seviyesi ekipman. Şirkete maliyeti kit başı 5 000 Ft;
         /// kuryeden de 30 000 Ft kazanınca 20 000 Ft depozito alınır.
         /// </summary>

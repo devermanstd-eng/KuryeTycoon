@@ -167,6 +167,26 @@ namespace KuryeTycoon
             lastDecisionHour = GameClock.I.Hour;
         }
 
+        /// <summary>
+        /// Kayıttan yüklendikten sonra (alanlar JsonUtility ile doldurulmuşken) çağrılır:
+        /// izin / tamir durumunu ve çevrimiçi kararını yeniden kurar, 3D modeli kuryenin adıyla yeniler.
+        /// </summary>
+        public void AfterLoad()
+        {
+            gameObject.name = "Kurye " + courierName;
+            if (unavailableDays > 0)
+                SetOnLeave(unavailableDays, string.IsNullOrEmpty(leaveReason) ? "izinli" : leaveReason);
+            else
+            {
+                bool online = Preference() >= 0.5f;
+                State = online ? CourierState.Bosta : CourierState.Cevrimdisi;
+                offlineReason = online ? "" : OccupationStatus;
+                if (repairDays > 0) RefreshVehicle();
+            }
+            lastDecisionHour = GameClock.I.Hour;
+            RebuildModel();
+        }
+
         /// <summary>3D karakter modelini (yeniden) oluşturur; model yoksa daire gösterilir.</summary>
         public void RebuildModel()
         {

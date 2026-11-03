@@ -115,6 +115,20 @@ namespace KuryeTycoon
         int lastMonth;
         int lastYear;
 
+        /// <summary>Kuruluş gününün mutlak gün numarası (kayıt için).</summary>
+        public int StartDay => startDay;
+
+        /// <summary>Kayıttan yüklerken zamanı geri koyar; gün/ay/yıl olayları yeniden tetiklenmez.</summary>
+        public void RestoreTime(float totalMinutes, int savedStartDay)
+        {
+            TotalMinutes = totalMinutes;
+            if (savedStartDay > 0) startDay = savedStartDay;
+            DeltaMinutes = 0f;
+            lastDay = Day;
+            lastMonth = Month;
+            lastYear = Year;
+        }
+
         void Awake()
         {
             I = this;

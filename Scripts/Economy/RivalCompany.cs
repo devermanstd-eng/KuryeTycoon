@@ -63,6 +63,23 @@ namespace KuryeTycoon
                 if (!s.contracted && n < 3 && Random.value < 0.6f) { s.rivalContracted = true; n++; }
         }
 
+        // ================================================================ kayıt
+
+        public RivalSave CaptureSave() => new RivalSave
+        {
+            reputation = reputation, couriers = couriers, money = money, deliveriesLastWeek = deliveriesLastWeek,
+            priceWarDays = priceWarDays, deliveriesThisWeek = deliveriesThisWeek,
+            myDeliveriesThisWeek = myDeliveriesThisWeek, myDeliveriesLastWeek = myDeliveriesLastWeek
+        };
+
+        /// <summary>Init'ten sonra çağrılır (dükkanların sözleşme durumu SaveSystem'de ayrıca geri konur).</summary>
+        public void RestoreSave(RivalSave s)
+        {
+            reputation = s.reputation; couriers = s.couriers; money = s.money; deliveriesLastWeek = s.deliveriesLastWeek;
+            priceWarDays = s.priceWarDays; deliveriesThisWeek = s.deliveriesThisWeek;
+            myDeliveriesThisWeek = s.myDeliveriesThisWeek; myDeliveriesLastWeek = s.myDeliveriesLastWeek;
+        }
+
         // ================================================================ sipariş paylaşımı
 
         static float Score(float rep, int courierCount) =>

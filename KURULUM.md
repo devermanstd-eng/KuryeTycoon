@@ -76,6 +76,10 @@ Ayarlar:
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |
 | Ekipman teklifi | Kuryeler serbest çalıştığı için ekipman zorla verilmez, teklif edilir; kurye kabul ya da ret eder. Ödeme şekli Ekipman sekmesinden: şirket öder / yarı yarıya / kurye öder (payı hesabından kesilir, kurye kesintisi olarak gelire yazılır). Kabul ihtimali ödeme şekline, mevsime, öğrenci / hafta sonu kuryesi olmasına, yeni olmasına, hesabındaki paraya, moraline ve (kask için) dikkatine bağlı; butonda yaklaşık yüzde görünür. Reddeden kuryeye aynı ekipman 1 gün sorulamaz. Arabalı kuryelere toplu teklifte giyecek ve kask sorulmaz |
 | Operasyon sorumlusu | Destek sekmesinden işe alınan maaşlı tek kişi (yeteneğe göre 100–160 bin Ft/ay). Her sabah 09:00'da kurallara göre eksik ekipmanı teklif eder (giyecekleri sadece mevsiminde), yıpranan çantaları yeniler, gün içinde kirli çantası olanları uyarır; reddedene 3 gün sonra tekrar sorar. Kurallar: hangi ekipmanlar, yeni kuryeye ne zaman (hemen / 10 / 30 / 60 teslimat sonra), aylık ekipman bütçesi. Yetenek: ikna (+%0–15), işleri erteleme, toplu alım indirimi (%10). Ne yaptığı gün sonu raporunda yazar |
+| Kayıt sistemi | Tek kayıt yuvası (`persistentDataPath/kayit.json`, bir önceki `kayit_onceki.json`). Her gece gün sonundan sonra, açık ya da sırada bekleyen olay kartı kalmayınca otomatik kaydeder (bekleyen bir karar kayıtla kaybolmasın diye). Esc menüsünden elle kaydet / ana menü / kaydet ve çık. Kurulum ekranında "Kayıtlı oyuna devam et". Harita tohumla üretilir, aynı harita ve 3D şehir geri gelir. Bilerek kaydedilmeyenler: yoldaki ve bekleyen siparişler (yüklemede iptal), kuryelerin yoldaki konumu (hepsi merkez ofiste başlar), iş başvuruları ve adaylar, hava (yeniden belirlenir). Denge sabitleri kayda yazılmaz, koddaki güncel değer kullanılır |
+| İstatistik ve grafikler | Her gece günün özeti saklanır. Finans sekmesinde son 30 günün net kâr, teslimat ve itibar grafikleri |
+| Denge kaydı (CSV) | Her gün sonunda bir satır: teslimat, iptal, kaçan, gelir, gider, kâr, kurye ödemesi, ekipman, maaş, kasa, serbest kasa, itibar, kurye, dükkan, bölge. `persistentDataPath/DengeKaydi`, ayraç `;`. Ayarlar'da aç/kapa ve "Klasörü aç" |
+| Kilometre taşları | 15 hedef (1 / 100 / 1 000 / 10 000 teslimat, 5 / 10 / 20 kurye, bölgeler, itibar 4,0 ve 4,5, günde 100 000 Ft kâr, şehrin lideri, kurumsal paket, aile borcu). Ulaşınca kart; Finans'ta ilerlemeleriyle liste. Şimdilik oyuna etkisi yok |
 | Hava ve mevsim | Mevsime göre hava. Kötü havada müşteriler dışarı çıkmaz, sipariş artar (soğuk +%20, yağmur +%35, fırtına +%45, kar +%50); müşteriye kötü hava ücreti eklenir (100–300 Ft). Açık araçlı kuryeler yavaşlar ve çevrimiçi olmaya daha az isteklidir (yağmurluk/kış montu azaltır). Kampanyalar'da otomatik kötü hava boostu (varsayılan soğuk %5, yağmur %10, kar %15, fırtına %20) |
 | Meslekler | Tam zamanlı (10–15 ve 17–22, arada mola), ofis çalışanı (hafta içi 17–23), üniversite öğrencisi (her öğrencinin kendi ders programı, her dönem değişir; sınav ve tatil dönemleri), hafta sonu kuryesi, vardiyalı işçi (haftalık sabah/akşam), emekli (08–15), ebeveyn (çocuklar okuldayken 09–15), gece kuryesi (20–03) |
 | Kampanyalar | Hafta sonu sabah/öğle boostu, hafta içi rastgele boostlar (%), haftalık (200 paket → 25 000 Ft) ve aylık (700 paket → 50 000 Ft) hedef ödülü; hepsi şirketin kârından |
@@ -124,7 +128,7 @@ KuryeTycoon/Scripts/
   (kur `GameData.FtPerEuro`, varsayılan 1 € = 400 Ft). Yeni bir metinde tutar yazarken elle "Ft" yazma, `Ft(tutar)` kullan.
 
 ## Sonraki adımlar (önerilen sıra)
-1. Kayıt sistemi (JSON save/load).
+1. ~~Kayıt sistemi (JSON save/load)~~ — yapıldı. Yeni bir sisteme kalıcı alan eklersen `SaveSystem.cs`'e de ekle.
 2. Gerçek UI (Canvas + TextMeshPro) ile IMGUI'yi değiştirmek.
 3. Kurye ve dükkan sprite'ları / 3D low-poly şehir.
 4. Rakip kurye şirketi (AI) ve fiyat savaşı.

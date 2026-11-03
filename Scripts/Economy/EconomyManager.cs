@@ -486,6 +486,81 @@ namespace KuryeTycoon
             }
         }
 
+        // ---------- Kayıt ----------
+        // Sadece oyunun durumu ve oyuncunun Ayarlar'dan değiştirdikleri kaydedilir; denge sabitleri
+        // (kira, kredi tutarı, iflas sınırı...) koddaki güncel değerden gelir.
+
+        public EconomySave CaptureSave(List<Courier> couriers)
+        {
+            var s = new EconomySave
+            {
+                money = money, taxDebt = taxDebt, depositsHeld = depositsHeld,
+                baseFee = baseFee, feePerKm = feePerKm, minProfit = minProfit, minAssignProfit = minAssignProfit,
+                bonusMultiplier = bonusMultiplier, showDailyReport = showDailyReport, showWeeklyReport = showWeeklyReport,
+                lastDailyReport = LastDailyReport, lastDailyReportTitle = LastDailyReportTitle,
+                lastWeeklyReport = LastWeeklyReport, lastWeeklyReportTitle = LastWeeklyReportTitle, lastTaxSummary = LastTaxSummary,
+                year = SaveSystem.ToSave(Year), today = SaveSystem.ToSave(Today), week = SaveSystem.ToSave(week),
+                weekStartDay = weekStartDay, weekBatched = weekBatched, weekCancelled = weekCancelled, weekLost = weekLost,
+                weekHeavyLost = weekHeavyLost, weekCancelledRejected = weekCancelledRejected, weekBusyLost = weekBusyLost,
+                weekCancelByHour = (int[])weekCancelByHour.Clone(), repAtWeekStart = repAtWeekStart,
+                cashAtWeekStart = cashAtWeekStart, lastWeekNet = lastWeekNet, cashAtLastReport = cashAtLastReport,
+                nextSurpriseDay = nextSurpriseDay, localTaxPaidThisYear = localTaxPaidThisYear,
+                bankLoanRemaining = bankLoanRemaining, bankLoanDaily = bankLoanDaily, emergencyLoanUsed = emergencyLoanUsed,
+                crisisWarned = crisisWarned, bankrupt = bankrupt, daysUnderLimit = daysUnderLimit
+            };
+            foreach (var w in weekDays)
+            {
+                s.weekDayDates.Add(w.date);
+                s.weekDayDeliveries.Add(w.deliveries);
+                s.weekDayNets.Add(w.net);
+            }
+            foreach (var p in Payouts)
+                s.payouts.Add(new PayoutSave
+                {
+                    courierIndex = p.courier != null ? couriers.IndexOf(p.courier) : -1,
+                    courierName = p.courierName, amount = p.amount, payDay = p.payDay, early = p.early
+                });
+            for (int i = Mathf.Max(0, Ledger.Count - 100); i < Ledger.Count; i++) s.ledger.Add(Ledger[i]);
+            return s;
+        }
+
+        /// <summary>Kuryeler geri konduktan sonra çağrılır (bekleyen ödemeler kuryelere bağlanır).</summary>
+        public void RestoreSave(EconomySave s, List<Courier> couriers)
+        {
+            money = s.money; taxDebt = s.taxDebt; depositsHeld = s.depositsHeld;
+            baseFee = s.baseFee; feePerKm = s.feePerKm; minProfit = s.minProfit; minAssignProfit = s.minAssignProfit;
+            bonusMultiplier = s.bonusMultiplier; showDailyReport = s.showDailyReport; showWeeklyReport = s.showWeeklyReport;
+            LastDailyReport = s.lastDailyReport ?? ""; LastDailyReportTitle = s.lastDailyReportTitle ?? "";
+            LastWeeklyReport = s.lastWeeklyReport ?? ""; LastWeeklyReportTitle = s.lastWeeklyReportTitle ?? "";
+            LastTaxSummary = s.lastTaxSummary ?? "";
+            Year = SaveSystem.FromSave(s.year);
+            Today = SaveSystem.FromSave(s.today);
+            week = SaveSystem.FromSave(s.week);
+
+            weekStartDay = s.weekStartDay; weekBatched = s.weekBatched; weekCancelled = s.weekCancelled; weekLost = s.weekLost;
+            weekHeavyLost = s.weekHeavyLost; weekCancelledRejected = s.weekCancelledRejected; weekBusyLost = s.weekBusyLost;
+            if (s.weekCancelByHour != null)
+                System.Array.Copy(s.weekCancelByHour, weekCancelByHour, Mathf.Min(weekCancelByHour.Length, s.weekCancelByHour.Length));
+            repAtWeekStart = s.repAtWeekStart; cashAtWeekStart = s.cashAtWeekStart;
+            lastWeekNet = s.lastWeekNet; cashAtLastReport = s.cashAtLastReport;
+            weekDays.Clear();
+            int n = Mathf.Min(s.weekDayDates.Count, Mathf.Min(s.weekDayDeliveries.Count, s.weekDayNets.Count));
+            for (int i = 0; i < n; i++) weekDays.Add((s.weekDayDates[i], s.weekDayDeliveries[i], s.weekDayNets[i]));
+
+            Payouts.Clear();
+            foreach (var p in s.payouts)
+            {
+                var c = p.courierIndex >= 0 && p.courierIndex < couriers.Count ? couriers[p.courierIndex] : null;
+                Payouts.Add(new Payout { courier = c, courierName = p.courierName, amount = p.amount, payDay = p.payDay, early = p.early });
+            }
+
+            nextSurpriseDay = s.nextSurpriseDay; localTaxPaidThisYear = s.localTaxPaidThisYear;
+            bankLoanRemaining = s.bankLoanRemaining; bankLoanDaily = s.bankLoanDaily; emergencyLoanUsed = s.emergencyLoanUsed;
+            crisisWarned = s.crisisWarned; bankrupt = s.bankrupt; daysUnderLimit = s.daysUnderLimit;
+            Ledger.Clear();
+            if (s.ledger != null) Ledger.AddRange(s.ledger);
+        }
+
         /// <summary>
         /// Kuryenin hesabından kesinti (ör. ekipman payı). Kasaya para girmez ama kuryeye olan borç azalır,
         /// bu yüzden serbest kasa artar; kurye kesintisi olarak gelire yazılır.

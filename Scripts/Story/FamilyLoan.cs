@@ -4,6 +4,7 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>Aile borcunun bir taksiti.</summary>
+    [System.Serializable]
     public class Installment
     {
         public int month;      // 1–12
@@ -46,6 +47,34 @@ namespace KuryeTycoon
         public long Remaining => Finished ? 0 : principal - TotalPaid;
 
         void Awake() { I = this; }
+
+        // ---------- Kayıt ----------
+
+        public LoanSave CaptureSave()
+        {
+            var s = new LoanSave
+            {
+                principal = principal, totalPaid = TotalPaid, trust = Trust, deliveriesMilestone = deliveriesMilestone,
+                finished = Finished, failed = Failed
+            };
+            s.schedule.AddRange(Schedule);
+            return s;
+        }
+
+        /// <summary>Kayıttan yüklerken Init yerine çağrılır: taksitleri geri koyar, başlangıç hikayesini tekrar göstermez.</summary>
+        public void InitRestored(LoanSave s)
+        {
+            if (s == null || s.schedule == null || s.schedule.Count == 0) { Init(); return; }
+            Schedule.Clear();
+            Schedule.AddRange(s.schedule);
+            Trust = s.trust;
+            TotalPaid = s.totalPaid;
+            Finished = s.finished;
+            Failed = s.failed;
+            deliveriesMilestone = s.deliveriesMilestone;
+            GameClock.I.OnNewDay += OnNewDay;
+            ready = true;
+        }
 
         public void Init()
         {

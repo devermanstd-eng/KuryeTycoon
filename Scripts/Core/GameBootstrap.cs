@@ -73,6 +73,7 @@ namespace KuryeTycoon
             Make<RivalFleet>("Rakip Kuryeler");
             Make<FamilyLoan>("Hikaye - Aile Borcu");
             Make<Milestones>("Kilometre Taşları");
+            Make<SaveSystem>("Kayıt");
             Make<EventManager>("Olaylar");
             Make<GameUI>("Arayüz");
         }
@@ -100,6 +101,72 @@ namespace KuryeTycoon
             cam.transform.rotation = Quaternion.identity;
         }
 
+        /// <summary>Haritanın üretildiği tohum: kayda yazılır, yüklemede aynı harita ve 3D şehir çıkar.</summary>
+        public int MapSeed { get; private set; }
+
+        /// <summary>Son yükleme denemesi hata verdiyse nedeni (kurulum ekranında gösterilir).</summary>
+        public static string LastLoadError = "";
+
+        /// <summary>Harita ve 3D şehri verilen tohumla üretir; oyunun geri kalan rastgeleliğini etkilemez.</summary>
+        void GenerateWorld(int seed)
+        {
+            MapSeed = seed;
+            var old = Random.state;
+            Random.InitState(seed);
+            CityMap.I.Generate();
+            City3D.I.Build();
+            Random.state = old;
+        }
+
+        /// <summary>
+        /// Kurulum ekranındaki "Kayıtlı oyuna devam et" butonu çağırır. Sistemler yeni oyundaki sırayla kurulur,
+        /// sonra kayıttaki durum üstüne yazılır. Hata olursa temiz bir kurulum ekranına dönülür.
+        /// </summary>
+        public bool LoadGame()
+        {
+            if (Started) return false;
+            var d = SaveSystem.ReadSave();
+            if (d == null)
+            {
+                LastLoadError = "Kayıt dosyası okunamadı.";
+                return false;
+            }
+            try
+            {
+                CompanyProfile.Name = string.IsNullOrEmpty(d.companyName) ? "Hızlı Kurye" : d.companyName;
+                CompanyProfile.Primary = d.primary;
+                CompanyProfile.Secondary = d.secondary;
+                CompanyProfile.Reputation = Mathf.Clamp(d.reputation, 1f, 5f);
+                GameClock.I.RestoreTime(d.totalMinutes, d.startDay);
+
+                GenerateWorld(d.mapSeed);
+                CourierManager.I.Init();
+                OrderManager.I.Init();
+                CampaignManager.I.Init();
+                SupportManager.I.Init();
+                OperationsManager.I.Init();
+                RivalCompany.I.Init();
+                FamilyLoan.I.principal = d.loan != null && d.loan.principal > 0 ? d.loan.principal : familyLoanAmount;
+                FamilyLoan.I.InitRestored(d.loan);
+                SaveSystem.ApplyAfterInit(d);
+                SaveSystem.I.Init();
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"Kayıt yüklenemedi: {ex}");
+                LastLoadError = $"Kayıt yüklenemedi: {ex.Message}";
+                Restart();
+                return false;
+            }
+
+            LastLoadError = "";
+            Started = true;
+            GameClock.I.SpeedMultiplier = 1f;
+            GameClock.I.Paused = false;
+            EventManager.I.Notify($"Kayıtlı oyun yüklendi ({d.gameDate}). Kayıt anında yolda olan siparişler iptal oldu, kuryeler merkez ofiste.");
+            return true;
+        }
+
         /// <summary>Kurulum ekranındaki "Başla" butonu çağırır.</summary>
         public void StartGame()
         {
@@ -107,8 +174,7 @@ namespace KuryeTycoon
 
             EconomyManager.I.money = familyLoanAmount;
             EconomyManager.I.InitCashMarkers();
-            CityMap.I.Generate();
-            City3D.I.Build();
+            GenerateWorld(Random.Range(1, int.MaxValue));
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v);
             OrderManager.I.Init();
@@ -118,6 +184,7 @@ namespace KuryeTycoon
             RivalCompany.I.Init();
             FamilyLoan.I.principal = familyLoanAmount;
             FamilyLoan.I.Init();
+            SaveSystem.I.Init();
 
             Started = true;
             GameClock.I.Paused = false;
@@ -136,7 +203,8 @@ namespace KuryeTycoon
                 $"• Platform paketin {UpgradeManager.I.CourierCap} kurye hesabı kaldırıyor. Geliştirmeler'den paketi yükselt ve kalıcı iyileştirmeler al.\n" +
                 "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
                 "• Yıl sonunda vergi ödersin; yıl içinde de habersiz vergi ve harçlar çıkabilir, kasanda yedek tut.\n\n" +
-                "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–8 = hız (1x … 128x)\n" +
+                "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–8 = hız (1x … 128x), Esc = menü (kaydet / çık)\n" +
+                "Oyun her gece otomatik kaydedilir; kurulum ekranından kaldığın yerden devam edebilirsin.\n" +
                 "Harita: fare tekerleği = yakınlaş (yakında şehir 3D olur), sürükle veya WASD/oklar = kaydır, sağ tuşla sürükle veya Q/E = döndür, 0 = tüm harita"));
         }
     }

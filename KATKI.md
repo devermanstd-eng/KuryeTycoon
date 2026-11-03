@@ -57,6 +57,7 @@ git push -u origin ozellik/ozel-kampanya
   Yeni bir `.cs` dosyası eklediysen Unity'nin oluşturduğu `.cs.meta` dosyası da commit'te olmalı.
 - Denge değerlerini (fiyatlar, oranlar) değiştirdiysen PR açıklamasında belirt.
 - Kod içi yorumlar ve oyun metinleri Türkçe.
+- **Kayıt sistemi:** oyunun durumunu tutan yeni bir alan eklersen kayda girip girmediğine bak. `Courier` ve `CampaignManager`'ın public alanları otomatik kaydedilir (JsonUtility). Diğer sistemlerde (ekonomi, dükkanlar, rakip, aile borcu, destek, operasyon...) alanı `Scripts/Core/SaveSystem.cs`'teki ilgili Save sınıfına ve o sistemin `CaptureSave` / `RestoreSave` metotlarına ekle. Denge sabitlerini (kira, oranlar) kayda ekleme.
 
 ## Kodu nereden değiştirmeli?
 | Ne değiştirmek istiyorsun | Dosya |
