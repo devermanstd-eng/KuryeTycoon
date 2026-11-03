@@ -919,6 +919,9 @@ namespace KuryeTycoon
             if (!string.IsNullOrEmpty(e.LastDailyReport) &&
                 GUILayout.Button("Dünün gün sonu raporunu göster", smallButton))
                 deferred = () => EventManager.I.Push(new GameEvent(e.LastDailyReportTitle, e.LastDailyReport));
+            if (!string.IsNullOrEmpty(e.LastWeeklyReport) &&
+                GUILayout.Button("Geçen haftanın raporunu göster", smallButton))
+                deferred = () => EventManager.I.Push(new GameEvent(e.LastWeeklyReportTitle, e.LastWeeklyReport));
             var clock = GameClock.I;
 
             GUILayout.Label("Kasa", header);
@@ -989,6 +992,7 @@ namespace KuryeTycoon
 
             GUILayout.Label("Gün sonu raporu", header);
             e.showDailyReport = GUILayout.Toggle(e.showDailyReport, " Her gece gün sonu raporunu göster (oyun duraklar)", toggle);
+            e.showWeeklyReport = GUILayout.Toggle(e.showWeeklyReport, " Her Pazar gecesi haftalık raporu göster", toggle);
             GUILayout.Space(8);
 
             GUILayout.Label("Para birimi", header);

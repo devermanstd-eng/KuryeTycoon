@@ -39,6 +39,16 @@ namespace KuryeTycoon
         public long DeliveryProfit => commission + fees - courierPay - boosts;
         /// <summary>Vergilendirilebilir kâr (giderler düşülmüş, cezalar hariç).</summary>
         public long Profit => Income - Expenses;
+
+        /// <summary>Başka bir dönemin rakamlarını bu döneme ekler (günler → hafta).</summary>
+        public void Add(PeriodStats o)
+        {
+            commission += o.commission; fees += o.fees; otherIncome += o.otherIncome;
+            courierPay += o.courierPay; boosts += o.boosts; rewards += o.rewards;
+            for (int i = 0; i < byCategory.Length; i++) byCategory[i] += o.byCategory[i];
+            penalties += o.penalties; loanPaid += o.loanPaid; depositNet += o.depositNet;
+            deliveries += o.deliveries;
+        }
     }
 
     /// <summary>
@@ -80,6 +90,17 @@ namespace KuryeTycoon
 
         [Header("Gün sonu raporu")]
         public bool showDailyReport = true;
+        public bool showWeeklyReport = true;
+        public string LastWeeklyReport = "";
+        public string LastWeeklyReportTitle = "";
+
+        // Haftalık rapor için biriken veriler
+        PeriodStats week = new PeriodStats();
+        int weekStartDay = -1;
+        int weekBatched, weekCancelled, weekLost, weekHeavyLost;
+        long cashAtWeekStart = long.MinValue;
+        long lastWeekNet = long.MinValue;
+        readonly List<(string date, int deliveries, long net)> weekDays = new List<(string, int, long)>();
         public string LastDailyReport = "";
         public string LastDailyReportTitle = "";
         long cashAtLastReport = long.MinValue;
@@ -297,6 +318,8 @@ namespace KuryeTycoon
             }
 
             BuildDailyReport(Today);
+            AccumulateWeek(Today);
+            if (GameClock.I.DayOfWeek == 0) BuildWeeklyReport(); // Pazar bitti, yeni hafta başlıyor
             Yesterday = Today;
             Today = new PeriodStats();
 
@@ -385,6 +408,113 @@ namespace KuryeTycoon
                 EventManager.I.Push(new GameEvent(LastDailyReportTitle, LastDailyReport)
                     .Add("Tamam", null)
                     .Add("Gün sonu raporlarını kapat (Ayarlar'dan açılabilir)", () => showDailyReport = false));
+        }
+
+        // ---------- Haftalık rapor ----------
+
+        void AccumulateWeek(PeriodStats day)
+        {
+            var clock = GameClock.I;
+            var om = OrderManager.I;
+            if (weekStartDay < 0) weekStartDay = clock.Day - 1;
+            if (cashAtWeekStart == long.MinValue) cashAtWeekStart = money + (day.Expenses - day.Income) + day.loanPaid - day.depositNet;
+            week.Add(day);
+            if (om != null)
+            {
+                weekBatched += om.batchedToday;
+                weekCancelled += om.cancelledToday;
+                weekLost += om.lostToday;
+                weekHeavyLost += om.heavyLostToday;
+            }
+            weekDays.Add((clock.DateOf(clock.Day - 1), day.deliveries, day.Profit - day.penalties));
+        }
+
+        /// <summary>Biten haftanın (Pazartesi–Pazar) özeti.</summary>
+        void BuildWeeklyReport()
+        {
+            var clock = GameClock.I;
+            var s = week;
+            var sb = new System.Text.StringBuilder();
+            int days = Mathf.Max(1, weekDays.Count);
+            long net = s.Profit - s.penalties;
+
+            sb.Append($"TESLİMAT: {s.deliveries} paket (günde ortalama {s.deliveries / days})");
+            var extra = new List<string>();
+            if (weekBatched > 0) extra.Add($"{weekBatched} toplu");
+            if (weekCancelled > 0) extra.Add($"{weekCancelled} iptal");
+            if (weekLost > 0) extra.Add($"{weekLost} müşteri vazgeçti");
+            if (weekHeavyLost > 0) extra.Add($"{weekHeavyLost} taşıyacak kurye yoktu");
+            if (extra.Count > 0) sb.Append("\n   " + string.Join(" · ", extra));
+
+            sb.Append($"\n\nGELİR: {Ft(s.Income)}  (komisyon {Ft(s.commission)}, teslimat ücreti {Ft(s.fees)}" +
+                      (s.otherIncome > 0 ? $", diğer {Ft(s.otherIncome)}" : "") + ")");
+
+            sb.Append($"\nGİDER: {Ft(s.Expenses)}\n");
+            sb.Append($"   Kurye ödemeleri: {Ft(s.courierPay)}\n");
+            if (s.boosts > 0) sb.Append($"   Boost ödemeleri: {Ft(s.boosts)}\n");
+            if (s.rewards > 0) sb.Append($"   Hedef ödülleri: {Ft(s.rewards)}\n");
+            for (int i = 0; i < s.byCategory.Length; i++)
+                if (s.byCategory[i] > 0) sb.Append($"   {PeriodStats.CategoryNames[i]}: {Ft(s.byCategory[i])}\n");
+            if (s.penalties > 0) sb.Append($"   Cezalar: {Ft(s.penalties)}\n");
+
+            sb.Append($"\nTeslimat kârı: {Signed(s.DeliveryProfit)}");
+            if (s.deliveries > 0) sb.Append($" (paket başı {Ft(s.DeliveryProfit / s.deliveries)})");
+            sb.Append($"\nNET KÂR: {Signed(net)}");
+            if (lastWeekNet != long.MinValue) sb.Append($" (geçen hafta {Signed(lastWeekNet)})");
+
+            // En iyi / en kötü gün
+            if (weekDays.Count > 1)
+            {
+                var best = weekDays[0]; var worst = weekDays[0];
+                foreach (var d in weekDays) { if (d.net > best.net) best = d; if (d.net < worst.net) worst = d; }
+                sb.Append($"\nEn iyi gün: {best.date} ({Signed(best.net)}, {best.deliveries} paket)");
+                sb.Append($"\nEn kötü gün: {worst.date} ({Signed(worst.net)}, {worst.deliveries} paket)");
+            }
+
+            if (s.loanPaid > 0) sb.Append($"\n\nAile borcuna ödenen: {Ft(s.loanPaid)}");
+            if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (net): {Signed(s.depositNet)}");
+            sb.Append($"\nKasa: {Ft(money)}");
+            if (cashAtWeekStart != long.MinValue) sb.Append($" (hafta başından {Signed(money - cashAtWeekStart)})");
+
+            // Haftanın kuryeleri
+            var cm = CourierManager.I;
+            if (cm != null && cm.Couriers.Count > 0)
+            {
+                var list = new List<Courier>(cm.Couriers);
+                list.Sort((a, b) => b.weekDeliveries.CompareTo(a.weekDeliveries));
+                sb.Append("\n\nHaftanın kuryeleri:");
+                for (int i = 0; i < Mathf.Min(3, list.Count); i++)
+                {
+                    var c = list[i];
+                    if (c.weekDeliveries == 0) break;
+                    sb.Append($"\n   {i + 1}. {c.courierName} — {c.weekDeliveries} paket, {Ft(c.earnedWeek)} kazandı");
+                }
+                int idle = 0;
+                foreach (var c in cm.Couriers) if (c.weekDeliveries == 0) idle++;
+                if (idle > 0) sb.Append($"\n   Bu hafta hiç teslimat yapmayan kurye: {idle}");
+            }
+
+            var loan = FamilyLoan.I;
+            if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null)
+                sb.Append($"\n\nAile borcu: kalan {Ft(loan.Remaining)} · sıradaki taksit {Ft(loan.NextDue.Remaining)} → {loan.NextDue.DueText} ({loan.DaysUntil(loan.NextDue)} gün)");
+
+            string first = weekDays.Count > 0 ? weekDays[0].date : clock.DateOf(weekStartDay);
+            string last = weekDays.Count > 0 ? weekDays[weekDays.Count - 1].date : clock.DateOf(clock.Day - 1);
+            LastWeeklyReportTitle = $"Haftalık rapor — {first} / {last}";
+            LastWeeklyReport = sb.ToString();
+
+            if (showWeeklyReport)
+                EventManager.I.Push(new GameEvent(LastWeeklyReportTitle, LastWeeklyReport)
+                    .Add("Tamam", null)
+                    .Add("Haftalık raporları kapat (Ayarlar'dan açılabilir)", () => showWeeklyReport = false));
+
+            // Yeni hafta için sıfırla
+            lastWeekNet = net;
+            week = new PeriodStats();
+            weekStartDay = clock.Day;
+            weekBatched = weekCancelled = weekLost = weekHeavyLost = 0;
+            cashAtWeekStart = money;
+            weekDays.Clear();
         }
 
         // ---------- Yıl içindeki sürpriz vergiler ve harçlar ----------
