@@ -80,6 +80,66 @@ namespace KuryeTycoon
         public int CashAmount => basket + deliveryFee;
         public int CashChange => System.Math.Max(0, cashGiven - CashAmount);
 
+        // ---------- Sipariş içeriği ve adres ----------
+        public List<OrderItem> items = new List<OrderItem>();
+        public string customerName = "";
+        public string customerNote = "";
+        public string street = "";
+        public int number;           // kapı numarası
+        public int floor;            // 0 = zemin kat
+        public int floors;           // binanın kat sayısı
+        public char block = 'A';
+        public int blocks = 1;
+        public int flat;             // daire no
+        public bool elevator;
+        public bool elevatorBroken;
+
+        public string ItemsText => Menus.Text(items);
+        public int ItemCount { get { int n = 0; foreach (var i in items) n += i.qty; return n; } }
+
+        public string AddressText =>
+            $"{street} No: {number}" + (blocks > 1 ? $", {block} Blok" : "") + $", {Addresses.FloorText(floor)}" +
+            (flat > 0 ? $", Daire {flat}" : "");
+
+        public string BuildingText =>
+            $"{floors} katlı bina · " + (floor == 0 ? "zemin kat, kapıda teslim" :
+            elevator ? (elevatorBroken ? "asansör ARIZALI, merdivenle" : "asansörlü") : "asansör yok, merdivenle");
+
+        /// <summary>Adresi binanın kalıcı bilgilerinden kurar (aynı bina her zaman aynı sokak, numara ve kat sayısı).</summary>
+        public void SetAddress(Vector2Int tile, Vector2Int door)
+        {
+            street = Addresses.StreetOf(door);
+            number = Addresses.Number(tile, door);
+            floors = Addresses.Floors(tile);
+            blocks = Addresses.Blocks(tile);
+            elevator = Addresses.HasElevator(tile);
+            // Zemin kat da olabilir; çok katlı binada yukarı katlar daha olası değil, eşit dağılım
+            floor = Random.Range(0, floors);
+            block = (char)('A' + Random.Range(0, blocks));
+            int perFloor = Addresses.FlatsPerFloor(tile);
+            flat = floors > 1 ? floor * perFloor + Random.Range(1, perFloor + 1) : 0;
+            elevatorBroken = elevator && Random.value < 0.08f;
+        }
+
+        /// <summary>
+        /// Kapıda / katta geçen süre (oyun dakikası): bina girişi, kat çıkışı (asansör ya da merdiven), teslim ve iniş.
+        /// Merdiven kat başına ~0,9 dk (çıkış + iniş), dayanıklılık ve ağır paket etkiler; asansör beklemesi 1–2 dk.
+        /// </summary>
+        public float DoorMinutes(float stamina, bool estimate = false)
+        {
+            float t = 1f;                                   // kapıda teslim, zil, para üstü
+            if (cashPay) t += 0.5f;
+            if (blocks > 1) t += 0.5f;                      // doğru bloğu bulma
+            if (floor == 0) return t;
+            if (elevator && !elevatorBroken)
+                return t + (estimate ? 1.5f : Random.Range(1f, 2f)) + floor * 0.25f;
+            float perFloor = 0.9f / Mathf.Clamp(stamina, 0.6f, 1.3f);
+            if (weightKg > 10f) perFloor *= 1.3f;
+            return t + floor * perFloor;
+        }
+
+        public bool UsesStairs => floor > 0 && (!elevator || elevatorBroken);
+
         public int CompanyIncome => commissionIncome + deliveryFee;
         public int Profit => CompanyIncome - courierPay - boostPay;
         public float DistanceKm => GameData.Km(distance);

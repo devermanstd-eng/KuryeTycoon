@@ -189,7 +189,7 @@ namespace KuryeTycoon
                     else if (shopTiles.TryGetValue(tile, out var shop))
                     {
                         // Dükkan: paket binası biraz küçük (etrafında dükkan renginde zemin görünür) ya da renkli kutu
-                        if (pack) AddPrefab(Pick(packBuildings, rng, region, true), tile, 0.66f, face, shop);
+                        if (pack) AddPrefab(Pick(packBuildings, rng, 2, true), tile, 0.66f, face, shop);
                         else AddBox(tile, 0.8f, 0.75f, shop.def.color, shop, false);
                     }
                     else if (!frontage)
@@ -210,14 +210,14 @@ namespace KuryeTycoon
                     }
                     else if (pack)
                     {
-                        AddPrefab(Pick(packBuildings, rng, region, false), tile, region == 3 ? 0.9f : 0.84f, face, null);
+                        AddPrefab(Pick(packBuildings, rng, Addresses.Floors(tile), false), tile, region == 3 ? 0.9f : 0.84f, face, null);
                     }
                     else
                     {
                         float h, size = 0.82f;
-                        if (region == 1) h = 0.6f + (float)rng.NextDouble() * 1.2f;
-                        else if (region == 2) h = 0.5f + (float)rng.NextDouble() * 0.8f;
-                        else { h = 0.4f + (float)rng.NextDouble() * 0.4f; size = 0.88f; }
+                        // Yükseklik adresteki kat sayısıyla tutarlı
+                        h = 0.25f + Addresses.Floors(tile) * 0.16f;
+                        if (region == 3) size = 0.88f;
                         var c = Color.Lerp(new Color(0.42f, 0.45f, 0.52f), new Color(0.58f, 0.55f, 0.50f), (float)rng.NextDouble());
                         AddBox(tile, size, h, c, null, false);
                     }
@@ -231,7 +231,7 @@ namespace KuryeTycoon
         /// Paketten bina seç: merkezde yüksek binalar daha olası, sanayide alçak/geniş; dükkanlarda alçak binalar.
         /// (Prefabların boyu bilinmediği için yükseklik/genişlik oranına göre ağırlık verilir.)
         /// </summary>
-        GameObject Pick(GameObject[] list, System.Random rng, int region, bool shop)
+        GameObject Pick(GameObject[] list, System.Random rng, int floors, bool shop)
         {
             GameObject best = list[rng.Next(list.Length)];
             float bestScore = float.MinValue;
@@ -239,7 +239,8 @@ namespace KuryeTycoon
             {
                 var cand = list[rng.Next(list.Length)];
                 float tall = Tallness(cand);
-                float want = shop ? 0.8f : region == 1 ? 2.5f : region == 2 ? 1.4f : 0.7f;
+                // Kat sayısına uygun boy/en oranı: 1–2 kat basık, 10 kat kule
+                float want = Mathf.Max(0.4f, floors * 0.32f);
                 float score = -Mathf.Abs(Mathf.Log(Mathf.Max(0.1f, tall) / want)) + (float)rng.NextDouble() * 0.6f;
                 if (score > bestScore) { bestScore = score; best = cand; }
             }

@@ -366,6 +366,26 @@ namespace KuryeTycoon
                 "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · N: kuzey · 0: tüm harita", small);
         }
 
+        /// <summary>Kurye panelindeki sipariş kutusu: içerik, adres, kat, nakit, kalan süre.</summary>
+        void OrderBox(Order o, Courier c, bool inBag, float now)
+        {
+            GUILayout.BeginVertical(box);
+            bool currentOne = c.CurrentOrder == o;
+            string where = inBag ? (currentOne ? "TESLİM EDİLİYOR" : "çantada") : (currentOne ? "dükkana gidiyor" : "alınacak");
+            GUILayout.Label($"#{o.id} {o.shop.Name} — {where}", currentOne ? header : label);
+            GUILayout.Label($"{o.ItemCount} ürün: {o.ItemsText} · {GameData.KgText(o.weightKg)}", small);
+            GUILayout.Label($"{o.customerName} — {o.AddressText}", small);
+            GUILayout.Label(o.BuildingText, o.UsesStairs && o.floor >= 4 ? warn : small);
+            if (currentOne && c.State == CourierState.KataCikiyor)
+                GUILayout.Label($"Binada: ~{c.DoorMinutesLeft:0.0} dk sonra teslim", label);
+            if (o.cashPay) GUILayout.Label($"NAKİT: {Ft(o.CashAmount)} alacak, müşteri {Ft(o.cashGiven)} verecek (para üstü {Ft(o.CashChange)})", warn);
+            if (!string.IsNullOrEmpty(o.customerNote)) GUILayout.Label($"Not: \"{o.customerNote}\"", note);
+            float left = o.deadlineAt - now;
+            GUILayout.Label(left >= 0 ? $"Söz verilen süreye {left:0} dk var · kurye kazancı {Ft(o.courierPay + o.boostPay)}"
+                                      : $"{-left:0} dk GECİKMEDE · kurye kazancı {Ft(o.courierPay + o.boostPay)}", left >= 0 ? small : warn);
+            GUILayout.EndVertical();
+        }
+
         void PopupSection(string text)
         {
             GUILayout.Space(6);
@@ -393,6 +413,14 @@ namespace KuryeTycoon
                             (c.tipsToday > 0 ? $" (bahşiş {Ft(c.tipsToday)})" : ""), small);
 
             popupScroll = GUILayout.BeginScrollView(popupScroll);
+
+            // Üstündeki siparişler
+            PopupSection($"Üstündekiler ({c.CarryingList.Count} çantada, {c.ToPickList.Count} alınacak)");
+            if (c.CarryingList.Count == 0 && c.ToPickList.Count == 0)
+                GUILayout.Label("Şu an üstünde sipariş yok.", small);
+            float nowP = GameClock.I.TotalMinutes;
+            foreach (var o in c.CarryingList) OrderBox(o, c, true, nowP);
+            foreach (var o in c.ToPickList) OrderBox(o, c, false, nowP);
 
             // Nakit
             PopupSection("Üzerindeki nakit");
@@ -560,6 +588,10 @@ namespace KuryeTycoon
                 if (shown++ >= 12) break;
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"#{o.id} {o.shop.Name} · {GameData.KmText(o.distance)} · {GameData.KgText(o.weightKg)} · {o.CustomerTypeName}", label);
+                GUILayout.Label($"{o.customerName} — {o.AddressText}", small);
+                GUILayout.Label($"{o.BuildingText}", o.UsesStairs && o.floor >= 4 ? warn : small);
+                GUILayout.Label($"Sipariş ({o.ItemCount} ürün): {o.ItemsText}", small);
+                if (!string.IsNullOrEmpty(o.customerNote)) GUILayout.Label($"Not: \"{o.customerNote}\"", note);
                 if (o.IsHeavy) GUILayout.Label("AĞIR SİPARİŞ — sadece arabalı kuryeler alabilir", warn);
                 if (o.priceDeclines > 0)
                     GUILayout.Label($"{o.priceDeclines} kurye kazancı beğenmeyip reddetti. Bonus çarpanı veya boost kabul edilmesini kolaylaştırır.", warn);

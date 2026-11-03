@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    public enum CourierState { Cevrimdisi, Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, AdresSorunu, Mola, Izinli }
+    public enum CourierState { Cevrimdisi, Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, AdresSorunu, Mola, Izinli, KataCikiyor }
 
     /// <summary>Kuryenin asıl hayatı: ne zaman kuryelik yapabileceğini belirler.</summary>
     public enum Occupation { TamZamanli, OfisCalisani, HaftaSonu, Ogrenci, Vardiyali, Emekli, Ebeveyn, GeceKuryesi }
@@ -827,6 +827,11 @@ namespace KuryeTycoon
                         Work(dm);
                         if (clock.TotalMinutes >= current.readyAt) PickUpHere();
                         break;
+                    case CourierState.KataCikiyor:
+                        Work(dm);
+                        if (current != null && current.UsesStairs) fatigue = Mathf.Min(1f, fatigue + dm * 0.0015f); // merdiven yorar
+                        if (current == null || clock.TotalMinutes >= doorUntil) { if (current != null) DeliverCurrent(false); else PlanNext(); }
+                        break;
                     case CourierState.AdresSorunu:
                         Work(dm);
                         if (clock.TotalMinutes >= issueWaitUntil) OrderManager.I.ResolveAddressIssue(current, this);
@@ -859,7 +864,8 @@ namespace KuryeTycoon
             if (model != null)
             {
                 // Uzaktayken daire (ikon), yakınlaşınca 3D karakter
-                bool show = IsOnline && MapCamera.I != null && MapCamera.I.ShowModels;
+                // Binanın içindeyken (kata çıkıyor) karakter görünmez
+                bool show = IsOnline && MapCamera.I != null && MapCamera.I.ShowModels && State != CourierState.KataCikiyor;
                 bool walking = (State == CourierState.DukkanaGidiyor || State == CourierState.MusteriyeGidiyor)
                                && GameClock.I != null && GameClock.I.DeltaMinutes > 0f;
                 CharacterVisuals.UpdateModel(model, Position - lastModelPos, walking, show, ref modelFacing);
@@ -938,11 +944,30 @@ namespace KuryeTycoon
                         : $"{ShortName} #{current.id} adresine vardı ama müşteri evde değil, bekliyor.");
                     return;
                 }
-                DeliverCurrent(false);
+                StartDoorstep();
             }
         }
 
         float issueWaitUntil;
+        float doorUntil;
+
+        /// <summary>Binaya girer, katına çıkar (asansör/merdiven), teslim eder, iner. Süre kat ve asansöre bağlı.</summary>
+        void StartDoorstep()
+        {
+            var o = current;
+            float mins = o.DoorMinutes(stamina);
+            if (mins <= 1.2f) { DeliverCurrent(false); return; }
+            doorUntil = GameClock.I.TotalMinutes + mins;
+            State = CourierState.KataCikiyor;
+            if (o.elevatorBroken)
+                EventManager.I.Notify($"{ShortName} #{o.id}: asansör arızalı, {o.floor}. kata merdivenle çıkıyor.");
+        }
+
+        // ---------- Arayüz için: kuryenin üstündeki siparişler ----------
+        public IReadOnlyList<Order> ToPickList => toPick;
+        public IReadOnlyList<Order> CarryingList => carrying;
+        public Order CurrentOrder => current;
+        public float DoorMinutesLeft => State == CourierState.KataCikiyor ? Mathf.Max(0f, doorUntil - GameClock.I.TotalMinutes) : 0f;
 
         void CancelPickup(float wait)
         {
@@ -967,7 +992,7 @@ namespace KuryeTycoon
             Vector2Int from = batch ? Vector2Int.RoundToInt(Position) : FreeTile;
             float toShop = CityMap.Manhattan(from, o.shop.door) / speed + OrderCount * (batch ? 4f : 6f);
             float wait = Mathf.Max(0f, o.readyAt - (GameClock.I.TotalMinutes + toShop));
-            return toShop + wait + o.distance / speed;
+            return toShop + wait + o.distance / speed + o.DoorMinutes(stamina, true);
         }
 
         /// <summary>Teklifin tahmini saatlik kazancı.</summary>
@@ -1257,6 +1282,11 @@ namespace KuryeTycoon
                     case CourierState.AdresSorunu:
                         return current != null && current.addressIssue == AddressIssue.YanlisAdres
                             ? "Adres yanlış, müşteriye ulaşmaya çalışıyor" : "Müşteri evde yok, kapıda bekliyor";
+                    case CourierState.KataCikiyor:
+                        if (current == null) return "Teslim ediyor";
+                        return current.floor == 0 ? $"#{current.id} kapıda teslim ediyor"
+                             : current.UsesStairs ? $"#{current.id}: {current.floor}. kata merdivenle çıkıyor"
+                             : $"#{current.id}: asansörle {current.floor}. kata çıkıyor";
                     case CourierState.Mola: return "Mola: " + breakReason;
                     case CourierState.Izinli: return $"Çalışamıyor ({leaveReason}, {unavailableDays} gün)";
                     default: return "Çevrimiçi, sipariş bekliyor";

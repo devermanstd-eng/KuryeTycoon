@@ -227,6 +227,7 @@ namespace KuryeTycoon
                     o.courierPay += extraPay;
                     o.distance += extra;
                     o.customerTile = realTile;
+                    o.SetAddress(realTile, realDoor);
                     if (o.marker != null) o.marker.transform.position = CityMap.ToWorld(realTile);
                     c.RedirectTo(realDoor);
                     return;
@@ -315,6 +316,9 @@ namespace KuryeTycoon
             int dist = Mathf.Max(1, map.FindPath(shop.door, custDoor).Count - 1);
 
             int basket = GameData.Round10(Random.Range(shop.def.basketMin, shop.def.basketMax));
+            // Sepet gerçek ürünlerden oluşur (menüden); tutar ürünlerin toplamı
+            var items = Menus.Generate(shop.def, basket);
+            basket = Mathf.Max(shop.def.basketMin / 2, Menus.Sum(items));
 
             // Ağırlık: sepet büyüdükçe artar, biraz da rastgelelik
             float t = Mathf.InverseLerp(shop.def.basketMin, shop.def.basketMax, basket);
@@ -363,8 +367,12 @@ namespace KuryeTycoon
                 feeKm = quote.kmPart,
                 feeExtra = quote.extra,
                 feeWeather = quote.weather,
-                createdAt = now
+                createdAt = now,
+                items = items,
+                customerName = GameData.RandomName(),
+                customerNote = Addresses.RandomNote()
             };
+            o.SetAddress(custTile, custDoor);
             // Nakit ödeme: marketlerde daha sık. Müşteri yuvarlak banknot verir, para üstü hazırlanır.
             if (Random.value < (shop.def.isMarket ? cashChanceMarket : cashChanceFood))
             {
@@ -376,7 +384,8 @@ namespace KuryeTycoon
                 if (o.cashGiven == amt && Random.value < 0.5f) o.cashGiven += 1000;
             }
             o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);
-            o.deadlineAt = o.readyAt + dist / 0.45f + (o.customerType == CustomerType.Aceleci ? 7f : 15f);
+            o.deadlineAt = o.readyAt + dist / 0.45f + (o.customerType == CustomerType.Aceleci ? 7f : 15f)
+                           + o.DoorMinutes(1f, true); // müşteri katını da hesaba katan tahmini süre
             o.marker = SpriteFactory.Create($"Müşteri #{o.id}", markerRoot, true,
                 o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f),
                 CityMap.ToWorld(custTile), o.IsHeavy ? 0.6f : 0.45f, 15); // 3D binaların üstünde görünsün
