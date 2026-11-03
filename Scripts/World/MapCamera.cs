@@ -21,8 +21,8 @@ namespace KuryeTycoon
         public float smooth = 10f;
 
         [Header("Döndürme")]
-        public float defaultYaw = 40f;          // yakında varsayılan bakış açısı (binaları çaprazdan gösterir)
-        float yaw, targetYaw;                   // kullanıcının seçtiği açı (derece); uzakta harita hep düz durur
+        const string YawKey = "KuryeTycoon.KameraAcisi";
+        float yaw, targetYaw;                   // kullanıcının seçtiği açı (derece); yakınlaşıp uzaklaşırken sabit kalır, kaydedilir
         public float Yaw => yaw;
 
         /// <summary>0 = tüm harita, 1 = en yakın.</summary>
@@ -46,7 +46,10 @@ namespace KuryeTycoon
 
         float FitSize(Camera cam)
         {
-            float w = CityMap.Width + 1f, h = CityMap.Height + 1f;
+            // Döndürülmüş haritanın ekrandaki kaplama alanı
+            float w0 = CityMap.Width + 1f, h0 = CityMap.Height + 1f;
+            float a = yaw * Mathf.Deg2Rad, c = Mathf.Abs(Mathf.Cos(a)), s = Mathf.Abs(Mathf.Sin(a));
+            float w = w0 * c + h0 * s, h = w0 * s + h0 * c;
             return Mathf.Max(h / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
         }
 
@@ -71,7 +74,7 @@ namespace KuryeTycoon
             if (!initialized)
             {
                 focus = targetFocus = MapCenter;
-                yaw = targetYaw = defaultYaw;
+                yaw = targetYaw = PlayerPrefs.GetFloat(YawKey, 0f);
                 initialized = true;
             }
 
@@ -95,7 +98,7 @@ namespace KuryeTycoon
             float tilt = maxTilt * t01;
             // Kamera +Z'ye bakar (harita XY düzleminde, binalar −Z yönünde yükselir).
             // Önce dikey eksen (Z) etrafında döner, sonra eğilir. Uzakta açı 0: harita düz ve kuzey yukarıda.
-            var rot = Quaternion.Euler(0f, 0f, -yaw * t01) * Quaternion.Euler(-tilt, 0f, 0f);
+            var rot = Quaternion.Euler(0f, 0f, -yaw) * Quaternion.Euler(-tilt, 0f, 0f);
             cam.transform.rotation = rot;
             var ground = new Vector3(f.x, f.y, 0f);
             cam.transform.position = ground - rot * Vector3.forward * 60f;
@@ -103,7 +106,8 @@ namespace KuryeTycoon
 
         Vector2 ClampFocus(Camera cam, Vector2 f, float zoom)
         {
-            if (zoom > tiltStart)
+            if (zoom < 0.02f) return MapCenter;
+            if (zoom > tiltStart || Mathf.Abs(Mathf.DeltaAngle(yaw, 0f)) > 1f)
             {
                 // Dönük/eğik görünümde harita sınırları içinde serbest
                 return new Vector2(Mathf.Clamp(f.x, 0f, CityMap.Width - 1), Mathf.Clamp(f.y, 0f, CityMap.Height - 1));
@@ -174,7 +178,7 @@ namespace KuryeTycoon
             if (cam == null) return;
             float size = SizeFor(cam, targetZoom);
             // Ekrana göre: "yukarı" kameranın baktığı yön (döndürülmüşse ona göre)
-            float a = -yaw * Tilt01 * Mathf.Deg2Rad;
+            float a = -yaw * Mathf.Deg2Rad;
             var d = new Vector2(dir.x * Mathf.Cos(a) - dir.y * Mathf.Sin(a), dir.x * Mathf.Sin(a) + dir.y * Mathf.Cos(a));
             targetFocus += d * size * 0.25f;
         }
@@ -183,6 +187,19 @@ namespace KuryeTycoon
         public void Rotate(float degrees)
         {
             targetYaw += degrees;
+            SaveYaw();
+        }
+
+        /// <summary>Kuzeyi yukarı getir (döndürmeyi sıfırla).</summary>
+        public void ResetRotation()
+        {
+            targetYaw = Mathf.Round(targetYaw / 360f) * 360f;
+            SaveYaw();
+        }
+
+        void SaveYaw()
+        {
+            PlayerPrefs.SetFloat(YawKey, Mathf.Repeat(targetYaw, 360f));
         }
 
         /// <summary>Sağ tuşla sürükleme: yatay hareket döndürür.</summary>
@@ -190,13 +207,13 @@ namespace KuryeTycoon
         {
             targetYaw += pixels * 0.3f;
             yaw = targetYaw; // sürüklerken gecikmesiz
+            SaveYaw();
         }
 
         public void ResetView()
         {
             targetZoom = 0f;
-            targetFocus = MapCenter;
-            targetYaw = defaultYaw;
+            targetFocus = MapCenter; // açı korunur (kuzeye çevirmek için N)
         }
 
         /// <summary>Bir noktaya yakınlaştır (ör. kurye seçilince).</summary>
@@ -213,7 +230,9 @@ namespace KuryeTycoon
         public static Vector3 LabelOffset(float upTopDown, float height)
         {
             float t = I != null ? I.Tilt01 : 0f;
-            return Vector3.Lerp(new Vector3(0f, upTopDown, 0f), new Vector3(0f, 0f, -height), t);
+            // Düz görünümde "yukarı" ekranın yukarısı: kamera döndürülmüşse ona göre
+            var up = Quaternion.Euler(0f, 0f, I != null ? -I.yaw : 0f) * new Vector3(0f, upTopDown, 0f);
+            return Vector3.Lerp(up, new Vector3(0f, 0f, -height), t);
         }
     }
 }

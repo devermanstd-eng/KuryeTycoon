@@ -206,6 +206,7 @@ namespace KuryeTycoon
                 case KeyCode.Minus: case KeyCode.KeypadMinus: mc.ZoomStep(-1.5f); e.Use(); break;
                 case KeyCode.Q: mc.Rotate(-45f); e.Use(); break;
                 case KeyCode.E: mc.Rotate(45f); e.Use(); break;
+                case KeyCode.N: mc.ResetRotation(); e.Use(); break;
                 case KeyCode.Alpha0: case KeyCode.Keypad0: case KeyCode.Home: mc.ResetView(); e.Use(); break;
             }
         }
@@ -362,7 +363,7 @@ namespace KuryeTycoon
             var r = new Rect(x + 218, y + 4, 430, 22);
             Fill(r, new Color(0f, 0f, 0f, 0.5f));
             GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height),
-                "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · WASD · 0: tüm harita", small);
+                "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · N: kuzey · 0: tüm harita", small);
         }
 
         void PopupSection(string text)
