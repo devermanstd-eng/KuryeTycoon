@@ -82,8 +82,8 @@ namespace KuryeTycoon
         static void EnsureLight()
         {
             if (sun != null) return;
-            foreach (var l in Object.FindObjectsByType<Light>(FindObjectsSortMode.None))
-                if (l.type == LightType.Directional) { sun = l; return; }
+            // Sahnede ana güneş ayarlıysa onu kullan (Find çağrısı yok: Unity sürümleri arasında API değişti)
+            if (RenderSettings.sun != null && RenderSettings.sun.type == LightType.Directional) { sun = RenderSettings.sun; return; }
             var go = new GameObject("Güneş (karakterler için)");
             sun = go.AddComponent<Light>();
             sun.type = LightType.Directional;
