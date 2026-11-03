@@ -269,29 +269,21 @@ namespace KuryeTycoon
 
         // ---------- Hijyen ----------
 
-        public const int CompanyCleaningCost = 1500;
-
-        /// <summary>Kuryeye temizlik hatırlatması: bir sonraki gün çantasını temizler (moral biraz düşer).</summary>
+        /// <summary>Kuryeyi uyar: elindeki paket bitince çantasını kendisi temizler (uyarılmak moralini biraz düşürür).</summary>
         public void RequestCleaning(Courier c)
         {
+            if (c.cleanRequested) return;
             c.cleanRequested = true;
-            EventManager.I.Notify($"{c.ShortName}'a çanta temizliği hatırlatması gönderildi.");
+            c.morale = Mathf.Max(0f, c.morale - 0.02f);
+            EventManager.I.Notify($"{c.ShortName} uyarıldı: paketi bitince çantasını temizleyecek.");
         }
 
-        /// <summary>Şirket hemen temizletir (ücret şirketten).</summary>
-        public bool CompanyClean(Courier c)
-        {
-            if (!EconomyManager.I.TrySpend(CompanyCleaningCost, $"Çanta temizliği: {c.courierName}", ExpenseCategory.Ekipman)) return false;
-            c.CleanBag(true);
-            return true;
-        }
-
-        public int CleanAll()
+        /// <summary>Çantası kirli tüm kuryeleri uyar (ücretsiz).</summary>
+        public int WarnAllDirty()
         {
             int n = 0;
-            foreach (var c in Couriers.ToArray())
-                if (c.hygiene < c.MaxHygiene - 0.05f && CompanyClean(c)) n++;
-            if (n > 0) EventManager.I.Notify($"{n} kuryenin çantası temizletildi.");
+            foreach (var c in Couriers)
+                if (c.hygiene < Courier.HygieneLimit && !c.cleanRequested) { RequestCleaning(c); n++; }
             return n;
         }
 

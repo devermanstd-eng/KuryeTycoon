@@ -51,7 +51,7 @@ namespace KuryeTycoon
         [Header("Hijyen")]
         public float hygiene = 1f;             // çanta temizliği (0–1); %60 altı müşteri şikayeti
         public int bagUses;                    // mevcut çantayla yapılan teslimat (yıpranma)
-        public bool cleanRequested;            // şirket temizlik hatırlatması gönderdi
+        public bool cleanRequested;            // şirket uyardı: elindeki paket bitince çantasını temizler
         public string leaveReason = "";
         public bool dayOff;
         public float onlineMinutesToday;
@@ -241,6 +241,7 @@ namespace KuryeTycoon
         /// <summary>Her oyun saatinde kurye çalışıp çalışmayacağına kendisi karar verir.</summary>
         void DecideAvailability()
         {
+            HourlyHygiene();
             if (State == CourierState.Izinli || State == CourierState.Mola) return;
             bool boost = CampaignManager.I != null && CampaignManager.I.BoostActive;
 
@@ -311,6 +312,11 @@ namespace KuryeTycoon
         public long cashHeld;           // müşterilerden aldığı, şirkete borçlu olduğu nakit
         public bool cashBlocked;        // nakit limiti aşıldı / ay sonu kapatılmadı: hesap kilitli
         public int earlyPayouts;
+        public long earlyPayoutTotal;   // erken ödeme olarak istediği toplam tutar
+        public int cashOrders;          // nakit ödemeli teslimat sayısı
+        public long cashTakenTotal;     // müşterilerden aldığı toplam nakit
+        public long keepCashTotal;      // keep cash ile hesabından mahsup edilen toplam
+        public long offloadTotal;       // offload ile kartından şirkete ödediği toplam
 
         public const int CashLimit = 100000;
         public const float KeepCashShare = 0.8f;     // keep cash: hesabın en fazla %80'iyle mahsup
@@ -969,8 +975,8 @@ namespace KuryeTycoon
             earnedToday = 0;
             if (clock.DayOfWeek == 0) earnedWeek = 0; // yeni hafta (rapor bu sıfırlamadan önce hazırlanır)
 
-            // Çanta temizliği: hatırlatma gönderildiyse kesin, değilse titizliğine göre
-            if (cleanRequested || Random.value < tidiness * 0.3f) CleanBag(false);
+            // Çanta temizliği kuryenin kendi sorumluluğu: her gece zorunlu olarak temizler (şirkete maliyeti yok)
+            if (hygiene < MaxHygiene - 0.01f || cleanRequested) CleanBag();
             onlineMinutesToday = 0f;
 
             if (repairDays > 0)
@@ -1019,12 +1025,25 @@ namespace KuryeTycoon
             hygiene = Mathf.Max(0f, hygiene - d);
         }
 
-        /// <summary>Çantayı temizler (kurye kendisi ya da şirket temizletir).</summary>
-        public void CleanBag(bool byCompany)
+        /// <summary>Çantayı kurye kendisi temizler (kendi sorumluluğu, şirkete maliyeti yok).</summary>
+        public void CleanBag()
         {
             hygiene = MaxHygiene;
-            if (cleanRequested && !byCompany) morale = Mathf.Max(0f, morale - 0.02f); // uyarılmak hoşuna gitmez
             cleanRequested = false;
+        }
+
+        /// <summary>
+        /// Gün içinde: uyarıldıysa paket bitince hemen temizler; kirlenmişse titizliğine göre arada temizler.
+        /// Hijyen istasyonu varsa merkeze uğrayıp daha sık temizler.
+        /// </summary>
+        void HourlyHygiene()
+        {
+            if (OrderCount > 0 || hygiene >= MaxHygiene - 0.01f) return;
+            if (cleanRequested) { CleanBag(); return; }
+            if (hygiene >= HygieneLimit + 0.1f) return;
+            float chance = tidiness * 0.35f;
+            if (UpgradeManager.I != null && UpgradeManager.I.Has(UpgradeKind.Hijyen)) chance += 0.3f;
+            if (Random.value < chance) CleanBag();
         }
 
         /// <summary>Yeni termal çanta: yıpranma sıfırlanır, hijyen tam.</summary>

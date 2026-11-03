@@ -246,7 +246,12 @@ namespace KuryeTycoon
                 // Nakit: müşteri parayı kuryeye verdi. Şirket dükkana sepeti kendi cebinden öder,
                 // kuryeden nakdi sonra (keep cash / offload) tahsil eder.
                 money += o.CompanyIncome - o.CashAmount;
-                if (!o.keptByCourier) o.courier.cashHeld += o.CashAmount;
+                if (!o.keptByCourier)
+                {
+                    o.courier.cashHeld += o.CashAmount;
+                    o.courier.cashOrders++;
+                    o.courier.cashTakenTotal += o.CashAmount;
+                }
                 Today.cashOrders++;
             }
             else money += o.CompanyIncome;
@@ -403,6 +408,7 @@ namespace KuryeTycoon
             if (amount <= 0) return;
             c.balance -= amount;
             c.earlyPayouts++;
+            c.earlyPayoutTotal += amount;
             SchedulePayout(c, amount, true);
             EventManager.I.Notify($"{c.ShortName} erken ödeme istedi: {Ft(amount)} (hesabının %80'i, 2–3 iş günü içinde).");
         }
@@ -439,6 +445,7 @@ namespace KuryeTycoon
         {
             c.balance -= amount;
             c.cashHeld -= amount;
+            c.keepCashTotal += amount;
             Log($"Keep cash: {c.courierName} {Ft(amount)} nakdi hesabından mahsup etti");
         }
 
@@ -447,6 +454,7 @@ namespace KuryeTycoon
         {
             if (amount <= 0) return;
             c.cashHeld -= amount;
+            c.offloadTotal += amount;
             money += amount;
             Year.cashCollected += amount;
             Today.cashCollected += amount;

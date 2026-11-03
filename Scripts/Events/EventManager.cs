@@ -104,8 +104,7 @@ namespace KuryeTycoon
                     $"Çanta hijyeni: %{c.hygiene * 100f:0}.{worn}")
                 .Add($"Özür dile + %10 kupon (−{Ft(value)})", () =>
                     EconomyManager.I.Spend(value, $"Hijyen kuponu #{o.id}", ExpenseCategory.Iade))
-                .Add("Kuryeyi uyar (yarın temizler, moral biraz düşer)", () => CourierManager.I.RequestCleaning(c))
-                .Add($"Şirket hemen temizletsin (−{Ft(CourierManager.CompanyCleaningCost)})", () => CourierManager.I.CompanyClean(c))
+                .Add("Kuryeyi uyar (paketi bitince temizler, moral biraz düşer)", () => CourierManager.I.RequestCleaning(c))
                 .Add("Görmezden gel (itibar −0.1)", () => CompanyProfile.AddReputation(-0.1f)));
         }
 

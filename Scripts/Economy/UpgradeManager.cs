@@ -82,9 +82,9 @@ namespace KuryeTycoon
             new UpgradeDef
             {
                 kind = UpgradeKind.Hijyen, name = "Hijyen istasyonu",
-                summary = "Çantalar daha yavaş kirlenir ve her Pazartesi merkezde ücretsiz temizlenir.",
+                summary = "Merkezde temizlik köşesi: çantalar daha yavaş kirlenir, kuryeler gün içinde merkeze uğrayıp kendileri daha sık temizler.",
                 costs = new[] { 60000 },
-                levelText = new[] { "İstasyon yok", "Kirlenme −%30, her Pazartesi ücretsiz temizlik" }
+                levelText = new[] { "İstasyon yok", "Kirlenme −%30, kuryeler gün içinde daha sık temizler" }
             },
             new UpgradeDef
             {
@@ -150,11 +150,6 @@ namespace KuryeTycoon
             if (Has(UpgradeKind.Dinlenme))
                 foreach (var c in CourierManager.I.Couriers) c.morale = Mathf.Min(1f, c.morale + 0.01f);
 
-            if (Has(UpgradeKind.Hijyen) && GameClock.I.DayOfWeek == 0)
-            {
-                foreach (var c in CourierManager.I.Couriers) c.CleanBag(true);
-                EventManager.I.Notify("Hijyen istasyonu: tüm kuryelerin çantası ücretsiz temizlendi.");
-            }
         }
 
         // ---------- Diğer sistemlerin kullandığı çarpanlar ----------

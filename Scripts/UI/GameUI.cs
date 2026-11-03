@@ -37,6 +37,9 @@ namespace KuryeTycoon
         int editingColor;
 
         Courier selectedCourier;
+        Courier popupCourier;   // haritada tıklanan kurye: sağda detay paneli
+        Courier hoverCourier;   // fare üstündeki kurye (ismi sarı yanar)
+        Vector2 popupScroll;
 
         GUIStyle title, header, label, small, warn, note, box, button, smallButton, bigButton, toggle, textField,
                  worldLabel, barTitle, barText, logoLetter;
@@ -97,12 +100,14 @@ namespace KuryeTycoon
 
             modalFree = EventManager.I.Current == null;
             if (modalFree) HandleKeys();
+            HandleMapMouse(sw, sh);
 
             GUI.enabled = modalFree;
             DrawWorldLabels();
             DrawTopBar(sw);
             DrawPanel(sh);
             DrawFeed(sw, sh);
+            DrawCourierPopup(sw, sh);
             GUI.enabled = true;
             DrawEvent(sw, sh);
         }
@@ -230,9 +235,142 @@ namespace KuryeTycoon
                 var key = Vector2Int.RoundToInt(c.Position);
                 stack.TryGetValue(key, out int n);
                 stack[key] = n + 1;
+                bool hi = c == popupCourier || c == hoverCourier;
                 WorldLabel(cam, CityMap.ToWorld(c.Position) + Vector3.up * (0.55f + 0.4f * n),
-                    $"{c.ShortName} ({c.V.letter})", Color.white);
+                    $"{c.ShortName} ({c.V.letter})", hi ? new Color(1f, 0.85f, 0.2f) : Color.white);
             }
+        }
+
+        // ---------------------------------------------------------------- haritada kurye seçme
+        Vector2 ToGui(Camera cam, Vector3 world)
+        {
+            Vector3 sp = cam.WorldToScreenPoint(world);
+            return new Vector2(sp.x / uiScale, (Screen.height - sp.y) / uiScale);
+        }
+
+        Rect PopupRect(float sw, float sh) => new Rect(sw - 380f, TopBar + 8f, 370f, Mathf.Max(260f, Mathf.Min(620f, sh - TopBar - 150f)));
+
+        /// <summary>Fare konumundaki kurye (simgesi ya da isim etiketi).</summary>
+        Courier CourierAt(Vector2 m)
+        {
+            var cam = Camera.main;
+            if (cam == null || CourierManager.I == null) return null;
+            Courier best = null;
+            float bestD = float.MaxValue;
+            var stack = new Dictionary<Vector2Int, int>();
+            foreach (var c in CourierManager.I.Couriers)
+            {
+                var key = Vector2Int.RoundToInt(c.Position);
+                stack.TryGetValue(key, out int n);
+                stack[key] = n + 1;
+                Vector2 sp = ToGui(cam, CityMap.ToWorld(c.Position));
+                Vector2 lp = ToGui(cam, CityMap.ToWorld(c.Position) + Vector3.up * (0.55f + 0.4f * n));
+                float d = float.MaxValue;
+                float ds = Vector2.Distance(m, sp);
+                if (ds < 20f) d = ds;
+                if (Mathf.Abs(m.x - lp.x) < 55f && Mathf.Abs(m.y - lp.y) < 10f) d = Mathf.Min(d, Mathf.Abs(m.y - lp.y));
+                if (d < bestD) { bestD = d; best = c; }
+            }
+            return best;
+        }
+
+        void HandleMapMouse(float sw, float sh)
+        {
+            var e = Event.current;
+            Vector2 m = e.mousePosition;
+            bool overMap = m.x > panelWidth && m.y > TopBar &&
+                           !(popupCourier != null && PopupRect(sw, sh).Contains(m));
+            if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
+                hoverCourier = overMap && modalFree ? CourierAt(m) : null;
+
+            if (e.type == EventType.MouseDown && e.button == 0 && overMap && modalFree)
+            {
+                var c = CourierAt(m);
+                if (c != null)
+                {
+                    popupCourier = c;
+                    popupScroll = Vector2.zero;
+                    e.Use();
+                }
+            }
+        }
+
+        void PopupSection(string text)
+        {
+            GUILayout.Space(6);
+            GUILayout.Label(text, header);
+        }
+
+        /// <summary>Sağda açılan kurye detayı: nakit, cash pay, erken ödeme, hesap.</summary>
+        void DrawCourierPopup(float sw, float sh)
+        {
+            var c = popupCourier;
+            if (c == null) return;
+            if (!CourierManager.I.Couriers.Contains(c)) { popupCourier = null; return; }
+
+            var r = PopupRect(sw, sh);
+            Fill(r, new Color(0.13f, 0.14f, 0.18f, 0.97f));
+            Fill(new Rect(r.x, r.y, r.width, 4f), CompanyProfile.Primary);
+
+            GUILayout.BeginArea(new Rect(r.x + 12, r.y + 10, r.width - 24, r.height - 18));
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(c.courierName, header);
+            if (GUILayout.Button("X", smallButton, GUILayout.Width(28))) deferred = () => popupCourier = null;
+            GUILayout.EndHorizontal();
+            GUILayout.Label($"{c.V.name} · {c.StateName}", small);
+            GUILayout.Label($"Bugün: {c.deliveriesToday} paket · {Ft(c.earnedToday)} kazandı" +
+                            (c.tipsToday > 0 ? $" (bahşiş {Ft(c.tipsToday)})" : ""), small);
+
+            popupScroll = GUILayout.BeginScrollView(popupScroll);
+
+            // Nakit
+            PopupSection("Üzerindeki nakit");
+            float share = c.cashHeld / (float)Courier.CashLimit;
+            Bar("Nakit", share, share >= 0.7f ? new Color(0.95f, 0.35f, 0.3f) : new Color(0.4f, 0.8f, 0.5f),
+                $"{Ft(c.cashHeld)} / {Ft(Courier.CashLimit)}");
+            if (c.cashBlocked)
+                GUILayout.Label("HESABI KİLİTLİ: nakit borcunu kapatana kadar sipariş alamaz.", warn);
+            else if (c.cashHeld > 0)
+                GUILayout.Label("Bu para şirkete borcu; ay sonuna kadar kapatmalı.", small);
+            GUILayout.Label($"Keep cash ile kapatabileceği: {Ft(System.Math.Min(c.cashHeld, c.KeepCashCapacity))} " +
+                            $"(hesabının en fazla %{Courier.KeepCashShare * 100f:0}'i)", small);
+
+            // Cash pay
+            PopupSection("Nakit siparişler (cash pay)");
+            GUILayout.Label($"Nakit teslimat: {c.cashOrders} paket", label);
+            GUILayout.Label($"Müşterilerden aldığı toplam nakit: {Ft(c.cashTakenTotal)}", small);
+            GUILayout.Label($"Keep cash ile hesabından mahsup: {Ft(c.keepCashTotal)}", small);
+            GUILayout.Label($"Offload ile kartından ödediği: {Ft(c.offloadTotal)}", small);
+
+            // Erken ödeme
+            PopupSection("Erken ödeme (early payout)");
+            if (c.earlyPayouts > 0)
+                GUILayout.Label($"{c.earlyPayouts} kez · toplam {Ft(c.earlyPayoutTotal)} " +
+                                $"(her seferinde hesabının %{Courier.EarlyPayoutShare * 100f:0}'i)", label);
+            else
+                GUILayout.Label("Henüz erken ödeme istemedi.", small);
+
+            // Hesap
+            PopupSection("Hesap");
+            GUILayout.Label($"Hesabında (kesilmemiş): {Ft(c.balance)} · sıradaki kesim {EconomyManager.I.NextCutText}", small);
+            bool anyPending = false;
+            foreach (var p in EconomyManager.I.Payouts)
+            {
+                if (p.courier != c) continue;
+                if (!anyPending) GUILayout.Label("Yatmayı bekleyen:", small);
+                anyPending = true;
+                GUILayout.Label($"   {Ft(p.amount)}{(p.early ? " (erken)" : "")} → {GameClock.I.DateOf(p.payDay)}", small);
+            }
+            if (!anyPending) GUILayout.Label("Yatmayı bekleyen ödemesi yok.", small);
+            GUILayout.Label($"Bugüne kadar hesabına yatan: {Ft(c.receivedTotal)}", small);
+            GUILayout.Label($"Toplam kazancı: {Ft(c.totalEarned)} · bahşişler {Ft(c.tipsTotal)}", small);
+            GUILayout.Label($"Kendi birikimi (araç için): {Ft(c.savings)}", small);
+
+            GUILayout.EndScrollView();
+
+            if (GUILayout.Button("Kuryeler sekmesinde göster", smallButton))
+                deferred = () => { tab = Tab.Kuryeler; scroll = Vector2.zero; };
+            GUILayout.EndArea();
         }
 
         void WorldLabel(Camera cam, Vector3 world, string text, Color color)
@@ -486,14 +624,12 @@ namespace KuryeTycoon
                 GUILayout.Label($"Teklif seçiciliği: {c.PickinessText} · Dükkanda sıra yüzünden iptal: bu ay {c.pickupCancelsThisMonth}/{Courier.MaxPickupCancels}",
                                 c.pickupCancelsThisMonth >= Courier.MaxPickupCancels ? warn : small);
                 GUILayout.Label($"Çanta: {c.HygieneText} · Titizlik {c.tidiness:0.00} · Çanta kullanımı {c.bagUses}/{Courier.BagWornUses}" +
-                                (c.cleanRequested ? " · Temizlik hatırlatıldı" : ""),
+                                (c.cleanRequested ? " · Uyarıldı, paketi bitince temizleyecek" : ""),
                                 c.hygiene < Courier.HygieneLimit ? warn : small);
                 GUILayout.BeginHorizontal();
                 var hcour = c;
                 GUI.enabled = modalFree && !c.cleanRequested && c.hygiene < c.MaxHygiene - 0.05f;
-                if (GUILayout.Button("Temizlik hatırlat", smallButton)) deferred = () => cm.RequestCleaning(hcour);
-                GUI.enabled = modalFree && c.hygiene < c.MaxHygiene - 0.05f;
-                if (GUILayout.Button($"Şirket temizletsin (−{Ft(CourierManager.CompanyCleaningCost)})", smallButton)) deferred = () => cm.CompanyClean(hcour);
+                if (GUILayout.Button("Temizlik için uyar", smallButton)) deferred = () => cm.RequestCleaning(hcour);
                 GUI.enabled = modalFree && c.BagWorn;
                 if (GUILayout.Button($"Yeni çanta (−{Ft(GameData.Equip(EquipmentKind.TermalCanta).price)})", smallButton)) deferred = () => cm.ReplaceBag(hcour);
                 GUI.enabled = modalFree;
@@ -503,6 +639,7 @@ namespace KuryeTycoon
                 GUILayout.BeginHorizontal();
                 var courier = c;
                 if (GUILayout.Button("Ekipman al", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; scroll = Vector2.zero; };
+                if (GUILayout.Button("Nakit / ödeme detayı", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; };
                 GUI.enabled = modalFree && c.OrderCount == 0;
                 if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton)) deferred = () => cm.Fire(courier);
                 GUI.enabled = modalFree;
@@ -622,11 +759,11 @@ namespace KuryeTycoon
             GUILayout.Space(4);
             GUILayout.Label($"Hijyen: {dirty} kuryenin çantası kirli (%{Courier.HygieneLimit * 100f:0} altı), {worn} çanta yıpranmış.",
                 dirty > 0 ? warn : label);
-            GUILayout.Label("Kirli çanta müşteri şikayeti ve düşük puan getirir. Titiz kuryeler kendisi temizler; " +
-                            $"diğerlerine hatırlatma gönder ya da şirkete temizlet ({Ft(CourierManager.CompanyCleaningCost)}/kurye). " +
+            GUILayout.Label("Çanta temizliği kuryenin kendi sorumluluğu: her gece zorunlu olarak temizler, titiz olanlar gün içinde de temizler. " +
+                            "Kirli çanta müşteri şikayeti ve düşük puan getirir; gün içinde kirlenenleri uyarabilirsin (ücretsiz, moral biraz düşer). " +
                             $"{Courier.BagWornUses} teslimattan sonra çanta yıpranır, yenisi gerekir.", small);
-            if (GUILayout.Button($"Kirli çantaların hepsini temizlet ({Ft(CourierManager.CompanyCleaningCost)}/kurye)", smallButton))
-                deferred = () => cm.CleanAll();
+            if (GUILayout.Button("Çantası kirli olanların hepsini uyar", smallButton))
+                deferred = () => cm.WarnAllDirty();
 
             if (selectedCourier == null || !cm.Couriers.Contains(selectedCourier))
                 selectedCourier = cm.Couriers.Count > 0 ? cm.Couriers[0] : null;
