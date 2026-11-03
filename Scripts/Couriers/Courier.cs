@@ -154,8 +154,9 @@ namespace KuryeTycoon
             Position = start;
             transform.position = CityMap.ToWorld(Position);
 
-            ring = SpriteFactory.Create("Halka", transform, true, CompanyProfile.Secondary, Vector3.zero, 0.75f, 10);
-            body = SpriteFactory.Create("Gövde", transform, true, CompanyProfile.Primary, Vector3.zero, 0.55f, 11);
+            // Biraz kameraya doğru (−Z): 3D yol parçalarının üstünde kalsın
+            ring = SpriteFactory.Create("Halka", transform, true, CompanyProfile.Secondary, new Vector3(0f, 0f, -0.04f), 0.75f, 10);
+            body = SpriteFactory.Create("Gövde", transform, true, CompanyProfile.Primary, new Vector3(0f, 0f, -0.05f), 0.55f, 11);
             RebuildModel();
 
             bool online = Preference() >= 0.5f;

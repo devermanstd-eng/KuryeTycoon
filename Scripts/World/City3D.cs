@@ -31,15 +31,70 @@ namespace KuryeTycoon
             set { PlayerPrefs.SetInt(UsePackKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 
-        static GameObject[] packBuildings, packTrees;
+        const string UseRoadsKey = "KuryeTycoon.PaketYollari";
+        public static bool UseRoads
+        {
+            get { return PlayerPrefs.GetInt(UseRoadsKey, 1) == 1; }
+            set { PlayerPrefs.SetInt(UseRoadsKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>Yol parçalarının paketteki yönü bilinmediği için tür başına döndürme düzeltmesi (0: düz, 1: köşe, 2: T).</summary>
+        public static int RoadOffset(int kind) => PlayerPrefs.GetInt("KuryeTycoon.YolYonu" + kind, 0);
+        public static void SetRoadOffset(int kind, int deg) { PlayerPrefs.SetInt("KuryeTycoon.YolYonu" + kind, ((deg % 360) + 360) % 360); PlayerPrefs.Save(); }
+
+        static GameObject[] packBuildings, packTrees, packRoads;
+        static GameObject roadStraight, roadCorner, roadT, roadCross, groundBlock, groundGrass;
         public static int PackBuildingCount { get { LoadPack(); return packBuildings.Length; } }
         public static int PackTreeCount { get { LoadPack(); return packTrees.Length; } }
+        public static bool PackRoadsOk { get { LoadPack(); return roadStraight != null && roadCross != null; } }
 
         static void LoadPack()
         {
             if (packBuildings != null) return;
-            packBuildings = Resources.LoadAll<GameObject>(PackFolder + "/Binalar");
+            var all = Resources.LoadAll<GameObject>(PackFolder + "/Binalar");
             packTrees = Resources.LoadAll<GameObject>(PackFolder + "/Agaclar");
+            packRoads = Resources.LoadAll<GameObject>(PackFolder + "/Yollar");
+
+            // Binalar klasörüne düşmüş direk, lamba, rüzgar gülü (çok ince) ve hazır şehir blokları (çok geniş) elenir
+            var widths = new List<float>();
+            foreach (var p in all) widths.Add(Width(p));
+            widths.Sort();
+            float median = widths.Count > 0 ? widths[widths.Count / 2] : 1f;
+            var keep = new List<GameObject>();
+            foreach (var p in all)
+            {
+                float w = Width(p);
+                if (w >= median * 0.45f && w <= median * 2.6f) keep.Add(p);
+            }
+            packBuildings = keep.ToArray();
+
+            roadStraight = FindRoad("lane_01", "lane_02", "road lane", "road tile");
+            roadCorner = FindRoad("corner_01", "corner");
+            roadT = FindRoad("t_intersection_01", "t_intersection", "t intersection");
+            roadCross = FindRoadExcept("intersection", "t_", "t intersection");
+            groundBlock = FindRoad("sidewalk", "concrete");
+            groundGrass = FindRoad("grass");
+        }
+
+        static GameObject FindRoad(params string[] keys)
+        {
+            foreach (var k in keys)
+                foreach (var p in packRoads)
+                    if (p.name.ToLowerInvariant().Contains(k)) return p;
+            return null;
+        }
+
+        static GameObject FindRoadExcept(string key, params string[] not)
+        {
+            foreach (var p in packRoads)
+            {
+                string n = p.name.ToLowerInvariant();
+                if (!n.Contains(key)) continue;
+                bool bad = false;
+                foreach (var x in not) if (n.Contains(x)) bad = true;
+                if (!bad) return p;
+            }
+            return null;
         }
 
         class Piece
@@ -48,6 +103,7 @@ namespace KuryeTycoon
             public MeshFilter mf;     // kutu binalarda; paket modellerinde null
             public float height;      // tam boy (kare biriminde)
             public bool prefab;
+            public bool flat;         // yol / zemin: yükselmez, sadece görünür olur
             public Color baseColor;
             public int tileX;
             public Shop shop;
@@ -76,6 +132,7 @@ namespace KuryeTycoon
         {
             packBuildings = null;
             packTrees = null;
+            packRoads = null;
             if (root != null) Destroy(root.gameObject);
             pieces.Clear();
             heightByTile.Clear();
@@ -90,6 +147,7 @@ namespace KuryeTycoon
             LoadPack();
             bool pack = UsePack && packBuildings.Length > 0;
             bool packTreesOk = UsePack && packTrees.Length > 0;
+            bool roads3D = UsePack && UseRoads && roadStraight != null && roadCross != null;
 
             root = new GameObject("3D Şehir").transform;
             root.SetParent(transform, false);
@@ -107,11 +165,21 @@ namespace KuryeTycoon
             {
                 for (int y = 0; y < CityMap.Height; y++)
                 {
-                    if (map.IsRoad(x, y)) continue;
                     var tile = new Vector2Int(x, y);
+                    if (map.IsRoad(x, y))
+                    {
+                        if (roads3D) AddRoad(map, tile);
+                        continue;
+                    }
                     bool frontage = IsAdjacentToRoad(map, x, y);
                     int region = x <= CityMap.UnlockMaxX[1] ? 1 : (x <= CityMap.UnlockMaxX[2] ? 2 : 3);
                     float face = FaceAngle(map, tile);
+                    // Paket yolları açıksa bina kareleri kaldırım, parklar çim zemin alır
+                    if (roads3D)
+                    {
+                        var gnd = frontage ? groundBlock : (groundGrass != null ? groundGrass : groundBlock);
+                        if (gnd != null) AddFlat(gnd, tile, 0f);
+                    }
 
                     if (tile == map.HQTile)
                     {
@@ -178,10 +246,23 @@ namespace KuryeTycoon
             return best;
         }
 
-        static readonly Dictionary<GameObject, float> tallCache = new Dictionary<GameObject, float>();
         static float Tallness(GameObject prefab)
         {
-            if (tallCache.TryGetValue(prefab, out float t)) return t;
+            var sz = PrefabSize(prefab);
+            return sz.y / Mathf.Max(0.01f, Mathf.Max(sz.x, sz.z));
+        }
+
+        static float Width(GameObject prefab)
+        {
+            var sz = PrefabSize(prefab);
+            return Mathf.Max(sz.x, sz.z);
+        }
+
+        static readonly Dictionary<GameObject, Vector3> sizeCache = new Dictionary<GameObject, Vector3>();
+        /// <summary>Prefabın kendi ölçeğindeki boyutu (Y yukarı), sahneye koymadan.</summary>
+        static Vector3 PrefabSize(GameObject prefab)
+        {
+            if (sizeCache.TryGetValue(prefab, out var cached)) return cached;
             var b = new Bounds();
             bool any = false;
             foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
@@ -190,13 +271,13 @@ namespace KuryeTycoon
                 var mb = mf.sharedMesh.bounds;
                 var s = mf.transform.lossyScale;
                 var size = Vector3.Scale(mb.size, new Vector3(Mathf.Abs(s.x), Mathf.Abs(s.y), Mathf.Abs(s.z)));
-                var c = mf.transform.position;
+                var c = mf.transform.TransformPoint(mb.center);
                 var bb = new Bounds(c, size);
                 if (!any) { b = bb; any = true; } else b.Encapsulate(bb);
             }
-            t = any ? b.size.y / Mathf.Max(0.01f, Mathf.Max(b.size.x, b.size.z)) : 1f;
-            tallCache[prefab] = t;
-            return t;
+            var result = any ? b.size : Vector3.one;
+            sizeCache[prefab] = result;
+            return result;
         }
 
         static bool IsAdjacentToRoad(CityMap map, int x, int y) =>
@@ -277,6 +358,65 @@ namespace KuryeTycoon
                 mpb.SetColor("_Color", c);
                 r.SetPropertyBlock(mpb);
             }
+        }
+
+        // ---------- Yollar ve zemin ----------
+
+        /// <summary>Komşu yollara göre parça seçer: düz, köşe, T, dörtlü kavşak.</summary>
+        void AddRoad(CityMap map, Vector2Int t)
+        {
+            bool n = t.y < CityMap.Height - 1 && map.IsRoad(t.x, t.y + 1);
+            bool s = t.y > 0 && map.IsRoad(t.x, t.y - 1);
+            bool e = t.x < CityMap.Width - 1 && map.IsRoad(t.x + 1, t.y);
+            bool w = t.x > 0 && map.IsRoad(t.x - 1, t.y);
+            int count = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
+            // Açılar Z ekseninde, saat yönünün tersine: 0 = kuzey, 90 = batı, 180 = güney, 270 = doğu
+            if (count >= 4) { AddFlat(roadCross, t, 0f); return; }
+            if (count == 3 && roadT != null)
+            {
+                // Kanonik T: batı-kuzey-doğu (güney yok)
+                float a = !s ? 0f : !e ? 90f : !n ? 180f : 270f;
+                AddFlat(roadT, t, a + RoadOffset(2));
+                return;
+            }
+            if (count == 2 && !(n && s) && !(e && w) && roadCorner != null)
+            {
+                // Kanonik köşe: kuzey-doğu
+                float a = (n && e) ? 0f : (n && w) ? 90f : (s && w) ? 180f : 270f;
+                AddFlat(roadCorner, t, a + RoadOffset(1));
+                return;
+            }
+            if (count >= 3) { AddFlat(roadCross, t, 0f); return; }
+            // Düz: kanonik kuzey-güney
+            float st = (e || w) && !(n || s) ? 90f : 0f;
+            AddFlat(roadStraight, t, st + RoadOffset(0));
+        }
+
+        /// <summary>Düz parça: kareyi tam kaplar, yüzeyi zeminin hemen üstünde, yükselmez.</summary>
+        void AddFlat(GameObject prefab, Vector2Int tile, float angle)
+        {
+            if (prefab == null) return;
+            var holder = Holder(prefab.name, tile, Vector2.zero);
+            var inst = Instantiate(prefab, holder, false);
+            inst.transform.localPosition = Vector3.zero;
+            inst.transform.localScale = Vector3.one;
+            inst.transform.localRotation = Quaternion.Euler(0f, 0f, angle) * Quaternion.Euler(-90f, 0f, 0f);
+            foreach (var col in inst.GetComponentsInChildren<Collider>()) Destroy(col);
+            var renderers = inst.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) { Destroy(holder.gameObject); return; }
+            foreach (var r in renderers)
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+                r.sortingOrder = 1; // zemin karelerinin üstünde, binaların altında
+            }
+            var b = CombinedBounds(renderers);
+            float s = 1.01f / Mathf.Max(0.001f, Mathf.Max(b.size.x, b.size.y));
+            inst.transform.localScale = Vector3.one * s;
+            b = CombinedBounds(renderers);
+            inst.transform.position += new Vector3(holder.position.x - b.center.x, holder.position.y - b.center.y, -0.002f - b.min.z); // üst yüzey zeminin hemen üstünde
+            pieces.Add(new Piece { t = holder, prefab = true, flat = true, tileX = tile.x });
+            Tint(renderers, !CityMap.I.IsUnlocked(tile.x));
         }
 
         // ---------- Kutu bina (paket yoksa) ----------
@@ -375,6 +515,7 @@ namespace KuryeTycoon
                 if (!show) continue;
                 var s = p.t.localScale;
                 // Kutu: birim kutu boyu kadar uzatılır. Paket modeli: zaten doğru boyda, sadece yükselme oranı.
+                if (p.flat) continue;
                 p.t.localScale = new Vector3(s.x, s.y, Mathf.Max(0.001f, (p.prefab ? 1f : p.height) * g));
             }
         }

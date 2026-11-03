@@ -73,7 +73,7 @@ namespace KuryeTycoon
                 float s = TargetHeight / b.size.z;
                 go.transform.localScale = Vector3.one * s;
                 b = CombinedBounds(renderers);
-                go.transform.position += new Vector3(parent.position.x - b.center.x, parent.position.y - b.center.y, -0.02f - b.max.z);
+                go.transform.position += new Vector3(parent.position.x - b.center.x, parent.position.y - b.center.y, -0.06f - b.max.z);
             }
             if (Mode == 0) EnsureLight();
             return go;

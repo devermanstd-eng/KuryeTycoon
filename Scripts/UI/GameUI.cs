@@ -1292,6 +1292,30 @@ namespace KuryeTycoon
                 }
                 GUILayout.EndHorizontal();
                 GUILayout.Label("Binaların arkası yola bakıyorsa 180°'yi, yanı bakıyorsa 90° ya da 270°'yi dene.", small);
+
+                if (City3D.PackRoadsOk)
+                {
+                    bool roads = GUILayout.Toggle(City3D.UseRoads, " Paketin yollarını ve kaldırımlarını kullan", toggle);
+                    if (roads != City3D.UseRoads) deferred = () => { City3D.UseRoads = roads; if (City3D.I != null) City3D.I.Rebuild(); };
+                    if (City3D.UseRoads)
+                    {
+                        string[] kinds = { "Düz yol", "Köşe", "T kavşak" };
+                        for (int k = 0; k < 3; k++)
+                        {
+                            int kind = k;
+                            GUILayout.BeginHorizontal();
+                            GUILayout.Label($"{kinds[k]} yönü:", small, GUILayout.Width(150));
+                            foreach (int a2 in new[] { 0, 90, 180, 270 })
+                            {
+                                int ang2 = a2;
+                                if (SelectButton(City3D.RoadOffset(kind) == ang2, $"{ang2}°", smallButton))
+                                    deferred = () => { City3D.SetRoadOffset(kind, ang2); if (City3D.I != null) City3D.I.Rebuild(); };
+                            }
+                            GUILayout.EndHorizontal();
+                        }
+                        GUILayout.Label("Yol çizgileri yola dik duruyorsa ya da köşeler/kavşaklar yanlış yöne açılıyorsa ilgili türün yönünü değiştir.", small);
+                    }
+                }
             }
             GUILayout.Space(8);
 
