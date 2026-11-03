@@ -19,6 +19,8 @@ namespace KuryeTycoon
         public long rewards;        // haftalık / aylık hedef ödülleri (kârdan)
         public readonly long[] byCategory = new long[11];
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
+        public long loanPaid;       // aile borcuna ödenen (gider değil)
+        public long depositNet;     // alınan − iade edilen depozito (gelir değil)
         public int deliveries;
 
         public long OtherExpenses
@@ -75,6 +77,12 @@ namespace KuryeTycoon
 
         [Header("Sabit giderler")]
         public int officeRentPerDay = 4000;
+
+        [Header("Gün sonu raporu")]
+        public bool showDailyReport = true;
+        public string LastDailyReport = "";
+        public string LastDailyReportTitle = "";
+        long cashAtLastReport = long.MinValue;
         public long bankruptcyLimit = -200000;
 
         [System.NonSerialized] public PeriodStats Year = new PeriodStats();
@@ -210,6 +218,7 @@ namespace KuryeTycoon
             c.depositPaid = true;
             c.savings = System.Math.Max(0L, c.savings - GameData.DepositAmount);
             money += GameData.DepositAmount;
+            Today.depositNet += GameData.DepositAmount;
             depositsHeld += GameData.DepositAmount;
             Log($"+{Ft(GameData.DepositAmount)} ekipman depozitosu: {c.courierName} (iade borcu)");
             EventManager.I.Notify($"{c.courierName} {Ft(GameData.DepositThreshold)} kazanca ulaştı, {Ft(GameData.DepositAmount)} ekipman depozitosu kesildi.");
@@ -218,6 +227,7 @@ namespace KuryeTycoon
         public void RefundDeposit(Courier c)
         {
             money -= GameData.DepositAmount;
+            Today.depositNet -= GameData.DepositAmount;
             depositsHeld -= GameData.DepositAmount;
             Log($"−{Ft(GameData.DepositAmount)} depozito iadesi: {c.courierName}");
             CheckBankruptcy();
@@ -244,6 +254,8 @@ namespace KuryeTycoon
         public void PayLoan(long amount, string label)
         {
             money -= amount;
+            Year.loanPaid += amount;
+            Today.loanPaid += amount;
             Log($"−{Ft(amount)} {label}");
         }
 
@@ -284,6 +296,7 @@ namespace KuryeTycoon
                 EventManager.I.Notify($"Ödenmemiş vergi borcu büyüyor: {Ft(taxDebt)} (itibar düştü)");
             }
 
+            BuildDailyReport(Today);
             Yesterday = Today;
             Today = new PeriodStats();
 
@@ -293,6 +306,85 @@ namespace KuryeTycoon
                 RollSurpriseTax();
                 ScheduleSurprise();
             }
+        }
+
+        // ---------- Gün sonu raporu ----------
+
+        static string Signed(long v) => (v >= 0 ? "+" : "−") + GameData.Ft(System.Math.Abs(v));
+
+        /// <summary>Biten günün gelir, gider, kâr ve kasa özetini hazırlar ve gösterir.</summary>
+        void BuildDailyReport(PeriodStats s)
+        {
+            var clock = GameClock.I;
+            var om = OrderManager.I;
+            var sb = new System.Text.StringBuilder();
+
+            // Teslimatlar
+            sb.Append($"TESLİMAT: {s.deliveries} paket");
+            if (om != null)
+            {
+                var extra = new List<string>();
+                if (om.batchedToday > 0) extra.Add($"{om.batchedToday} toplu");
+                if (om.cancelledToday > 0) extra.Add($"{om.cancelledToday} iptal (kurye yok)");
+                if (om.lostToday > 0) extra.Add($"{om.lostToday} müşteri ücret pahalı diye vazgeçti");
+                if (om.heavyLostToday > 0) extra.Add($"{om.heavyLostToday} taşıyacak kurye yoktu");
+                if (extra.Count > 0) sb.Append(" · " + string.Join(" · ", extra));
+            }
+            sb.Append('\n');
+
+            // Gelir
+            sb.Append($"\nGELİR: {Ft(s.Income)}\n");
+            sb.Append($"   Dükkan komisyonları: {Ft(s.commission)}\n");
+            sb.Append($"   Müşteri teslimat ücretleri: {Ft(s.fees)}\n");
+            if (s.otherIncome > 0) sb.Append($"   Diğer (kesinti, iade edilmeyen depozito, vergi iadesi): {Ft(s.otherIncome)}\n");
+
+            // Gider
+            sb.Append($"\nGİDER: {Ft(s.Expenses)}\n");
+            sb.Append($"   Kurye ödemeleri: {Ft(s.courierPay)}\n");
+            if (s.boosts > 0) sb.Append($"   Boost ödemeleri: {Ft(s.boosts)}\n");
+            if (s.rewards > 0) sb.Append($"   Hedef ödülleri: {Ft(s.rewards)}\n");
+            for (int i = 0; i < s.byCategory.Length; i++)
+                if (s.byCategory[i] > 0) sb.Append($"   {PeriodStats.CategoryNames[i]}: {Ft(s.byCategory[i])}\n");
+            if (s.penalties > 0) sb.Append($"   Cezalar: {Ft(s.penalties)}\n");
+
+            // Kâr
+            sb.Append($"\nTeslimat kârı: {Signed(s.DeliveryProfit)}");
+            if (s.deliveries > 0) sb.Append($" (paket başı {Ft(s.DeliveryProfit / s.deliveries)})");
+            sb.Append($"\nNET KÂR: {Signed(s.Profit - s.penalties)}\n");
+
+            // Kasa hareketi
+            if (s.loanPaid > 0) sb.Append($"\nAile borcuna ödenen: {Ft(s.loanPaid)}");
+            if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (net): {Signed(s.depositNet)}");
+            if (cashAtLastReport != long.MinValue)
+                sb.Append($"\nKasa: {Ft(money)} (dünden {Signed(money - cashAtLastReport)})");
+            else
+                sb.Append($"\nKasa: {Ft(money)}");
+            cashAtLastReport = money;
+
+            // Günün kuryesi
+            var cm = CourierManager.I;
+            if (cm != null)
+            {
+                Courier best = null;
+                foreach (var c in cm.Couriers)
+                    if (c.deliveriesToday > 0 && (best == null || c.deliveriesToday > best.deliveriesToday)) best = c;
+                if (best != null)
+                    sb.Append($"\n\nGünün kuryesi: {best.courierName} — {best.deliveriesToday} paket, {Ft(best.earnedToday)} kazandı" +
+                              (best.tipsToday > 0 ? $" ({Ft(best.tipsToday)} bahşiş)" : ""));
+            }
+
+            // Aile borcu hatırlatması
+            var loan = FamilyLoan.I;
+            if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null)
+                sb.Append($"\nSıradaki taksit: {Ft(loan.NextDue.Remaining)} → {loan.NextDue.DueText} ({loan.DaysUntil(loan.NextDue)} gün)");
+
+            LastDailyReportTitle = $"Gün sonu raporu — {clock.DateOf(clock.Day - 1)}";
+            LastDailyReport = sb.ToString();
+
+            if (showDailyReport)
+                EventManager.I.Push(new GameEvent(LastDailyReportTitle, LastDailyReport)
+                    .Add("Tamam", null)
+                    .Add("Gün sonu raporlarını kapat (Ayarlar'dan açılabilir)", () => showDailyReport = false));
         }
 
         // ---------- Yıl içindeki sürpriz vergiler ve harçlar ----------

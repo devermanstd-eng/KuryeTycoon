@@ -916,6 +916,9 @@ namespace KuryeTycoon
         {
             DrawFamilyLoan();
             var e = EconomyManager.I;
+            if (!string.IsNullOrEmpty(e.LastDailyReport) &&
+                GUILayout.Button("Dünün gün sonu raporunu göster", smallButton))
+                deferred = () => EventManager.I.Push(new GameEvent(e.LastDailyReportTitle, e.LastDailyReport));
             var clock = GameClock.I;
 
             GUILayout.Label("Kasa", header);
@@ -983,6 +986,10 @@ namespace KuryeTycoon
         void DrawSettings()
         {
             var e = EconomyManager.I;
+
+            GUILayout.Label("Gün sonu raporu", header);
+            e.showDailyReport = GUILayout.Toggle(e.showDailyReport, " Her gece gün sonu raporunu göster (oyun duraklar)", toggle);
+            GUILayout.Space(8);
 
             GUILayout.Label("Para birimi", header);
             GUILayout.BeginHorizontal();

@@ -45,6 +45,7 @@ namespace KuryeTycoon
         public long totalEarned;
         public long tipsTotal;             // müşterilerden aldığı bahşişler (tamamen kendisinin)
         public long tipsToday;
+        public long earnedToday;           // bugün kazandığı (ücret + boost + bahşiş + ödül)
 
         [Header("Hijyen")]
         public float hygiene = 1f;             // çanta temizliği (0–1); %60 altı müşteri şikayeti
@@ -303,6 +304,7 @@ namespace KuryeTycoon
         public void Earn(long amount)
         {
             totalEarned += amount;
+            earnedToday += amount;
             savings += (long)(amount * SavingRate);
 
             // Toplam kazancı eşiğe ulaşınca ekipman depozitosu kesilir
@@ -891,6 +893,7 @@ namespace KuryeTycoon
         {
             deliveriesToday = 0;
             tipsToday = 0;
+            earnedToday = 0;
 
             // Çanta temizliği: hatırlatma gönderildiyse kesin, değilse titizliğine göre
             if (cleanRequested || Random.value < tidiness * 0.3f) CleanBag(false);
