@@ -23,7 +23,9 @@ namespace KuryeTycoon
             set { PlayerPrefs.SetInt(PrefKey, value); PlayerPrefs.Save(); }
         }
 
-        public static float TargetHeight = 0.7f;   // karakterin boyu (1 = bir kare); en yakın görünümde binaların yanında
+        public static float TargetHeight = 0.36f;  // karakterin boyu (1 = bir kare ≈ bina katı); binaların yanında insan ölçeğinde
+        static RuntimeAnimatorController walkController;
+        static bool walkControllerLoaded;
 
         /// <summary>Ayakta duran ve verilen açıya bakan duruş (0 = kuzey, 90 = batı, 180 = güney, 270 = doğu).</summary>
         static Quaternion Facing(float angle) => Quaternion.Euler(0f, 0f, angle) * Quaternion.Euler(-90f, 0f, 0f);
@@ -74,6 +76,19 @@ namespace KuryeTycoon
                 go.transform.localScale = Vector3.one * s;
                 b = CombinedBounds(renderers);
                 go.transform.position += new Vector3(parent.position.x - b.center.x, parent.position.y - b.center.y, -0.06f - b.max.z);
+            }
+            // Yürüme animasyonu: Kurye Tycoon > Karakter Animasyonlarını Kur'un oluşturduğu controller
+            if (!walkControllerLoaded)
+            {
+                walkController = Resources.Load<RuntimeAnimatorController>(ResourceFolder + "/KuryeAnimator");
+                walkControllerLoaded = true;
+            }
+            var anim = go.GetComponentInChildren<Animator>();
+            if (anim != null)
+            {
+                if (walkController != null) anim.runtimeAnimatorController = walkController;
+                anim.applyRootMotion = false;             // animasyon kuryeyi yoldan kaydırmasın
+                anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
             if (Mode == 0) EnsureLight();
             return go;
@@ -140,6 +155,9 @@ namespace KuryeTycoon
 
             var anim = model.GetComponentInChildren<Animator>();
             if (anim == null || anim.runtimeAnimatorController == null) return;
+            // Oyun hızlandıkça adımlar da biraz hızlanır (aşırı değil)
+            float gs = GameClock.I != null ? GameClock.I.SpeedMultiplier : 1f;
+            anim.speed = moving ? Mathf.Clamp(Mathf.Sqrt(gs), 1f, 3f) : 1f;
             foreach (var p in anim.parameters)
             {
                 string n = p.name.ToLowerInvariant();
@@ -154,6 +172,7 @@ namespace KuryeTycoon
         public static void Refresh()
         {
             prefabs = null;
+            walkControllerLoaded = false;
             if (CourierManager.I == null) return;
             foreach (var c in CourierManager.I.Couriers) c.RebuildModel();
         }

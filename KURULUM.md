@@ -32,6 +32,7 @@ Modeller lisans gereği **repoya konmaz**; her bilgisayarda (Windows, Mac, arkad
 2. Unity'de **Window > Package Manager** → sol üstte **My Assets** → *City People FREE Samples* → **Download** → **Import** → açılan pencerede **Import**.
 3. Unity üst menüsünden **Kurye Tycoon > Karakterleri Kur (City People)**. Prefablar `Assets/Resources/KuryeKarakterleri` klasörüne kopyalanır.
 4. Play: çevrimiçi kuryeler 3D karakter olarak yürür, gittiği yöne döner; çevrimdışı olanlar soluk daire olarak kalır.
+5. Yürüme animasyonu: **Kurye Tycoon > Karakter Animasyonlarını Kur (yürüme)** (3. adım bunu otomatik de yapar). Paketteki walk / idle kliplerini bulup döngüye alır; kuryeler yürürken walk, dururken idle oynatır.
 
 Sorun olursa:
 - **Pembe karakter:** Window > Rendering > Render Pipeline Converter → *Material Upgrade* işaretle → Initialize And Convert.

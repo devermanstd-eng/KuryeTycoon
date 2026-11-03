@@ -251,7 +251,7 @@ namespace KuryeTycoon
         static float BuildingTop(Vector2Int tile) => City3D.I != null ? City3D.I.HeightAt(tile) : 0f;
 
         static Vector3 CourierLabelOffset(int stackIndex) =>
-            MapCamera.LabelOffset(0.55f + 0.4f * stackIndex, 0.95f + 0.3f * stackIndex);
+            MapCamera.LabelOffset(0.55f + 0.4f * stackIndex, 0.6f + 0.3f * stackIndex);
 
         Vector2 GuiToScreenPx(Vector2 m) => new Vector2(m.x * uiScale, Screen.height - m.y * uiScale);
 
@@ -283,7 +283,7 @@ namespace KuryeTycoon
                 stack[key] = n + 1;
                 Vector2 sp = ToGui(cam, CityMap.ToWorld(c.Position));
                 Vector2 lp = ToGui(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n));
-                Vector2 mp = ToGui(cam, CityMap.ToWorld(c.Position) + MapCamera.LabelOffset(0f, 0.35f)); // karakterin gövdesi
+                Vector2 mp = ToGui(cam, CityMap.ToWorld(c.Position) + MapCamera.LabelOffset(0f, 0.18f)); // karakterin gövdesi
                 float d = float.MaxValue;
                 float ds = Mathf.Min(Vector2.Distance(m, sp), Vector2.Distance(m, mp));
                 if (ds < 20f) d = ds;

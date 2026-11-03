@@ -88,7 +88,9 @@ namespace KuryeTycoon.EditorTools
                 if (AssetDatabase.CopyAsset(src, dst)) n++;
             }
             AssetDatabase.Refresh();
+            string animInfo = KarakterAnimasyon.Kur(false);
             EditorUtility.DisplayDialog("Kurye Tycoon",
+                animInfo + "\n\n" +
                 $"{n} karakter eklendi ({paths.Count} bulundu).\nPlay'e bas: kuryeler artık bu karakterlerle görünecek.\n\n" +
                 "Karakterler pembe görünürse: Window > Rendering > Render Pipeline Converter > Material Upgrade.\n" +
                 "Siyah görünürse: oyunda Ayarlar > Kurye karakterleri > Düz renk.", "Tamam");
@@ -313,6 +315,127 @@ namespace KuryeTycoon.EditorTools
             }
             AssetDatabase.SaveAssets();
             return n;
+        }
+    }
+
+    /// <summary>
+    /// Karakter paketindeki yürüme (tercihen "basic walk") ve bekleme (idle) animasyonlarını bulur,
+    /// döngüye alır ve Resources/KuryeKarakterleri/KuryeAnimator adlı bir Animator Controller kurar.
+    /// Oyun bu controller'ı kuryelere takar: yürürken walk, dururken idle.
+    /// </summary>
+    public static class KarakterAnimasyon
+    {
+        const string ControllerPath = "Assets/Resources/KuryeKarakterleri/KuryeAnimator.controller";
+
+        [MenuItem("Kurye Tycoon/Karakter Animasyonlarını Kur (yürüme)")]
+        static void KurMenu()
+        {
+            EditorUtility.DisplayDialog("Kurye Tycoon", Kur(true), "Tamam");
+        }
+
+        struct ClipRef { public AnimationClip clip; public string path; }
+
+        public static string Kur(bool fromMenu)
+        {
+            var clips = new List<ClipRef>();
+            foreach (var guid in AssetDatabase.FindAssets("t:AnimationClip"))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!path.ToLowerInvariant().Replace(" ", "").Contains("citypeople")) continue;
+                foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path))
+                    if (o is AnimationClip c && !c.name.StartsWith("__preview__")) clips.Add(new ClipRef { clip = c, path = path });
+            }
+            // Seçili klasör de taranır (paket farklı isimdeyse)
+            foreach (var sel in Selection.objects)
+            {
+                string sp = AssetDatabase.GetAssetPath(sel);
+                if (!AssetDatabase.IsValidFolder(sp)) continue;
+                foreach (var guid in AssetDatabase.FindAssets("t:AnimationClip", new[] { sp }))
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path))
+                        if (o is AnimationClip c && !c.name.StartsWith("__preview__")) clips.Add(new ClipRef { clip = c, path = path });
+                }
+            }
+
+            var walk = Best(clips, new[] { "basic walk", "basic_walk", "basicwalk", "walk_basic", "walking", "walk" }, new[] { "run", "back", "left", "right", "strafe", "jog" });
+            var idle = Best(clips, new[] { "idle", "stand", "breath" }, new[] { "walk", "run" });
+            if (walk.clip == null)
+                return "Karakter animasyonları: paket içinde yürüme (walk) animasyonu bulunamadı. Karakterler yürürken kayarak hareket eder.\n" +
+                       "Animasyonlar farklı bir klasördeyse o klasörü seçip Kurye Tycoon > Karakter Animasyonlarını Kur'u kullan.";
+
+            MakeLoop(walk);
+            if (idle.clip != null) MakeLoop(idle);
+            // Döngü ayarı yeniden içe aktarma yaptığı için klipleri tekrar yükle
+            walk.clip = Reload(walk);
+            if (idle.clip != null) idle.clip = Reload(idle);
+
+            if (!AssetDatabase.IsValidFolder("Assets/Resources")) AssetDatabase.CreateFolder("Assets", "Resources");
+            if (!AssetDatabase.IsValidFolder("Assets/Resources/KuryeKarakterleri")) AssetDatabase.CreateFolder("Assets/Resources", "KuryeKarakterleri");
+            if (AssetDatabase.LoadAssetAtPath<Object>(ControllerPath) != null) AssetDatabase.DeleteAsset(ControllerPath);
+
+            var ctrl = UnityEditor.Animations.AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
+            ctrl.AddParameter("walking", AnimatorControllerParameterType.Bool);
+            var sm = ctrl.layers[0].stateMachine;
+            var idleState = sm.AddState("Idle");
+            idleState.motion = idle.clip != null ? idle.clip : walk.clip;
+            if (idle.clip == null) idleState.speed = 0f; // idle yoksa yürüme pozunda durur
+            var walkState = sm.AddState("Walk");
+            walkState.motion = walk.clip;
+            sm.defaultState = idleState;
+            var t1 = idleState.AddTransition(walkState);
+            t1.hasExitTime = false; t1.duration = 0.1f;
+            t1.AddCondition(UnityEditor.Animations.AnimatorConditionMode.If, 0f, "walking");
+            var t2 = walkState.AddTransition(idleState);
+            t2.hasExitTime = false; t2.duration = 0.15f;
+            t2.AddCondition(UnityEditor.Animations.AnimatorConditionMode.IfNot, 0f, "walking");
+            AssetDatabase.SaveAssets();
+
+            return $"Karakter animasyonları kuruldu: yürüme = \"{walk.clip.name}\"" +
+                   (idle.clip != null ? $", bekleme = \"{idle.clip.name}\"" : " (bekleme animasyonu yok)") + ".";
+        }
+
+        static ClipRef Best(List<ClipRef> clips, string[] want, string[] avoid)
+        {
+            foreach (var w in want)
+                foreach (var c in clips)
+                {
+                    string n = c.clip.name.ToLowerInvariant();
+                    if (!n.Contains(w)) continue;
+                    bool bad = false;
+                    foreach (var a in avoid) if (n.Contains(a)) bad = true;
+                    if (!bad) return c;
+                }
+            return default;
+        }
+
+        static void MakeLoop(ClipRef r)
+        {
+            var mi = AssetImporter.GetAtPath(r.path) as ModelImporter;
+            if (mi != null)
+            {
+                var list = mi.clipAnimations;
+                if (list == null || list.Length == 0) list = mi.defaultClipAnimations;
+                bool changed = false;
+                for (int i = 0; i < list.Length; i++)
+                    if (list[i].name == r.clip.name && !list[i].loopTime) { list[i].loopTime = true; list[i].loopPose = true; changed = true; }
+                if (changed) { mi.clipAnimations = list; mi.SaveAndReimport(); }
+                return;
+            }
+            var settings = AnimationUtility.GetAnimationClipSettings(r.clip);
+            if (!settings.loopTime)
+            {
+                settings.loopTime = true;
+                AnimationUtility.SetAnimationClipSettings(r.clip, settings);
+                EditorUtility.SetDirty(r.clip);
+            }
+        }
+
+        static AnimationClip Reload(ClipRef r)
+        {
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(r.path))
+                if (o is AnimationClip c && c.name == r.clip.name) return c;
+            return r.clip;
         }
     }
 }

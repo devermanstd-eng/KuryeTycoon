@@ -862,7 +862,7 @@ namespace KuryeTycoon
                 bool show = IsOnline && MapCamera.I != null && MapCamera.I.ShowModels;
                 CharacterVisuals.UpdateModel(model, Position - lastModelPos, show, ref modelFacing);
                 body.enabled = !show;
-                ring.transform.localScale = Vector3.one * (show ? 0.45f : 0.75f); // yakında karakterin ayağında küçük halka
+                ring.transform.localScale = Vector3.one * (show ? 0.3f : 0.75f); // yakında karakterin ayağında küçük halka
             }
             lastModelPos = Position;
         }
