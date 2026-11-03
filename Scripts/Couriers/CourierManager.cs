@@ -222,6 +222,7 @@ namespace KuryeTycoon
         /// </summary>
         void HandleLeaving(Courier c)
         {
+            EconomyManager.I.FinalSettlement(c);   // nakit ve hakedişler kapatılır
             if (!c.hasCompanyKit) return;
             bool returns = Random.value < (c.depositPaid ? 0.9f : 0.7f);
             if (returns)
@@ -321,6 +322,14 @@ namespace KuryeTycoon
             var season = clock.Season;
             float bonusM = EconomyManager.I.bonusMultiplier;
             bool monday = clock.DayOfWeek == 0;
+            bool monthEnd = clock.IsLastDayOfMonth(clock.Day - 1);
+
+            // Nakit kapatma (keep cash / offload) ve erken ödeme istekleri
+            foreach (var c in Couriers)
+            {
+                c.SettleCash(monthEnd);
+                c.MaybeEarlyPayout();
+            }
 
             foreach (var c in Couriers.ToArray())
             {

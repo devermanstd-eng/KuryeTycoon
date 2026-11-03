@@ -94,6 +94,7 @@ namespace KuryeTycoon
             if (Started) return;
 
             EconomyManager.I.money = familyLoanAmount;
+            EconomyManager.I.InitCashMarkers();
             CityMap.I.Generate();
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v);

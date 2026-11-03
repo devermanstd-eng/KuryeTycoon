@@ -151,6 +151,10 @@ namespace KuryeTycoon
             return null;
         }
 
+        [Header("Nakit ödeme")]
+        [Range(0f, 0.6f)] public float cashChanceFood = 0.12f;
+        [Range(0f, 0.6f)] public float cashChanceMarket = 0.25f;
+
         [Header("Adres sorunları")]
         [Range(0f, 0.2f)] public float wrongAddressChance = 0.04f;
         [Range(0f, 0.2f)] public float notHomeChance = 0.03f;
@@ -312,6 +316,16 @@ namespace KuryeTycoon
                 feeExtra = quote.extra,
                 createdAt = now
             };
+            // Nakit ödeme: marketlerde daha sık. Müşteri yuvarlak banknot verir, para üstü hazırlanır.
+            if (Random.value < (shop.def.isMarket ? cashChanceMarket : cashChanceFood))
+            {
+                o.cashPay = true;
+                int amt = o.CashAmount;
+                int[] steps = { 1000, 5000, 10000, 20000 };
+                int step = steps[Random.Range(0, steps.Length)];
+                o.cashGiven = (amt + step - 1) / step * step;
+                if (o.cashGiven == amt && Random.value < 0.5f) o.cashGiven += 1000;
+            }
             o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);
             o.deadlineAt = o.readyAt + dist / 0.45f + (o.customerType == CustomerType.Aceleci ? 7f : 15f);
             o.marker = SpriteFactory.Create($"Müşteri #{o.id}", markerRoot, true,
@@ -368,6 +382,7 @@ namespace KuryeTycoon
                 foreach (var c in CourierManager.I.Couriers)
                 {
                     if (!c.CanTakeMore || !c.CanCarry(o) || o.rejectedBy.Contains(c)) continue;
+                    if (o.cashPay && !c.CanTakeCash(o.CashAmount)) continue; // nakit limiti
                     int profit = EconomyManager.I.ProfitIf(o, c);
                     if (profit < EconomyManager.I.RequiredAssignProfit(o)) continue; // zararına / çok az kârlı iş yok
                     float score = EstimateEta(c, o);
@@ -397,6 +412,11 @@ namespace KuryeTycoon
         public bool Assign(Order o, Courier c, bool manual)
         {
             if (o.status != OrderStatus.Bekliyor || c == null || !c.CanTakeMore || o.rejectedBy.Contains(c)) return false;
+            if (o.cashPay && !c.CanTakeCash(o.CashAmount))
+            {
+                if (manual) EventManager.I.Notify($"#{o.id} nakit sipariş: {c.ShortName}'ın nakit limiti dolu ({GameData.Ft(c.cashHeld)} / {GameData.Ft(Courier.CashLimit)}).");
+                return false;
+            }
             if (!c.CanCarry(o))
             {
                 EventManager.I.Notify($"#{o.id} ({GameData.KgText(o.weightKg)}) {c.ShortName}'ın aracına fazla ağır.");
@@ -476,7 +496,13 @@ namespace KuryeTycoon
             if (o.basket > 15000) max += 500f;
             o.tip = Mathf.RoundToInt(Random.Range(200f, max) / 50f) * 50;
 
-            c.Earn(o.tip);
+            if (o.cashPay)
+                c.EarnCashTip(o.tip);                       // nakit bahşiş doğrudan kuryenin cebine
+            else
+            {
+                EconomyManager.I.money += o.tip;           // müşteri uygulamadan ödedi (gelir değil, kuryeye aktarılır)
+                c.Earn(o.tip);                             // kuryenin hesabına yazılır, kesimde ödenir
+            }
             c.tipsTotal += o.tip;
             c.tipsToday += o.tip;
             c.morale = Mathf.Min(1f, c.morale + (o.tip >= 800 ? 0.04f : 0.02f));

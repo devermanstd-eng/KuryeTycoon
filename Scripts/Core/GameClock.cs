@@ -160,6 +160,37 @@ namespace KuryeTycoon
 
         public string DateText => $"{DayOfMonth} {MonthName}, Yıl {Year}";
 
+        public int DayOfMonthOf(int absDay)
+        {
+            int d = (absDay - 1) % DaysPerYear + 1;
+            int m = 0;
+            while (m < 11 && d > MonthDays[m]) { d -= MonthDays[m]; m++; }
+            return d;
+        }
+
+        public bool IsLastDayOfMonth(int absDay)
+        {
+            int d = (absDay - 1) % DaysPerYear + 1;
+            int m = 0;
+            while (m < 11 && d > MonthDays[m]) { d -= MonthDays[m]; m++; }
+            return d == MonthDays[m];
+        }
+
+        /// <summary>0 = Pazartesi ... 6 = Pazar</summary>
+        public int DayOfWeekOf(int absDay) => ((absDay - startDay) % 7 + 7) % 7;
+
+        /// <summary>Hafta sonlarını atlayarak n iş günü sonrası.</summary>
+        public int AddBusinessDays(int absDay, int n)
+        {
+            int d = absDay;
+            while (n > 0)
+            {
+                d++;
+                if (DayOfWeekOf(d) < 5) n--;
+            }
+            return d;
+        }
+
         /// <summary>Mutlak gün numarasının tarihi ve gün adı (ör. "3 Mart, Salı").</summary>
         public string DateOf(int absDay)
         {

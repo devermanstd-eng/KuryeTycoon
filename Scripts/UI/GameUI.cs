@@ -340,6 +340,9 @@ namespace KuryeTycoon
                 if (o.priceDeclines > 0)
                     GUILayout.Label($"{o.priceDeclines} kurye kazancı beğenmeyip reddetti. Bonus çarpanı veya boost kabul edilmesini kolaylaştırır.", warn);
                 if (o.shopQueue) GUILayout.Label("Önceki kurye dükkandaki sıra yüzünden bıraktı.", small);
+                if (o.cashPay)
+                    GUILayout.Label($"NAKİT: müşteri {Ft(o.cashGiven)} verecek, tutar {Ft(o.CashAmount)}, para üstü {Ft(o.CashChange)} hazırlanmalı. " +
+                                    "Kurye nakdi şirkete borçlanır.", warn);
                 GUILayout.Label($"Sepet {Ft(o.basket)} · Komisyon {Ft(o.commissionIncome)} + Teslimat ücreti {Ft(o.deliveryFee)} " +
                                 $"= Gelir {Ft(o.CompanyIncome)} · İptale {Mathf.Max(0f, o.createdAt + om.pendingTimeout - now):0} dk", small);
                 GUILayout.Label($"Teslimat ücreti: taban {Ft(o.feeBase)} + {GameData.KmText(o.distance)} × {Ft(eco.feePerKm)} = {Ft(o.feeKm)}" +
@@ -351,6 +354,7 @@ namespace KuryeTycoon
                 foreach (var c in CourierManager.I.Couriers)
                 {
                     if (!c.CanTakeMore || !c.CanCarry(o)) continue;
+                    if (o.cashPay && !c.CanTakeCash(o.CashAmount)) continue;
                     bool rejected = o.rejectedBy.Contains(c);
                     int p = eco.ProfitIf(o, c);
                     int need = eco.RequiredAssignProfit(o);
@@ -438,6 +442,14 @@ namespace KuryeTycoon
                 GUILayout.Label($"Hız {c.speedSkill:0.00} · Dikkat {c.care:0.00} · Nezaket {c.politeness:0.00} · Dayanıklılık {c.stamina:0.00}", small);
                 GUILayout.Label($"Kazanç: {Ft(c.V.basePay)}/paket + {Ft(c.V.payPerKm)}/km + bonus · Taşır: {GameData.CarryText(c.V)}", small);
                 GUILayout.Label($"Araçları: {c.VehiclesText}", small);
+                GUILayout.Label($"Hesabı: {Ft(c.balance)} (kesim {EconomyManager.I.NextCutText})" +
+                                (c.pendingPayout > 0 ? $" · yatacak {Ft(c.pendingPayout)}" : "") +
+                                $" · bugüne kadar yatan {Ft(c.receivedTotal)}" +
+                                (c.earlyPayouts > 0 ? $" · erken ödeme {c.earlyPayouts} kez" : ""), small);
+                if (c.cashHeld > 0 || c.cashBlocked)
+                    GUILayout.Label($"Üzerindeki nakit: {Ft(c.cashHeld)} / {Ft(Courier.CashLimit)}" +
+                                    (c.cashBlocked ? " · HESABI KİLİTLİ (nakit borcunu kapatana kadar sipariş alamaz)" : " · ay sonuna kadar kapatmalı"),
+                                    c.cashBlocked || c.cashHeld >= Courier.CashLimit * 0.7f ? warn : small);
                 if (c.hasCompanyKit)
                     GUILayout.Label($"Şirket ekipmanı: {GameData.StarterKitText} · " +
                                     (c.depositPaid ? $"depozito alındı ({Ft(GameData.DepositAmount)}, ayrılırken iade edilir)"
@@ -931,6 +943,21 @@ namespace KuryeTycoon
 
             GUILayout.Label("Kasa", header);
             GUILayout.Label($"Ana kasa: {Ft(e.money)}", label);
+
+            // Kurye hesapları (Wolt tipi)
+            GUILayout.Label("Kurye ödemeleri", header);
+            GUILayout.Label("Kurye kazançları (bahşişler dahil) hesaplarında birikir. Ayın 15'i ve son günü gece hesap kesilir, " +
+                            "1–2 iş günü içinde kasadan ödenir. Kuryeler istedikleri gün hesaplarının %80'ini erken çekebilir (2–3 iş günü). " +
+                            $"Nakit siparişlerde kurye parayı şirkete borçlanır: üzerindeki nakit {Ft(Courier.CashLimit)}'ı geçemez, ay sonuna kadar " +
+                            "keep cash (hesabın en fazla %80'iyle mahsup) ya da offload (kartla ödeme) ile kapatılır.", small);
+            GUILayout.Label($"Kuryelerin hesaplarında: {Ft(e.TotalCourierBalances)} · Sıradaki kesim: {e.NextCutText}", label);
+            GUILayout.Label($"Yatmayı bekleyen ödemeler: {Ft(e.TotalPendingPayouts)}", label);
+            foreach (var p in e.Payouts)
+                GUILayout.Label($"   {p.courierName}: {Ft(p.amount)}{(p.early ? " (erken)" : "")} → {GameClock.I.DateOf(p.payDay)}", small);
+            GUILayout.Label($"Kuryelerdeki nakit (şirkete borçları): {Ft(e.TotalCashHeld)}", label);
+            long realCash = e.money - e.TotalCourierBalances - e.TotalPendingPayouts + e.TotalCashHeld;
+            GUILayout.Label($"Kurye borçları düşülünce gerçek kasa: {Ft(realCash)}", realCash < 0 ? warn : small);
+            GUILayout.Space(6);
             if (e.depositsHeld > 0)
                 GUILayout.Label($"Tutulan ekipman depozitoları: {Ft(e.depositsHeld)} (gelir değil; ekipmanı iade eden kuryeye geri ödenir)", small);
             if (e.taxDebt > 0)

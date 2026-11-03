@@ -74,6 +74,12 @@ namespace KuryeTycoon
         public float pickedAt;         // dükkandan alındığı an (sıcak yemek soğuma süresi)
         public bool deliveredCold;     // sıcak yemek soğuk gitti
 
+        /// <summary>Nakit ödeme: müşteri kuryeye nakit öder, kurye parayı şirkete borçlanır.</summary>
+        public bool cashPay;
+        public int cashGiven;          // müşterinin vereceği banknot (ör. 20 000)
+        public int CashAmount => basket + deliveryFee;
+        public int CashChange => System.Math.Max(0, cashGiven - CashAmount);
+
         public int CompanyIncome => commissionIncome + deliveryFee;
         public int Profit => CompanyIncome - courierPay - boostPay;
         public float DistanceKm => GameData.Km(distance);

@@ -302,16 +302,87 @@ namespace KuryeTycoon
         // ================================================================== para / araç / sigorta
 
         /// <summary>Kurye kazanır; bir kısmını biriktirir.</summary>
+        // ================================================================== Wolt tipi hesap ve nakit
+
+        [Header("Hesap ve nakit")]
+        public long balance;            // hesabında biriken, henüz kesilmemiş kazanç
+        public long pendingPayout;      // kesilmiş / erken istenmiş, hesabına yatmayı bekleyen
+        public long receivedTotal;      // bugüne kadar hesabına yatan
+        public long cashHeld;           // müşterilerden aldığı, şirkete borçlu olduğu nakit
+        public bool cashBlocked;        // nakit limiti aşıldı / ay sonu kapatılmadı: hesap kilitli
+        public int earlyPayouts;
+
+        public const int CashLimit = 100000;
+        public const float KeepCashShare = 0.8f;     // keep cash: hesabın en fazla %80'iyle mahsup
+        public const float EarlyPayoutShare = 0.8f;  // erken ödeme: hesabın %80'i
+
+        /// <summary>Kazanç (ücret, boost, uygulama bahşişi, ödül) hesaba yazılır; kesim gününde ödenir.</summary>
         public void Earn(long amount)
         {
             totalEarned += amount;
             earnedToday += amount;
             earnedWeek += amount;
-            savings += (long)(amount * SavingRate);
+            balance += amount;
 
-            // Toplam kazancı eşiğe ulaşınca ekipman depozitosu kesilir
-            if (hasCompanyKit && !depositPaid && totalEarned >= GameData.DepositThreshold)
+            // Toplam kazancı eşiğe ulaşınca ekipman depozitosu hesaptan kesilir
+            if (hasCompanyKit && !depositPaid && totalEarned >= GameData.DepositThreshold && balance >= GameData.DepositAmount)
                 EconomyManager.I.CollectDeposit(this);
+        }
+
+        /// <summary>Nakit bahşiş: doğrudan kuryenin cebine gider.</summary>
+        public void EarnCashTip(long amount)
+        {
+            totalEarned += amount;
+            earnedToday += amount;
+            earnedWeek += amount;
+            savings += (long)(amount * SavingRate);
+        }
+
+        /// <summary>Hesabına para yattı.</summary>
+        public void OnPaid(long amount)
+        {
+            receivedTotal += amount;
+            pendingPayout = System.Math.Max(0L, pendingPayout - amount);
+            savings += (long)(amount * SavingRate);
+        }
+
+        public bool CanTakeCash(long amount) => !cashBlocked && cashHeld + amount <= CashLimit;
+        public long KeepCashCapacity => (long)(balance * KeepCashShare) / 10 * 10;
+
+        /// <summary>
+        /// Gün sonunda nakdini kapatır: önce keep cash (hesabın %80'ine kadar), kalanı gerekirse offload.
+        /// Ay sonunda tüm nakit kapatılmalı; limit dolarsa ya da ay sonu kapatmazsa hesabı kilitlenir.
+        /// </summary>
+        public void SettleCash(bool monthEnd)
+        {
+            if (cashHeld <= 0) { cashHeld = 0; cashBlocked = false; return; }
+
+            long keep = System.Math.Min(cashHeld, KeepCashCapacity);
+            if (keep > 0) EconomyManager.I.KeepCash(this, keep);
+            if (cashHeld <= 0) { cashBlocked = false; return; }
+
+            bool mustPay = monthEnd || cashBlocked || cashHeld >= CashLimit * 0.7f;
+            bool forgets = Random.value < (1f - tidiness) * 0.25f;   // dağınık kurye unutabilir
+            if ((mustPay && !forgets) || Random.value < 0.2f)
+            {
+                EconomyManager.I.Offload(this, cashHeld);
+                cashBlocked = false;
+            }
+            else if (monthEnd || cashHeld >= CashLimit)
+            {
+                if (!cashBlocked)
+                    EventManager.I.Notify($"{courierName} nakit borcunu ({GameData.Ft(cashHeld)}) kapatmadı, hesabı kilitlendi. Ödeyene kadar sipariş alamaz.");
+                cashBlocked = true;
+                morale = Mathf.Max(0f, morale - 0.05f);
+            }
+        }
+
+        /// <summary>Parası azsa ya da canı isterse erken ödeme ister (%80).</summary>
+        public void MaybeEarlyPayout()
+        {
+            if (balance < 15000) return;
+            float chance = savings < 20000 ? 0.25f : 0.06f;
+            if (Random.value < chance) EconomyManager.I.RequestEarlyPayout(this);
         }
 
         /// <summary>Tamirde olmayan en iyi aracı.</summary>
@@ -397,7 +468,7 @@ namespace KuryeTycoon
 
         public bool Has(EquipmentKind k) => equipment.Contains(k);
         public int OrderCount => toPick.Count + carrying.Count;
-        public bool Available => IsOnline && State != CourierState.Mola && !wantsOffline;
+        public bool Available => IsOnline && State != CourierState.Mola && !wantsOffline && !cashBlocked;
 
         public int EffectiveCapacity
         {
@@ -1015,6 +1086,7 @@ namespace KuryeTycoon
                 switch (State)
                 {
                     case CourierState.Cevrimdisi: return "Çevrimdışı: " + offlineReason;
+                    case CourierState.Bosta when cashBlocked: return "Hesabı kilitli: nakit borcunu kapatması gerekiyor";
                     case CourierState.DukkanaGidiyor: return "Dükkana gidiyor";
                     case CourierState.Bekliyor: return "Dükkanda bekliyor";
                     case CourierState.MusteriyeGidiyor: return wantsOffline ? "Son paketini götürüyor, sonra çıkacak" : "Müşteriye gidiyor";

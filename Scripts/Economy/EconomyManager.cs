@@ -19,6 +19,9 @@ namespace KuryeTycoon
         public long rewards;        // haftalık / aylık hedef ödülleri (kârdan)
         public readonly long[] byCategory = new long[11];
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
+        public long payoutsPaid;    // kuryelerin hesabına yatan (hakediş ödemesi)
+        public long cashCollected;  // kuryelerden tahsil edilen nakit (offload)
+        public int cashOrders;      // nakit ödemeli sipariş sayısı
         public long loanPaid;       // aile borcuna ödenen (gider değil)
         public long depositNet;     // alınan − iade edilen depozito (gelir değil)
         public int deliveries;
@@ -47,6 +50,7 @@ namespace KuryeTycoon
             courierPay += o.courierPay; boosts += o.boosts; rewards += o.rewards;
             for (int i = 0; i < byCategory.Length; i++) byCategory[i] += o.byCategory[i];
             penalties += o.penalties; loanPaid += o.loanPaid; depositNet += o.depositNet;
+            payoutsPaid += o.payoutsPaid; cashCollected += o.cashCollected; cashOrders += o.cashOrders;
             deliveries += o.deliveries;
         }
     }
@@ -112,6 +116,13 @@ namespace KuryeTycoon
         public string LastDailyReport = "";
         public string LastDailyReportTitle = "";
         long cashAtLastReport = long.MinValue;
+
+        /// <summary>Oyun başında kasa işaretlerini ayarlar (rapordaki "dünden/hafta başından" farkları için).</summary>
+        public void InitCashMarkers()
+        {
+            cashAtLastReport = money;
+            cashAtWeekStart = money;
+        }
         public long bankruptcyLimit = -200000;
 
         [System.NonSerialized] public PeriodStats Year = new PeriodStats();
@@ -227,7 +238,16 @@ namespace KuryeTycoon
 
         public void RegisterDelivery(Order o)
         {
-            money += o.CompanyIncome - o.courierPay - o.boostPay;
+            // Kurye ücreti hemen ödenmez, kuryenin hesabına yazılır (kesim gününde ödenir).
+            if (o.cashPay)
+            {
+                // Nakit: müşteri parayı kuryeye verdi. Şirket dükkana sepeti kendi cebinden öder,
+                // kuryeden nakdi sonra (keep cash / offload) tahsil eder.
+                money += o.CompanyIncome - o.CashAmount;
+                if (!o.keptByCourier) o.courier.cashHeld += o.CashAmount;
+                Today.cashOrders++;
+            }
+            else money += o.CompanyIncome;
             foreach (var s in new[] { Year, Today })
             {
                 s.commission += o.commissionIncome;
@@ -268,9 +288,9 @@ namespace KuryeTycoon
         }
 
         /// <summary>Haftalık / aylık hedef ödülü. Kârdan ödenir.</summary>
+        /// <summary>Hedef ödülü: gider olarak yazılır, kuryenin hesabına eklenir (kesimde ödenir).</summary>
         public void SpendCampaign(long amount, string label)
         {
-            money -= amount;
             Year.rewards += amount;
             Today.rewards += amount;
             Log($"−{Ft(amount)} {label}");
@@ -283,8 +303,7 @@ namespace KuryeTycoon
         {
             if (c.depositPaid) return;
             c.depositPaid = true;
-            c.savings = System.Math.Max(0L, c.savings - GameData.DepositAmount);
-            money += GameData.DepositAmount;
+            c.balance -= GameData.DepositAmount;          // kuryenin hesabından kesilir
             Today.depositNet += GameData.DepositAmount;
             depositsHeld += GameData.DepositAmount;
             Log($"+{Ft(GameData.DepositAmount)} ekipman depozitosu: {c.courierName} (iade borcu)");
@@ -307,6 +326,144 @@ namespace KuryeTycoon
             Year.otherIncome += GameData.DepositAmount;
             Today.otherIncome += GameData.DepositAmount;
             Log($"İade edilmeyen ekipman: {c.courierName} depozitosu gelire geçti ({Ft(GameData.DepositAmount)})");
+        }
+
+        // ---------- Kurye hesapları: kesim, erken ödeme, nakit ----------
+
+        public class Payout
+        {
+            public Courier courier;
+            public string courierName;
+            public long amount;
+            public int payDay;
+            public bool early;
+        }
+
+        public readonly List<Payout> Payouts = new List<Payout>();
+
+        public long TotalCourierBalances
+        {
+            get { long s = 0; foreach (var c in CourierManager.I.Couriers) s += c.balance; return s; }
+        }
+        public long TotalPendingPayouts
+        {
+            get { long s = 0; foreach (var p in Payouts) s += p.amount; return s; }
+        }
+        public long TotalCashHeld
+        {
+            get { long s = 0; foreach (var c in CourierManager.I.Couriers) s += c.cashHeld; return s; }
+        }
+
+        /// <summary>Sıradaki hesap kesimi (15'i veya ayın son günü).</summary>
+        public string NextCutText
+        {
+            get
+            {
+                var clock = GameClock.I;
+                int d = clock.Day;
+                while (clock.DayOfMonthOf(d) != 15 && !clock.IsLastDayOfMonth(d)) d++;
+                return clock.DateOf(d);
+            }
+        }
+
+        void SchedulePayout(Courier c, long amount, bool early)
+        {
+            var clock = GameClock.I;
+            int days = early ? Random.Range(2, 4) : Random.Range(1, 3);
+            Payouts.Add(new Payout { courier = c, courierName = c.courierName, amount = amount, early = early,
+                                     payDay = clock.AddBusinessDays(clock.Day, days) });
+            c.pendingPayout += amount;
+        }
+
+        /// <summary>Ayın 15'i ve son günü gece: hesaplar kesilir, 1–2 iş günü içinde yatar.</summary>
+        void CutPayPeriod()
+        {
+            long total = 0;
+            int n = 0;
+            foreach (var c in CourierManager.I.Couriers)
+            {
+                if (c.balance <= 0) continue;
+                SchedulePayout(c, c.balance, false);
+                total += c.balance;
+                c.balance = 0;
+                n++;
+            }
+            if (n > 0)
+            {
+                Log($"Hesap kesimi: {n} kurye, {Ft(total)} (1–2 iş günü içinde ödenecek)");
+                EventManager.I.Notify($"Kurye hesapları kesildi: {n} kurye, toplam {Ft(total)}. 1–2 iş günü içinde hesaplarına yatacak.");
+            }
+        }
+
+        public void RequestEarlyPayout(Courier c)
+        {
+            long amount = (long)(c.balance * Courier.EarlyPayoutShare) / 10 * 10;
+            if (amount <= 0) return;
+            c.balance -= amount;
+            c.earlyPayouts++;
+            SchedulePayout(c, amount, true);
+            EventManager.I.Notify($"{c.ShortName} erken ödeme istedi: {Ft(amount)} (hesabının %80'i, 2–3 iş günü içinde).");
+        }
+
+        void ProcessPayouts()
+        {
+            int today = GameClock.I.Day;
+            long total = 0;
+            int n = 0;
+            for (int i = Payouts.Count - 1; i >= 0; i--)
+            {
+                var p = Payouts[i];
+                if (p.payDay > today) continue;
+                PayOut(p);
+                total += p.amount;
+                n++;
+                Payouts.RemoveAt(i);
+            }
+            if (n > 0) EventManager.I.Notify($"Kuryelerin hesabına {Ft(total)} yatırıldı ({n} ödeme).");
+        }
+
+        void PayOut(Payout p)
+        {
+            money -= p.amount;
+            Year.payoutsPaid += p.amount;
+            Today.payoutsPaid += p.amount;
+            if (p.courier != null) p.courier.OnPaid(p.amount);
+            Log($"−{Ft(p.amount)} kurye ödemesi{(p.early ? " (erken)" : "")}: {p.courierName}");
+            CheckBankruptcy();
+        }
+
+        /// <summary>Keep cash: kuryedeki nakit, hesabındaki parayla mahsup edilir (kasa değişmez).</summary>
+        public void KeepCash(Courier c, long amount)
+        {
+            c.balance -= amount;
+            c.cashHeld -= amount;
+            Log($"Keep cash: {c.courierName} {Ft(amount)} nakdi hesabından mahsup etti");
+        }
+
+        /// <summary>Offload: kurye nakdi kendi kartıyla şirkete öder.</summary>
+        public void Offload(Courier c, long amount)
+        {
+            if (amount <= 0) return;
+            c.cashHeld -= amount;
+            money += amount;
+            Year.cashCollected += amount;
+            Today.cashCollected += amount;
+            Log($"+{Ft(amount)} offload: {c.courierName} nakit borcunu ödedi");
+        }
+
+        /// <summary>Ayrılan kurye: nakit mahsup/tahsil, bekleyen ve kalan hakedişler hemen ödenir.</summary>
+        public void FinalSettlement(Courier c)
+        {
+            long net = System.Math.Min(c.cashHeld, System.Math.Max(0L, c.balance));
+            if (net > 0) KeepCash(c, net);
+            if (c.cashHeld > 0) Offload(c, c.cashHeld);
+            for (int i = Payouts.Count - 1; i >= 0; i--)
+                if (Payouts[i].courier == c) { PayOut(Payouts[i]); Payouts.RemoveAt(i); }
+            if (c.balance > 0)
+            {
+                PayOut(new Payout { courier = c, courierName = c.courierName, amount = c.balance });
+                c.balance = 0;
+            }
         }
 
         public void AddIncome(long amount, string label)
@@ -369,6 +526,11 @@ namespace KuryeTycoon
             Yesterday = Today;
             Today = new PeriodStats();
 
+            // Kurye hesapları: dün 15'i ya da ayın son günüyse kesim; vadesi gelen ödemeler yatar
+            var clk = GameClock.I;
+            if (clk.DayOfMonthOf(clk.Day - 1) == 15 || clk.IsLastDayOfMonth(clk.Day - 1)) CutPayPeriod();
+            ProcessPayouts();
+
             if (nextSurpriseDay == 0) ScheduleSurprise();
             else if (GameClock.I.CompanyDay >= nextSurpriseDay)
             {
@@ -409,7 +571,7 @@ namespace KuryeTycoon
 
             // Gider
             sb.Append($"\nGİDER: {Ft(s.Expenses)}\n");
-            sb.Append($"   Kurye ödemeleri: {Ft(s.courierPay)}\n");
+            sb.Append($"   Kurye hakedişleri (hesaplarına yazılan): {Ft(s.courierPay)}\n");
             if (s.boosts > 0) sb.Append($"   Boost ödemeleri: {Ft(s.boosts)}\n");
             if (s.rewards > 0) sb.Append($"   Hedef ödülleri: {Ft(s.rewards)}\n");
             for (int i = 0; i < s.byCategory.Length; i++)
@@ -423,7 +585,10 @@ namespace KuryeTycoon
 
             // Kasa hareketi
             if (s.loanPaid > 0) sb.Append($"\nAile borcuna ödenen: {Ft(s.loanPaid)}");
-            if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (net): {Signed(s.depositNet)}");
+            if (s.payoutsPaid > 0) sb.Append($"\nKuryelerin hesabına yatan: {Ft(s.payoutsPaid)}");
+            if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders}" + (s.cashCollected > 0 ? $" · kuryelerden tahsil edilen nakit {Ft(s.cashCollected)}" : ""));
+            if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (kuryeden kesilen − iade): {Signed(s.depositNet)}");
+            sb.Append($"\nKuryelere borç: hesaplarda {Ft(TotalCourierBalances)} + yatacak {Ft(TotalPendingPayouts)} · kuryelerdeki nakit {Ft(TotalCashHeld)}");
             if (cashAtLastReport != long.MinValue)
                 sb.Append($"\nKasa: {Ft(money)} (dünden {Signed(money - cashAtLastReport)})");
             else
@@ -463,7 +628,7 @@ namespace KuryeTycoon
             var clock = GameClock.I;
             var om = OrderManager.I;
             if (weekStartDay < 0) weekStartDay = clock.Day - 1;
-            if (cashAtWeekStart == long.MinValue) cashAtWeekStart = money + (day.Expenses - day.Income) + day.loanPaid - day.depositNet;
+            if (cashAtWeekStart == long.MinValue) cashAtWeekStart = money;
             week.Add(day);
             if (om != null)
             {
@@ -496,7 +661,7 @@ namespace KuryeTycoon
                       (s.otherIncome > 0 ? $", diğer {Ft(s.otherIncome)}" : "") + ")");
 
             sb.Append($"\nGİDER: {Ft(s.Expenses)}\n");
-            sb.Append($"   Kurye ödemeleri: {Ft(s.courierPay)}\n");
+            sb.Append($"   Kurye hakedişleri (hesaplarına yazılan): {Ft(s.courierPay)}\n");
             if (s.boosts > 0) sb.Append($"   Boost ödemeleri: {Ft(s.boosts)}\n");
             if (s.rewards > 0) sb.Append($"   Hedef ödülleri: {Ft(s.rewards)}\n");
             for (int i = 0; i < s.byCategory.Length; i++)
@@ -518,7 +683,9 @@ namespace KuryeTycoon
             }
 
             if (s.loanPaid > 0) sb.Append($"\n\nAile borcuna ödenen: {Ft(s.loanPaid)}");
-            if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (net): {Signed(s.depositNet)}");
+            if (s.payoutsPaid > 0) sb.Append($"\nKuryelerin hesabına yatan: {Ft(s.payoutsPaid)}");
+            if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders} · tahsil edilen nakit {Ft(s.cashCollected)}");
+            if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (kuryeden kesilen − iade): {Signed(s.depositNet)}");
             sb.Append($"\nKasa: {Ft(money)}");
             if (cashAtWeekStart != long.MinValue) sb.Append($" (hafta başından {Signed(money - cashAtWeekStart)})");
 
