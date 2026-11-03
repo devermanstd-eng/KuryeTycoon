@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace KuryeTycoon
 {
@@ -225,7 +224,7 @@ namespace KuryeTycoon
                 reason + "\n\nAilenle oturup konuştunuz. Kuryelere veda ettin, dükkanlarla sözleşmeleri bitirdin. " +
                 "Belki bir gün yeniden denersin...\n\n" +
                 $"Ödenen: {Ft(TotalPaid)} / {Ft(principal)}")
-                .Add("Yeniden başla", () => SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex))
+                .Add("Yeniden başla", () => GameBootstrap.Restart())
                 .Add("Devam et (sadece test için)", null));
         }
 

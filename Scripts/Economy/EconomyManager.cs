@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace KuryeTycoon
 {
@@ -451,7 +450,7 @@ namespace KuryeTycoon
             bankrupt = true;
             EventManager.I.Push(new GameEvent("İflas!",
                     $"Şirketin borcu {Ft(-money)} oldu ve iflas ettin.")
-                .Add("Yeniden başla", () => SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex))
+                .Add("Yeniden başla", () => GameBootstrap.Restart())
                 .Add("Borçla devam et (sadece test için)", () => bankrupt = false));
         }
     }

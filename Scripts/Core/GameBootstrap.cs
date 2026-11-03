@@ -3,12 +3,35 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// SAHNEYE EKLENECEK TEK SCRIPT.
-    /// Boş bir GameObject'e ekle ve Play'e bas; tüm sistemleri kendisi kurar.
+    /// Oyunun giriş noktası. Sahnede yoksa Play'e basınca kendiliğinden oluşur;
+    /// istersen sahneye boş bir GameObject'e ekleyip Inspector'dan ayarlarını da değiştirebilirsin.
     /// </summary>
     public class GameBootstrap : MonoBehaviour
     {
         public static GameBootstrap I { get; private set; }
+
+        /// <summary>Herhangi bir sahnede (boş sahne dahil) Play'e basınca oyunu otomatik kurar.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void AutoStart()
+        {
+            EnsureExists();
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += (s, m) => EnsureExists();
+        }
+
+        static void EnsureExists()
+        {
+            if (I != null || FindAnyObjectByType<GameBootstrap>() != null) return;
+            new GameObject("Oyun").AddComponent<GameBootstrap>();
+        }
+
+        /// <summary>Yeni oyun: tüm sistemleri silip baştan kurar (sahneyi yeniden yüklemeye gerek yok).</summary>
+        public static void Restart()
+        {
+            var old = I;
+            I = null;
+            if (old != null) Destroy(old.gameObject);
+            new GameObject("Oyun").AddComponent<GameBootstrap>();
+        }
 
         [Header("Başlangıç")]
         [Tooltip("Ailenden aldığın borç = başlangıç kasası")]

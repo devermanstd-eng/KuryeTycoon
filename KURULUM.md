@@ -13,18 +13,11 @@ Oynanabilir 2D prototip. Hiç görsel, prefab veya Canvas gerekmez: tek bir scri
 2. İçindeki **`KuryeTycoon`** klasörünü Unity'deki **Project** penceresinde **Assets** klasörünün içine sürükle.
 3. Unity'nin derlemesini bekle (sağ altta dönen simge durunca biter). **Console**'da kırmızı hata olmamalı.
 
-## 3. Sahneyi kur
-1. **Hierarchy** → sağ tık → **Create Empty**.
-2. Adını **`Oyun`** yap.
-3. **Inspector** → **Add Component** → `GameBootstrap` yaz → seç.
-4. Sahnede Main Camera zaten varsa dokunma; yoksa script kendisi oluşturur.
+## 3. Sahne
+Sahne kurmana gerek yok: Play'e basınca oyun kendiliğinden başlar (boş sahnede de).
+Ayarları Inspector'dan değiştirmek istersen boş bir GameObject'e `GameBootstrap` ekleyebilirsin.
 
-## 4. Sahneyi kaydet ve Build Settings'e ekle
-1. **File → Save As…** → `Assets/Scenes/Ana.unity`.
-2. **File → Build Settings** (Unity 6'da **Build Profiles**) → **Add Open Scenes**.
-   (İflas sonrası "Yeniden başla" butonunun çalışması için gerekli.)
-
-## 5. Oyna
+## 4. Oyna
 1. **Play**'e bas.
 2. Şirket adını yaz, ana ve ikincil rengini seç → **Şirketi Kur ve Başla**.
 3. Kısayollar: **Boşluk** = duraklat, **1–5** = 1x / 2x / 4x / 8x / 16x hız. Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.

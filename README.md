@@ -11,6 +11,15 @@ dosyası gerekmez: tek bir script her şeyi kendisi kurar.
 - **Unity 6** (6000.x) — Unity 2022.3 LTS de çalışır
 - Unity Hub
 
+## Mac: tek komutla kurulum
+Terminal'i aç (Cmd + Boşluk → `Terminal`) ve yapıştır:
+```bash
+curl -fsSL https://raw.githubusercontent.com/devermanstd-eng/KuryeTycoon/main/Tools/mac-kurulum.sh | bash
+```
+Script; git'i, Unity Hub'ı ve Unity'yi kontrol eder/kurar, `~/UnityProjects/KuryeTycoon` projesini oluşturur,
+kodu indirir ve Unity'yi açar. Bir adımda durursa ekrandaki talimatı yapıp komutu tekrar çalıştır.
+Güncelleme almak için de aynı komutu çalıştırman yeterli.
+
 ## Kurulum (5 dakika)
 
 ### 1. Kodu indir
@@ -33,11 +42,9 @@ git clone https://github.com/devermanstd-eng/KuryeTycoon.git KuryeTycoon
 2. Açılan **Assets** klasörünün içine 1. adımdaki **`KuryeTycoon`** klasörünü kopyala.
 3. Unity'ye dön, derlemenin bitmesini bekle. **Console**'da kırmızı hata olmamalı.
 
-### 4. Sahneyi kur
-1. **Hierarchy**'de boş yere sağ tık → **Create Empty**.
-2. Adını `Oyun` yap (seç, F2).
-3. **Inspector** → **Add Component** → `GameBootstrap` yaz → seç.
-4. **Ctrl+S** ile sahneyi kaydet.
+### 4. Sahne
+Sahne kurmana gerek yok: Play'e basınca oyun kendiliğinden başlar.
+(İstersen başlangıç parası gibi ayarları değiştirmek için boş bir GameObject'e `GameBootstrap` ekleyebilirsin.)
 
 ### 5. Oyna
 1. **Play** (▶) butonuna bas.
@@ -56,7 +63,6 @@ git pull
 ## Sorun çıkarsa
 - **Console'da kırmızı hata:** Console'un sol üstündeki **Clear**'a bas; hâlâ varsa ilk satırı geliştiriciye gönder.
 - **GameBootstrap listede çıkmıyor:** Klasör `Assets/KuryeTycoon/Scripts/...` şeklinde mi kontrol et (fazladan iç içe klasör olmamalı).
-- **İflas sonrası "Yeniden başla" çalışmıyor:** **File → Build Profiles → Scene List**'e sahneyi ekle.
 
 Oyunun tüm sistemleri ve ayarları için: [KURULUM.md](KURULUM.md)
 
