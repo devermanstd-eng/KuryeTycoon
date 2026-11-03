@@ -1336,7 +1336,9 @@ namespace KuryeTycoon
             }
             else
             {
-                GUILayout.Label($"{cnt} karakter modeli yüklü.", small);
+                GUILayout.Label($"{cnt} karakter modeli yüklü · yürüme animasyonu: " +
+                                (CharacterVisuals.HasWalkAnimation ? "kurulu" : "KURULU DEĞİL (Unity menüsü: Kurye Tycoon > Karakter Animasyonlarını Kur)"),
+                                CharacterVisuals.HasWalkAnimation ? small : warn);
                 GUILayout.BeginHorizontal();
                 int mode = CharacterVisuals.Mode;
                 if (SelectButton(mode == 0, "Işıklı", smallButton)) deferred = () => { CharacterVisuals.Mode = 0; CharacterVisuals.Refresh(); };

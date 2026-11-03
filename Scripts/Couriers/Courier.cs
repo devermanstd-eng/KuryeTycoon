@@ -860,7 +860,9 @@ namespace KuryeTycoon
             {
                 // Uzaktayken daire (ikon), yakınlaşınca 3D karakter
                 bool show = IsOnline && MapCamera.I != null && MapCamera.I.ShowModels;
-                CharacterVisuals.UpdateModel(model, Position - lastModelPos, show, ref modelFacing);
+                bool walking = (State == CourierState.DukkanaGidiyor || State == CourierState.MusteriyeGidiyor)
+                               && GameClock.I != null && GameClock.I.DeltaMinutes > 0f;
+                CharacterVisuals.UpdateModel(model, Position - lastModelPos, walking, show, ref modelFacing);
                 body.enabled = !show;
                 ring.transform.localScale = Vector3.one * (show ? 0.3f : 0.75f); // yakında karakterin ayağında küçük halka
             }

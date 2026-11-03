@@ -25,7 +25,24 @@ namespace KuryeTycoon
 
         public static float TargetHeight = 0.36f;  // karakterin boyu (1 = bir kare ≈ bina katı); binaların yanında insan ölçeğinde
         static RuntimeAnimatorController walkController;
-        static bool walkControllerLoaded;
+
+        /// <summary>Unity'de "domain reload" kapalıysa statik önbellekler Play'ler arasında kalır; her Play'de sıfırla.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics()
+        {
+            prefabs = null;
+            walkController = null;
+            sun = null;
+        }
+
+        /// <summary>Yürüme animasyonu kurulu mu (Kurye Tycoon > Karakter Animasyonlarını Kur)?</summary>
+        public static bool HasWalkAnimation => LoadController() != null;
+
+        static RuntimeAnimatorController LoadController()
+        {
+            if (walkController == null) walkController = Resources.Load<RuntimeAnimatorController>(ResourceFolder + "/KuryeAnimator");
+            return walkController;
+        }
 
         /// <summary>Ayakta duran ve verilen açıya bakan duruş (0 = kuzey, 90 = batı, 180 = güney, 270 = doğu).</summary>
         static Quaternion Facing(float angle) => Quaternion.Euler(0f, 0f, angle) * Quaternion.Euler(-90f, 0f, 0f);
@@ -78,15 +95,11 @@ namespace KuryeTycoon
                 go.transform.position += new Vector3(parent.position.x - b.center.x, parent.position.y - b.center.y, -0.06f - b.max.z);
             }
             // Yürüme animasyonu: Kurye Tycoon > Karakter Animasyonlarını Kur'un oluşturduğu controller
-            if (!walkControllerLoaded)
-            {
-                walkController = Resources.Load<RuntimeAnimatorController>(ResourceFolder + "/KuryeAnimator");
-                walkControllerLoaded = true;
-            }
+            var ctrl = LoadController();
             var anim = go.GetComponentInChildren<Animator>();
             if (anim != null)
             {
-                if (walkController != null) anim.runtimeAnimatorController = walkController;
+                if (ctrl != null) anim.runtimeAnimatorController = ctrl;
                 anim.applyRootMotion = false;             // animasyon kuryeyi yoldan kaydırmasın
                 anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
@@ -138,14 +151,15 @@ namespace KuryeTycoon
         }
 
         /// <summary>Hareket yönüne döndürür ve varsa animasyon parametrelerini ayarlar.</summary>
-        public static void UpdateModel(GameObject model, Vector2 delta, bool visible, ref float facingY)
+        public static void UpdateModel(GameObject model, Vector2 delta, bool walking, bool visible, ref float facingY)
         {
             if (model == null) return;
             if (model.activeSelf != visible) model.SetActive(visible);
             if (!visible) return;
 
-            bool moving = delta.sqrMagnitude > 0.000001f;
-            if (moving)
+            // Yürüme: kurye yoldaysa (dükkana / müşteriye gidiyor) ve oyun duraklatılmamışsa
+            bool moving = walking;
+            if (delta.sqrMagnitude > 0.000001f)
             {
                 if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y)) facingY = delta.x > 0 ? 270f : 90f; // doğu / batı
                 else facingY = delta.y > 0 ? 0f : 180f;                                       // kuzey (sırtı) / güney (yüzü)
@@ -154,7 +168,15 @@ namespace KuryeTycoon
             model.transform.localRotation = Quaternion.Slerp(model.transform.localRotation, target, 0.25f);
 
             var anim = model.GetComponentInChildren<Animator>();
-            if (anim == null || anim.runtimeAnimatorController == null) return;
+            if (anim == null) return;
+            // Animasyon menüsü oyun açıkken çalıştırıldıysa da controller'ı tak
+            var ctrl = LoadController();
+            if (ctrl != null && anim.runtimeAnimatorController != ctrl)
+            {
+                anim.runtimeAnimatorController = ctrl;
+                anim.applyRootMotion = false;
+            }
+            if (anim.runtimeAnimatorController == null) return;
             // Oyun hızlandıkça adımlar da biraz hızlanır (aşırı değil)
             float gs = GameClock.I != null ? GameClock.I.SpeedMultiplier : 1f;
             anim.speed = moving ? Mathf.Clamp(Mathf.Sqrt(gs), 1f, 3f) : 1f;
@@ -172,7 +194,7 @@ namespace KuryeTycoon
         public static void Refresh()
         {
             prefabs = null;
-            walkControllerLoaded = false;
+            walkController = null;
             if (CourierManager.I == null) return;
             foreach (var c in CourierManager.I.Couriers) c.RebuildModel();
         }
