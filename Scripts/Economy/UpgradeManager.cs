@@ -97,7 +97,16 @@ namespace KuryeTycoon
 
         void Start() { GameClock.I.OnNewDay += OnNewDay; }
 
-        public static UpgradeDef Def(UpgradeKind k) => Defs[(int)k];
+        /// <summary>
+        /// Geliştirmeyi türüne göre bulur. Defs dizisi ekrandaki sıraya göre dizili ve enum sırasıyla aynı değil,
+        /// o yüzden Defs[(int)k] yanlış geliştirmeyi (yanlış fiyat ve isimle) döndürürdü.
+        /// </summary>
+        public static UpgradeDef Def(UpgradeKind k)
+        {
+            foreach (var d in Defs)
+                if (d.kind == k) return d;
+            return null;
+        }
         public int Level(UpgradeKind k) => levels[(int)k];
         public bool Has(UpgradeKind k) => levels[(int)k] > 0;
 
