@@ -169,7 +169,7 @@ namespace KuryeTycoon
         {
             if (model != null) Destroy(model);
             model = CharacterVisuals.Spawn(transform, courierName);
-            if (body != null) body.enabled = model == null || !IsOnline;
+            if (body != null) body.enabled = true;
             lastModelPos = Position;
         }
 
@@ -857,8 +857,10 @@ namespace KuryeTycoon
             // 3D karakter: çevrimiçiyken görünür ve yürüdüğü yöne döner; çevrimdışıyken soluk daire kalır
             if (model != null)
             {
-                CharacterVisuals.UpdateModel(model, Position - lastModelPos, IsOnline, ref modelFacing);
-                body.enabled = !IsOnline;
+                // Uzaktayken daire (ikon), yakınlaşınca 3D karakter
+                bool show = IsOnline && MapCamera.I != null && MapCamera.I.ShowModels;
+                CharacterVisuals.UpdateModel(model, Position - lastModelPos, show, ref modelFacing);
+                body.enabled = !show;
             }
             lastModelPos = Position;
         }

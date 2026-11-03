@@ -360,7 +360,7 @@ namespace KuryeTycoon
             o.deadlineAt = o.readyAt + dist / 0.45f + (o.customerType == CustomerType.Aceleci ? 7f : 15f);
             o.marker = SpriteFactory.Create($"Müşteri #{o.id}", markerRoot, true,
                 o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f),
-                CityMap.ToWorld(custTile), o.IsHeavy ? 0.6f : 0.45f, 3);
+                CityMap.ToWorld(custTile), o.IsHeavy ? 0.6f : 0.45f, 15) // 3D binaların üstünde görünsün;
 
             Pending.Add(o);
             shop.ordersTotal++;

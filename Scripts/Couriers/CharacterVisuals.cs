@@ -23,7 +23,10 @@ namespace KuryeTycoon
             set { PlayerPrefs.SetInt(PrefKey, value); PlayerPrefs.Save(); }
         }
 
-        public static float TargetHeight = 0.9f;   // karakterin haritadaki boyu (1 = bir kare)
+        public static float TargetHeight = 0.7f;   // karakterin boyu (1 = bir kare); en yakın görünümde binaların yanında
+
+        /// <summary>Ayakta duran ve verilen açıya bakan duruş (0 = kuzey, 90 = batı, 180 = güney, 270 = doğu).</summary>
+        static Quaternion Facing(float angle) => Quaternion.Euler(0f, 0f, angle) * Quaternion.Euler(-90f, 0f, 0f);
         static GameObject[] prefabs;
         static Light sun;
 
@@ -45,9 +48,10 @@ namespace KuryeTycoon
             int idx = Mathf.Abs(seedName.GetHashCode()) % prefabs.Length;
             var go = Object.Instantiate(prefabs[idx], parent, false);
             go.name = "Karakter";
+            // Harita XY düzleminde, "yukarı" −Z (kameraya doğru). Model ayakta durur, yüzü güneye (kameraya) bakar.
             go.transform.localScale = Vector3.one;
-            go.transform.localPosition = new Vector3(0f, 0f, -1f);       // sprite'ların önünde
-            go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f); // yüzü kameraya dönük
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Facing(180f);
 
             foreach (var col in go.GetComponentsInChildren<Collider>()) Object.Destroy(col);
             foreach (var rb in go.GetComponentsInChildren<Rigidbody>()) Object.Destroy(rb);
@@ -64,13 +68,12 @@ namespace KuryeTycoon
 
             // Paketteki modelin boyu ne olursa olsun (cm/m) haritada aynı boyda görünsün
             var b = CombinedBounds(renderers);
-            if (b.size.y > 0.0001f)
+            if (b.size.z > 0.0001f)
             {
-                float s = TargetHeight / b.size.y;
+                float s = TargetHeight / b.size.z;
                 go.transform.localScale = Vector3.one * s;
                 b = CombinedBounds(renderers);
-                float feetY = parent.position.y - 0.4f;
-                go.transform.position += new Vector3(parent.position.x - b.center.x, feetY - b.min.y, 0f);
+                go.transform.position += new Vector3(parent.position.x - b.center.x, parent.position.y - b.center.y, -0.02f - b.max.z);
             }
             if (Mode == 0) EnsureLight();
             return go;
@@ -120,19 +123,19 @@ namespace KuryeTycoon
         }
 
         /// <summary>Hareket yönüne döndürür ve varsa animasyon parametrelerini ayarlar.</summary>
-        public static void UpdateModel(GameObject model, Vector2 delta, bool online, ref float facingY)
+        public static void UpdateModel(GameObject model, Vector2 delta, bool visible, ref float facingY)
         {
             if (model == null) return;
-            if (model.activeSelf != online) model.SetActive(online);
-            if (!online) return;
+            if (model.activeSelf != visible) model.SetActive(visible);
+            if (!visible) return;
 
             bool moving = delta.sqrMagnitude > 0.000001f;
             if (moving)
             {
-                if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y)) facingY = delta.x > 0 ? 90f : 270f; // sağa / sola
-                else facingY = delta.y > 0 ? 0f : 180f;                                       // yukarı (sırtı) / aşağı (yüzü)
+                if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y)) facingY = delta.x > 0 ? 270f : 90f; // doğu / batı
+                else facingY = delta.y > 0 ? 0f : 180f;                                       // kuzey (sırtı) / güney (yüzü)
             }
-            var target = Quaternion.Euler(0f, facingY, 0f);
+            var target = Facing(facingY);
             model.transform.localRotation = Quaternion.Slerp(model.transform.localRotation, target, 0.25f);
 
             var anim = model.GetComponentInChildren<Animator>();

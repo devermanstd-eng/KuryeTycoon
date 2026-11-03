@@ -63,23 +63,13 @@ namespace KuryeTycoon
             }
         }
 
-        void LateUpdate() { FitCamera(); }
-
-        void FitCamera()
+        void LateUpdate()
         {
-            var cam = Camera.main;
-            if (cam == null || GameBootstrap.I == null) return;
-            if (!GameBootstrap.I.Started)
-            {
-                cam.rect = new Rect(0, 0, 1, 1);
-                return;
-            }
+            // Harita kamerası sol panel ve üst bar dışındaki alana çizer (yakınlaştırma/kaydırma MapCamera'da)
+            if (MapCamera.I == null) return;
             float left = Mathf.Clamp01(panelWidth * uiScale / Screen.width);
             float top = Mathf.Clamp01(TopBar * uiScale / Screen.height);
-            cam.rect = new Rect(left, 0f, 1f - left, 1f - top);
-            float w = CityMap.Width + 1f, h = CityMap.Height + 1f;
-            cam.orthographicSize = Mathf.Max(h / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
-            cam.transform.position = new Vector3((CityMap.Width - 1) / 2f, (CityMap.Height - 1) / 2f, -10f);
+            MapCamera.I.SetViewport(new Rect(left, 0f, 1f - left, 1f - top));
         }
 
         // =====================================================================
@@ -107,6 +97,7 @@ namespace KuryeTycoon
             DrawTopBar(sw);
             DrawPanel(sh);
             DrawFeed(sw, sh);
+            DrawZoomButtons(sh);
             DrawCourierPopup(sw, sh);
             GUI.enabled = true;
             DrawEvent(sw, sh);
@@ -203,6 +194,18 @@ namespace KuryeTycoon
                 case KeyCode.Alpha7: SetSpeed(64f); e.Use(); break;
                 case KeyCode.Alpha8: SetSpeed(128f); e.Use(); break;
             }
+            var mc = MapCamera.I;
+            if (mc == null) return;
+            switch (e.keyCode)
+            {
+                case KeyCode.LeftArrow: case KeyCode.A: mc.Pan(Vector2.left); e.Use(); break;
+                case KeyCode.RightArrow: case KeyCode.D: mc.Pan(Vector2.right); e.Use(); break;
+                case KeyCode.UpArrow: case KeyCode.W: mc.Pan(Vector2.up); e.Use(); break;
+                case KeyCode.DownArrow: case KeyCode.S: mc.Pan(Vector2.down); e.Use(); break;
+                case KeyCode.Equals: case KeyCode.Plus: case KeyCode.KeypadPlus: case KeyCode.E: mc.ZoomStep(1.5f); e.Use(); break;
+                case KeyCode.Minus: case KeyCode.KeypadMinus: case KeyCode.Q: mc.ZoomStep(-1.5f); e.Use(); break;
+                case KeyCode.Alpha0: case KeyCode.Keypad0: case KeyCode.Home: mc.ResetView(); e.Use(); break;
+            }
         }
 
         static void SetSpeed(float s)
@@ -220,13 +223,14 @@ namespace KuryeTycoon
             foreach (var s in CityMap.I.Shops)
             {
                 if (!CityMap.I.IsUnlocked(s.tile.x)) continue;
-                WorldLabel(cam, CityMap.ToWorld(s.tile) + Vector3.up * 0.7f,
+                WorldLabel(cam, CityMap.ToWorld(s.tile) + MapCamera.LabelOffset(0.7f, BuildingTop(s.tile) + 0.2f),
                     s.contracted ? s.Name : s.Name + " (sözleşmesiz)",
                     s.contracted ? Color.white : new Color(0.7f, 0.7f, 0.7f));
             }
 
-            WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile), CompanyProfile.Initial, CompanyProfile.Secondary);
-            WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + Vector3.down * 0.7f, "Merkez", Color.white);
+            float hqTop = BuildingTop(CityMap.I.HQTile);
+            WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary);
+            WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white);
 
             // Aynı karedeki kuryelerin isimleri üst üste binmesin
             var stack = new Dictionary<Vector2Int, int>();
@@ -236,10 +240,21 @@ namespace KuryeTycoon
                 stack.TryGetValue(key, out int n);
                 stack[key] = n + 1;
                 bool hi = c == popupCourier || c == hoverCourier;
-                WorldLabel(cam, CityMap.ToWorld(c.Position) + Vector3.up * (0.55f + 0.4f * n),
+                WorldLabel(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n),
                     $"{c.ShortName} ({c.V.letter})", hi ? new Color(1f, 0.85f, 0.2f) : Color.white);
             }
         }
+
+        static float BuildingTop(Vector2Int tile) => City3D.I != null ? City3D.I.HeightAt(tile) : 0f;
+
+        static Vector3 CourierLabelOffset(int stackIndex) =>
+            MapCamera.LabelOffset(0.55f + 0.4f * stackIndex, 0.95f + 0.3f * stackIndex);
+
+        Vector2 GuiToScreenPx(Vector2 m) => new Vector2(m.x * uiScale, Screen.height - m.y * uiScale);
+
+        bool dragging, dragMoved;
+        int dragButton;
+        Vector2 dragStart, dragLast;
 
         // ---------------------------------------------------------------- haritada kurye seçme
         Vector2 ToGui(Camera cam, Vector3 world)
@@ -264,9 +279,10 @@ namespace KuryeTycoon
                 stack.TryGetValue(key, out int n);
                 stack[key] = n + 1;
                 Vector2 sp = ToGui(cam, CityMap.ToWorld(c.Position));
-                Vector2 lp = ToGui(cam, CityMap.ToWorld(c.Position) + Vector3.up * (0.55f + 0.4f * n));
+                Vector2 lp = ToGui(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n));
+                Vector2 mp = ToGui(cam, CityMap.ToWorld(c.Position) + MapCamera.LabelOffset(0f, 0.35f)); // karakterin gövdesi
                 float d = float.MaxValue;
-                float ds = Vector2.Distance(m, sp);
+                float ds = Mathf.Min(Vector2.Distance(m, sp), Vector2.Distance(m, mp));
                 if (ds < 20f) d = ds;
                 if (Mathf.Abs(m.x - lp.x) < 55f && Mathf.Abs(m.y - lp.y) < 10f) d = Mathf.Min(d, Mathf.Abs(m.y - lp.y));
                 if (d < bestD) { bestD = d; best = c; }
@@ -279,20 +295,67 @@ namespace KuryeTycoon
             var e = Event.current;
             Vector2 m = e.mousePosition;
             bool overMap = m.x > panelWidth && m.y > TopBar &&
-                           !(popupCourier != null && PopupRect(sw, sh).Contains(m));
+                           !(popupCourier != null && PopupRect(sw, sh).Contains(m)) &&
+                           !new Rect(panelWidth + 10f, sh - 44f, 150f, 30f).Contains(m);
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
 
-            if (e.type == EventType.MouseDown && e.button == 0 && overMap && modalFree)
+            // Yakınlaştırma: fare tekerleği, imlecin olduğu yere
+            if (e.type == EventType.ScrollWheel && overMap && modalFree && MapCamera.I != null)
             {
-                var c = CourierAt(m);
-                if (c != null)
+                float steps = Mathf.Clamp(-e.delta.y / 3f, -2f, 2f);
+                if (Mathf.Abs(steps) < 0.01f) steps = -Mathf.Sign(e.delta.y);
+                MapCamera.I.ZoomAt(steps, GuiToScreenPx(m));
+                e.Use();
+                return;
+            }
+
+            // Kaydırma: herhangi bir tuşla sürükle (sol tuşla birkaç piksel oynatınca başlar, tıklamayı bozmaz)
+            if (e.type == EventType.MouseDown && overMap && modalFree)
+            {
+                dragging = true;
+                dragMoved = false;
+                dragButton = e.button;
+                dragStart = dragLast = m;
+            }
+            else if (e.type == EventType.MouseDrag && dragging && MapCamera.I != null)
+            {
+                if (!dragMoved && (dragButton != 0 || Vector2.Distance(m, dragStart) > 4f)) dragMoved = true;
+                if (dragMoved)
                 {
-                    popupCourier = c;
-                    popupScroll = Vector2.zero;
+                    MapCamera.I.DragPixels(GuiToScreenPx(dragLast), GuiToScreenPx(m));
+                    dragLast = m;
                     e.Use();
                 }
             }
+            else if (e.type == EventType.MouseUp && dragging)
+            {
+                bool wasClick = !dragMoved && dragButton == 0;
+                dragging = false;
+                if (wasClick && overMap && modalFree)
+                {
+                    var c = CourierAt(m);
+                    if (c != null)
+                    {
+                        popupCourier = c;
+                        popupScroll = Vector2.zero;
+                        e.Use();
+                    }
+                }
+            }
+        }
+
+        void DrawZoomButtons(float sh)
+        {
+            var mc = MapCamera.I;
+            if (mc == null) return;
+            float x = panelWidth + 10f, y = sh - 44f;
+            if (GUI.Button(new Rect(x, y, 34, 30), "+", button)) mc.ZoomStep(1.5f);
+            if (GUI.Button(new Rect(x + 38, y, 34, 30), "−", button)) mc.ZoomStep(-1.5f);
+            if (GUI.Button(new Rect(x + 76, y, 70, 30), "Tümü", smallButton)) mc.ResetView();
+            var r = new Rect(x + 152, y + 4, 330, 22);
+            Fill(r, new Color(0f, 0f, 0f, 0.5f));
+            GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height), "Tekerlek: yakınlaş · sürükle: kaydır · WASD/oklar · 0: tüm harita", small);
         }
 
         void PopupSection(string text)
@@ -368,8 +431,15 @@ namespace KuryeTycoon
 
             GUILayout.EndScrollView();
 
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Haritada yakınlaş", smallButton) && MapCamera.I != null)
+            {
+                var pos = c.Position;
+                deferred = () => MapCamera.I.FocusOn(pos, 0.9f);
+            }
             if (GUILayout.Button("Kuryeler sekmesinde göster", smallButton))
                 deferred = () => { tab = Tab.Kuryeler; scroll = Vector2.zero; };
+            GUILayout.EndHorizontal();
             GUILayout.EndArea();
         }
 

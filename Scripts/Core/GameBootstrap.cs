@@ -55,6 +55,8 @@ namespace KuryeTycoon
             Make<EconomyManager>("Ekonomi");
             Make<WeatherSystem>("Hava");
             Make<CityMap>("Şehir Haritası");
+            Make<City3D>("3D Şehir");
+            Make<MapCamera>("Harita Kamerası");
             Make<CourierManager>("Kurye Yönetimi");
             Make<OrderManager>("Siparişler");
             Make<CampaignManager>("Kampanyalar");
@@ -96,6 +98,7 @@ namespace KuryeTycoon
             EconomyManager.I.money = familyLoanAmount;
             EconomyManager.I.InitCashMarkers();
             CityMap.I.Generate();
+            City3D.I.Build();
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v);
             OrderManager.I.Init();
@@ -121,7 +124,8 @@ namespace KuryeTycoon
                 $"• Platform paketin {UpgradeManager.I.CourierCap} kurye hesabı kaldırıyor. Geliştirmeler'den paketi yükselt ve kalıcı iyileştirmeler al.\n" +
                 "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
                 "• Yıl sonunda vergi ödersin; yıl içinde de habersiz vergi ve harçlar çıkabilir, kasanda yedek tut.\n\n" +
-                "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–8 = hız (1x … 128x)"));
+                "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–8 = hız (1x … 128x)\n" +
+                "Harita: fare tekerleği = yakınlaş (yakında şehir 3D olur), sürükle veya WASD/oklar = kaydır, 0 = tüm harita"));
         }
     }
 }
