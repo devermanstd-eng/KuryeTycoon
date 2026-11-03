@@ -1389,6 +1389,30 @@ namespace KuryeTycoon
             GUILayout.Space(6);
         }
 
+        bool showMilestones;
+
+        void DrawMilestones()
+        {
+            var ms = Milestones.I;
+            if (ms == null) return;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"Kilometre taşları: {ms.ReachedCount}/{ms.Defs.Count}", header);
+            if (GUILayout.Button(showMilestones ? "Gizle" : "Göster", smallButton, GUILayout.Width(70))) deferred = () => showMilestones = !showMilestones;
+            GUILayout.EndHorizontal();
+            if (!showMilestones) return;
+            foreach (var m in ms.Defs)
+            {
+                if (ms.IsReached(m.id))
+                    GUILayout.Label($"• {m.title} — {ms.ReachedDate(m.id)}", label);
+                else
+                {
+                    string p = m.progress != null ? m.progress() : "";
+                    GUILayout.Label($"   {m.title}" + (string.IsNullOrEmpty(p) ? "" : $" ({p})"), small);
+                }
+            }
+            GUILayout.Space(6);
+        }
+
         /// <summary>Basit çubuk grafik; negatif değer varsa sıfır çizgisi ortadadır.</summary>
         void MiniBarChart(string title, List<float> values, Color positive, Color negative)
         {
@@ -1446,6 +1470,7 @@ namespace KuryeTycoon
             var clock = GameClock.I;
 
             DrawHistoryCharts();
+            DrawMilestones();
 
             GUILayout.Label("Kasa", header);
             GUILayout.Label($"Ana kasa: {Ft(e.money)}", label);
