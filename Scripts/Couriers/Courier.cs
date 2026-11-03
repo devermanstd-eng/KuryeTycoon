@@ -966,7 +966,6 @@ namespace KuryeTycoon
         // ---------- Arayüz için: kuryenin üstündeki siparişler ----------
         public IReadOnlyList<Order> ToPickList => toPick;
         public IReadOnlyList<Order> CarryingList => carrying;
-        public Order CurrentOrder => current;
         public float DoorMinutesLeft => State == CourierState.KataCikiyor ? Mathf.Max(0f, doorUntil - GameClock.I.TotalMinutes) : 0f;
 
         void CancelPickup(float wait)
