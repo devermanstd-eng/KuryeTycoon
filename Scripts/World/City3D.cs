@@ -450,7 +450,8 @@ namespace KuryeTycoon
                 tris.Add(i); tris.Add(i + 2); tris.Add(i + 3);
             }
             const float h = 0.5f;
-            // Sıra önemli (sprite malzemesi derinlik yazmaz): önce yanlar, sonra ön cephe, en son çatı
+            // Sıra önemli (sprite malzemesi derinlik yazmaz): önce arka, yanlar, sonra ön cephe, en son çatı
+            Quad(new Vector3(-h, h, 0), new Vector3(h, h, 0), new Vector3(h, h, -1), new Vector3(-h, h, -1));     // kuzey (arka)
             Quad(new Vector3(-h, -h, 0), new Vector3(-h, h, 0), new Vector3(-h, h, -1), new Vector3(-h, -h, -1));
             Quad(new Vector3(h, -h, 0), new Vector3(h, -h, -1), new Vector3(h, h, -1), new Vector3(h, h, 0));
             Quad(new Vector3(-h, -h, 0), new Vector3(-h, -h, -1), new Vector3(h, -h, -1), new Vector3(h, -h, 0));
@@ -467,9 +468,9 @@ namespace KuryeTycoon
             var side = Color.Lerp(baseColor, Color.black, 0.45f);
             var front = Color.Lerp(baseColor, Color.black, 0.28f);
             var roof = Color.Lerp(baseColor, Color.white, 0.12f);
-            var cols = new Color[16];
-            for (int i = 0; i < 4; i++) { cols[i] = side; cols[4 + i] = side; cols[8 + i] = front; cols[12 + i] = roof; }
-            cols[9] = cols[10] = Color.Lerp(front, roof, 0.3f);
+            var cols = new Color[20];
+            for (int i = 0; i < 4; i++) { cols[i] = side; cols[4 + i] = side; cols[8 + i] = side; cols[12 + i] = front; cols[16 + i] = roof; }
+            cols[13] = cols[14] = Color.Lerp(front, roof, 0.3f);
             m.colors = cols;
         }
 

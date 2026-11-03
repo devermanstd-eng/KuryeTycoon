@@ -202,8 +202,10 @@ namespace KuryeTycoon
                 case KeyCode.RightArrow: case KeyCode.D: mc.Pan(Vector2.right); e.Use(); break;
                 case KeyCode.UpArrow: case KeyCode.W: mc.Pan(Vector2.up); e.Use(); break;
                 case KeyCode.DownArrow: case KeyCode.S: mc.Pan(Vector2.down); e.Use(); break;
-                case KeyCode.Equals: case KeyCode.Plus: case KeyCode.KeypadPlus: case KeyCode.E: mc.ZoomStep(1.5f); e.Use(); break;
-                case KeyCode.Minus: case KeyCode.KeypadMinus: case KeyCode.Q: mc.ZoomStep(-1.5f); e.Use(); break;
+                case KeyCode.Equals: case KeyCode.Plus: case KeyCode.KeypadPlus: mc.ZoomStep(1.5f); e.Use(); break;
+                case KeyCode.Minus: case KeyCode.KeypadMinus: mc.ZoomStep(-1.5f); e.Use(); break;
+                case KeyCode.Q: mc.Rotate(-45f); e.Use(); break;
+                case KeyCode.E: mc.Rotate(45f); e.Use(); break;
                 case KeyCode.Alpha0: case KeyCode.Keypad0: case KeyCode.Home: mc.ResetView(); e.Use(); break;
             }
         }
@@ -296,7 +298,7 @@ namespace KuryeTycoon
             Vector2 m = e.mousePosition;
             bool overMap = m.x > panelWidth && m.y > TopBar &&
                            !(popupCourier != null && PopupRect(sw, sh).Contains(m)) &&
-                           !new Rect(panelWidth + 10f, sh - 44f, 150f, 30f).Contains(m);
+                           !new Rect(panelWidth + 10f, sh - 44f, 205f, 30f).Contains(m);
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
 
@@ -323,7 +325,9 @@ namespace KuryeTycoon
                 if (!dragMoved && (dragButton != 0 || Vector2.Distance(m, dragStart) > 4f)) dragMoved = true;
                 if (dragMoved)
                 {
-                    MapCamera.I.DragPixels(GuiToScreenPx(dragLast), GuiToScreenPx(m));
+                    // Sağ tuş: döndür. Sol / orta tuş: kaydır.
+                    if (dragButton == 1) MapCamera.I.RotateDrag((m.x - dragLast.x) * uiScale);
+                    else MapCamera.I.DragPixels(GuiToScreenPx(dragLast), GuiToScreenPx(m));
                     dragLast = m;
                     e.Use();
                 }
@@ -352,10 +356,13 @@ namespace KuryeTycoon
             float x = panelWidth + 10f, y = sh - 44f;
             if (GUI.Button(new Rect(x, y, 34, 30), "+", button)) mc.ZoomStep(1.5f);
             if (GUI.Button(new Rect(x + 38, y, 34, 30), "−", button)) mc.ZoomStep(-1.5f);
-            if (GUI.Button(new Rect(x + 76, y, 70, 30), "Tümü", smallButton)) mc.ResetView();
-            var r = new Rect(x + 152, y + 4, 330, 22);
+            if (GUI.Button(new Rect(x + 76, y, 34, 30), "◄", button)) mc.Rotate(-45f);
+            if (GUI.Button(new Rect(x + 114, y, 34, 30), "►", button)) mc.Rotate(45f);
+            if (GUI.Button(new Rect(x + 152, y, 60, 30), "Tümü", smallButton)) mc.ResetView();
+            var r = new Rect(x + 218, y + 4, 430, 22);
             Fill(r, new Color(0f, 0f, 0f, 0.5f));
-            GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height), "Tekerlek: yakınlaş · sürükle: kaydır · WASD/oklar · 0: tüm harita", small);
+            GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height),
+                "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · WASD · 0: tüm harita", small);
         }
 
         void PopupSection(string text)

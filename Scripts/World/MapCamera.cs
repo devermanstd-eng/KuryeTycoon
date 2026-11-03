@@ -20,6 +20,11 @@ namespace KuryeTycoon
         public float tiltFull = 0.8f;           // bu yakınlıkta tam eğik
         public float smooth = 10f;
 
+        [Header("Döndürme")]
+        public float defaultYaw = 40f;          // yakında varsayılan bakış açısı (binaları çaprazdan gösterir)
+        float yaw, targetYaw;                   // kullanıcının seçtiği açı (derece); uzakta harita hep düz durur
+        public float Yaw => yaw;
+
         /// <summary>0 = tüm harita, 1 = en yakın.</summary>
         public float Zoom { get; private set; }
         float targetZoom;
@@ -66,6 +71,7 @@ namespace KuryeTycoon
             if (!initialized)
             {
                 focus = targetFocus = MapCenter;
+                yaw = targetYaw = defaultYaw;
                 initialized = true;
             }
 
@@ -75,6 +81,7 @@ namespace KuryeTycoon
             if (Mathf.Abs(Zoom - targetZoom) < 0.0005f) Zoom = targetZoom;
             targetFocus = ClampFocus(cam, targetFocus, targetZoom);
             focus = Vector2.Lerp(focus, targetFocus, k);
+            yaw = Mathf.LerpAngle(yaw, targetYaw, k);
             Apply(cam, Zoom, focus);
         }
 
@@ -84,9 +91,11 @@ namespace KuryeTycoon
             cam.orthographicSize = SizeFor(cam, zoom);
             cam.nearClipPlane = 0.1f;
             cam.farClipPlane = 300f;
-            float tilt = maxTilt * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(tiltStart, tiltFull, zoom));
-            // Kamera +Z'ye bakar (harita XY düzleminde, binalar −Z yönünde yükselir); güneyden bakacak şekilde eğilir
-            var rot = Quaternion.Euler(-tilt, 0f, 0f);
+            float t01 = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(tiltStart, tiltFull, zoom));
+            float tilt = maxTilt * t01;
+            // Kamera +Z'ye bakar (harita XY düzleminde, binalar −Z yönünde yükselir).
+            // Önce dikey eksen (Z) etrafında döner, sonra eğilir. Uzakta açı 0: harita düz ve kuzey yukarıda.
+            var rot = Quaternion.Euler(0f, 0f, -yaw * t01) * Quaternion.Euler(-tilt, 0f, 0f);
             cam.transform.rotation = rot;
             var ground = new Vector3(f.x, f.y, 0f);
             cam.transform.position = ground - rot * Vector3.forward * 60f;
@@ -94,6 +103,11 @@ namespace KuryeTycoon
 
         Vector2 ClampFocus(Camera cam, Vector2 f, float zoom)
         {
+            if (zoom > tiltStart)
+            {
+                // Dönük/eğik görünümde harita sınırları içinde serbest
+                return new Vector2(Mathf.Clamp(f.x, 0f, CityMap.Width - 1), Mathf.Clamp(f.y, 0f, CityMap.Height - 1));
+            }
             float size = SizeFor(cam, zoom);
             float halfH = size, halfW = size * cam.aspect;
             float mapHalfW = (CityMap.Width + 1f) / 2f, mapHalfH = (CityMap.Height + 1f) / 2f;
@@ -159,13 +173,30 @@ namespace KuryeTycoon
             var cam = Camera.main;
             if (cam == null) return;
             float size = SizeFor(cam, targetZoom);
-            targetFocus += dir * size * 0.25f;
+            // Ekrana göre: "yukarı" kameranın baktığı yön (döndürülmüşse ona göre)
+            float a = -yaw * Tilt01 * Mathf.Deg2Rad;
+            var d = new Vector2(dir.x * Mathf.Cos(a) - dir.y * Mathf.Sin(a), dir.x * Mathf.Sin(a) + dir.y * Mathf.Cos(a));
+            targetFocus += d * size * 0.25f;
+        }
+
+        /// <summary>Kamerayı dikey eksen etrafında döndür (derece). Sadece yakın/eğik görünümde etkili.</summary>
+        public void Rotate(float degrees)
+        {
+            targetYaw += degrees;
+        }
+
+        /// <summary>Sağ tuşla sürükleme: yatay hareket döndürür.</summary>
+        public void RotateDrag(float pixels)
+        {
+            targetYaw += pixels * 0.3f;
+            yaw = targetYaw; // sürüklerken gecikmesiz
         }
 
         public void ResetView()
         {
             targetZoom = 0f;
             targetFocus = MapCenter;
+            targetYaw = defaultYaw;
         }
 
         /// <summary>Bir noktaya yakınlaştır (ör. kurye seçilince).</summary>
