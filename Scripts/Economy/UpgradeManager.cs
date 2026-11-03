@@ -60,14 +60,16 @@ namespace KuryeTycoon
                 kind = UpgradeKind.Uygulama, name = "Kurye uygulaması 2.0",
                 summary = "Daha iyi rota ve kazanç tahmini: kuryeler %5 hızlı, teklifleri daha kolay kabul eder.",
                 costs = new[] { 110000 },
-                levelText = new[] { "Eski uygulama", "Kuryeler %5 hızlı, teklif beklentisi %10 düşük" }
+                levelText = new[] { "Eski uygulama", "Kuryeler %5 hızlı, teklif beklentisi %10 düşük" },
+                requiresDistrict = 2
             },
             new UpgradeDef
             {
                 kind = UpgradeKind.Dinlenme, name = "Kurye dinlenme alanı",
                 summary = "Merkezde çay, şarj ve oturma alanı: kuryeler 2 kat hızlı dinlenir, morali her gün artar.",
                 costs = new[] { 120000 },
-                levelText = new[] { "Dinlenme alanı yok", "2 kat hızlı dinlenme, her gün moral +" }
+                levelText = new[] { "Dinlenme alanı yok", "2 kat hızlı dinlenme, her gün moral +" },
+                requiresDistrict = 2
             },
             new UpgradeDef
             {
@@ -88,7 +90,8 @@ namespace KuryeTycoon
                 kind = UpgradeKind.Reklam, name = "Marka bilinirliği kampanyası",
                 summary = "Şehirde reklam panoları: daha çok sipariş ve daha sık kurye başvurusu.",
                 costs = new[] { 150000 },
-                levelText = new[] { "Reklam yok", "Sipariş +%15, kurye başvurusu +%30" }
+                levelText = new[] { "Reklam yok", "Sipariş +%15, kurye başvurusu +%30" },
+                requiresDistrict = 2
             },
         };
 
@@ -118,6 +121,9 @@ namespace KuryeTycoon
         public string PlatformName => Def(UpgradeKind.Platform).levelText[Level(UpgradeKind.Platform)];
         public bool CourierCapFull => CourierManager.I.Couriers.Count >= CourierCap;
 
+        /// <summary>Gereken bölge henüz açılmadıysa geliştirme satın alınamaz.</summary>
+        public bool IsLocked(UpgradeKind k) => CityMap.I.UnlockLevel < Def(k).requiresDistrict;
+
         public int NextCost(UpgradeKind k)
         {
             var d = Def(k);
@@ -129,7 +135,7 @@ namespace KuryeTycoon
         {
             var d = Def(k);
             int lv = Level(k);
-            if (lv >= d.MaxLevel) return false;
+            if (lv >= d.MaxLevel || IsLocked(k)) return false;
             if (!EconomyManager.I.TrySpend(d.costs[lv], $"Geliştirme: {d.name} ({lv + 1}. seviye)", ExpenseCategory.Gelistirme)) return false;
             levels[(int)k] = lv + 1;
             EventManager.I.Notify($"{d.name} tamamlandı: {d.levelText[lv + 1]}");

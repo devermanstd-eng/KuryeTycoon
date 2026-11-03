@@ -741,10 +741,17 @@ namespace KuryeTycoon
                 if (cost >= 0)
                 {
                     GUILayout.Label("Sonraki: " + d.levelText[lv + 1], small);
-                    var kind = d.kind;
-                    GUI.enabled = modalFree && e.money >= cost;
-                    if (GUILayout.Button($"Satın al — {Ft(cost)}", button)) deferred = () => up.Buy(kind);
-                    GUI.enabled = modalFree;
+                    if (up.IsLocked(d.kind))
+                    {
+                        GUILayout.Label($"Kilitli: önce \"{CityMap.DistrictNames[d.requiresDistrict]}\" bölgesini aç. ({Ft(cost)})", small);
+                    }
+                    else
+                    {
+                        var kind = d.kind;
+                        GUI.enabled = modalFree && e.money >= cost;
+                        if (GUILayout.Button($"Satın al — {Ft(cost)}", button)) deferred = () => up.Buy(kind);
+                        GUI.enabled = modalFree;
+                    }
                 }
                 GUILayout.EndVertical();
             }
