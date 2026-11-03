@@ -76,6 +76,7 @@ namespace KuryeTycoon
             // yürüme animatörümüzle çakışır, hata verir ve karakteri idle'da tutar: Start çalışmadan kapat ve sil.
             foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
             {
+                if (mb == null) continue; // prefabda eksik (missing) script
                 mb.enabled = false;
                 Object.Destroy(mb);
             }

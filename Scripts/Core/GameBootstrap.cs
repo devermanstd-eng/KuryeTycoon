@@ -8,7 +8,12 @@ namespace KuryeTycoon
     /// </summary>
     public class GameBootstrap : MonoBehaviour
     {
-        public static GameBootstrap I { get; private set; }
+        static GameBootstrap instance;
+        public static GameBootstrap I
+        {
+            get { if (instance == null) instance = FindAnyObjectByType<GameBootstrap>(); return instance; }
+            private set { instance = value; }
+        }
 
         /// <summary>Herhangi bir sahnede (boş sahne dahil) Play'e basınca oyunu otomatik kurar.</summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]

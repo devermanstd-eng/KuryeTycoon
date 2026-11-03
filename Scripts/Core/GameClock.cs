@@ -10,7 +10,13 @@ namespace KuryeTycoon
     /// </summary>
     public class GameClock : MonoBehaviour
     {
-        public static GameClock I { get; private set; }
+        static GameClock instance;
+        /// <summary>Statik referans bir şekilde boşalırsa (Unity'de domain reload kapalıyken olabiliyor) sahneden bulunur.</summary>
+        public static GameClock I
+        {
+            get { if (instance == null) instance = FindAnyObjectByType<GameClock>(); return instance; }
+            private set { instance = value; }
+        }
 
         static readonly string[] DayNames = { "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar" };
         static readonly string[] MonthNames = { "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık" };

@@ -66,7 +66,7 @@ namespace KuryeTycoon
 
         void Update()
         {
-            if (!ready || GameClock.I.DeltaMinutes <= 0f) return;
+            if (!ready || GameClock.I == null || GameClock.I.DeltaMinutes <= 0f) return;
             float now = GameClock.I.TotalMinutes;
 
             for (int i = Applications.Count - 1; i >= 0; i--)
