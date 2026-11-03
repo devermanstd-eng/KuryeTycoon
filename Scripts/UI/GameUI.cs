@@ -1043,6 +1043,91 @@ namespace KuryeTycoon
             }
 
             DrawSupportCandidates();
+            DrawOperations();
+        }
+
+        /// <summary>Destek ekibi + operasyon sorumlusunun aylık maaş toplamı.</summary>
+        long TotalPayroll => SupportManager.I.MonthlyPayroll + (OperationsManager.I != null ? OperationsManager.I.MonthlySalary : 0);
+
+        void DrawOperations()
+        {
+            var ops = OperationsManager.I;
+            var cm = CourierManager.I;
+            if (ops == null) return;
+
+            GUILayout.Space(10);
+            GUILayout.Label("Operasyon sorumlusu", header);
+            GUILayout.Label("Maaşlı tek kişi. Her sabah 09:00'da aşağıdaki kurallara göre eksik ekipmanı kuryelere teklif eder " +
+                            $"(ödeme şekli Ekipman sekmesindeki seçim: {CourierManager.PaymentLabel(cm.equipmentPayment)}), " +
+                            "yıpranan çantaları yeniler ve gün içinde çantası kirlenen kuryeleri uyarır. Kurye teklifi yine reddedebilir; " +
+                            $"reddedene {OperationsManager.RetryDays:0} gün sonra tekrar sorar. Yetenekli sorumlu daha ikna edicidir, işleri ertelemez " +
+                            "ve toplu alımda %10 indirim alır. Az kuryen varken maaşına değmeyebilir, büyüdükçe seni bu işlerden kurtarır. " +
+                            "Ne yaptığı gün sonu raporunda yazar.", small);
+
+            if (ops.HasManager)
+            {
+                var m = ops.Manager;
+                GUILayout.BeginVertical(box);
+                GUILayout.Label(m.name, header);
+                GUILayout.Label($"Maaş {Ft(m.monthlySalary)}/ay · bu ay birikmiş {Ft(ops.AccruedThisMonth)} (ay başında ödenir)", small);
+                Bar("Yetenek", m.skill, new Color(0.4f, 0.75f, 1f));
+                GUILayout.Label($"İkna: kabul ihtimali +%{ops.Persuasion * 100f:0} · İşleri ertelemeden yapma: %{ops.Reliability * 100f:0}" +
+                                (ops.Discount > 0f ? " · Toplu alım indirimi %10" : ""), small);
+                if (!string.IsNullOrEmpty(ops.lastPassSummary)) GUILayout.Label("Son sabah turu: " + ops.lastPassSummary, small);
+                if (GUILayout.Button("İşten çıkar (bu ayın maaşı ödenir)", smallButton)) deferred = () => ops.Fire();
+                GUILayout.EndVertical();
+            }
+            else
+            {
+                GUILayout.Label($"Başvurular ({ops.Candidates.Count})", label);
+                if (ops.Candidates.Count == 0) GUILayout.Label("Şu an başvuru yok; yenisi gelecek.", small);
+                foreach (var cand in ops.Candidates)
+                {
+                    GUILayout.BeginVertical(box);
+                    GUILayout.Label($"{cand.name} — Maaş beklentisi {Ft(cand.monthlySalary)}/ay", header);
+                    GUILayout.Label($"\"{cand.note}\"", note);
+                    Bar("Yetenek", cand.skill, new Color(0.4f, 0.75f, 1f));
+                    long payrollAfter = TotalPayroll + cand.monthlySalary;
+                    GUILayout.Label($"İşe alırsan aylık toplam maaş: {Ft(payrollAfter)} · serbest kasan: {Ft(EconomyManager.I.FreeCash)}",
+                                    payrollAfter > EconomyManager.I.FreeCash ? warn : small);
+                    var c = cand;
+                    if (GUILayout.Button("İşe al", button)) deferred = () => ops.Hire(c);
+                    GUILayout.EndVertical();
+                }
+            }
+
+            // Kurallar (işe almadan önce de ayarlanabilir)
+            GUILayout.Space(4);
+            GUILayout.Label("Kurallar — hangi ekipmanları teklif etsin:", label);
+            GUILayout.BeginHorizontal();
+            int col = 0;
+            foreach (var e in GameData.Equipment)
+            {
+                int ki = (int)e.kind;
+                ops.offerKinds[ki] = GUILayout.Toggle(ops.offerKinds[ki], " " + e.name, toggle);
+                if (++col % 3 == 0)
+                {
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                }
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Label("Giyecekleri sadece mevsimi gelince ya da yaklaşınca sorar (ör. montu sonbahar ve kışın); arabalı kuryelere giyecek ve kask sormaz.", small);
+            ops.replaceWornBags = GUILayout.Toggle(ops.replaceWornBags,
+                $" Yıpranan çantayı yenile ({Ft(GameData.Equip(EquipmentKind.TermalCanta).price)}, şirket öder)", toggle);
+            ops.warnDirtyBags = GUILayout.Toggle(ops.warnDirtyBags, " Çantası kirlenen kuryeyi uyar (ücretsiz, moral biraz düşer)", toggle);
+
+            GUILayout.Label("Yeni kuryeye ekipman ne zaman sorulsun:", small);
+            GUILayout.BeginHorizontal();
+            foreach (int md in new[] { 0, 10, 30, 60 })
+            {
+                int v = md;
+                if (SelectButton(ops.minDeliveries == v, v == 0 ? "Hemen" : $"{v} teslimattan sonra", smallButton)) deferred = () => ops.minDeliveries = v;
+            }
+            GUILayout.EndHorizontal();
+            ops.monthlyBudget = MoneySlider("Aylık bütçe", ops.monthlyBudget, 0, 300000, 5000);
+            GUILayout.Label($"Bu ay sorumlunun ekipmana harcadığı (şirket payı): {Ft(ops.spentThisMonth)} / {Ft(ops.monthlyBudget)}",
+                            ops.BudgetLeft == 0 ? warn : small);
         }
 
         /// <summary>24 saatlik destek kapsama çizelgesi: saat etiketleri hücrelerle tam hizalı.</summary>
@@ -1121,7 +1206,7 @@ namespace KuryeTycoon
             {
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{cand.name} — Maaş beklentisi {Ft(cand.monthlySalary)}/ay", header);
-                long payrollAfter = SupportManager.I.MonthlyPayroll + cand.monthlySalary;
+                long payrollAfter = TotalPayroll + cand.monthlySalary;
                 GUILayout.Label($"İşe alırsan aylık toplam maaş: {Ft(payrollAfter)} · serbest kasan: {Ft(EconomyManager.I.FreeCash)}",
                                 payrollAfter > EconomyManager.I.FreeCash ? warn : small);
                 GUILayout.Label($"\"{cand.note}\"", note);

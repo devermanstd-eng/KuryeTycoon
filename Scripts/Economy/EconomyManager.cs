@@ -9,7 +9,7 @@ namespace KuryeTycoon
     public class PeriodStats
     {
         public static readonly string[] CategoryNames =
-            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar", "Destek maaşları", "Geliştirmeler" };
+            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar", "Personel maaşları", "Geliştirmeler" };
 
         public long commission;     // dükkan komisyonları
         public long fees;           // müşteriden alınan teslimat ücretleri
@@ -660,6 +660,10 @@ namespace KuryeTycoon
                     sb.Append($"\n\nGünün kuryesi: {best.courierName} — {best.deliveriesToday} paket, {Ft(best.earnedToday)} kazandı" +
                               (best.tipsToday > 0 ? $" ({Ft(best.tipsToday)} bahşiş)" : ""));
             }
+
+            // Operasyon sorumlusunun bugün yaptıkları (çağrılınca sayaçları sıfırlanır)
+            string ops = OperationsManager.I != null ? OperationsManager.I.TakeDayReport() : null;
+            if (ops != null) sb.Append("\n" + ops);
 
             // Aile borcu hatırlatması
             var loan = FamilyLoan.I;

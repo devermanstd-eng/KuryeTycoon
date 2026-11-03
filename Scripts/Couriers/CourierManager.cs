@@ -413,12 +413,12 @@ namespace KuryeTycoon
         // ---------- Hijyen ----------
 
         /// <summary>Kuryeyi uyar: elindeki paket bitince çantasını kendisi temizler (uyarılmak moralini biraz düşürür).</summary>
-        public void RequestCleaning(Courier c)
+        public void RequestCleaning(Courier c, bool notify = true)
         {
             if (c.cleanRequested) return;
             c.cleanRequested = true;
             c.morale = Mathf.Max(0f, c.morale - 0.02f);
-            EventManager.I.Notify($"{c.ShortName} uyarıldı: paketi bitince çantasını temizleyecek.");
+            if (notify) EventManager.I.Notify($"{c.ShortName} uyarıldı: paketi bitince çantasını temizleyecek.");
         }
 
         /// <summary>Çantası kirli tüm kuryeleri uyar (ücretsiz).</summary>
