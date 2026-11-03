@@ -555,6 +555,7 @@ namespace KuryeTycoon
             }
 
             BuildDailyReport(Today);
+            if (StatsHistory.I != null) StatsHistory.I.Record(Today);   // grafikler ve CSV denge kaydı
             AccumulateWeek(Today);
             if (GameClock.I.DayOfWeek == 0) BuildWeeklyReport(); // Pazar bitti, yeni hafta başlıyor
             Yesterday = Today;

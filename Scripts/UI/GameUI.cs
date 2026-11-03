@@ -1366,6 +1366,73 @@ namespace KuryeTycoon
             GUILayout.EndVertical();
         }
 
+        // ---------------------------------------------------------------- grafikler (son 30 gün)
+
+        void DrawHistoryCharts()
+        {
+            var h = StatsHistory.I;
+            if (h == null) return;
+            if (h.Days.Count == 0)
+            {
+                GUILayout.Label("Grafikler ilk gün sonundan sonra görünür.", small);
+                return;
+            }
+            int n = Mathf.Min(30, h.Days.Count);
+            var days = h.Days.GetRange(h.Days.Count - n, n);
+            var last = days[n - 1];
+            GUILayout.Label($"Son {n} gün", header);
+            MiniBarChart($"Net kâr — dün {Ft(last.net)}", days.ConvertAll(d => (float)d.net),
+                         new Color(0.35f, 0.8f, 0.5f), new Color(0.95f, 0.4f, 0.35f));
+            MiniBarChart($"Teslimat — dün {last.deliveries} paket" + (last.cancelled > 0 ? $", {last.cancelled} iptal" : ""),
+                         days.ConvertAll(d => (float)d.deliveries), new Color(0.4f, 0.75f, 1f), new Color(0.4f, 0.75f, 1f));
+            MiniLineChart($"İtibar — dün {last.reputation:0.00}/5", days.ConvertAll(d => d.reputation), 0f, 5f, new Color(1f, 0.8f, 0.3f));
+            GUILayout.Space(6);
+        }
+
+        /// <summary>Basit çubuk grafik; negatif değer varsa sıfır çizgisi ortadadır.</summary>
+        void MiniBarChart(string title, List<float> values, Color positive, Color negative)
+        {
+            GUILayout.Label(title, small);
+            Rect r = GUILayoutUtility.GetRect(100, 46, GUILayout.ExpandWidth(true));
+            Fill(r, new Color(0f, 0f, 0f, 0.25f));
+            float max = 0f;
+            bool hasNeg = false;
+            foreach (var v in values) { max = Mathf.Max(max, Mathf.Abs(v)); if (v < 0f) hasNeg = true; }
+            if (max <= 0f || values.Count == 0) return;
+            float zeroY = hasNeg ? r.y + r.height / 2f : r.yMax;
+            float scale = (hasNeg ? r.height / 2f : r.height) / max;
+            float bw = r.width / values.Count;
+            for (int i = 0; i < values.Count; i++)
+            {
+                float hgt = Mathf.Max(1f, Mathf.Abs(values[i]) * scale);
+                var bar = values[i] >= 0f
+                    ? new Rect(r.x + i * bw + 1f, zeroY - hgt, Mathf.Max(1f, bw - 2f), hgt)
+                    : new Rect(r.x + i * bw + 1f, zeroY, Mathf.Max(1f, bw - 2f), hgt);
+                Fill(bar, values[i] >= 0f ? positive : negative);
+            }
+            if (hasNeg) Fill(new Rect(r.x, zeroY - 0.5f, r.width, 1f), new Color(1f, 1f, 1f, 0.35f));
+        }
+
+        /// <summary>Basit çizgi grafik (noktalar ve aralarında dikey bağlantılar).</summary>
+        void MiniLineChart(string title, List<float> values, float min, float max, Color color)
+        {
+            GUILayout.Label(title, small);
+            Rect r = GUILayoutUtility.GetRect(100, 40, GUILayout.ExpandWidth(true));
+            Fill(r, new Color(0f, 0f, 0f, 0.25f));
+            if (values.Count == 0 || max <= min) return;
+            float bw = r.width / values.Count;
+            float prevY = 0f;
+            for (int i = 0; i < values.Count; i++)
+            {
+                float t = Mathf.InverseLerp(min, max, values[i]);
+                float x = r.x + i * bw + bw / 2f;
+                float y = r.yMax - 3f - t * (r.height - 6f);
+                if (i > 0) Fill(new Rect(x - bw / 2f - 1f, Mathf.Min(prevY, y), 2f, Mathf.Abs(prevY - y) + 1f), color);
+                Fill(new Rect(x - 2f, y - 2f, 4f, 4f), color);
+                prevY = y;
+            }
+        }
+
         void DrawFinance()
         {
             DrawFamilyLoan();
@@ -1377,6 +1444,8 @@ namespace KuryeTycoon
                 GUILayout.Button("Geçen haftanın raporunu göster", smallButton))
                 deferred = () => EventManager.I.Push(new GameEvent(e.LastWeeklyReportTitle, e.LastWeeklyReport));
             var clock = GameClock.I;
+
+            DrawHistoryCharts();
 
             GUILayout.Label("Kasa", header);
             GUILayout.Label($"Ana kasa: {Ft(e.money)}", label);
@@ -1537,6 +1606,24 @@ namespace KuryeTycoon
                 GUILayout.Label("Karakterler siyah/karanlık görünürse \"Düz renk\"i seç. Pembe görünürse malzemeler projenin render pipeline'ına çevrilmeli (KURULUM.md).", small);
             }
             GUILayout.Space(8);
+
+            var stats = StatsHistory.I;
+            if (stats != null)
+            {
+                GUILayout.Label("Denge kaydı (CSV)", header);
+                stats.writeCsv = GUILayout.Toggle(stats.writeCsv, " Her gün sonunda verileri CSV dosyasına yaz (test ve denge için)", toggle);
+                GUILayout.Label("Teslimat, iptal, gelir, gider, kâr, kasa, itibar, kurye ve dükkan sayısı her gece bir satır olarak yazılır. " +
+                                "Excel ya da Google Sheets ile açılır (ayraç ';'). Her oyun oturumu yeni bir dosya açar, kayıttan devam edilen " +
+                                "oyunun eski günleri de içine yazılır.", small);
+                GUILayout.Label(string.IsNullOrEmpty(stats.CsvPath) ? $"Klasör: {StatsHistory.CsvFolder}" : $"Dosya: {stats.CsvPath}", small);
+                if (GUILayout.Button("Klasörü aç", smallButton))
+                    deferred = () =>
+                    {
+                        System.IO.Directory.CreateDirectory(StatsHistory.CsvFolder);
+                        Application.OpenURL(new System.Uri(StatsHistory.CsvFolder).AbsoluteUri);
+                    };
+                GUILayout.Space(8);
+            }
 
             GUILayout.Label("Para birimi", header);
             GUILayout.BeginHorizontal();

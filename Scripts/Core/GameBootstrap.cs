@@ -58,6 +58,7 @@ namespace KuryeTycoon
             clock.Paused = true; // şirket kurulana kadar zaman durur
 
             Make<EconomyManager>("Ekonomi");
+            Make<StatsHistory>("İstatistik");
             Make<WeatherSystem>("Hava");
             Make<CityMap>("Şehir Haritası");
             Make<City3D>("3D Şehir");
