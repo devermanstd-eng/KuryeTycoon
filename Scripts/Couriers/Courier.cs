@@ -78,6 +78,8 @@ namespace KuryeTycoon
 
         public readonly HashSet<VehicleKind> ownedVehicles = new HashSet<VehicleKind>();
         public readonly HashSet<EquipmentKind> equipment = new HashSet<EquipmentKind>();
+        /// <summary>Reddettiği ekipman teklifleri → tekrar sorulabileceği zaman (oyun dakikası).</summary>
+        public readonly Dictionary<EquipmentKind, float> equipRefusedUntil = new Dictionary<EquipmentKind, float>();
 
         public CourierState State { get; private set; }
         public Vector2 Position { get; private set; }

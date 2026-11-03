@@ -763,7 +763,7 @@ namespace KuryeTycoon
 
                 GUILayout.BeginHorizontal();
                 var courier = c;
-                if (GUILayout.Button("Ekipman al", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; scroll = Vector2.zero; };
+                if (GUILayout.Button("Ekipman teklif et", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; scroll = Vector2.zero; };
                 if (GUILayout.Button("Nakit / ödeme detayı", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; };
                 GUI.enabled = modalFree && c.OrderCount == 0;
                 if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton)) deferred = () => cm.Fire(courier);
@@ -916,6 +916,23 @@ namespace KuryeTycoon
             }
             GUILayout.Label("Ekipman kısa vadede kârı düşürür ama gider olarak vergiden düşülür; hız, moral, puan ve " +
                             "daha az hastalık/kaza olarak geri döner. Kuryeler sekmesinde her kuryenin eksikleri yazar.", small);
+
+            // Teklif ve ödeme şekli
+            GUILayout.Space(4);
+            GUILayout.Label("Kuryeler serbest çalışır: ekipmanı zorla veremezsin, teklif edersin. Kabul edip etmemesi ödeme şekline, " +
+                            "mevsime, ne kadar kalmayı düşündüğüne, hesabındaki paraya ve moraline bağlı. Reddeden kuryeye aynı ekipman " +
+                            $"{cm.manualRetryDays:0} gün tekrar sorulamaz.", small);
+            GUILayout.Label("Ekipmanı kim öder?", label);
+            GUILayout.BeginHorizontal();
+            for (int pi = 0; pi < 3; pi++)
+            {
+                var pay = (EquipmentPayment)pi;
+                if (SelectButton(cm.equipmentPayment == pay, CourierManager.PaymentLabel(pay), smallButton)) deferred = () => cm.equipmentPayment = pay;
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Label(cm.equipmentPayment == EquipmentPayment.Sirket ? "Şirket öder: kuryelerin çoğu kabul eder, maliyet tamamen şirketin." :
+                            cm.equipmentPayment == EquipmentPayment.YariYariya ? "Yarı yarıya: kuryenin payı hesabından kesilir; kabul edenler azalır." :
+                            "Kurye öder: şirkete maliyeti yok ama çoğu reddeder, özellikle mevsimi değilse ve uzun kalmayacaksa.", small);
             GUILayout.Label($"Başlangıç kiti ({GameData.StarterKitText}) her yeni kuryeye verilir; şirkete maliyeti kit başı {Ft(GameData.StarterKitCost)}. " +
                             $"Kuryeden de {Ft(GameData.DepositThreshold)} kazanınca {Ft(GameData.DepositAmount)} depozito kesilir, " +
                             "ayrılırken ekipmanı iade ederse geri ödenir.", label);
@@ -960,18 +977,26 @@ namespace KuryeTycoon
 
             foreach (var e in GameData.Equipment)
             {
+                var kind = e.kind;
+                long courierPart = CourierManager.CourierCost(kind, cm.equipmentPayment);
                 GUILayout.BeginVertical(box);
-                GUILayout.Label($"{e.name} — {Ft(e.price)}", header);
+                GUILayout.Label($"{e.name} — {Ft(e.price)}" +
+                                (courierPart > 0 ? $" (şirket {Ft(e.price - courierPart)}, kurye {Ft(courierPart)})" : ""), header);
                 GUILayout.Label(e.effect, small);
                 GUILayout.BeginHorizontal();
-                var kind = e.kind;
                 if (selectedCourier != null)
                 {
                     var sc = selectedCourier;
                     if (sc.Has(kind)) GUILayout.Label($"{sc.ShortName}: var", small);
-                    else if (GUILayout.Button($"{sc.ShortName}'a al", smallButton)) deferred = () => cm.BuyEquipment(sc, kind);
+                    else if (cm.OnCooldown(sc, kind)) GUILayout.Label($"{sc.ShortName} reddetti, {cm.CooldownText(sc, kind)} sonra tekrar sorulabilir", small);
+                    else
+                    {
+                        float chance = cm.AcceptChance(sc, kind, cm.equipmentPayment);
+                        if (GUILayout.Button($"{sc.ShortName}'a teklif et (kabul ~%{chance * 100f:0})", smallButton))
+                            deferred = () => cm.OfferEquipment(sc, kind);
+                    }
                 }
-                if (GUILayout.Button("Eksik olan herkese al", smallButton)) deferred = () => cm.BuyForAll(kind);
+                if (GUILayout.Button("Eksik olan herkese teklif et", smallButton)) deferred = () => cm.OfferToAll(kind);
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }

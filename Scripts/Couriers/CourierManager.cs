@@ -3,6 +3,11 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
+    /// <summary>Teklif edilen ekipmanı kim öder.</summary>
+    public enum EquipmentPayment { Sirket, YariYariya, Kurye }
+
+    public enum OfferResult { Kabul, Ret, Yapilamadi }
+
     /// <summary>İş başvurusu yapan aday.</summary>
     public class CourierCandidate
     {
@@ -264,14 +269,145 @@ namespace KuryeTycoon
             return true;
         }
 
-        public bool BuyEquipment(Courier c, EquipmentKind k)
+        // ---------- Ekipman teklifi ----------
+        // Kuryeler serbest çalışır: ekipman zorla verilmez, teklif edilir. Kurye kabul ederse şirket ekipmanı alır,
+        // ödeme şekline göre kuryenin payı hesabından kesilir. Reddederse bir süre aynı ekipman tekrar sorulamaz.
+
+        [Header("Ekipman teklifi")]
+        public EquipmentPayment equipmentPayment = EquipmentPayment.Sirket;
+        [Tooltip("Elle yapılan teklif reddedilince aynı ekipmanın tekrar sorulabilmesi için geçmesi gereken gün")]
+        public float manualRetryDays = 1f;
+
+        public static float CourierShare(EquipmentPayment p) =>
+            p == EquipmentPayment.Sirket ? 0f : (p == EquipmentPayment.YariYariya ? 0.5f : 1f);
+
+        public static string PaymentLabel(EquipmentPayment p) =>
+            p == EquipmentPayment.Sirket ? "Şirket öder" : (p == EquipmentPayment.YariYariya ? "Yarı yarıya" : "Kurye öder (hesabından)");
+
+        /// <summary>İndirimli fiyat (operasyon sorumlusu toplu alımda indirim alabilir).</summary>
+        public static long PriceOf(EquipmentKind k, float discount = 0f) =>
+            GameData.Round10(GameData.Equip(k).price * (1f - discount));
+
+        /// <summary>Kuryenin hesabından kesilecek pay.</summary>
+        public static long CourierCost(EquipmentKind k, EquipmentPayment p, float discount = 0f) =>
+            GameData.Round10(PriceOf(k, discount) * CourierShare(p));
+
+        /// <summary>Şirketin cebinden çıkacak kısım.</summary>
+        public static long CompanyCost(EquipmentKind k, EquipmentPayment p, float discount = 0f) =>
+            PriceOf(k, discount) - CourierCost(k, p, discount);
+
+        /// <summary>Bu ekipman şu an bu kuryenin işine ne kadar yarıyor (0,1–1).</summary>
+        public static float Usefulness(Courier c, EquipmentKind k)
         {
-            if (c == null || c.Has(k)) return false;
+            var season = GameClock.I.Season;
+            var w = WeatherSystem.I;
+            bool exposed = c.V.exposed;
+            switch (k)
+            {
+                case EquipmentKind.KisMontu:
+                    if (!exposed) return 0.1f;
+                    return season == Season.Kis || w.IsCold ? 1f : (season == Season.Sonbahar ? 0.6f : 0.2f);
+                case EquipmentKind.Yagmurluk:
+                    if (!exposed) return 0.1f;
+                    return season == Season.Ilkbahar || season == Season.Sonbahar || w.IsRainy ? 1f : 0.3f;
+                case EquipmentKind.YazTisort:
+                    if (!exposed) return 0.1f;
+                    return season == Season.Yaz || w.IsHot ? 1f : (season == Season.Ilkbahar ? 0.5f : 0.2f);
+                case EquipmentKind.Kask:
+                    return exposed ? 1f : 0.1f;
+                default:
+                    return 1f; // termal çanta ve powerbank her zaman işe yarar
+            }
+        }
+
+        static bool PartTime(Courier c) => c.occupation == Occupation.Ogrenci || c.occupation == Occupation.HaftaSonu;
+
+        /// <summary>
+        /// Kuryenin teklifi kabul etme ihtimali (0–1). Ödeme şekli, mevsim, ne kadar kalmayı düşündüğü,
+        /// hesabındaki para, morali ve (kask için) dikkati etkiler. persuasion: operasyon sorumlusunun ikna bonusu.
+        /// </summary>
+        public float AcceptChance(Courier c, EquipmentKind k, EquipmentPayment pay, float persuasion = 0f, float discount = 0f)
+        {
+            float share = CourierShare(pay);
+            long cost = CourierCost(k, pay, discount);
+            if (cost > 0 && c.balance < cost) return 0f;           // hesabında yeterli para yok
+
+            float p = pay == EquipmentPayment.Sirket ? 0.95f : (pay == EquipmentPayment.YariYariya ? 0.75f : 0.45f);
+            float u = Usefulness(c, k);
+            p *= 1f - (1f - u) * (0.2f + 0.5f * share);             // mevsimi değilse: bedavaya çoğu alır, parayla az kişi
+            if (share > 0f)
+            {
+                if (PartTime(c)) p *= 1f - 0.25f * share;            // uzun kalmayı düşünmeyen parasını harcamak istemez
+                if (c.deliveries < 20) p *= 1f - 0.15f * share;      // yeni kurye şirkete henüz güvenmiyor
+                if (cost > 0) p *= Mathf.Lerp(0.7f, 1f, Mathf.Clamp01(c.balance / (cost * 4f))); // parası az olan daha az ister
+            }
+            p *= Mathf.Lerp(0.75f, 1.05f, c.morale);                  // moralsiz kurye şirkete güvenmez
+            if (k == EquipmentKind.Kask) p *= Mathf.Lerp(0.6f, 1f, c.care); // dikkatsizler kaskı rahatsız bulur
+            return Mathf.Clamp01(p + persuasion);
+        }
+
+        /// <summary>Reddetme nedeni (bildirim ve rapor için kısa metin).</summary>
+        public static string RefuseReason(Courier c, EquipmentKind k, EquipmentPayment pay)
+        {
+            long cost = CourierCost(k, pay);
+            if (cost > 0 && c.balance < cost) return "hesabında yeterli para yok";
+            if (Usefulness(c, k) < 0.5f) return c.V.exposed ? "şu an gerek görmüyor" : "arabayla çalıştığı için gerek görmüyor";
+            if (k == EquipmentKind.Kask && c.care < 0.65f) return "kaskı rahatsız buluyor";
+            if (CourierShare(pay) > 0f && PartTime(c)) return "uzun süre çalışmayı düşünmüyor, para harcamak istemiyor";
+            if (c.morale < 0.4f) return "morali bozuk, şirkete güvenmiyor";
+            if (CourierShare(pay) > 0f) return "parasını kendine saklamak istiyor";
+            return "şimdilik istemiyor";
+        }
+
+        public bool OnCooldown(Courier c, EquipmentKind k) =>
+            c.equipRefusedUntil.TryGetValue(k, out float until) && GameClock.I.TotalMinutes < until;
+
+        /// <summary>Reddedilen teklifin tekrar sorulabilmesine kalan süre (metin).</summary>
+        public string CooldownText(Courier c, EquipmentKind k)
+        {
+            if (!c.equipRefusedUntil.TryGetValue(k, out float until)) return "";
+            float h = (until - GameClock.I.TotalMinutes) / 60f;
+            return h >= 24f ? $"{Mathf.CeilToInt(h / 24f)} gün" : $"{Mathf.Max(1, Mathf.CeilToInt(h))} saat";
+        }
+
+        /// <summary>
+        /// Ekipmanı kuryeye teklif eder. Serbest kasa şirketin payına yetmezse teklif yapılmaz.
+        /// Kabulde şirket ekipmanı alır, kuryenin payı hesabından kesilir; retteki kurye retryDays gün tekrar sorulamaz.
+        /// </summary>
+        public OfferResult OfferEquipment(Courier c, EquipmentKind k, bool notify = true, float persuasion = 0f,
+                                          float retryDays = -1f, float discount = 0f)
+        {
+            if (c == null || c.Has(k) || !Couriers.Contains(c) || OnCooldown(c, k)) return OfferResult.Yapilamadi;
             var e = GameData.Equip(k);
-            if (!EconomyManager.I.TrySpend(e.price, $"{e.name} → {c.courierName}", ExpenseCategory.Ekipman)) return false;
+            var eco = EconomyManager.I;
+            var pay = equipmentPayment;
+            long price = PriceOf(k, discount);
+            long courierPart = CourierCost(k, pay, discount);
+            long companyPart = price - courierPart;
+
+            if (eco.FreeCash < companyPart)
+            {
+                if (notify) EventManager.I.Notify($"Yapılamadı: {e.name} → {c.ShortName} (şirket payı {Ft(companyPart)}). Serbest kasa {Ft(eco.FreeCash)}.");
+                return OfferResult.Yapilamadi;
+            }
+
+            if (Random.value >= AcceptChance(c, k, pay, persuasion, discount))
+            {
+                c.equipRefusedUntil[k] = GameClock.I.TotalMinutes + (retryDays >= 0f ? retryDays : manualRetryDays) * 1440f;
+                if (notify) EventManager.I.Notify($"{c.ShortName} {e.name} teklifini reddetti: {RefuseReason(c, k, pay)}.");
+                return OfferResult.Ret;
+            }
+
+            eco.Spend(price, $"{e.name} → {c.courierName}", ExpenseCategory.Ekipman);
+            if (courierPart > 0) eco.ChargeCourier(c, courierPart, $"{e.name} payı: {c.courierName}");
             c.equipment.Add(k);
-            c.morale = Mathf.Min(1f, c.morale + 0.03f);
-            return true;
+            c.equipRefusedUntil.Remove(k);
+            c.morale = Mathf.Min(1f, c.morale + (courierPart == 0 ? 0.03f : 0.01f));
+            if (notify)
+                EventManager.I.Notify(courierPart == 0
+                    ? $"{c.ShortName} {e.name} teklifini kabul etti."
+                    : $"{c.ShortName} {e.name} teklifini kabul etti, {Ft(courierPart)} hesabından kesildi.");
+            return OfferResult.Kabul;
         }
 
         // ---------- Hijyen ----------
@@ -304,13 +440,32 @@ namespace KuryeTycoon
             return true;
         }
 
-        public int BuyForAll(EquipmentKind k)
+        /// <summary>
+        /// Eksik olan herkese teklif et. İşine yaramayanlara (ör. arabalı kuryeye mont) ve
+        /// yakın zamanda reddedenlere sorulmaz. Sonuç tek bildirimde özetlenir.
+        /// </summary>
+        public int OfferToAll(EquipmentKind k)
         {
-            int n = 0;
+            int accepted = 0, skipped = 0;
+            bool noCash = false;
+            var refused = new List<string>();
             foreach (var c in Couriers.ToArray())
-                if (!c.Has(k) && BuyEquipment(c, k)) n++;
-            if (n > 0) EventManager.I.Notify($"{n} kuryeye {GameData.Equip(k).name} gönderildi.");
-            return n;
+            {
+                if (c.Has(k) || OnCooldown(c, k)) continue;
+                if (Usefulness(c, k) < 0.15f) { skipped++; continue; }
+                var r = OfferEquipment(c, k, false);
+                if (r == OfferResult.Kabul) accepted++;
+                else if (r == OfferResult.Ret) refused.Add($"{c.ShortName} ({RefuseReason(c, k, equipmentPayment)})");
+                else { noCash = true; break; } // serbest kasa yetmedi: devam etme
+            }
+            string name = GameData.Equip(k).name;
+            string cashNote = noCash ? $" Serbest kasa yetmediği için kalanlara sorulamadı ({Ft(EconomyManager.I.FreeCash)})." : "";
+            if (accepted == 0 && refused.Count == 0)
+                EventManager.I.Notify((skipped > 0 ? $"{name}: sorulacak kurye yok (arabalılara sorulmaz)." : $"{name}: sorulacak kurye yok.") + cashNote);
+            else
+                EventManager.I.Notify($"{name} teklifi: {accepted} kurye kabul etti" +
+                                      (refused.Count > 0 ? $", {refused.Count} reddetti — {string.Join(", ", refused)}" : "") + "." + cashNote);
+            return accepted;
         }
 
         // ================================================================== gün sonu

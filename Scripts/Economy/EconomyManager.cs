@@ -486,6 +486,19 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>
+        /// Kuryenin hesabından kesinti (ör. ekipman payı). Kasaya para girmez ama kuryeye olan borç azalır,
+        /// bu yüzden serbest kasa artar; kurye kesintisi olarak gelire yazılır.
+        /// </summary>
+        public void ChargeCourier(Courier c, long amount, string label)
+        {
+            if (amount <= 0) return;
+            c.balance -= amount;
+            Year.otherIncome += amount;
+            Today.otherIncome += amount;
+            Log($"+{Ft(amount)} {label} (kurye hesabından kesildi)");
+        }
+
         public void AddIncome(long amount, string label)
         {
             money += amount;
