@@ -95,7 +95,21 @@ namespace KuryeTycoon
         /// <summary>Çantasında taşıdığı (teslim alınmış) paket sayısı.</summary>
         public int CarryingCount => carrying.Count;
         public VehicleDef V => GameData.Vehicle(vehicle);
-        public string ShortName => courierName.Split(' ')[0];
+        /// <summary>Kısa isim; aynı adlı başka kurye varsa soyadının baş harfi eklenir (Elif Y. / Elif K.).</summary>
+        public string ShortName
+        {
+            get
+            {
+                var parts = courierName.Split(' ');
+                string first = parts[0];
+                var cm = CourierManager.I;
+                if (cm != null && parts.Length > 1)
+                    foreach (var o in cm.Couriers)
+                        if (o != this && o.courierName.Split(' ')[0] == first)
+                            return $"{first} {parts[1][0]}.";
+                return first;
+            }
+        }
         public bool IsOnline => State != CourierState.Cevrimdisi && State != CourierState.Izinli;
 
         /// <summary>Toplu sipariş: bu yarıçaptaki (kare) dükkanlar aynı turda toplanır.</summary>

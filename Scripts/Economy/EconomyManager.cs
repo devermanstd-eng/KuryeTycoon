@@ -276,11 +276,19 @@ namespace KuryeTycoon
 
         // ---------- Para hareketleri ----------
 
+        /// <summary>
+        /// Serbest kasa: kasadaki paranın kuryelere ait olan kısmı (hesaplarındaki ve yatacak hakedişler) düşülür,
+        /// kuryelerin elindeki şirket nakdi eklenir. Yatırım ve harcamalar bu paradan yapılmalı.
+        /// </summary>
+        public long FreeCash => money - TotalCourierBalances - TotalPendingPayouts + TotalCashHeld;
+
+        /// <summary>İsteğe bağlı harcamalar (geliştirme, ekipman, sözleşme, bölge, reklam): serbest kasa yetmezse yapılmaz.</summary>
         public bool TrySpend(long amount, string label, ExpenseCategory category = ExpenseCategory.Diger)
         {
-            if (money < amount)
+            if (FreeCash < amount)
             {
-                EventManager.I.Notify($"Yetersiz bakiye: {label} ({Ft(amount)})");
+                EventManager.I.Notify($"Yapılamadı: {label} ({Ft(amount)}). Serbest kasa {Ft(FreeCash)} — kasadaki paranın " +
+                                      $"{Ft(money - FreeCash)}'ı kuryelerin hakedişi, onlara ödenecek.");
                 return false;
             }
             Spend(amount, label, category);
@@ -519,6 +527,7 @@ namespace KuryeTycoon
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
 
             // Kuryeler kendi araçlarıyla, serbest çalışır: şirketin günlük gideri ofis kirası + platform sunucu ücreti
+            DailyCrisisCheck();
             Spend(officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
             int fee = UpgradeManager.I != null ? UpgradeManager.I.PlatformFeePerDay : 0;
             if (fee > 0) Spend(fee, "Platform sunucu ve lisans ücreti", ExpenseCategory.Gelistirme);
@@ -619,6 +628,8 @@ namespace KuryeTycoon
             if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders}" + (s.cashCollected > 0 ? $" · kuryelerden tahsil edilen nakit {Ft(s.cashCollected)}" : ""));
             if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (kuryeden kesilen − iade): {Signed(s.depositNet)}");
             sb.Append($"\nKuryelere borç: hesaplarda {Ft(TotalCourierBalances)} + yatacak {Ft(TotalPendingPayouts)} · kuryelerdeki nakit {Ft(TotalCashHeld)}");
+            sb.Append($"\nSerbest kasa (kurye hakedişleri düşülünce): {Ft(FreeCash)}" + (FreeCash < 0 ? " — DİKKAT: kuryelere ödeme yapamayabilirsin!" : ""));
+            if (bankLoanRemaining > 0) sb.Append($"\nAcil kredi borcu: {Ft(bankLoanRemaining)} (günde {Ft(bankLoanDaily)})");
             if (cashAtLastReport != long.MinValue)
                 sb.Append($"\nKasa: {Ft(money)} (dünden {Signed(money - cashAtLastReport)})");
             else
@@ -945,14 +956,76 @@ namespace KuryeTycoon
             PayTax(amount);
         }
 
+        // ---------- Kasa krizi, acil kredi ve iflas ----------
+        [Header("Kasa krizi")]
+        public int graceDays = 3;               // limitin altında kaç gün kalınca iflas
+        public long emergencyLoanAmount = 400000;
+        public float emergencyLoanInterest = 0.15f;
+        public long bankLoanRemaining;          // acil kredi borcu (her gün taksit kesilir)
+        public long bankLoanDaily;
+        public bool emergencyLoanUsed;
+        int daysUnderLimit;
+        bool crisisWarned;
+
+        /// <summary>Kasa limitin altına inince hemen iflas olmaz: uyarı gelir, acil kredi seçeneği ve birkaç gün süre verilir.</summary>
         void CheckBankruptcy()
         {
-            if (bankrupt || money > bankruptcyLimit) return;
+            if (bankrupt || money > bankruptcyLimit || crisisWarned) return;
+            crisisWarned = true;
+            var ev = new GameEvent("Kasa krizi!",
+                $"Kasa {Ft(money)} oldu: ödemeleri karşılayamıyorsun. {graceDays} gün içinde kasayı {Ft(bankruptcyLimit)} üstüne çıkaramazsan iflas edersin.\n" +
+                $"Kuryelerin hesaplarında {Ft(TotalCourierBalances)}, yatacak {Ft(TotalPendingPayouts)} hakediş var.");
+            if (!emergencyLoanUsed)
+            {
+                long total = (long)(emergencyLoanAmount * (1f + emergencyLoanInterest));
+                ev.Add($"Acil banka kredisi al (+{Ft(emergencyLoanAmount)}, 30 günde {Ft(total)} geri ödenir)", TakeEmergencyLoan);
+            }
+            ev.Add($"Toparlamaya çalış ({graceDays} gün süre)", null);
+            EventManager.I.Push(ev);
+        }
+
+        void TakeEmergencyLoan()
+        {
+            emergencyLoanUsed = true;
+            money += emergencyLoanAmount;
+            bankLoanRemaining = (long)(emergencyLoanAmount * (1f + emergencyLoanInterest));
+            bankLoanDaily = GameData.Round10(bankLoanRemaining / 30f);
+            Log($"+{Ft(emergencyLoanAmount)} acil banka kredisi");
+            if (money > bankruptcyLimit) { crisisWarned = false; daysUnderLimit = 0; }
+        }
+
+        /// <summary>Gece: kredi taksiti ve iflas süresi.</summary>
+        void DailyCrisisCheck()
+        {
+            if (bankLoanRemaining > 0)
+            {
+                long pay = System.Math.Min(bankLoanDaily, bankLoanRemaining);
+                bankLoanRemaining -= pay;
+                money -= pay;
+                Year.byCategory[(int)ExpenseCategory.Diger] += pay;
+                Today.byCategory[(int)ExpenseCategory.Diger] += pay;
+                Log($"−{Ft(pay)} acil kredi taksiti (kalan {Ft(bankLoanRemaining)})");
+            }
+            if (bankrupt) return;
+            if (money > bankruptcyLimit)
+            {
+                if (daysUnderLimit > 0) EventManager.I.Notify("Kasa toparlandı, iflas tehlikesi geçti.");
+                daysUnderLimit = 0;
+                crisisWarned = false;
+                return;
+            }
+            daysUnderLimit++;
+            if (!crisisWarned) CheckBankruptcy();
+            if (daysUnderLimit < graceDays)
+            {
+                EventManager.I.Notify($"Kasa krizi: {graceDays - daysUnderLimit} gün içinde toparlamazsan iflas.");
+                return;
+            }
             bankrupt = true;
             EventManager.I.Push(new GameEvent("İflas!",
-                    $"Şirketin borcu {Ft(-money)} oldu ve iflas ettin.")
+                    $"Şirketin borcu {Ft(-money)} oldu ve {graceDays} gün içinde toparlanamadı. İflas ettin.")
                 .Add("Yeniden başla", () => GameBootstrap.Restart())
-                .Add("Borçla devam et (sadece test için)", () => bankrupt = false));
+                .Add("Borçla devam et (sadece test için)", () => { bankrupt = false; daysUnderLimit = 0; crisisWarned = false; }));
         }
     }
 }

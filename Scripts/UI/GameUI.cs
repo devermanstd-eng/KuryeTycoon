@@ -399,7 +399,7 @@ namespace KuryeTycoon
 
             GUI.Label(new Rect(14, 0, 260, TopBar), CompanyProfile.Name, barTitle);
 
-            string info = $"Kasa: {Ft(eco.money)}    " +
+            string info = $"Kasa: {Ft(eco.money)} (serbest {Ft(eco.FreeCash)})    " +
                           $"İtibar: {CompanyProfile.Reputation:0.0}/5    Çevrimiçi: {CourierManager.I.OnlineCount}/{CourierManager.I.Couriers.Count}    {clock.TimeText}    " +
                           $"{clock.SeasonName} · {weather.Name}";
             if (FamilyLoan.I != null && !FamilyLoan.I.Finished) info += "    " + FamilyLoan.I.TopBarText;
@@ -840,6 +840,9 @@ namespace KuryeTycoon
             GUILayout.Space(6);
             GUILayout.Label($"Aylık maaş toplamı: {Ft(sm.MonthlyPayroll)} · Bu ay şu ana kadar birikmiş maaş: {Ft(sm.AccruedThisMonth)} " +
                             $"(ay sonunda ödenir) · Bu ay çözülen: {sm.handledThisMonth}", label);
+            if (sm.AccruedThisMonth > 0 && sm.AccruedThisMonth > EconomyManager.I.FreeCash)
+                GUILayout.Label($"DİKKAT: ay sonunda ödenecek maaş ({Ft(sm.AccruedThisMonth)}) serbest kasandan ({Ft(EconomyManager.I.FreeCash)}) fazla. " +
+                                "Aynı günlerde kurye ödemeleri de yatacak; iflas riski!", warn);
 
             GUILayout.Space(6);
             GUILayout.Label($"Destek ekibi ({sm.Agents.Count})", header);
@@ -936,6 +939,9 @@ namespace KuryeTycoon
             {
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{cand.name} — Maaş beklentisi {Ft(cand.monthlySalary)}/ay", header);
+                long payrollAfter = SupportManager.I.MonthlyPayroll + cand.monthlySalary;
+                GUILayout.Label($"İşe alırsan aylık toplam maaş: {Ft(payrollAfter)} · serbest kasan: {Ft(EconomyManager.I.FreeCash)}",
+                                payrollAfter > EconomyManager.I.FreeCash ? warn : small);
                 GUILayout.Label($"\"{cand.note}\"", note);
                 Bar("Yetenek", cand.skill, new Color(0.4f, 0.75f, 1f));
                 GUILayout.Label("Yetenekli personel şikayetleri daha ucuza kapatır (iade değerinin %30'u ile %60'ı arası).", small);
@@ -1119,8 +1125,11 @@ namespace KuryeTycoon
             foreach (var p in e.Payouts)
                 GUILayout.Label($"   {p.courierName}: {Ft(p.amount)}{(p.early ? " (erken)" : "")} → {GameClock.I.DateOf(p.payDay)}", small);
             GUILayout.Label($"Kuryelerdeki nakit (şirkete borçları): {Ft(e.TotalCashHeld)}", label);
-            long realCash = e.money - e.TotalCourierBalances - e.TotalPendingPayouts + e.TotalCashHeld;
-            GUILayout.Label($"Kurye borçları düşülünce gerçek kasa: {Ft(realCash)}", realCash < 0 ? warn : small);
+            long realCash = e.FreeCash;
+            GUILayout.Label($"Kurye borçları düşülünce serbest kasa: {Ft(realCash)} (geliştirme, ekipman, sözleşme gibi harcamalar bu paradan yapılır)",
+                            realCash < 0 ? warn : small);
+            if (e.bankLoanRemaining > 0)
+                GUILayout.Label($"Acil banka kredisi: kalan {Ft(e.bankLoanRemaining)} · her gün {Ft(e.bankLoanDaily)} kesilir", warn);
             GUILayout.Space(6);
             if (e.depositsHeld > 0)
                 GUILayout.Label($"Tutulan ekipman depozitoları: {Ft(e.depositsHeld)} (gelir değil; ekipmanı iade eden kuryeye geri ödenir)", small);
