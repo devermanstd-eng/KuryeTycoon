@@ -24,6 +24,7 @@ namespace KuryeTycoon
 
         public int lostToday;       // ücret pahalı geldiği için vazgeçen müşteri
         public int cancelledToday;  // kurye bulunamadığı için iptal (toplam)
+        public int busyLostToday;   // platform "yoğun" gösterdiği için sipariş vermeyen müşteri (itibar düşmez)
         public int cancelledRejectedToday; // bunlardan: kuryeler gördü ama teklifi reddetti
         public readonly int[] cancelledByHour = new int[24];
         public float reputationAtDayStart = -1f;
@@ -46,7 +47,7 @@ namespace KuryeTycoon
             reputationAtDayStart = CompanyProfile.Reputation;
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
+            GameClock.I.OnNewDay += () => { busyLostToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
         }
 
         /// <summary>
@@ -261,10 +262,33 @@ namespace KuryeTycoon
             return CustomerType.Zor;
         }
 
+        /// <summary>
+        /// Wolt gibi yoğunluk modu: bekleyen sipariş boştaki kuryeleri çok aşarsa uygulama müşteriye
+        /// "yoğunluk var, teslimat uzun sürebilir" gösterir; bir kısmı hiç sipariş vermez. İtibar düşmez,
+        /// ama o sipariş de kaybolur.
+        /// </summary>
+        public int BusyExcess
+        {
+            get
+            {
+                int free = 0;
+                foreach (var c in CourierManager.I.Couriers) if (c.Available && c.CanTakeMore) free++;
+                return Pending.Count - free - 2;
+            }
+        }
+        public bool IsBusy => BusyExcess > 0;
+
         void TrySpawn()
         {
             var shop = PickShop();
             if (shop == null) return;
+
+            int excess = BusyExcess;
+            if (excess > 0 && Random.value < Mathf.Min(0.75f, excess * 0.12f))
+            {
+                busyLostToday++;
+                return;
+            }
 
             var map = CityMap.I;
             var custTile = map.RandomCustomerTile(shop.tile);

@@ -109,7 +109,7 @@ namespace KuryeTycoon
         // Haftalık rapor için biriken veriler
         PeriodStats week = new PeriodStats();
         int weekStartDay = -1;
-        int weekBatched, weekCancelled, weekLost, weekHeavyLost, weekCancelledRejected;
+        int weekBatched, weekCancelled, weekLost, weekHeavyLost, weekCancelledRejected, weekBusyLost;
         readonly int[] weekCancelByHour = new int[24];
         float repAtWeekStart = -1f;
         long cashAtWeekStart = long.MinValue;
@@ -575,6 +575,7 @@ namespace KuryeTycoon
                     extra.Add($"{om.cancelledToday} iptal ({string.Join(", ", parts)})");
                 }
                 if (om.lostToday > 0) extra.Add($"{om.lostToday} müşteri ücret pahalı diye vazgeçti");
+                if (om.busyLostToday > 0) extra.Add($"{om.busyLostToday} müşteri yoğunluk uyarısını görüp sipariş vermedi");
                 if (om.heavyLostToday > 0) extra.Add($"{om.heavyLostToday} taşıyacak kurye yoktu");
                 if (extra.Count > 0) sb.Append(" · " + string.Join(" · ", extra));
             }
@@ -683,6 +684,7 @@ namespace KuryeTycoon
                 weekBatched += om.batchedToday;
                 weekCancelled += om.cancelledToday;
                 weekCancelledRejected += om.cancelledRejectedToday;
+                weekBusyLost += om.busyLostToday;
                 for (int h = 0; h < 24; h++) weekCancelByHour[h] += om.cancelledByHour[h];
                 if (repAtWeekStart < 0f) repAtWeekStart = om.reputationAtDayStart >= 0f ? om.reputationAtDayStart : CompanyProfile.Reputation;
                 weekLost += om.lostToday;
@@ -706,6 +708,7 @@ namespace KuryeTycoon
             if (weekCancelled > 0)
                 extra.Add($"{weekCancelled} iptal" + (weekCancelledRejected > 0 ? $" (bunun {weekCancelledRejected}'i kuryeler reddettiği için)" : ""));
             if (weekLost > 0) extra.Add($"{weekLost} müşteri vazgeçti");
+            if (weekBusyLost > 0) extra.Add($"{weekBusyLost} müşteri yoğunluk yüzünden sipariş vermedi");
             if (weekHeavyLost > 0) extra.Add($"{weekHeavyLost} taşıyacak kurye yoktu");
             if (extra.Count > 0) sb.Append("\n   " + string.Join(" · ", extra));
             string whint = CancelHint(weekCancelByHour, false);
@@ -784,7 +787,7 @@ namespace KuryeTycoon
             lastWeekNet = net;
             week = new PeriodStats();
             weekStartDay = clock.Day;
-            weekBatched = weekCancelled = weekLost = weekHeavyLost = weekCancelledRejected = 0;
+            weekBatched = weekCancelled = weekLost = weekHeavyLost = weekCancelledRejected = weekBusyLost = 0;
             System.Array.Clear(weekCancelByHour, 0, 24);
             repAtWeekStart = CompanyProfile.Reputation;
             cashAtWeekStart = money;

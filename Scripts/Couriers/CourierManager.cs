@@ -106,9 +106,10 @@ namespace KuryeTycoon
         static Occupation RandomOccupation()
         {
             float r = Random.value;
-            if (r < 0.20f) return Occupation.TamZamanli;
-            if (r < 0.40f) return Occupation.OfisCalisani;
-            if (r < 0.65f) return Occupation.Ogrenci;
+            // Gerçekte kuryelerin çoğu geçimini bu işten sağlar; öğle yoğunluğunu da onlar karşılar
+            if (r < 0.35f) return Occupation.TamZamanli;
+            if (r < 0.50f) return Occupation.OfisCalisani;
+            if (r < 0.70f) return Occupation.Ogrenci;
             if (r < 0.80f) return Occupation.HaftaSonu;
             if (r < 0.90f) return Occupation.Vardiyali;
             return Occupation.Emekli;
