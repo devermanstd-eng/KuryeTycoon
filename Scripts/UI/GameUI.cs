@@ -1200,6 +1200,26 @@ namespace KuryeTycoon
             e.showWeeklyReport = GUILayout.Toggle(e.showWeeklyReport, " Her Pazar gecesi haftalık raporu göster", toggle);
             GUILayout.Space(8);
 
+            GUILayout.Label("Kurye karakterleri (3D)", header);
+            int cnt = CharacterVisuals.Count;
+            if (cnt == 0)
+            {
+                GUILayout.Label("Karakter modeli bulunamadı; kuryeler daire olarak çiziliyor. Kurmak için: Asset Store'dan karakter paketini içe aktar, " +
+                                "sonra Unity menüsünden Kurye Tycoon > Karakterleri Kur. (Ayrıntı KURULUM.md'de.)", small);
+            }
+            else
+            {
+                GUILayout.Label($"{cnt} karakter modeli yüklü.", small);
+                GUILayout.BeginHorizontal();
+                int mode = CharacterVisuals.Mode;
+                if (SelectButton(mode == 0, "Işıklı", smallButton)) deferred = () => { CharacterVisuals.Mode = 0; CharacterVisuals.Refresh(); };
+                if (SelectButton(mode == 1, "Düz renk", smallButton)) deferred = () => { CharacterVisuals.Mode = 1; CharacterVisuals.Refresh(); };
+                if (SelectButton(mode == 2, "Kapalı (daire)", smallButton)) deferred = () => { CharacterVisuals.Mode = 2; CharacterVisuals.Refresh(); };
+                GUILayout.EndHorizontal();
+                GUILayout.Label("Karakterler siyah/karanlık görünürse \"Düz renk\"i seç. Pembe görünürse malzemeler projenin render pipeline'ına çevrilmeli (KURULUM.md).", small);
+            }
+            GUILayout.Space(8);
+
             GUILayout.Label("Para birimi", header);
             GUILayout.BeginHorizontal();
             if (SelectButton(GameData.DisplayCurrency == Currency.Forint, "Forint (Ft)", smallButton))

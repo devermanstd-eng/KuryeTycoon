@@ -129,6 +129,9 @@ namespace KuryeTycoon
         int lastDecisionHour = -1;
         SpriteRenderer body;
         SpriteRenderer ring;
+        GameObject model;       // isteğe bağlı 3D karakter (CharacterVisuals)
+        float modelFacing = 180f;
+        Vector2 lastModelPos;
 
         public void Init(CourierCandidate c, Vector2Int start)
         {
@@ -153,11 +156,21 @@ namespace KuryeTycoon
 
             ring = SpriteFactory.Create("Halka", transform, true, CompanyProfile.Secondary, Vector3.zero, 0.75f, 10);
             body = SpriteFactory.Create("Gövde", transform, true, CompanyProfile.Primary, Vector3.zero, 0.55f, 11);
+            RebuildModel();
 
             bool online = Preference() >= 0.5f;
             State = online ? CourierState.Bosta : CourierState.Cevrimdisi;
             offlineReason = online ? "" : OccupationStatus;
             lastDecisionHour = GameClock.I.Hour;
+        }
+
+        /// <summary>3D karakter modelini (yeniden) oluşturur; model yoksa daire gösterilir.</summary>
+        public void RebuildModel()
+        {
+            if (model != null) Destroy(model);
+            model = CharacterVisuals.Spawn(transform, courierName);
+            if (body != null) body.enabled = model == null || !IsOnline;
+            lastModelPos = Position;
         }
 
         // ================================================================== meslek / günlük hayat
@@ -840,6 +853,14 @@ namespace KuryeTycoon
             var p = CompanyProfile.Primary;
             body.color = IsOnline ? (State == CourierState.Mola ? Color.Lerp(p, Color.gray, 0.5f) : p)
                                   : new Color(p.r * 0.5f, p.g * 0.5f, p.b * 0.5f, 0.35f);
+
+            // 3D karakter: çevrimiçiyken görünür ve yürüdüğü yöne döner; çevrimdışıyken soluk daire kalır
+            if (model != null)
+            {
+                CharacterVisuals.UpdateModel(model, Position - lastModelPos, IsOnline, ref modelFacing);
+                body.enabled = !IsOnline;
+            }
+            lastModelPos = Position;
         }
 
         void Work(float dm)

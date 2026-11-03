@@ -23,6 +23,22 @@ Ayarları Inspector'dan değiştirmek istersen boş bir GameObject'e `GameBootst
 3. Kısayollar: **Boşluk** = duraklat, **1–8** = 1x / 2x / 4x / 8x / 16x / 32x / 64x / 128x hız. Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.
 4. Game penceresi küçükse üstteki **Free Aspect**'i **Full HD (1920x1080)** yap.
 
+## 5. (İsteğe bağlı) 3D kurye karakterleri
+
+Kuryeler varsayılan olarak daire çizilir. Asset Store'daki **City People FREE Samples** (ücretsiz) paketiyle 3D karakter olarak görünebilirler.
+Modeller lisans gereği **repoya konmaz**; her bilgisayarda (Windows, Mac, arkadaşların) bir kez kurulur:
+
+1. Tarayıcıda paket sayfasında **Add to My Assets**.
+2. Unity'de **Window > Package Manager** → sol üstte **My Assets** → *City People FREE Samples* → **Download** → **Import** → açılan pencerede **Import**.
+3. Unity üst menüsünden **Kurye Tycoon > Karakterleri Kur (City People)**. Prefablar `Assets/Resources/KuryeKarakterleri` klasörüne kopyalanır.
+4. Play: çevrimiçi kuryeler 3D karakter olarak yürür, gittiği yöne döner; çevrimdışı olanlar soluk daire olarak kalır.
+
+Sorun olursa:
+- **Pembe karakter:** Window > Rendering > Render Pipeline Converter → *Material Upgrade* işaretle → Initialize And Convert.
+- **Siyah/karanlık karakter:** oyunda Ayarlar > Kurye karakterleri > **Düz renk**.
+- **Menü "bulunamadı" diyorsa:** Project penceresinde paketin karakter prefablarının olduğu klasörü seç → **Kurye Tycoon > Seçili Klasördeki Karakterleri Kur**.
+- Kapatmak için Ayarlar > **Kapalı (daire)**; tamamen kaldırmak için **Kurye Tycoon > Karakterleri Kaldır**.
+
 ## Oyunda neler var
 | Sistem | Ne yapar |
 |---|---|
