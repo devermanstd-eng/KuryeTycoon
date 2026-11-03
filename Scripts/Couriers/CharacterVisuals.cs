@@ -23,7 +23,7 @@ namespace KuryeTycoon
             set { PlayerPrefs.SetInt(PrefKey, value); PlayerPrefs.Save(); }
         }
 
-        public static float Scale = 0.45f;   // modelin harita karesine göre boyu
+        public static float TargetHeight = 0.9f;   // karakterin haritadaki boyu (1 = bir kare)
         static GameObject[] prefabs;
         static Light sun;
 
@@ -45,20 +45,47 @@ namespace KuryeTycoon
             int idx = Mathf.Abs(seedName.GetHashCode()) % prefabs.Length;
             var go = Object.Instantiate(prefabs[idx], parent, false);
             go.name = "Karakter";
-            go.transform.localScale = Vector3.one * Scale;
-            go.transform.localPosition = new Vector3(0f, -0.35f, -1f); // ayaklar karenin altında, sprite'ların önünde
+            go.transform.localScale = Vector3.one;
+            go.transform.localPosition = new Vector3(0f, 0f, -1f);       // sprite'ların önünde
             go.transform.localRotation = Quaternion.Euler(0f, 180f, 0f); // yüzü kameraya dönük
 
             foreach (var col in go.GetComponentsInChildren<Collider>()) Object.Destroy(col);
             foreach (var rb in go.GetComponentsInChildren<Rigidbody>()) Object.Destroy(rb);
-            foreach (var r in go.GetComponentsInChildren<Renderer>())
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            foreach (var r in renderers)
             {
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.receiveShadows = false;
+                // 2D Renderer çizim sırasını sortingOrder'a göre yapar: haritanın ve dairelerin üstünde çizilsin
+                r.sortingOrder = 20;
+                if (r is SkinnedMeshRenderer smr) smr.updateWhenOffscreen = true;
                 if (Mode == 1) MakeUnlit(r);
+            }
+
+            // Paketteki modelin boyu ne olursa olsun (cm/m) haritada aynı boyda görünsün
+            var b = CombinedBounds(renderers);
+            if (b.size.y > 0.0001f)
+            {
+                float s = TargetHeight / b.size.y;
+                go.transform.localScale = Vector3.one * s;
+                b = CombinedBounds(renderers);
+                float feetY = parent.position.y - 0.4f;
+                go.transform.position += new Vector3(parent.position.x - b.center.x, feetY - b.min.y, 0f);
             }
             if (Mode == 0) EnsureLight();
             return go;
+        }
+
+        static Bounds CombinedBounds(Renderer[] rs)
+        {
+            bool any = false;
+            var b = new Bounds();
+            foreach (var r in rs)
+            {
+                if (!any) { b = r.bounds; any = true; }
+                else b.Encapsulate(r.bounds);
+            }
+            return b;
         }
 
         /// <summary>2D renderer'da ışıklı modeller karanlık görünürse: dokuyu ve rengi koruyan düz (unlit) malzeme.</summary>
