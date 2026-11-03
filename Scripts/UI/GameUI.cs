@@ -1270,6 +1270,31 @@ namespace KuryeTycoon
             e.showWeeklyReport = GUILayout.Toggle(e.showWeeklyReport, " Her Pazar gecesi haftalık raporu göster", toggle);
             GUILayout.Space(8);
 
+            GUILayout.Label("3D şehir (yakınlaştırınca)", header);
+            int nb = City3D.PackBuildingCount, nt = City3D.PackTreeCount;
+            if (nb == 0)
+            {
+                GUILayout.Label("Şehir paketi kurulu değil: yakınlaştırınca basit kutu binalar görünür. Kurmak için Asset Store'dan şehir paketini " +
+                                "(ör. SimplePoly City) içe aktar, sonra Unity menüsünden Kurye Tycoon > Şehir Paketini Kur. (Ayrıntı KURULUM.md'de.)", small);
+            }
+            else
+            {
+                GUILayout.Label($"Şehir paketi: {nb} bina, {nt} ağaç.", small);
+                bool use = GUILayout.Toggle(City3D.UsePack, " Paketin binalarını kullan (kapalıysa kutu binalar)", toggle);
+                if (use != City3D.UsePack) deferred = () => { City3D.UsePack = use; if (City3D.I != null) City3D.I.Rebuild(); };
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Bina cephesi düzeltme:", small, GUILayout.Width(150));
+                foreach (int a in new[] { 0, 90, 180, 270 })
+                {
+                    int ang = a;
+                    if (SelectButton(City3D.FrontOffset == ang, $"{ang}°", smallButton))
+                        deferred = () => { City3D.FrontOffset = ang; if (City3D.I != null) City3D.I.Rebuild(); };
+                }
+                GUILayout.EndHorizontal();
+                GUILayout.Label("Binaların arkası yola bakıyorsa 180°'yi, yanı bakıyorsa 90° ya da 270°'yi dene.", small);
+            }
+            GUILayout.Space(8);
+
             GUILayout.Label("Kurye karakterleri (3D)", header);
             int cnt = CharacterVisuals.Count;
             if (cnt == 0)

@@ -106,6 +106,25 @@ namespace KuryeTycoon
         static float ShopDemand(Shop s) =>
             s.def.weight * DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend);
 
+        /// <summary>Yakınlaşınca müşteri noktaları binanın çatısına oturur (3D binaların içinde kalmasın).</summary>
+        void LateUpdate()
+        {
+            if (City3D.I == null) return;
+            LiftMarkers(Pending);
+            LiftMarkers(Active);
+        }
+
+        static void LiftMarkers(List<Order> list)
+        {
+            foreach (var o in list)
+            {
+                if (o.marker == null) continue;
+                var p = o.marker.transform.position;
+                p.z = -City3D.I.HeightAt(Vector2Int.RoundToInt(new Vector2(p.x, p.y))) - 0.03f;
+                o.marker.transform.position = p;
+            }
+        }
+
         void Update()
         {
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;

@@ -39,6 +39,22 @@ Sorun olursa:
 - **Menü "bulunamadı" diyorsa:** Project penceresinde paketin karakter prefablarının olduğu klasörü seç → **Kurye Tycoon > Seçili Klasördeki Karakterleri Kur**.
 - Kapatmak için Ayarlar > **Kapalı (daire)**; tamamen kaldırmak için **Kurye Tycoon > Karakterleri Kaldır**.
 
+## 6. (İsteğe bağlı) 3D şehir paketi
+
+Yakınlaştırınca yükselen şehir varsayılan olarak basit kutu binalardır. Asset Store'daki ücretsiz **SimplePoly City - Low Poly Assets** paketiyle gerçek binalar ve ağaçlar görünür.
+Bu modeller de lisans gereği repoya konmaz; her bilgisayarda bir kez:
+
+1. Paket sayfasında **Add to My Assets**.
+2. Unity'de **Window > Package Manager** → **My Assets** → *SimplePoly City* → **Download** → **Import** → **Import**.
+3. Paket eski (Unity 5) olduğu için malzemeleri çevir: **Window > Rendering > Render Pipeline Converter** → üstte *Built-in to URP* → **Material Upgrade** işaretle → **Initialize Converters** → **Convert Assets**.
+4. **Kurye Tycoon > Şehir Paketini Kur (SimplePoly City)**. Prefablar isimlerine göre `Assets/Resources/SehirPaketi/Binalar`, `/Agaclar`, `/Yollar` klasörlerine ayrılır.
+5. Yeni oyun başlat ve yakınlaş.
+
+Ayarlar:
+- Yanlış klasöre düşen prefabı (ör. Binalar'da araba) Project penceresinde silebilir ya da taşıyabilirsin.
+- Binaların arkası yola bakıyorsa oyunda **Ayarlar > 3D şehir > Bina cephesi düzeltme**.
+- Yollar ve arabalar şimdilik paketten değil; yollar düz harita olarak kalır.
+
 ## Oyunda neler var
 | Sistem | Ne yapar |
 |---|---|
