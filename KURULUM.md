@@ -37,6 +37,7 @@ Ayarları Inspector'dan değiştirmek istersen boş bir GameObject'e `GameBootst
 | Kâr kuralı | Teslimat ücreti = taban + km ücreti × km; siparişi büyük ihtimalle götürecek kuryenin (o ağırlığı taşıyabilen, müsait en ucuz kurye) ücretini + min. kârı karşılamıyorsa fark 'ek' olarak eklenir. Atamada sipariş başı en az 150 Ft kâr şartı (Ayarlar'dan değiştirilir); 15 dk'dan uzun bekleyen siparişte şart 0'a iner, zararına iş yine yapılmaz. Sipariş kartında ücret dökümü görünür |
 | Siparişler | Sözleşmeli dükkanlardan gelir; pahalı ücrette müşteri vazgeçer, kurye bulunmazsa iptal olur |
 | Dükkanlar | Burger Queen, Döner Kral, Starbocks, Szpar Express, Market 24, McDanold's, Pizza Hat, InterSzpar, KFG, Sushi Samurai |
+| Talep saatleri | Hafta içi yemek: 10–13 ofis / home office öğle zirvesi, 16'dan sonra iş çıkışı, 18–21 akşam yemeği zirvesi. Hafta içi market: 16–20 iş çıkışı (evde yemek yapacaklar). Hafta sonu: sabahlar sakin; yemek öğle ve akşam, market öğleden önce/sonra. Gece yarısından sonra çok az sipariş |
 | Sipariş ağırlığı | Bisiklet, scooter, motor ve araba 20 kg'a kadar; 20 kg ve üstü "ağır sipariş", sadece araba. Taşıyacak kurye yoksa sipariş alınamaz |
 | Olaylar | Eksik ürün, hasarlı sipariş, kaza (sigortalıysa sigorta öder), araç arızası, kuryenin yeni araç alması, hastalık, kuryenin ayrılması, yavaş dükkan, viral yorum, komisyon teklifi |
 | Ekipman | Kış montu, yağmurluk, yaz tişörtü, termal çanta, kask, powerbank; eksikse hız, hastalık, ıslak paket, kapanan telefon, kaza süresi olarak hissedilir |

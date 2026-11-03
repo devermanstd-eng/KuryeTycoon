@@ -44,11 +44,37 @@ namespace KuryeTycoon
             GameClock.I.OnNewDay += () => { lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
         }
 
-        static float HourCurve(int h)
+        /// <summary>
+        /// Saate göre talep çarpanı, dükkan türüne göre ayrı:
+        /// • Yemek (hafta içi): 10–13 ofisten / home office'ten öğle siparişi zirvesi, 16'dan sonra iş çıkışı, akşam yemeği zirvesi.
+        /// • Market (hafta içi): 16–20 iş çıkışı, evde yemek yapacaklar için en yoğun saatler.
+        /// • Hafta sonu: sabahlar çok sakin; yemek öğle ve akşam, market öğleden önce/sonra alışveriş.
+        /// </summary>
+        public static float DemandCurve(ShopDef shop, int h, bool weekend)
         {
-            if (GameClock.I.IsWeekend)
+            if (shop.isMarket)
             {
-                // Hafta sonu: gece ve sabah çok sakin (insanlar uyuyor), öğle ve akşam yoğun
+                if (weekend)
+                {
+                    if (h < 8) return 0.02f;
+                    if (h < 10) return 0.3f;
+                    if (h < 14) return 1.2f;   // hafta sonu alışverişi
+                    if (h < 18) return 1.0f;
+                    if (h < 21) return 0.9f;
+                    return 0.2f;
+                }
+                if (h < 6) return 0.02f;
+                if (h < 8) return 0.2f;
+                if (h < 10) return 0.5f;
+                if (h < 13) return 0.7f;
+                if (h < 16) return 0.6f;
+                if (h < 20) return 1.8f;       // iş çıkışı: evde yemek yapacaklar
+                if (h < 22) return 0.8f;
+                return 0.2f;
+            }
+
+            if (weekend)
+            {
                 if (h < 2) return 0.08f;
                 if (h < 8) return 0.02f;
                 if (h < 11) return 0.12f;
@@ -57,18 +83,22 @@ namespace KuryeTycoon
                 if (h < 22) return 1.6f;
                 return 0.4f;
             }
-            // Hafta içi: gece yarısından sonra ve sabah erken çok az sipariş
             if (h < 2) return 0.1f;
             if (h < 6) return 0.03f;
             if (h < 8) return 0.15f;
             if (h < 10) return 0.4f;
-            if (h < 11) return 0.7f;
-            if (h < 14) return 1.4f;
-            if (h < 17) return 0.7f;
-            if (h < 21) return 1.5f;
-            if (h < 23) return 0.7f;
+            if (h < 13) return 1.8f;           // ofis / home office öğle siparişleri
+            if (h < 14) return 1.0f;
+            if (h < 16) return 0.6f;
+            if (h < 18) return 1.1f;           // iş çıkışı başlıyor
+            if (h < 21) return 1.7f;           // akşam yemeği
+            if (h < 23) return 0.8f;
             return 0.3f;
         }
+
+        /// <summary>Dükkanın şu anki talep ağırlığı (yoğunluk × saat çarpanı).</summary>
+        static float ShopDemand(Shop s) =>
+            s.def.weight * DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend);
 
         void Update()
         {
@@ -76,11 +106,13 @@ namespace KuryeTycoon
             float dm = GameClock.I.DeltaMinutes;
             if (dm <= 0f) return;
 
-            int contracted = 0;
+            // Her sözleşmeli dükkan kendi türüne göre (yemek / market) saatlik talep üretir
+            float demand = 0f;
             foreach (var s in CityMap.I.Shops)
-                if (s.contracted && CityMap.I.IsUnlocked(s.tile.x)) contracted++;
+                if (s.contracted && CityMap.I.IsUnlocked(s.tile.x))
+                    demand += DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend);
 
-            float rate = baseRatePerShop * contracted * HourCurve(GameClock.I.Hour)
+            float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier;
             spawnAcc += rate * dm;
             while (spawnAcc >= 1f)
@@ -106,14 +138,14 @@ namespace KuryeTycoon
         {
             float total = 0f;
             foreach (var s in CityMap.I.Shops)
-                if (s.contracted && CityMap.I.IsUnlocked(s.tile.x)) total += s.def.weight;
+                if (s.contracted && CityMap.I.IsUnlocked(s.tile.x)) total += ShopDemand(s);
             if (total <= 0f) return null;
 
             float r = Random.value * total;
             foreach (var s in CityMap.I.Shops)
             {
                 if (!s.contracted || !CityMap.I.IsUnlocked(s.tile.x)) continue;
-                r -= s.def.weight;
+                r -= ShopDemand(s);
                 if (r <= 0f) return s;
             }
             return null;
