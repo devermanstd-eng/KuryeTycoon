@@ -833,7 +833,7 @@ namespace KuryeTycoon
             GUILayout.Space(8);
             GUILayout.Label("Haftalık hedef ödülü", header);
             camp.weeklyChallenge = GUILayout.Toggle(camp.weeklyChallenge, " Haftalık hedef açık (her Pazartesi sıfırlanır)", toggle);
-            camp.weeklyTarget = IntSlider("Hedef paket", camp.weeklyTarget, 10, 200, 5);
+            camp.weeklyTarget = IntSlider("Hedef paket", camp.weeklyTarget, 20, 400, 10);
             camp.weeklyReward = MoneySlider("Ödül", camp.weeklyReward, 0, 100000, 1000);
 
             // Ödülün kârla karşılaştırması
@@ -1030,10 +1030,10 @@ namespace KuryeTycoon
             GUILayout.Label("Örnek hesap (şu anki ayarlarla)", header);
             const int basket = 5000;
             const int tiles = 15;
-            int commission = Mathf.RoundToInt(basket * 0.10f);
+            int commission = Mathf.RoundToInt(basket * 0.22f);
             int fee = e.QuoteDeliveryFee(commission, tiles, 2f);
             int pay = e.MaxCourierPay(tiles, 2f);
-            GUILayout.Label($"Sepet {Ft(basket)}, komisyon %10 = {Ft(commission)}", small);
+            GUILayout.Label($"Sepet {Ft(basket)}, komisyon %22 = {Ft(commission)}", small);
             GUILayout.Label($"Mesafe {GameData.KmText(tiles)} → teslimat ücreti {Ft(fee)}", small);
             GUILayout.Label($"Şirket geliri = {Ft(commission + fee)}", small);
             GUILayout.Label($"En pahalı kuryeye ödeme = {Ft(pay)} → kâr {Ft(commission + fee - pay)}", label);

@@ -62,7 +62,7 @@ namespace KuryeTycoon
         [Header("Fiyatlandırma (müşteriden)")]
         public int baseFee = 590;
         public int feePerKm = 150;
-        public int minProfit = 200;
+        public int minProfit = 300;
 
         [Header("Kurye bonusları")]
         public float bonusMultiplier = 1f;

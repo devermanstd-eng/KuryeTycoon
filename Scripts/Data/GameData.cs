@@ -28,7 +28,7 @@ namespace KuryeTycoon
         public Color color;
         public float prepMinutes;
         public int basketMin, basketMax;
-        public float commission;       // sözleşmedeki komisyon oranı
+        public float commission;       // sözleşmedeki komisyon oranı (yemek %20–25, market %12–15)
         public float weight;           // sipariş yoğunluğu
         public int contractCost;       // sözleşme imza bedeli (0 = başlangıçta sözleşmeli)
         public int unlockLevel;        // hangi bölgede
@@ -62,18 +62,18 @@ namespace KuryeTycoon
         public static readonly ShopDef[] Shops =
         {
             // Bölge 1 — Merkez Mahalle
-            new ShopDef { name = "Burger Queen",  color = new Color(0.95f, 0.45f, 0.15f), prepMinutes = 8,  basketMin = 2500, basketMax = 6000,  commission = 0.10f, weight = 1.2f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.5f, kgMax = 2.5f },
-            new ShopDef { name = "Döner Kral",    color = new Color(0.80f, 0.20f, 0.20f), prepMinutes = 6,  basketMin = 1800, basketMax = 4500,  commission = 0.12f, weight = 1.0f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.4f, kgMax = 2f },
-            new ShopDef { name = "Starbocks",     color = new Color(0.10f, 0.55f, 0.35f), prepMinutes = 5,  basketMin = 1500, basketMax = 4000,  commission = 0.12f, weight = 0.8f, contractCost = 20000,  unlockLevel = 1, hotFood = false, kgMin = 0.3f, kgMax = 1.5f },
-            new ShopDef { name = "Szpar Express", color = new Color(0.15f, 0.62f, 0.30f), prepMinutes = 10, basketMin = 3000, basketMax = 15000, commission = 0.08f, weight = 0.7f, contractCost = 30000,  unlockLevel = 1, hotFood = false, kgMin = 2f, kgMax = 18f },
-            new ShopDef { name = "Market 24",     color = new Color(0.25f, 0.45f, 0.90f), prepMinutes = 5,  basketMin = 3000, basketMax = 12000, commission = 0.08f, weight = 0.6f, contractCost = 25000,  unlockLevel = 1, hotFood = false, kgMin = 1f, kgMax = 12f },
+            new ShopDef { name = "Burger Queen",  color = new Color(0.95f, 0.45f, 0.15f), prepMinutes = 8,  basketMin = 2500, basketMax = 6000,  commission = 0.22f, weight = 1.2f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.5f, kgMax = 2.5f },
+            new ShopDef { name = "Döner Kral",    color = new Color(0.80f, 0.20f, 0.20f), prepMinutes = 6,  basketMin = 1800, basketMax = 4500,  commission = 0.25f, weight = 1.0f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.4f, kgMax = 2f },
+            new ShopDef { name = "Starbocks",     color = new Color(0.10f, 0.55f, 0.35f), prepMinutes = 5,  basketMin = 1500, basketMax = 4000,  commission = 0.20f, weight = 0.8f, contractCost = 20000,  unlockLevel = 1, hotFood = false, kgMin = 0.3f, kgMax = 1.5f },
+            new ShopDef { name = "Szpar Express", color = new Color(0.15f, 0.62f, 0.30f), prepMinutes = 10, basketMin = 3000, basketMax = 15000, commission = 0.15f, weight = 0.7f, contractCost = 30000,  unlockLevel = 1, hotFood = false, kgMin = 2f, kgMax = 18f },
+            new ShopDef { name = "Market 24",     color = new Color(0.25f, 0.45f, 0.90f), prepMinutes = 5,  basketMin = 3000, basketMax = 12000, commission = 0.15f, weight = 0.6f, contractCost = 25000,  unlockLevel = 1, hotFood = false, kgMin = 1f, kgMax = 12f },
             // Bölge 2 — Doğu İlçesi
-            new ShopDef { name = "McDanold's",    color = new Color(0.95f, 0.80f, 0.10f), prepMinutes = 7,  basketMin = 2500, basketMax = 6500,  commission = 0.10f, weight = 1.4f, contractCost = 60000,  unlockLevel = 2, hotFood = true, kgMin = 0.5f, kgMax = 2.5f },
-            new ShopDef { name = "Pizza Hat",     color = new Color(0.85f, 0.10f, 0.35f), prepMinutes = 18, basketMin = 3500, basketMax = 9000,  commission = 0.11f, weight = 1.0f, contractCost = 50000,  unlockLevel = 2, hotFood = true, kgMin = 1f, kgMax = 4f },
-            new ShopDef { name = "InterSzpar",    color = new Color(0.85f, 0.12f, 0.18f), prepMinutes = 20, basketMin = 8000, basketMax = 45000, commission = 0.07f, weight = 0.8f, contractCost = 70000,  unlockLevel = 2, hotFood = false, kgMin = 6f, kgMax = 40f },
+            new ShopDef { name = "McDanold's",    color = new Color(0.95f, 0.80f, 0.10f), prepMinutes = 7,  basketMin = 2500, basketMax = 6500,  commission = 0.20f, weight = 1.4f, contractCost = 60000,  unlockLevel = 2, hotFood = true, kgMin = 0.5f, kgMax = 2.5f },
+            new ShopDef { name = "Pizza Hat",     color = new Color(0.85f, 0.10f, 0.35f), prepMinutes = 18, basketMin = 3500, basketMax = 9000,  commission = 0.22f, weight = 1.0f, contractCost = 50000,  unlockLevel = 2, hotFood = true, kgMin = 1f, kgMax = 4f },
+            new ShopDef { name = "InterSzpar",    color = new Color(0.85f, 0.12f, 0.18f), prepMinutes = 20, basketMin = 8000, basketMax = 45000, commission = 0.12f, weight = 0.8f, contractCost = 70000,  unlockLevel = 2, hotFood = false, kgMin = 6f, kgMax = 40f },
             // Bölge 3 — Sanayi & Kampüs
-            new ShopDef { name = "KFG",           color = new Color(0.70f, 0.15f, 0.10f), prepMinutes = 10, basketMin = 3000, basketMax = 7500,  commission = 0.11f, weight = 1.1f, contractCost = 80000,  unlockLevel = 3, hotFood = true, kgMin = 0.7f, kgMax = 3f },
-            new ShopDef { name = "Sushi Samurai", color = new Color(0.95f, 0.95f, 0.95f), prepMinutes = 20, basketMin = 5000, basketMax = 15000, commission = 0.13f, weight = 0.7f, contractCost = 100000, unlockLevel = 3, hotFood = false, kgMin = 0.5f, kgMax = 2.5f },
+            new ShopDef { name = "KFG",           color = new Color(0.70f, 0.15f, 0.10f), prepMinutes = 10, basketMin = 3000, basketMax = 7500,  commission = 0.22f, weight = 1.1f, contractCost = 80000,  unlockLevel = 3, hotFood = true, kgMin = 0.7f, kgMax = 3f },
+            new ShopDef { name = "Sushi Samurai", color = new Color(0.95f, 0.95f, 0.95f), prepMinutes = 20, basketMin = 5000, basketMax = 15000, commission = 0.25f, weight = 0.7f, contractCost = 100000, unlockLevel = 3, hotFood = false, kgMin = 0.5f, kgMax = 2.5f },
         };
 
         public static readonly EquipmentDef[] Equipment =

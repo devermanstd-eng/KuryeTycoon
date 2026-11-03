@@ -42,12 +42,12 @@ namespace KuryeTycoon
 
         [Header("Haftalık hedef")]
         public bool weeklyChallenge = true;
-        public int weeklyTarget = 80;
+        public int weeklyTarget = 200;
         public int weeklyReward = 25000;
 
         [Header("Aylık hedef")]
         public bool monthlyChallenge = true;
-        public int monthlyTarget = 450;
+        public int monthlyTarget = 700;
         public int monthlyReward = 50000;
 
         public long rewardsPaidThisMonth;
