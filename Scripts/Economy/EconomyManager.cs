@@ -783,6 +783,7 @@ namespace KuryeTycoon
             }
 
             var loan = FamilyLoan.I;
+            if (RivalCompany.I != null) sb.Append("\n\n" + RivalCompany.I.ReportLine);
             if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null)
                 sb.Append($"\n\nAile borcu: kalan {Ft(loan.Remaining)} · sıradaki taksit {Ft(loan.NextDue.Remaining)} → {loan.NextDue.DueText} ({loan.DaysUntil(loan.NextDue)} gün)");
 

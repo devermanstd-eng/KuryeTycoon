@@ -159,8 +159,16 @@ namespace KuryeTycoon
         public bool SignContract(Shop s)
         {
             if (s.contracted || !IsUnlocked(s.tile.x)) return false;
+            if (GameClock.I.Day < s.resignBlockedUntil)
+            {
+                EventManager.I.Notify($"{s.Name} şimdilik yeni sözleşme istemiyor ({GameClock.I.DateOf(s.resignBlockedUntil)} tarihinden sonra dene).");
+                return false;
+            }
             if (!EconomyManager.I.TrySpend(s.def.contractCost, $"Sözleşme: {s.Name}", ExpenseCategory.Sozlesme)) return false;
             s.contracted = true;
+            s.contractStartDay = GameClock.I.Day;
+            s.contractEndDay = GameClock.I.Day + (RivalCompany.I != null ? RivalCompany.I.contractDays : 182);
+            s.satisfaction = Mathf.Max(s.satisfaction, 60f);
             RefreshColors();
             EventManager.I.Notify($"{s.Name} ile sözleşme imzalandı (komisyon %{s.Commission * 100f:0.#}).");
             return true;

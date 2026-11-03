@@ -110,6 +110,7 @@ namespace KuryeTycoon
 
         void MissingItem(Order o, Courier c)
         {
+            if (RivalCompany.I != null) RivalCompany.I.OnIncident(o);
             int value = GameData.Round10(o.basket * Random.Range(0.15f, 0.4f));
             if (SupportManager.I.TryHandleIncident(o, c, value, "eksik ürün")) return;
             Push(new GameEvent("Eksik ürün!",
@@ -133,6 +134,7 @@ namespace KuryeTycoon
 
         void Damaged(Order o, Courier c)
         {
+            if (RivalCompany.I != null) RivalCompany.I.OnIncident(o);
             int value = GameData.Round10(o.basket * Random.Range(0.5f, 1f));
             if (SupportManager.I.TryHandleIncident(o, c, value, "hasarlı sipariş")) return;
             string reason = WeatherSystem.I.IsRainy ? "Yağmurda çanta ıslanmış, " : "";

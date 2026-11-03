@@ -62,6 +62,7 @@ namespace KuryeTycoon
             Make<CampaignManager>("Kampanyalar");
             Make<UpgradeManager>("Geliştirmeler");
             Make<SupportManager>("Destek Ekibi");
+            Make<RivalCompany>("Rakip Şirket");
             Make<FamilyLoan>("Hikaye - Aile Borcu");
             Make<EventManager>("Olaylar");
             Make<GameUI>("Arayüz");
@@ -104,6 +105,7 @@ namespace KuryeTycoon
             OrderManager.I.Init();
             CampaignManager.I.Init();
             SupportManager.I.Init();
+            RivalCompany.I.Init();
             FamilyLoan.I.principal = familyLoanAmount;
             FamilyLoan.I.Init();
 

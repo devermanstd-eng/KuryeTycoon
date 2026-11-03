@@ -104,7 +104,10 @@ namespace KuryeTycoon
 
         /// <summary>Dükkanın şu anki talep ağırlığı (yoğunluk × saat çarpanı).</summary>
         static float ShopDemand(Shop s) =>
-            s.def.weight * DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend);
+            s.def.weight * DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend) * RivalShare(s);
+
+        /// <summary>Rakip de bu dükkanla çalışıyorsa siparişler paylaşılır; münhasırsa artar.</summary>
+        static float RivalShare(Shop s) => RivalCompany.I != null ? RivalCompany.I.ShareFor(s) : 1f;
 
         /// <summary>Yakınlaşınca müşteri noktaları binanın çatısına oturur (3D binaların içinde kalmasın).</summary>
         void LateUpdate()
@@ -135,7 +138,7 @@ namespace KuryeTycoon
             float demand = 0f;
             foreach (var s in CityMap.I.Shops)
                 if (s.contracted && CityMap.I.IsUnlocked(s.tile.x))
-                    demand += DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend);
+                    demand += DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend) * RivalShare(s);
 
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier;
@@ -344,6 +347,7 @@ namespace KuryeTycoon
 
             // Pahalı teslimat ücreti = müşteri vazgeçebilir (kötü hava ücretini çoğu müşteri anlayışla karşılar)
             float accept = Mathf.Clamp(1.35f - (fee - quote.weather * 0.7f) / 2200f, 0.15f, 1f);
+            if (RivalCompany.I != null) accept *= RivalCompany.I.PriceSensitivity; // rakip fiyat kırıyorsa
             if (Random.value > accept)
             {
                 lostToday++;
@@ -408,6 +412,7 @@ namespace KuryeTycoon
                 Pending.RemoveAt(i);
                 cancelledToday++;
                 cancelledByHour[GameClock.I.Hour]++;
+                if (RivalCompany.I != null) RivalCompany.I.OnCancelled(o);
                 bool rejected = o.priceDeclines > 0 || o.rejectedBy.Count > 0;
                 if (rejected) cancelledRejectedToday++;
                 CompanyProfile.AddReputation(-cancelReputationPenalty);
@@ -619,6 +624,7 @@ namespace KuryeTycoon
             o.rating = Mathf.Clamp(rating, 1f, 5f);
 
             RollTip(o, c, late);
+            if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);
 
             EconomyManager.I.RegisterDelivery(o);
             CompanyProfile.Reputation = Mathf.Lerp(CompanyProfile.Reputation, o.rating, 0.04f);

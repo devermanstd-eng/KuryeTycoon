@@ -405,6 +405,17 @@ namespace KuryeTycoon
             return true;
         }
 
+        /// <summary>Rakip şirket kuryeyi ayarttı.</summary>
+        public void PoachToRival(Courier c, string rivalName)
+        {
+            EventManager.I.Push(new GameEvent("Kurye rakibe geçti",
+                $"{c.courierName} ({ShortOccupation(c.occupation)}) {rivalName}'ın daha iyi boost teklifini kabul edip oraya geçti. " +
+                "Morali düşük kuryeler rakibin tekliflerine daha açık."));
+            HandleLeaving(c);
+            Couriers.Remove(c);
+            Destroy(c.gameObject);
+        }
+
         void Quit(Courier c)
         {
             EventManager.I.Push(new GameEvent("Kurye ayrıldı",

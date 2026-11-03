@@ -19,8 +19,20 @@ namespace KuryeTycoon
         public int ordersTotal;
         public SpriteRenderer sr;
 
+        // ---------- Sözleşme ilişkisi ----------
+        public float satisfaction = 65f;   // 0–100: geç/soğuk teslimat, iptal ve şikayetler düşürür
+        public int contractStartDay;       // sözleşmenin başladığı gün (GameClock.Day)
+        public int contractEndDay;         // yenileme günü (6 ayda bir)
+        public bool exclusive;             // sadece seninle çalışıyor (rakip yok, daha çok sipariş, daha düşük oran)
+        public bool rivalContracted;       // rakip platformla da çalışıyor (siparişler paylaşılır)
+        public int monthOrders;            // bu ay teslim edilen sipariş
+        public int lastMonthOrders;
+        public int negotiateCooldownUntil; // bu güne kadar yeniden pazarlık yapılamaz
+        public int resignBlockedUntil;     // ayrıldıktan sonra yeniden sözleşme için bekleme
+        public bool lowSatisfactionWarned;
+
         public string Name => def.name;
-        public float Commission => def.commission + commissionBonus;
+        public float Commission => Mathf.Max(0.05f, def.commission + commissionBonus);
     }
 
     public class Order
