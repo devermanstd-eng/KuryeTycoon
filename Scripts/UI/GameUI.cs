@@ -325,7 +325,7 @@ namespace KuryeTycoon
             else
                 GUILayout.Label("Basit dispatcher: en yakın kuryeye teklif eder. Akıllı atama için Geliştirmeler'e bak.", small);
             GUILayout.Label($"Bugün: vazgeçen müşteri (ücret pahalı) {om.lostToday} · iptal (kurye yok) {om.cancelledToday} · " +
-                            $"kuryelerin reddettiği {om.rejectedToday} · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday}", small);
+                            $"kuryelerin reddettiği {om.rejectedToday} · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday} · toplu teslimat {om.batchedToday}", small);
             GUILayout.Label($"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; {GameData.HeavyKg:0} kg ve üstü sadece araba.", small);
 
             GUILayout.Space(6);
@@ -380,7 +380,7 @@ namespace KuryeTycoon
                 if (c.OrderCount == 0) continue;
                 string ids = c.CurrentOrder != null ? "#" + c.CurrentOrder.id : "";
                 foreach (var q in c.QueuedOrders) ids += " #" + q.id;
-                GUILayout.Label($"{c.ShortName} ({c.V.letter}) {c.OrderCount}/{c.EffectiveCapacity} paket: {c.StateName} — {ids}", small);
+                GUILayout.Label($"{c.ShortName} ({c.V.letter}) {c.OrderCount}/{c.EffectiveCapacity} paket (çantada {c.CarryingCount}): {c.StateName} — {ids}", small);
             }
 
             GUILayout.Space(6);
@@ -392,6 +392,8 @@ namespace KuryeTycoon
                 string issue = o.keptByCourier ? " · müşteriye ulaşılamadı, kuryede kaldı"
                              : o.addressIssue == AddressIssue.YanlisAdres ? " · adres yanlıştı, çözüldü"
                              : o.addressIssue == AddressIssue.EvdeYok ? " · müşteri evde yoktu, çözüldü" : "";
+                if (o.batched) issue += " · toplu";
+                if (o.deliveredCold) issue += " · soğuk gitti";
                 string stars = o.keptByCourier ? "puan yok" : $"{o.rating:0.0} yıldız";
                 GUILayout.Label($"#{o.id} {o.shop.Name} → {o.courier.ShortName} · {GameData.KmText(o.distance)} · " +
                                 $"{stars} · kurye {Ft(o.courierPay)} · kâr {Ft(o.Profit)}{tip}{issue}",

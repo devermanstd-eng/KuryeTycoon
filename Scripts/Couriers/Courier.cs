@@ -78,13 +78,28 @@ namespace KuryeTycoon
 
         public CourierState State { get; private set; }
         public Vector2 Position { get; private set; }
+        /// <summary>Şu an gittiği durağın siparişi (dükkan ya da müşteri).</summary>
         public Order CurrentOrder => current;
-        public IEnumerable<Order> QueuedOrders => queue;
+        /// <summary>Hedefteki dışındaki tüm siparişleri (toplanacak + çantadaki).</summary>
+        public IEnumerable<Order> QueuedOrders
+        {
+            get
+            {
+                foreach (var o in toPick) if (o != current) yield return o;
+                foreach (var o in carrying) if (o != current) yield return o;
+            }
+        }
+        /// <summary>Çantasında taşıdığı (teslim alınmış) paket sayısı.</summary>
+        public int CarryingCount => carrying.Count;
         public VehicleDef V => GameData.Vehicle(vehicle);
         public string ShortName => courierName.Split(' ')[0];
         public bool IsOnline => State != CourierState.Cevrimdisi && State != CourierState.Izinli;
 
-        readonly Queue<Order> queue = new Queue<Order>();
+        /// <summary>Toplu sipariş: bu yarıçaptaki (kare) dükkanlar aynı turda toplanır.</summary>
+        public const int BatchRadius = 4;
+
+        readonly List<Order> toPick = new List<Order>();    // atanmış, henüz dükkandan alınmamış
+        readonly List<Order> carrying = new List<Order>();  // çantada, teslim edilecek
         Order current;
         List<Vector2Int> path;
         int pathIndex;
@@ -377,7 +392,7 @@ namespace KuryeTycoon
         // ================================================================== kapasite / reddetme
 
         public bool Has(EquipmentKind k) => equipment.Contains(k);
-        public int OrderCount => queue.Count + (current != null ? 1 : 0);
+        public int OrderCount => toPick.Count + carrying.Count;
         public bool Available => IsOnline && State != CourierState.Mola && !wantsOffline;
 
         public int EffectiveCapacity
@@ -406,9 +421,8 @@ namespace KuryeTycoon
             get
             {
                 if (OrderCount == 0) return Vector2Int.RoundToInt(Position);
-                Order last = current;
-                foreach (var o in queue) last = o;
-                return last.customerDoor;
+                if (toPick.Count > 0) return toPick[toPick.Count - 1].customerDoor;
+                return carrying[carrying.Count - 1].customerDoor;
             }
         }
 
@@ -432,26 +446,141 @@ namespace KuryeTycoon
         public void Assign(Order o)
         {
             lastBusyAt = GameClock.I.TotalMinutes;
-            queue.Enqueue(o);
-            if (current == null) StartNext();
+            if (OrderCount > 0 && !o.batched)
+            {
+                // Toplu sipariş: müşteriye gösterilen tahmini süre biraz uzar
+                o.batched = true;
+                o.deadlineAt += 5f;
+            }
+            toPick.Add(o);
+
+            // Boştaysa hemen yola çıkar; yoldaysa rotasını yeniden planlar (yakın dükkana uğrayabilir)
+            if (State == CourierState.Bosta || State == CourierState.DukkanaGidiyor || State == CourierState.MusteriyeGidiyor)
+                PlanNext();
         }
 
-        void StartNext()
+        /// <summary>
+        /// Sıradaki durağı seçer:
+        /// 1) Yakındaki (BatchRadius) dükkanlardan toplanacak sipariş varsa önce onu alır (toplu alım).
+        ///    Çantada paket varken uzun beklenecek dükkana uğramaz (yemek soğumasın).
+        /// 2) Çantadaki paketleri en kısa rotayla dağıtır.
+        /// 3) Kalan siparişler için en yakın dükkana gider.
+        /// </summary>
+        void PlanNext()
         {
-            if (queue.Count == 0)
+            var here = Vector2Int.RoundToInt(Position);
+            float now = GameClock.I.TotalMinutes;
+
+            Order pick = null;
+            int best = int.MaxValue;
+            foreach (var o in toPick)
             {
-                current = null;
-                path = null;
-                if (vehicleSwitchPending) RefreshVehicle();
-                if (State == CourierState.Izinli) return;
-                if (wantsOffline) GoOffline(wantsOfflineReason);
-                else if (fatigue >= 0.95f) GoOffline("Çok yoruldu, eve gitti");
-                else if (State != CourierState.Mola) State = CourierState.Bosta;
+                int d = CityMap.Manhattan(here, o.shop.door);
+                if (d > BatchRadius) continue;
+                if (carrying.Count > 0 && o.readyAt - now > 6f) continue;
+                if (d < best) { best = d; pick = o; }
+            }
+            if (pick != null) { GoToShop(pick); return; }
+
+            if (carrying.Count > 0) { GoToCustomer(BestDropoff(here)); return; }
+
+            if (toPick.Count > 0)
+            {
+                pick = toPick[0];
+                best = int.MaxValue;
+                foreach (var o in toPick)
+                {
+                    int d = CityMap.Manhattan(here, o.shop.door);
+                    if (d < best) { best = d; pick = o; }
+                }
+                GoToShop(pick);
                 return;
             }
-            current = queue.Dequeue();
+
+            // Elinde iş kalmadı
+            current = null;
+            path = null;
+            if (vehicleSwitchPending) RefreshVehicle();
+            if (State == CourierState.Izinli) return;
+            if (wantsOffline) GoOffline(wantsOfflineReason);
+            else if (fatigue >= 0.95f) GoOffline("Çok yoruldu, eve gitti");
+            else if (State != CourierState.Mola) State = CourierState.Bosta;
+        }
+
+        void GoToShop(Order o)
+        {
+            current = o;
             State = CourierState.DukkanaGidiyor;
-            GoTo(current.shop.door);
+            GoTo(o.shop.door);
+        }
+
+        void GoToCustomer(Order o)
+        {
+            current = o;
+            State = CourierState.MusteriyeGidiyor;
+            GoTo(o.customerDoor);
+        }
+
+        /// <summary>Çantadaki paketler için en kısa teslim sırası (tüm sıralamalar denenir); ilk durağı döner.</summary>
+        Order BestDropoff(Vector2Int from)
+        {
+            if (carrying.Count == 1) return carrying[0];
+            if (carrying.Count > 6)
+            {
+                // Çok paket: en yakın müşteri
+                Order nearest = carrying[0];
+                int bd = int.MaxValue;
+                foreach (var o in carrying)
+                {
+                    int d = CityMap.Manhattan(from, o.customerDoor);
+                    if (d < bd) { bd = d; nearest = o; }
+                }
+                return nearest;
+            }
+
+            var items = carrying.ToArray();
+            var used = new bool[items.Length];
+            int bestCost = int.MaxValue;
+            Order bestFirst = items[0];
+
+            void Search(Vector2Int pos, int depth, int cost, Order first)
+            {
+                if (cost >= bestCost) return;
+                if (depth == items.Length)
+                {
+                    bestCost = cost;
+                    bestFirst = first;
+                    return;
+                }
+                for (int i = 0; i < items.Length; i++)
+                {
+                    if (used[i]) continue;
+                    used[i] = true;
+                    var door = items[i].customerDoor;
+                    Search(door, depth + 1, cost + CityMap.Manhattan(pos, door), first ?? items[i]);
+                    used[i] = false;
+                }
+            }
+
+            Search(from, 0, 0, null);
+            return bestFirst;
+        }
+
+        /// <summary>Bu sipariş kuryenin mevcut turuna eklenebilir mi (yakın dükkan)?</summary>
+        public bool CanBatch(Order o)
+        {
+            if (OrderCount == 0) return false;
+            foreach (var p in toPick)
+                if (CityMap.Manhattan(p.shop.door, o.shop.door) <= BatchRadius) return true;
+            return carrying.Count > 0 && CityMap.Manhattan(Vector2Int.RoundToInt(Position), o.shop.door) <= BatchRadius;
+        }
+
+        /// <summary>Sipariş, kuryenin taşıdığı/alacağı paketlerden birinin müşterisine yakın mı?</summary>
+        public bool CustomerNearRoute(Order o)
+        {
+            foreach (var p in toPick) if (CityMap.Manhattan(p.customerDoor, o.customerDoor) <= 6) return true;
+            foreach (var p in carrying) if (CityMap.Manhattan(p.customerDoor, o.customerDoor) <= 6) return true;
+            return false;
         }
 
         void GoTo(Vector2Int target)
@@ -483,7 +612,7 @@ namespace KuryeTycoon
                         break;
                     case CourierState.Bekliyor:
                         Work(dm);
-                        if (clock.TotalMinutes >= current.readyAt) PickUp();
+                        if (clock.TotalMinutes >= current.readyAt) PickUpHere();
                         break;
                     case CourierState.AdresSorunu:
                         Work(dm);
@@ -494,7 +623,7 @@ namespace KuryeTycoon
                         if (clock.TotalMinutes >= breakUntil)
                         {
                             State = CourierState.Bosta;
-                            if (queue.Count > 0) StartNext();
+                            if (OrderCount > 0) PlanNext();
                         }
                         break;
                     case CourierState.Bosta:
@@ -553,13 +682,13 @@ namespace KuryeTycoon
                 float now = GameClock.I.TotalMinutes;
 
                 // Dükkanda bazen sıra olur
-                if (Random.value < 0.25f)
+                if (!current.shopQueue && Random.value < 0.25f)
                 {
                     current.readyAt = Mathf.Max(current.readyAt, now) + Random.Range(5f, 20f);
                     current.shopQueue = true;
                 }
 
-                if (now >= current.readyAt) { PickUp(); return; }
+                if (now >= current.readyAt) { PickUpHere(); return; }
 
                 // Uzun bekleme: kurye teslim almayı iptal edebilir (ayda en fazla 10 kez)
                 float wait = current.readyAt - now;
@@ -593,11 +722,12 @@ namespace KuryeTycoon
         {
             var o = current;
             current = null;
+            toPick.Remove(o);
             pickupCancelsThisMonth++;
             OrderManager.I.ReturnToPending(o, this);
             EventManager.I.Notify($"{ShortName} {o.shop.Name}'da {wait:0} dk sıra olduğu için #{o.id} teslim almayı iptal etti " +
                                   $"(bu ay {pickupCancelsThisMonth}/{MaxPickupCancels}). Sipariş yeni kurye bekliyor.");
-            StartNext();
+            PlanNext();
         }
 
         // ================================================================== teklif değerlendirme
@@ -606,7 +736,10 @@ namespace KuryeTycoon
         public float EstimateMinutes(Order o)
         {
             float speed = Mathf.Max(0.05f, V.tilesPerMinute * speedSkill);
-            float toShop = CityMap.Manhattan(FreeTile, o.shop.door) / speed + OrderCount * 6f;
+            bool batch = CanBatch(o);
+            // Toplu sipariş: yakındaki dükkandan aynı turda alır, diğer paketlerin teslimi araya girer
+            Vector2Int from = batch ? Vector2Int.RoundToInt(Position) : FreeTile;
+            float toShop = CityMap.Manhattan(from, o.shop.door) / speed + OrderCount * (batch ? 4f : 6f);
             float wait = Mathf.Max(0f, o.readyAt - (GameClock.I.TotalMinutes + toShop));
             return toShop + wait + o.distance / speed;
         }
@@ -691,6 +824,7 @@ namespace KuryeTycoon
             {
                 var done = current;
                 current = null;
+                carrying.Remove(done);
                 deliveries++;
                 deliveriesToday++;
                 AddXp();
@@ -698,7 +832,7 @@ namespace KuryeTycoon
                 if (kept) OrderManager.I.CompleteKept(done, this);
                 else OrderManager.I.CompleteDelivery(done, this);
 
-                if (!Has(EquipmentKind.Powerbank) && queue.Count == 0 && !wantsOffline && Random.value < 0.05f * UpgradeManager.I.PhoneDieMultiplier)
+                if (!Has(EquipmentKind.Powerbank) && OrderCount == 0 && !wantsOffline && Random.value < 0.05f * UpgradeManager.I.PhoneDieMultiplier)
                 {
                     breakUntil = GameClock.I.TotalMinutes + 60f;
                     breakReason = "Telefonu kapandı, şarj ediyor";
@@ -706,15 +840,32 @@ namespace KuryeTycoon
                     EventManager.I.Notify($"{courierName}'ın telefonu kapandı, 1 saat çevrimdışı. (Powerbank alınmalı)");
                     return;
                 }
-                StartNext();
+                PlanNext();
             }
         }
 
-        void PickUp()
+        /// <summary>Dükkanda: bu dükkandaki hazır tüm siparişleri birlikte alır, sonra rotasını planlar.</summary>
+        void PickUpHere()
         {
-            current.status = OrderStatus.Alindi;
-            State = CourierState.MusteriyeGidiyor;
-            GoTo(current.customerDoor);
+            var shop = current.shop;
+            float now = GameClock.I.TotalMinutes;
+            int picked = 0;
+            for (int i = toPick.Count - 1; i >= 0; i--)
+            {
+                var o = toPick[i];
+                if (o.shop != shop || (o != current && now < o.readyAt)) continue;
+                toPick.RemoveAt(i);
+                o.status = OrderStatus.Alindi;
+                o.pickedAt = now;
+                carrying.Add(o);
+                picked++;
+            }
+            if (picked > 1)
+                EventManager.I.Notify($"{ShortName} {shop.Name}'dan {picked} siparişi birlikte aldı (toplu teslimat).");
+            else if (carrying.Count > 1)
+                EventManager.I.Notify($"{ShortName} yol üstünde {shop.Name}'a uğradı, çantasında {carrying.Count} paket var.");
+            current = null;
+            PlanNext();
         }
 
         void AddXp()
@@ -828,7 +979,7 @@ namespace KuryeTycoon
                 if (season == Season.Yaz && !Has(EquipmentKind.YazTisort)) list.Add("Yazın tişörtsüz: her gün moral düşüyor");
                 if (!Has(EquipmentKind.Kask)) list.Add("Kask yok: kaza riski yüksek, kazada daha uzun süre çalışamaz");
             }
-            if (!Has(EquipmentKind.TermalCanta)) list.Add("Termal çanta yok: 2 km üstü sıcak yemek soğuk gidiyor");
+            if (!Has(EquipmentKind.TermalCanta)) list.Add("Termal çanta yok: sıcak yemek 15 dk'da soğuyor (toplu siparişte risk)");
             if (!Has(EquipmentKind.Powerbank)) list.Add("Powerbank yok: telefonu kapanabilir");
             if (hygiene < HygieneLimit) list.Add($"Çanta hijyeni %{hygiene * 100f:0}: müşteri şikayeti ve düşük puan riski");
             if (BagWorn) list.Add("Çantası yıprandı: temizlense de tam temiz olmuyor, yeni çanta gerekli");

@@ -81,7 +81,7 @@ namespace KuryeTycoon
             new EquipmentDef { kind = EquipmentKind.KisMontu,    name = "Kış Montu",    price = 9000, effect = "Soğukta yavaşlamaz, karda %10 yavaş (montsuz %30). Kışın hastalanmaz (montsuz günde %10) ve morali düşmez. Araba hariç." },
             new EquipmentDef { kind = EquipmentKind.Yagmurluk,   name = "Yağmurluk",    price = 5000, effect = "Yağmurda yavaşlamaz (yoksa %18), paket ıslanmaz (yoksa hasar riski 2 kat), yağmur sezonunda hastalanmaz. Araba hariç." },
             new EquipmentDef { kind = EquipmentKind.YazTisort,   name = "Yaz Tişörtü",  price = 3000, effect = "Sıcakta yavaşlamaz ve 1,5 kat hızlı yorulmaz. Yazın morali düşmez. Araba hariç." },
-            new EquipmentDef { kind = EquipmentKind.TermalCanta, name = "Termal Çanta", price = 7000, effect = "2 km'den uzak sıcak yemek soğumaz (yoksa −0,8 yıldız). Hasar riski −%40." },
+            new EquipmentDef { kind = EquipmentKind.TermalCanta, name = "Termal Çanta", price = 7000, effect = "Sıcak yemek 30 dk sıcak kalır (çantasız 15 dk, sonra −0,8 yıldız) — toplu siparişte önemli. Hasar riski −%40." },
             new EquipmentDef { kind = EquipmentKind.Kask,        name = "Kask",         price = 8000, effect = "Kaza riski −%60. Kazada 3 gün yerine 1 gün izin." },
             new EquipmentDef { kind = EquipmentKind.Powerbank,   name = "Powerbank",    price = 4000, effect = "Telefon kapanmaz (yoksa teslimatların %5'inde 1 saat çevrimdışı). %20 daha geç yorulur." },
         };
