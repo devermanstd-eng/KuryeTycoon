@@ -10,6 +10,7 @@ VERSION="6000.6.7f1"
 PROJECT="$HOME/UnityProjects/KuryeTycoon"
 REPO="https://github.com/devermanstd-eng/KuryeTycoon.git"
 HUB="/Applications/Unity Hub.app/Contents/MacOS/Unity Hub"
+export UNITY_HUB_CLI_NO_DEPRECATION_WARNING=1
 EDITORS="/Applications/Unity/Hub/Editor"
 
 say() { printf "\n\033[1;36m==> %s\033[0m\n" "$1"; }
