@@ -353,7 +353,8 @@ namespace KuryeTycoon
                     if (!c.CanTakeMore || !c.CanCarry(o)) continue;
                     bool rejected = o.rejectedBy.Contains(c);
                     int p = eco.ProfitIf(o, c);
-                    GUI.enabled = modalFree && p >= 0 && !rejected;
+                    int need = eco.RequiredAssignProfit(o);
+                    GUI.enabled = modalFree && p >= need && !rejected;
                     var order = o;
                     var courier = c;
                     int boostCost = CampaignManager.I.BoostAmount(eco.CourierPay(c, o.distance));
@@ -361,7 +362,8 @@ namespace KuryeTycoon
                     int courierGets = eco.CourierPay(c, o.distance) + boostCost;
                     string mood = c.LikesOffer(o, courierGets) ? "" : " · beğenmeyebilir";
                     string txt = rejected ? $"{c.ShortName}: reddetti"
-                               : p >= 0 ? $"{c.ShortName} ({c.V.letter}) kurye ~{Ft(courierGets)} · kâr +{Ft(p)}{boostTxt}{mood}"
+                               : p >= need ? $"{c.ShortName} ({c.V.letter}) kurye ~{Ft(courierGets)} · kâr +{Ft(p)}{boostTxt}{mood}"
+                               : p >= 0 ? $"{c.ShortName}: kâr az ({Ft(p)} < {Ft(need)})"
                                : $"{c.ShortName}: zarar {Ft(p)}";
                     if (GUILayout.Button(txt, smallButton)) deferred = () => om.Assign(order, courier, true);
                     GUI.enabled = modalFree;
@@ -1013,6 +1015,9 @@ namespace KuryeTycoon
             e.baseFee = MoneySlider("Taban ücret", e.baseFee, 200, 1500, 10);
             e.feePerKm = MoneySlider("Km başı", e.feePerKm, 0, 400, 10);
             e.minProfit = MoneySlider("Min. kâr/sipariş", e.minProfit, 0, 1000, 50);
+            e.minAssignProfit = MoneySlider("Atamada min. kâr", e.minAssignProfit, 0, 600, 10);
+            GUILayout.Label($"Atamada min. kâr: siparişi götürecek kuryeye ödeme sonrası şirkete en az bu kadar kalmalı; daha azını bırakan kuryeye " +
+                            $"atanmaz. {e.relaxAfterMinutes:0} dakikadan uzun bekleyen siparişte şart 0'a iner, böylece sipariş iptal olmaz.", small);
             GUILayout.Label("Kural: Teslimat ücreti = taban + km ücreti × km. Bu, siparişi büyük ihtimalle götürecek kuryenin " +
                             "(o ağırlığı taşıyabilen ve müsait en ucuz kurye) ücreti + min. kâr − komisyonu karşılamıyorsa fark 'ek' olarak eklenir. " +
                             "Zararına iş yine yapılmaz: kâr bırakmayan kuryeye sipariş atanmaz, uygun kurye beklenir. " +

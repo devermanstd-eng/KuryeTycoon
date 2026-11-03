@@ -73,6 +73,14 @@ namespace KuryeTycoon
         public int baseFee = 590;
         public int feePerKm = 150;
         public int minProfit = 300;
+        [Tooltip("Atamada sipariş başı en az bu kadar kâr kalmalı; daha azını bırakan kuryeye atanmaz")]
+        public int minAssignProfit = 150;
+        [Tooltip("Bu kadar dakika bekleyen siparişte atama için kâr şartı 0'a iner (iptal olmasın)")]
+        public float relaxAfterMinutes = 15f;
+
+        /// <summary>Bu sipariş için atamada şart koşulan en düşük kâr.</summary>
+        public int RequiredAssignProfit(Order o) =>
+            GameClock.I.TotalMinutes - o.createdAt >= relaxAfterMinutes ? 0 : minAssignProfit;
 
         [Header("Kurye bonusları")]
         public float bonusMultiplier = 1f;

@@ -337,7 +337,7 @@ namespace KuryeTycoon
                 {
                     if (!c.CanTakeMore || !c.CanCarry(o) || o.rejectedBy.Contains(c)) continue;
                     int profit = EconomyManager.I.ProfitIf(o, c);
-                    if (profit < 0) continue; // asla zararına iş yok
+                    if (profit < EconomyManager.I.RequiredAssignProfit(o)) continue; // zararına / çok az kârlı iş yok
                     float score = EstimateEta(c, o);
                     if (UpgradeManager.I.SmartDispatch)
                     {
@@ -372,9 +372,12 @@ namespace KuryeTycoon
             }
 
             int pay = EconomyManager.I.CourierPay(c, o.distance);
-            if (o.CompanyIncome - pay < 0)
+            int need = EconomyManager.I.RequiredAssignProfit(o);
+            if (o.CompanyIncome - pay < need)
             {
-                EventManager.I.Notify($"#{o.id} {c.ShortName}'a atanamadı: zararına iş olur ({Ft(o.CompanyIncome - pay)}).");
+                EventManager.I.Notify(o.CompanyIncome - pay < 0
+                    ? $"#{o.id} {c.ShortName}'a atanamadı: zararına iş olur ({Ft(o.CompanyIncome - pay)})."
+                    : $"#{o.id} {c.ShortName}'a atanamadı: kâr {Ft(o.CompanyIncome - pay)}, en az {Ft(need)} olmalı.");
                 return false;
             }
 
