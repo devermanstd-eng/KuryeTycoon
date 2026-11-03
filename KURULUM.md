@@ -73,6 +73,8 @@ KuryeTycoon/Scripts/
 - **Gün uzunluğu, yıl kaç gün**: Play sırasında Hierarchy → Oyun → Saat.
 - **Vergi oranı, kira, bonuslar**: Hierarchy → Oyun → Ekonomi (veya oyun içi Ayarlar sekmesi).
 - **Araç ücretleri, dükkan komisyonları, ekipman fiyatları**: `Data/GameData.cs`.
+- **Para birimi (Ft / €)**: oyun içi Ayarlar sekmesi. Oyun içeride hep Forint ile hesaplar, € sadece gösterimdir
+  (kur `GameData.FtPerEuro`, varsayılan 1 € = 400 Ft). Yeni bir metinde tutar yazarken elle "Ft" yazma, `Ft(tutar)` kullan.
 
 ## Sonraki adımlar (önerilen sıra)
 1. Kayıt sistemi (JSON save/load).

@@ -4,6 +4,7 @@ namespace KuryeTycoon
 {
     public enum VehicleKind { Bisiklet, EScooter, Motosiklet, Araba }
     public enum EquipmentKind { KisMontu, Yagmurluk, YazTisort, TermalCanta, Kask, Powerbank }
+    public enum Currency { Forint, Euro }
 
     public class VehicleDef
     {
@@ -150,9 +151,42 @@ namespace KuryeTycoon
         public static string KmText(int tiles) =>
             Km(tiles).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',') + " km";
 
-        /// <summary>5000 → "5 000 Ft"</summary>
-        public static string Ft(long v) =>
-            v.ToString("#,0", System.Globalization.CultureInfo.InvariantCulture).Replace(',', ' ') + " Ft";
+        // ---------- Para birimi ----------
+        // Oyun içeride HER ZAMAN Forint ile hesaplar; para birimi sadece ekranda gösterimi değiştirir,
+        // yani oyun dengesi iki seçenekte de aynıdır. Seçim Ayarlar sekmesinden yapılır ve PlayerPrefs'te saklanır.
+
+        /// <summary>Euro gösteriminde kullanılan sabit kur.</summary>
+        public const float FtPerEuro = 400f;
+        public static Currency DisplayCurrency = Currency.Forint;
+        const string CurrencyPrefKey = "KuryeTycoon.ParaBirimi";
+
+        /// <summary>Kayıtlı para birimi tercihini yükler (oyun açılırken GameBootstrap çağırır).</summary>
+        public static void LoadCurrency() =>
+            DisplayCurrency = PlayerPrefs.GetInt(CurrencyPrefKey, 0) == 1 ? Currency.Euro : Currency.Forint;
+
+        public static void SetCurrency(Currency c)
+        {
+            DisplayCurrency = c;
+            PlayerPrefs.SetInt(CurrencyPrefKey, c == Currency.Euro ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Forint tutarını seçili para biriminde yazar. Adı tarihsel olarak Ft kaldı.
+        /// Forint: 5000 → "5 000 Ft". Euro: 500 → "1,25 €", 80000 → "200 €", 1000000 → "2 500 €".
+        /// </summary>
+        public static string Ft(long v)
+        {
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            if (DisplayCurrency == Currency.Euro)
+            {
+                double eur = System.Math.Round(v / (double)FtPerEuro, 2);
+                // Kuruşu olmayan ya da 1 000 €'yu geçen tutarlarda ondalık gösterme
+                bool whole = System.Math.Abs(eur) >= 1000 || System.Math.Abs(eur - System.Math.Round(eur)) < 0.005;
+                return eur.ToString(whole ? "#,0" : "#,0.00", inv).Replace(',', ' ').Replace('.', ',') + " €";
+            }
+            return v.ToString("#,0", inv).Replace(',', ' ') + " Ft";
+        }
 
         public static int Round10(float v) => Mathf.RoundToInt(v / 10f) * 10;
         public static int CeilTo10(float v) => Mathf.CeilToInt(v / 10f) * 10;

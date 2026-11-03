@@ -117,7 +117,7 @@ namespace KuryeTycoon
 
             GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 40));
             GUILayout.Label("Kurye Şirketini Kur", title);
-            GUILayout.Label("Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan 1 000 000 Ft ile kendi kurye " +
+            GUILayout.Label($"Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan {Ft(GameBootstrap.I.startingMoney)} ile kendi kurye " +
                             "şirketini kuruyorsun. Bu parayı Temmuz sonuna kadar taksitlerle geri ödemen gerekiyor.", label);
             GUILayout.Label("Önce şirketine bir isim ve renk ver.", small);
             GUILayout.Space(12);
@@ -429,7 +429,7 @@ namespace KuryeTycoon
                     GUILayout.Label($"Siparişlerin yaklaşık %{c.RejectChance * 100f:0}'ini reddedebilir.", warn);
 
                 GUILayout.Label($"Hız {c.speedSkill:0.00} · Dikkat {c.care:0.00} · Nezaket {c.politeness:0.00} · Dayanıklılık {c.stamina:0.00}", small);
-                GUILayout.Label($"Kazanç: {Ft(c.V.basePay)}/paket + {c.V.payPerKm} Ft/km + bonus · Taşır: {GameData.CarryText(c.V)}", small);
+                GUILayout.Label($"Kazanç: {Ft(c.V.basePay)}/paket + {Ft(c.V.payPerKm)}/km + bonus · Taşır: {GameData.CarryText(c.V)}", small);
                 GUILayout.Label($"Araçları: {c.VehiclesText}", small);
                 if (c.hasCompanyKit)
                     GUILayout.Label($"Şirket ekipmanı: {GameData.StarterKitText} · " +
@@ -526,7 +526,7 @@ namespace KuryeTycoon
                                 (cand.insured ? "Kendi sigortası var" : "Sigortası yok"), small);
                 GUILayout.Label($"Hız {cand.speedSkill:0.00} · Dikkat {cand.care:0.00} · Nezaket {cand.politeness:0.00} · Dayanıklılık {cand.stamina:0.00}", small);
                 GUILayout.Label($"Araç: {v.tilesPerMinute * 60f * GameData.KmPerTile:0} km/saat · {v.capacity} paket · " +
-                                $"Kazanç {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km · Taşır: {GameData.CarryText(v)}", small);
+                                $"Kazanç {Ft(v.basePay)}/paket + {Ft(v.payPerKm)}/km · Taşır: {GameData.CarryText(v)}", small);
                 GUILayout.Label($"Başvuru {Mathf.Max(0f, (cand.expiresAt - now) / 60f):0} saat sonra geçersiz olacak.", small);
 
                 GUILayout.BeginHorizontal();
@@ -736,11 +736,11 @@ namespace KuryeTycoon
                 string lvText = d.MaxLevel > 1 ? $" · Seviye {lv}/{d.MaxLevel}" : (lv > 0 ? " · ALINDI" : "");
                 GUILayout.Label(d.name + lvText, header);
                 GUILayout.Label(d.summary, small);
-                GUILayout.Label("Şu an: " + d.levelText[lv], label);
+                GUILayout.Label("Şu an: " + d.LevelText(lv), label);
                 int cost = up.NextCost(d.kind);
                 if (cost >= 0)
                 {
-                    GUILayout.Label("Sonraki: " + d.levelText[lv + 1], small);
+                    GUILayout.Label("Sonraki: " + d.LevelText(lv + 1), small);
                     if (up.IsLocked(d.kind))
                     {
                         GUILayout.Label($"Kilitli: önce \"{CityMap.DistrictNames[d.requiresDistrict]}\" bölgesini aç. ({Ft(cost)})", small);
@@ -832,7 +832,7 @@ namespace KuryeTycoon
             GUILayout.Label("Haftalık hedef ödülü", header);
             camp.weeklyChallenge = GUILayout.Toggle(camp.weeklyChallenge, " Haftalık hedef açık (her Pazartesi sıfırlanır)", toggle);
             camp.weeklyTarget = IntSlider("Hedef paket", camp.weeklyTarget, 10, 200, 5);
-            camp.weeklyReward = IntSlider("Ödül (Ft)", camp.weeklyReward, 0, 100000, 1000);
+            camp.weeklyReward = MoneySlider("Ödül", camp.weeklyReward, 0, 100000, 1000);
 
             // Ödülün kârla karşılaştırması
             int samples = 0;
@@ -845,7 +845,7 @@ namespace KuryeTycoon
             GUILayout.Label("Aylık hedef ödülü", header);
             camp.monthlyChallenge = GUILayout.Toggle(camp.monthlyChallenge, " Aylık hedef açık (her ayın başında sıfırlanır)", toggle);
             camp.monthlyTarget = IntSlider("Hedef paket", camp.monthlyTarget, 50, 1000, 10);
-            camp.monthlyReward = IntSlider("Ödül (Ft)", camp.monthlyReward, 0, 200000, 1000);
+            camp.monthlyReward = MoneySlider("Ödül", camp.monthlyReward, 0, 200000, 1000);
             RewardCheck(avg, camp.monthlyTarget, camp.monthlyReward);
 
             GUILayout.Space(8);
@@ -900,7 +900,7 @@ namespace KuryeTycoon
                 GUI.enabled = modalFree && e.money >= next.Remaining;
                 if (GUILayout.Button($"Taksiti öde ({Ft(next.Remaining)})", smallButton)) deferred = () => loan.Pay(next.Remaining);
                 GUI.enabled = modalFree && e.money >= 50000;
-                if (GUILayout.Button("50 000 Ft erken öde", smallButton)) deferred = () => loan.Pay(50000);
+                if (GUILayout.Button($"{Ft(50000)} erken öde", smallButton)) deferred = () => loan.Pay(50000);
                 GUI.enabled = modalFree && e.money >= loan.Remaining;
                 if (GUILayout.Button($"Tamamını öde ({Ft(loan.Remaining)})", smallButton)) deferred = () => loan.Pay(loan.Remaining);
                 GUI.enabled = modalFree;
@@ -982,22 +982,33 @@ namespace KuryeTycoon
         {
             var e = EconomyManager.I;
 
+            GUILayout.Label("Para birimi", header);
+            GUILayout.BeginHorizontal();
+            if (SelectButton(GameData.DisplayCurrency == Currency.Forint, "Forint (Ft)", smallButton))
+                deferred = () => GameData.SetCurrency(Currency.Forint);
+            if (SelectButton(GameData.DisplayCurrency == Currency.Euro, "Euro (€)", smallButton))
+                deferred = () => GameData.SetCurrency(Currency.Euro);
+            GUILayout.EndHorizontal();
+            GUILayout.Label($"Sadece gösterim değişir, oyun dengesi aynı kalır (1 € = {GameData.FtPerEuro:0} Ft). " +
+                            "Seçim kaydedilir. Daha önce yazılmış bildirim ve hesap kayıtları yazıldıkları birimde kalır.", small);
+            GUILayout.Space(8);
+
             GUILayout.Label("Fiyatlandırma (müşteriden alınan teslimat ücreti)", header);
-            e.baseFee = IntSlider("Taban ücret", e.baseFee, 200, 1500, 10);
-            e.feePerKm = IntSlider("Km başı", e.feePerKm, 0, 400, 10);
-            e.minProfit = IntSlider("Min. kâr/sipariş", e.minProfit, 0, 1000, 50);
+            e.baseFee = MoneySlider("Taban ücret", e.baseFee, 200, 1500, 10);
+            e.feePerKm = MoneySlider("Km başı", e.feePerKm, 0, 400, 10);
+            e.minProfit = MoneySlider("Min. kâr/sipariş", e.minProfit, 0, 1000, 50);
             GUILayout.Label("Kural: Teslimat ücreti = en büyüğü( taban + km ücreti × km , en pahalı kuryenin ücreti + min. kâr − komisyon ). " +
                             "Böylece hiçbir siparişte zarar edilmez. Ücret yükseldikçe vazgeçen müşteri artar.", small);
 
             GUILayout.Space(8);
             GUILayout.Label("Kurye ücretleri (araca göre)", header);
             foreach (var v in GameData.Vehicles)
-                GUILayout.Label($"{v.name}: {Ft(v.basePay)}/paket + {v.payPerKm} Ft/km · {GameData.CarryText(v)}", small);
+                GUILayout.Label($"{v.name}: {Ft(v.basePay)}/paket + {Ft(v.payPerKm)}/km · {GameData.CarryText(v)}", small);
 
             GUILayout.Space(8);
             GUILayout.Label("Kurye bonusları", header);
             e.bonusMultiplier = FloatSlider("Bonus çarpanı", e.bonusMultiplier, 0.5f, 2f);
-            GUILayout.Label($"Şu anki bonus: {Ft(e.CurrentBonus)} (hava {WeatherSystem.I.Name}: {WeatherSystem.I.WeatherBonus} Ft, saat: {e.TimeBonus()} Ft) × çarpan. " +
+            GUILayout.Label($"Şu anki bonus: {Ft(e.CurrentBonus)} (hava {WeatherSystem.I.Name}: {Ft(WeatherSystem.I.WeatherBonus)}, saat: {Ft(e.TimeBonus())}) × çarpan. " +
                             "Yüksek bonus moral ve daha çok başvuru getirir ama kârı düşürür.", small);
 
             GUILayout.Space(8);
@@ -1039,7 +1050,7 @@ namespace KuryeTycoon
         }
 
         /// <summary>Etiket, kaydırıcı ve değer aynı hizada.</summary>
-        float SliderRow(string name, float v, float min, float max, string valueText, float labelWidth)
+        float SliderRow(string name, float v, float min, float max, string valueText, float labelWidth, float valueWidth = 50f)
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label(name, label, GUILayout.Width(labelWidth), GUILayout.Height(24));
@@ -1047,7 +1058,7 @@ namespace KuryeTycoon
             GUILayout.Space(9);
             v = GUILayout.HorizontalSlider(v, min, max);
             GUILayout.EndVertical();
-            GUILayout.Label(valueText, label, GUILayout.Width(50), GUILayout.Height(24));
+            GUILayout.Label(valueText, label, GUILayout.Width(valueWidth), GUILayout.Height(24));
             GUILayout.EndHorizontal();
             return v;
         }
@@ -1055,6 +1066,13 @@ namespace KuryeTycoon
         int IntSlider(string name, int v, int min, int max, int step)
         {
             float f = SliderRow(name, v, min, max, v.ToString(), 140);
+            return Mathf.RoundToInt(f / step) * step;
+        }
+
+        /// <summary>Para tutarı kaydırıcısı: değer içeride Ft, ekranda seçili para biriminde yazılır.</summary>
+        int MoneySlider(string name, int v, int min, int max, int step)
+        {
+            float f = SliderRow(name, v, min, max, Ft(v), 140, 80);
             return Mathf.RoundToInt(f / step) * step;
         }
 

@@ -52,7 +52,7 @@ namespace KuryeTycoon
             }
             nextChange = GameClock.I.TotalMinutes + Random.Range(240f, 480f);
             if (EventManager.I != null && GameBootstrap.I != null && GameBootstrap.I.Started)
-                EventManager.I.Notify($"Hava değişti: {Name}" + (WeatherBonus > 0 ? $" (hava bonusu +{WeatherBonus} Ft)" : ""));
+                EventManager.I.Notify($"Hava değişti: {Name}" + (WeatherBonus > 0 ? $" (hava bonusu +{GameData.Ft(WeatherBonus)})" : ""));
         }
 
         public bool IsRainy => Current == WeatherKind.Yagmurlu || Current == WeatherKind.Firtina;

@@ -44,6 +44,7 @@ namespace KuryeTycoon
         {
             I = this;
             CompanyProfile.ResetDefaults();
+            GameData.LoadCurrency();
             EnsureCamera();
 
             var clock = Make<GameClock>("Saat");

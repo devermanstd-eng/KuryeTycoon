@@ -377,7 +377,7 @@ namespace KuryeTycoon
                 long fee = couriers * 1500L;
                 PayFee(fee, "Kurye iş güvenliği fonu");
                 EventManager.I.Push(new GameEvent("İş güvenliği fonu katkısı",
-                    $"Platform üzerinden çalışan her kurye için 1 500 Ft iş güvenliği fonu katkısı otomatik tahsil edildi.\n{couriers} kurye → {Ft(fee)}"));
+                    $"Platform üzerinden çalışan her kurye için {Ft(1500)} iş güvenliği fonu katkısı otomatik tahsil edildi.\n{couriers} kurye → {Ft(fee)}"));
             }
             else
             {

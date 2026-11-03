@@ -11,9 +11,12 @@ namespace KuryeTycoon
         public string summary;
         public int[] costs;          // seviye başına fiyat (costs.Length = en yüksek seviye)
         public string[] levelText;   // her seviyenin etkisi (levelText[0] = başlangıç durumu)
+        /// <summary>Metinde para tutarı varsa: her gösterimde yeniden yazılır (Ft/€ ayarı anında yansır).</summary>
+        public System.Func<int, string> levelTextFn;
         public int requiresDistrict; // gereken bölge seviyesi (0 = yok)
 
         public int MaxLevel => costs.Length;
+        public string LevelText(int lv) => levelTextFn != null ? levelTextFn(lv) : levelText[lv];
     }
 
     /// <summary>
@@ -30,6 +33,11 @@ namespace KuryeTycoon
         // 22 = 2. bölge dolu, 32 = tüm şehir. Seviye açıklamaları bu dizilerden otomatik yazılır.
         static readonly int[] AccountCap = { 4, 8, 14, 22, 32 };
         static readonly int[] PlatformFee = { 0, 1500, 3000, 5000, 8000 };
+        static readonly string[] PlatformLevelNames = { "Başlangıç paketi", "Büyüme paketi", "Profesyonel paket", "Şehir paketi", "Kurumsal paket" };
+
+        static string PlatformLevelText(int lv) =>
+            $"{PlatformLevelNames[lv]}: {AccountCap[lv]} kurye hesabı, " +
+            (PlatformFee[lv] == 0 ? "ücretsiz" : $"sunucu {Ft(PlatformFee[lv])}/gün");
 
         public static readonly UpgradeDef[] Defs =
         {
@@ -39,14 +47,7 @@ namespace KuryeTycoon
                 summary = "Kuryeler kendi işinin patronu ama her biri uygulamanda bir hesapla çalışır. Paket kaç aktif kurye " +
                           "hesabını kaldırabileceğini belirler; büyük paketin sunucu ve lisans ücreti de yüksek.",
                 costs = new[] { 80000, 200000, 450000, 900000 },
-                levelText = new[]
-                {
-                    $"Başlangıç paketi: {AccountCap[0]} kurye hesabı, ücretsiz",
-                    $"Büyüme paketi: {AccountCap[1]} kurye hesabı, sunucu {Ft(PlatformFee[1])}/gün",
-                    $"Profesyonel paket: {AccountCap[2]} kurye hesabı, sunucu {Ft(PlatformFee[2])}/gün",
-                    $"Şehir paketi: {AccountCap[3]} kurye hesabı, sunucu {Ft(PlatformFee[3])}/gün",
-                    $"Kurumsal paket: {AccountCap[4]} kurye hesabı, sunucu {Ft(PlatformFee[4])}/gün"
-                }
+                levelTextFn = PlatformLevelText
             },
             new UpgradeDef
             {
@@ -118,7 +119,7 @@ namespace KuryeTycoon
 
         public int CourierCap => AccountCap[Level(UpgradeKind.Platform)];
         public int PlatformFeePerDay => PlatformFee[Level(UpgradeKind.Platform)];
-        public string PlatformName => Def(UpgradeKind.Platform).levelText[Level(UpgradeKind.Platform)];
+        public string PlatformName => Def(UpgradeKind.Platform).LevelText(Level(UpgradeKind.Platform));
         public bool CourierCapFull => CourierManager.I.Couriers.Count >= CourierCap;
 
         /// <summary>Gereken bölge henüz açılmadıysa geliştirme satın alınamaz.</summary>
@@ -138,7 +139,7 @@ namespace KuryeTycoon
             if (lv >= d.MaxLevel || IsLocked(k)) return false;
             if (!EconomyManager.I.TrySpend(d.costs[lv], $"Geliştirme: {d.name} ({lv + 1}. seviye)", ExpenseCategory.Gelistirme)) return false;
             levels[(int)k] = lv + 1;
-            EventManager.I.Notify($"{d.name} tamamlandı: {d.levelText[lv + 1]}");
+            EventManager.I.Notify($"{d.name} tamamlandı: {d.LevelText(lv + 1)}");
             return true;
         }
 
