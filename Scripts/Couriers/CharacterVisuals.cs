@@ -72,6 +72,13 @@ namespace KuryeTycoon
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = Facing(180f);
 
+            // Paketin kendi scriptleri (ör. CityPeople: Start'ta kendi animasyon durumlarını oynatır) bizim
+            // yürüme animatörümüzle çakışır, hata verir ve karakteri idle'da tutar: Start çalışmadan kapat ve sil.
+            foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                mb.enabled = false;
+                Object.Destroy(mb);
+            }
             foreach (var col in go.GetComponentsInChildren<Collider>()) Object.Destroy(col);
             foreach (var rb in go.GetComponentsInChildren<Rigidbody>()) Object.Destroy(rb);
             var renderers = go.GetComponentsInChildren<Renderer>();
