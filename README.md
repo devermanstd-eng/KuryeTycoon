@@ -49,7 +49,7 @@ Sahne kurmana gerek yok: Play'e basınca oyun kendiliğinden başlar.
 ### 5. Oyna
 1. **Play** (▶) butonuna bas.
 2. Şirket adını ve renklerini seç → **Şirketi Kur ve Başla**.
-3. Kısayollar: **Boşluk** = duraklat, **1–5** = hız (1x, 2x, 4x, 8x, 16x).
+3. Kısayollar: **Boşluk** = duraklat, **1–8** = hız (1x, 2x, 4x, 8x, 16x, 32x, 64x, 128x).
 4. Game penceresi küçükse üstteki **Free Aspect** yerine **Full HD (1920x1080)** seç.
 
 ## Güncelleme

@@ -194,6 +194,9 @@ namespace KuryeTycoon
                 case KeyCode.Alpha3: SetSpeed(4f); e.Use(); break;
                 case KeyCode.Alpha4: SetSpeed(8f); e.Use(); break;
                 case KeyCode.Alpha5: SetSpeed(16f); e.Use(); break;
+                case KeyCode.Alpha6: SetSpeed(32f); e.Use(); break;
+                case KeyCode.Alpha7: SetSpeed(64f); e.Use(); break;
+                case KeyCode.Alpha8: SetSpeed(128f); e.Use(); break;
             }
         }
 
@@ -265,11 +268,11 @@ namespace KuryeTycoon
             var boost = CampaignManager.I.ActiveWindow;
             if (boost != null) info += $"    BOOST %{boost.percent * 100f:0} ({boost.TimeText})";
             if (eco.taxDebt > 0) info += $"    VERGİ BORCU: {Ft(eco.taxDebt)}";
-            GUI.Label(new Rect(280, 0, sw - 280 - 290, TopBar), info, barText);
+            GUI.Label(new Rect(280, 0, sw - 280 - 430, TopBar), info, barText);
 
-            float bx = sw - 282f;
+            float bx = sw - 422f;
             if (SelectButtonAt(new Rect(bx, 9, 42, 30), clock.Paused, "II")) clock.Paused = !clock.Paused;
-            float[] speeds = { 1f, 2f, 4f, 8f, 16f };
+            float[] speeds = { 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
             for (int i = 0; i < speeds.Length; i++)
             {
                 float s = speeds[i];

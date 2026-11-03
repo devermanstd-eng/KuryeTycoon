@@ -20,7 +20,7 @@ Ayarları Inspector'dan değiştirmek istersen boş bir GameObject'e `GameBootst
 ## 4. Oyna
 1. **Play**'e bas.
 2. Şirket adını yaz, ana ve ikincil rengini seç → **Şirketi Kur ve Başla**.
-3. Kısayollar: **Boşluk** = duraklat, **1–5** = 1x / 2x / 4x / 8x / 16x hız. Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.
+3. Kısayollar: **Boşluk** = duraklat, **1–8** = 1x / 2x / 4x / 8x / 16x / 32x / 64x / 128x hız. Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.
 4. Game penceresi küçükse üstteki **Free Aspect**'i **Full HD (1920x1080)** yap.
 
 ## Oyunda neler var
