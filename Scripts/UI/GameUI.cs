@@ -117,7 +117,7 @@ namespace KuryeTycoon
 
             GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 40));
             GUILayout.Label("Kurye Şirketini Kur", title);
-            GUILayout.Label($"Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan {Ft(GameBootstrap.I.startingMoney)} ile kendi kurye " +
+            GUILayout.Label($"Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan {Ft(GameBootstrap.I.familyLoanAmount)} ile kendi kurye " +
                             "şirketini kuruyorsun. Bu parayı Temmuz sonuna kadar taksitlerle geri ödemen gerekiyor.", label);
             GUILayout.Label("Önce şirketine bir isim ve renk ver.", small);
             GUILayout.Space(12);

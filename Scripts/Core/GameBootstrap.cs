@@ -34,8 +34,10 @@ namespace KuryeTycoon
         }
 
         [Header("Başlangıç")]
+        // Not: alan adı bilerek değiştirildi (eski "startingMoney"). Eski sahnelerde kayıtlı 300 000 değeri
+        // artık okunmaz; herkes güncel varsayılanla (1 000 000 Ft) başlar.
         [Tooltip("Ailenden aldığın borç = başlangıç kasası")]
-        public long startingMoney = 1000000;
+        public long familyLoanAmount = 1000000;
         public VehicleKind[] starterCouriers = { VehicleKind.Bisiklet, VehicleKind.EScooter };
 
         public bool Started { get; private set; }
@@ -91,14 +93,14 @@ namespace KuryeTycoon
         {
             if (Started) return;
 
-            EconomyManager.I.money = startingMoney;
+            EconomyManager.I.money = familyLoanAmount;
             CityMap.I.Generate();
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v);
             OrderManager.I.Init();
             CampaignManager.I.Init();
             SupportManager.I.Init();
-            FamilyLoan.I.principal = startingMoney;
+            FamilyLoan.I.principal = familyLoanAmount;
             FamilyLoan.I.Init();
 
             Started = true;
