@@ -21,7 +21,6 @@ namespace KuryeTycoon
         public float smooth = 10f;
 
         [Header("Döndürme")]
-        const string YawKey = "KuryeTycoon.KameraAcisi";
         float yaw, targetYaw;                   // kullanıcının seçtiği açı (derece); yakınlaşıp uzaklaşırken sabit kalır, kaydedilir
         public float Yaw => yaw;
 
@@ -72,7 +71,7 @@ namespace KuryeTycoon
             if (!initialized)
             {
                 focus = targetFocus = MapCenter;
-                yaw = targetYaw = PlayerPrefs.GetFloat(YawKey, 0f);
+                yaw = targetYaw = 0f; // oyun hep düz (kuzey yukarı) başlar
                 initialized = true;
             }
 
@@ -107,7 +106,7 @@ namespace KuryeTycoon
         /// Binalar yere indikten sonra (düz 2D bölümde) açı yumuşakça sıfırlanır; en uzakta harita kuzey yukarıda.
         /// Seçilen açı unutulmaz: tekrar yakınlaşınca aynı yumuşaklıkla geri gelir.
         /// </summary>
-        float EffectiveYaw(float zoom) => Mathf.DeltaAngle(0f, yaw) * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.05f, tiltStart, zoom));
+        float EffectiveYaw(float zoom) => yaw;
 
         Vector2 ClampFocus(Camera cam, Vector2 f, float zoom)
         {
@@ -152,6 +151,9 @@ namespace KuryeTycoon
                 if (GroundPoint(cam, screenPx, out var after)) targetFocus += before - after;
                 Apply(cam, Zoom, focus);
             }
+            // Yakınlaşırken açı hiç değişmez (sadece Q/E ve sağ tuşla döner).
+            // Uzaklaşırken binalar yere inip harita düz 2D'ye geçince yumuşakça kuzey yukarı haline döner.
+            if (newZoom < targetZoom && newZoom < tiltStart) Straighten();
             targetZoom = newZoom;
             if (targetZoom <= 0.001f) targetFocus = MapCenter;
         }
@@ -202,9 +204,12 @@ namespace KuryeTycoon
             SaveYaw();
         }
 
-        void SaveYaw()
+        void SaveYaw() { }
+
+        /// <summary>Açıyı en yakın "kuzey yukarı" haline getirir (yumuşak, en kısa yönden döner).</summary>
+        void Straighten()
         {
-            PlayerPrefs.SetFloat(YawKey, Mathf.Repeat(targetYaw, 360f));
+            targetYaw = Mathf.Round(targetYaw / 360f) * 360f;
         }
 
         /// <summary>Sağ tuşla sürükleme: yatay hareket döndürür.</summary>
@@ -218,7 +223,8 @@ namespace KuryeTycoon
         public void ResetView()
         {
             targetZoom = 0f;
-            targetFocus = MapCenter; // açı korunur (kuzeye çevirmek için N)
+            targetFocus = MapCenter;
+            Straighten();
         }
 
         /// <summary>Bir noktaya yakınlaştır (ör. kurye seçilince).</summary>
