@@ -69,6 +69,9 @@ namespace KuryeTycoon
         public int priceDeclines;      // fiyatı beğenmeyip reddeden kurye sayısı
         public bool shopQueue;         // dükkanda sıra vardı
         public bool secondRound;       // uzun bekledi, reddedenlere tekrar (daha esnek) sorulur
+        public bool batched;           // başka siparişlerle aynı turda götürüldü (toplu)
+        public float pickedAt;         // dükkandan alındığı an (sıcak yemek soğuma süresi)
+        public bool deliveredCold;     // sıcak yemek soğuk gitti
 
         public int CompanyIncome => commissionIncome + deliveryFee;
         public int Profit => CompanyIncome - courierPay - boostPay;

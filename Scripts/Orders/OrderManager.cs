@@ -26,6 +26,7 @@ namespace KuryeTycoon
         public int cancelledToday;  // kurye bulunamadığı için iptal
         public int rejectedToday;   // kuryelerin reddettiği teklif
         public int heavyLostToday;  // taşıyabilecek kurye olmadığı için alınamayan ağır sipariş
+        public int batchedToday;    // toplu teslimata eklenen sipariş
         bool heavyWarnedToday;
 
         float spawnAcc;
@@ -40,7 +41,7 @@ namespace KuryeTycoon
         {
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; };
+            GameClock.I.OnNewDay += () => { lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
         }
 
         static float HourCurve(int h)
@@ -305,8 +306,11 @@ namespace KuryeTycoon
 
         float EstimateEta(Courier c, Order o)
         {
-            float speed = Mathf.Max(0.05f, c.V.tilesPerMinute * c.speedSkill);
-            return CityMap.Manhattan(c.FreeTile, o.shop.door) / speed + c.OrderCount * 12f;
+            // Toplu siparişe uygun kuryeler öne alınır (aynı/yakın dükkan, yakın müşteri)
+            float eta = c.EstimateMinutes(o);
+            if (c.CanBatch(o)) eta -= 8f;
+            if (c.CanBatch(o) && c.CustomerNearRoute(o)) eta -= 4f;
+            return eta;
         }
 
         void AutoAssign()
@@ -399,6 +403,7 @@ namespace KuryeTycoon
             Active.Add(o);
             if (o.marker != null) o.marker.color = o.IsHeavy ? new Color(0.9f, 0.65f, 1f) : new Color(1f, 0.85f, 0.3f);
             c.Assign(o);
+            if (o.batched) batchedToday++;
             return true;
         }
 
@@ -469,7 +474,17 @@ namespace KuryeTycoon
             if (late > 0f) rating -= Mathf.Min(3f, late / 10f);
             rating += (c.politeness - 0.75f) * 2f;
             rating += (c.morale - 0.6f) * 0.8f; // mutlu kurye güler yüzlüdür
-            if (o.shop.def.hotFood && !c.Has(EquipmentKind.TermalCanta) && o.DistanceKm > 2f) rating -= 0.8f;
+            if (o.shop.def.hotFood)
+            {
+                // Sıcak yemek: termal çantayla 30 dk, çantasız 15 dk sıcak kalır (toplu siparişte risk)
+                float carried = now - o.pickedAt;
+                float limit = c.Has(EquipmentKind.TermalCanta) ? 30f : 15f;
+                if (carried > limit)
+                {
+                    rating -= 0.8f;
+                    o.deliveredCold = true;
+                }
+            }
             if (o.customerType == CustomerType.Zor) rating -= 0.7f;
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
             if (c.hygiene < Courier.HygieneLimit) rating -= (Courier.HygieneLimit - c.hygiene) * 3f; // kirli çanta
