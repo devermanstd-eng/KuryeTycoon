@@ -235,6 +235,13 @@ namespace KuryeTycoon
             WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary);
             WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white);
 
+            // Rakip kuryeler: sadece yakındayken, soluk mor etiket
+            if (RivalFleet.I != null && MapCamera.I != null && MapCamera.I.ShowModels)
+                foreach (var a in RivalFleet.I.Agents)
+                    if (a != null && a.Visible)
+                        WorldLabel(cam, CityMap.ToWorld(a.Position) + MapCamera.LabelOffset(0.5f, 0.55f), a.label,
+                                   Color.Lerp(RivalFleet.RivalColor, Color.white, 0.4f));
+
             // Aynı karedeki kuryelerin isimleri üst üste binmesin
             var stack = new Dictionary<Vector2Int, int>();
             foreach (var c in CourierManager.I.Couriers)

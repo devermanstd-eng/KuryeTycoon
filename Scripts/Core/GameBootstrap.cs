@@ -63,6 +63,7 @@ namespace KuryeTycoon
             Make<UpgradeManager>("Geliştirmeler");
             Make<SupportManager>("Destek Ekibi");
             Make<RivalCompany>("Rakip Şirket");
+            Make<RivalFleet>("Rakip Kuryeler");
             Make<FamilyLoan>("Hikaye - Aile Borcu");
             Make<EventManager>("Olaylar");
             Make<GameUI>("Arayüz");
