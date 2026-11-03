@@ -11,6 +11,7 @@ namespace KuryeTycoon
         public bool alsoOwnsBike;      // motorlu araç sahibinin yedekte bisikleti de var
         public VehicleKind dreamVehicle; // parası olursa almak istediği araç
         public Occupation occupation;
+        public int scheduleSeed;       // öğrenciyse ders programı
         public float speedSkill, care, politeness, stamina;
         public float tidiness;
         public float pickiness;
@@ -92,6 +93,8 @@ namespace KuryeTycoon
                 case Occupation.Ogrenci: return "öğrenci";
                 case Occupation.Vardiyali: return "vardiyalı işçi";
                 case Occupation.Emekli: return "emekli";
+                case Occupation.Ebeveyn: return "ebeveyn";
+                case Occupation.GeceKuryesi: return "gece kuryesi";
                 default: return "tam zamanlı";
             }
         }
@@ -107,12 +110,14 @@ namespace KuryeTycoon
         {
             float r = Random.value;
             // Gerçekte kuryelerin çoğu geçimini bu işten sağlar; öğle yoğunluğunu da onlar karşılar
-            if (r < 0.35f) return Occupation.TamZamanli;
-            if (r < 0.50f) return Occupation.OfisCalisani;
-            if (r < 0.70f) return Occupation.Ogrenci;
-            if (r < 0.80f) return Occupation.HaftaSonu;
-            if (r < 0.90f) return Occupation.Vardiyali;
-            return Occupation.Emekli;
+            if (r < 0.30f) return Occupation.TamZamanli;    // %30
+            if (r < 0.42f) return Occupation.OfisCalisani;  // %12
+            if (r < 0.60f) return Occupation.Ogrenci;       // %18
+            if (r < 0.70f) return Occupation.HaftaSonu;     // %10
+            if (r < 0.80f) return Occupation.Vardiyali;     // %10
+            if (r < 0.87f) return Occupation.Emekli;        // %7
+            if (r < 0.95f) return Occupation.Ebeveyn;       // %8
+            return Occupation.GeceKuryesi;                  // %5
         }
 
         static float InsureChance(VehicleKind v)
@@ -138,6 +143,7 @@ namespace KuryeTycoon
                 alsoOwnsBike = v != VehicleKind.Bisiklet && Random.value < 0.4f,
                 dreamVehicle = RandomDream(v),
                 occupation = RandomOccupation(),
+                scheduleSeed = Random.Range(1, 1000000),
                 level = level,
                 insured = Random.value < InsureChance(v),
                 savings = Mathf.RoundToInt(Random.Range(0f, 60000f) / 1000f) * 1000,

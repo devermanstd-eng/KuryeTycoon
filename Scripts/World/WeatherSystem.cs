@@ -52,7 +52,15 @@ namespace KuryeTycoon
             }
             nextChange = GameClock.I.TotalMinutes + Random.Range(240f, 480f);
             if (EventManager.I != null && GameBootstrap.I != null && GameBootstrap.I.Started)
-                EventManager.I.Notify($"Hava değişti: {Name}" + (WeatherBonus > 0 ? $" (hava bonusu +{GameData.Ft(WeatherBonus)})" : ""));
+            {
+                string extra = "";
+                if (DemandFactor > 1f) extra += $" · siparişler %{(DemandFactor - 1f) * 100f:0} artar";
+                if (WeatherBonus > 0) extra += $" · kurye hava bonusu +{GameData.Ft(WeatherBonus)}";
+                if (CustomerSurcharge > 0) extra += $" · müşteriye kötü hava ücreti +{GameData.Ft(CustomerSurcharge)}";
+                float wb = CampaignManager.I != null ? CampaignManager.I.WeatherBoostPercent : 0f;
+                if (wb > 0f) extra += $" · hava boostu %{wb * 100f:0}";
+                EventManager.I.Notify($"Hava değişti: {Name}{extra}");
+            }
         }
 
         public bool IsRainy => Current == WeatherKind.Yagmurlu || Current == WeatherKind.Firtina;
@@ -76,14 +84,36 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>Kötü havada insanlar daha çok sipariş verir.</summary>
+        /// <summary>Kötü havada insanlar dışarı çıkmak istemez, daha çok sipariş verir.</summary>
         public float DemandFactor
         {
             get
             {
-                if (IsRainy || Current == WeatherKind.Karli) return 1.3f;
-                if (IsHot || Current == WeatherKind.Soguk) return 1.15f;
-                return 1f;
+                switch (Current)
+                {
+                    case WeatherKind.Karli: return 1.5f;
+                    case WeatherKind.Firtina: return 1.45f;
+                    case WeatherKind.Yagmurlu: return 1.35f;
+                    case WeatherKind.Soguk: return 1.2f;
+                    case WeatherKind.Sicak: return 1.1f;
+                    default: return 1f;
+                }
+            }
+        }
+
+        /// <summary>Wolt gibi: kötü havada müşterinin teslimat ücretine eklenen "kötü hava ücreti" (Ft).</summary>
+        public int CustomerSurcharge
+        {
+            get
+            {
+                switch (Current)
+                {
+                    case WeatherKind.Soguk: return 100;
+                    case WeatherKind.Yagmurlu: return 150;
+                    case WeatherKind.Karli: return 250;
+                    case WeatherKind.Firtina: return 300;
+                    default: return 0;
+                }
             }
         }
 

@@ -6,7 +6,7 @@ namespace KuryeTycoon
     public enum CourierState { Cevrimdisi, Bosta, DukkanaGidiyor, Bekliyor, MusteriyeGidiyor, AdresSorunu, Mola, Izinli }
 
     /// <summary>Kuryenin asıl hayatı: ne zaman kuryelik yapabileceğini belirler.</summary>
-    public enum Occupation { TamZamanli, OfisCalisani, HaftaSonu, Ogrenci, Vardiyali, Emekli }
+    public enum Occupation { TamZamanli, OfisCalisani, HaftaSonu, Ogrenci, Vardiyali, Emekli, Ebeveyn, GeceKuryesi }
 
     /// <summary>
     /// Serbest çalışan kurye.
@@ -25,6 +25,7 @@ namespace KuryeTycoon
         public string courierName;
         public VehicleKind vehicle;            // şu an kullandığı araç
         public Occupation occupation;
+        public int scheduleSeed;               // öğrencinin ders programı (her dönem değişir)
 
         [Header("Yetenekler")]
         public float speedSkill;
@@ -120,6 +121,7 @@ namespace KuryeTycoon
             courierName = c.name;
             vehicle = c.vehicle;
             occupation = c.occupation;
+            scheduleSeed = c.scheduleSeed;
             speedSkill = c.speedSkill;
             care = c.care;
             politeness = c.politeness;
@@ -152,10 +154,12 @@ namespace KuryeTycoon
             {
                 case Occupation.OfisCalisani: return "Ofis çalışanı (hafta içi 17:00'den sonra)";
                 case Occupation.HaftaSonu: return "Sadece hafta sonu çalışır";
-                case Occupation.Ogrenci: return "Öğrenci (derslere ve sınavlara göre)";
+                case Occupation.Ogrenci: return "Üniversite öğrencisi (kendi ders programına ve sınavlara göre)";
                 case Occupation.Vardiyali: return "Vardiyalı fabrika işçisi (vardiyası haftalık değişir)";
-                case Occupation.Emekli: return "Emekli (sabahları)";
-                default: return "Tam zamanlı kurye (her gün çalışabilir)";
+                case Occupation.Emekli: return "Emekli (08:00–15:00)";
+                case Occupation.Ebeveyn: return "Ebeveyn (çocuklar okuldayken, hafta içi 09:00–15:00)";
+                case Occupation.GeceKuryesi: return "Gece kuryesi (20:00–03:00)";
+                default: return "Tam zamanlı kurye (her gün 10–15 ve 17–22, arada mola)";
             }
         }
 
@@ -176,6 +180,69 @@ namespace KuryeTycoon
         /// <summary>Vardiyalı: çift haftalarda fabrikada sabah vardiyası (kuryelik akşam), tek haftalarda tersi.</summary>
         static bool FactoryMorningWeek(GameClock c) => ((c.CompanyDay - 1) / 7) % 2 == 0;
 
+        // ---------- Öğrenci ders programı ----------
+        // Her öğrencinin kendine ait, her dönem değişen programı var: kimi sabah, kimi öğlen, kimi akşam derste.
+        static readonly int[,] ClassBlocks = { { 8, 12 }, { 10, 14 }, { 12, 16 }, { 14, 18 }, { 17, 21 } };
+        static readonly string[] DayShort = { "Pzt", "Sal", "Çar", "Per", "Cum" };
+
+        /// <summary>Güz dönemi Eylül–Ocak, bahar dönemi Şubat–Haziran.</summary>
+        public static int SemesterIndex(GameClock c)
+        {
+            if (c.Month >= 9) return c.Year * 2 + 1;
+            if (c.Month == 1) return (c.Year - 1) * 2 + 1;
+            return c.Year * 2;
+        }
+
+        /// <summary>Bu dönem bu hafta içi gününde (0=Pzt) ders saatleri; yoksa -1.</summary>
+        public static void ClassesFor(int seed, int semester, int dow, out int s1, out int e1, out int s2, out int e2)
+        {
+            s1 = e1 = s2 = e2 = -1;
+            if (dow < 0 || dow > 4) return;
+            var r = new System.Random(seed * 31 + semester * 977 + dow * 131);
+            if (r.NextDouble() < 0.8) { int b = r.Next(5); s1 = ClassBlocks[b, 0]; e1 = ClassBlocks[b, 1]; }
+            if (r.NextDouble() < 0.25)
+            {
+                int b = r.Next(5);
+                if (s1 < 0 || ClassBlocks[b, 0] >= e1 || ClassBlocks[b, 1] <= s1) { s2 = ClassBlocks[b, 0]; e2 = ClassBlocks[b, 1]; }
+            }
+        }
+
+        /// <summary>Haftalık ders programı metni (kuryeler ve başvurular ekranında).</summary>
+        public static string ScheduleText(int seed, GameClock c)
+        {
+            int sem = SemesterIndex(c);
+            var parts = new List<string>();
+            for (int d = 0; d < 5; d++)
+            {
+                ClassesFor(seed, sem, d, out int s1, out int e1, out int s2, out int e2);
+                string t = s1 < 0 && s2 < 0 ? "ders yok" : "";
+                if (s1 >= 0) t += $"{s1:00}–{e1:00}";
+                if (s2 >= 0) t += (t.Length > 0 ? ", " : "") + $"{s2:00}–{e2:00}";
+                parts.Add($"{DayShort[d]} {t}");
+            }
+            return string.Join(" · ", parts);
+        }
+
+        bool InClass(GameClock c, int hourOffset)
+        {
+            int h = c.Hour + hourOffset;
+            ClassesFor(scheduleSeed, SemesterIndex(c), c.DayOfWeek, out int s1, out int e1, out int s2, out int e2);
+            return (s1 >= 0 && h >= s1 && h < e1) || (s2 >= 0 && h >= s2 && h < e2);
+        }
+
+        string TodayClassesText(GameClock c)
+        {
+            ClassesFor(scheduleSeed, SemesterIndex(c), c.DayOfWeek, out int s1, out int e1, out int s2, out int e2);
+            if (s1 < 0 && s2 < 0) return "Bugün dersi yok, istediği saatte çalışır";
+            string t = "";
+            if (s1 >= 0) t += $"{s1:00}:00–{e1:00}:00";
+            if (s2 >= 0) t += (t.Length > 0 ? " ve " : "") + $"{s2:00}:00–{e2:00}:00";
+            return $"Bugün dersi {t}, kalan saatlerde çalışabilir";
+        }
+
+        static bool IsSchoolBreakForKids(GameClock c) =>
+            c.Month == 7 || c.Month == 8 || (c.Month == 12 && c.DayOfMonth >= 22) || (c.Month == 1 && c.DayOfMonth <= 2);
+
         /// <summary>Mesleğinin bugünkü durumu (arayüzde gösterilir).</summary>
         public string OccupationStatus
         {
@@ -187,7 +254,7 @@ namespace KuryeTycoon
                     case Occupation.Ogrenci:
                         if (IsExamPeriod(c)) return "Sınav haftası, ders çalışıyor";
                         if (IsSchoolHoliday(c)) return "Okul tatilde, her gün çalışabilir";
-                        return c.IsWeekend ? "Hafta sonu, okul yok" : "Ders dönemi, akşamları çalışır";
+                        return c.IsWeekend ? "Hafta sonu, okul yok" : TodayClassesText(c);
                     case Occupation.OfisCalisani:
                         return c.IsWeekend ? "Hafta sonu, ofis kapalı" : (c.Hour < 17 ? "Ofiste, mesai 17:00'de bitiyor" : "Mesai bitti");
                     case Occupation.HaftaSonu:
@@ -196,7 +263,13 @@ namespace KuryeTycoon
                         return FactoryMorningWeek(c) ? "Bu hafta fabrikada sabah vardiyası (15:00 sonrası kuryelik)"
                                                      : "Bu hafta fabrikada akşam vardiyası (sabahları kuryelik)";
                     case Occupation.Emekli:
-                        return "Emekli, sabahları çalışmayı sever";
+                        return "Emekli, sabahtan öğleden sonraya kadar çalışmayı sever";
+                    case Occupation.Ebeveyn:
+                        if (c.IsWeekend) return "Hafta sonu, çocuklarla evde";
+                        return IsSchoolBreakForKids(c) ? "Okullar tatil, çocuklar evde (az çalışır)"
+                                                       : "Çocuklar okulda: 09:00–15:00 arası çalışabilir";
+                    case Occupation.GeceKuryesi:
+                        return "Gece çalışır (20:00–03:00), gündüz uyur";
                     default:
                         return "Geçimini kuryelikten sağlıyor, her gün çalışabilir";
                 }
@@ -221,8 +294,11 @@ namespace KuryeTycoon
                 case Occupation.Ogrenci:
                     if (IsExamPeriod(c)) return (h >= 20 && h < 23) ? 0.2f : 0.03f;
                     if (IsSchoolHoliday(c) || we) return (h >= 10 && h < 23) ? 0.85f : 0.05f;
-                    if (h >= 16 && h < 24) return 0.8f;
-                    return (h >= 12 && h < 14) ? 0.3f : 0.03f; // dersler arasında
+                    // Kendi ders programı: derste ve derse gitmeden önceki saatte çalışmaz
+                    if (InClass(c, 0)) return 0.03f;
+                    if (InClass(c, 1)) return 0.1f;
+                    if (h >= 10 && h < 23) return 0.8f;
+                    return (h >= 8 && h < 10) ? 0.4f : 0.05f;
 
                 case Occupation.Vardiyali:
                     if (we) return (h >= 10 && h < 20) ? 0.6f : 0.05f;
@@ -231,10 +307,23 @@ namespace KuryeTycoon
 
                 case Occupation.Emekli:
                     if (we) return (h >= 9 && h < 13) ? 0.3f : 0.03f;
-                    return (h >= 8 && h < 14) ? 0.85f : ((h >= 14 && h < 17) ? 0.35f : 0.03f);
+                    return (h >= 8 && h < 15) ? 0.85f : ((h >= 15 && h < 17) ? 0.35f : 0.03f);
+
+                case Occupation.Ebeveyn:
+                    if (we) return (h >= 10 && h < 13) ? 0.2f : 0.03f;
+                    if (IsSchoolBreakForKids(c)) return (h >= 10 && h < 14) ? 0.3f : 0.03f;
+                    return (h >= 9 && h < 15) ? 0.85f : ((h >= 15 && h < 17) ? 0.1f : 0.03f);
+
+                case Occupation.GeceKuryesi:
+                    if (h >= 20 || h < 3) return 0.85f;
+                    if (h >= 18) return 0.35f;
+                    return h < 5 ? 0.2f : 0.03f;
 
                 default:
-                    return (h >= 9 && h < 21) ? 0.9f : ((h >= 7 && h < 23) ? 0.35f : 0.05f);
+                    // Tam zamanlı: öğle ve akşam yoğunluğunda çalışır, aradaki ölü saatte mola verir
+                    if ((h >= 10 && h < 15) || (h >= 17 && h < 22)) return 0.9f;
+                    if (h >= 15 && h < 17) return 0.4f;
+                    return ((h >= 8 && h < 10) || (h >= 22 && h < 23)) ? 0.35f : 0.05f;
             }
         }
 
@@ -266,12 +355,27 @@ namespace KuryeTycoon
             {
                 if (fatigue > 0.5f) return;
                 // Boost, sadece zaten müsait olabilecek kuryeleri çeker (sınavdaki öğrenciyi değil)
-                float pOn = pref * (0.4f + morale * 0.6f) + (boost && pref >= 0.2f ? 0.35f : 0f);
+                float pOn = pref * (0.4f + morale * 0.6f) * WeatherWillingness() + (boost && pref >= 0.2f ? 0.35f : 0f);
                 if (Random.value < pOn)
                 {
                     GoOnline();
                     if (boost && pref < 0.5f) EventManager.I.Notify($"{ShortName} boost için çevrimiçi oldu.");
                 }
+            }
+        }
+
+        /// <summary>Açıkta giden kurye (bisiklet, scooter, motor) kötü havada dışarı çıkmaya daha az isteklidir; ekipman ve araba yardımcı olur.</summary>
+        public float WeatherWillingness()
+        {
+            var w = WeatherSystem.I;
+            if (w == null || !V.exposed) return 1f;
+            switch (w.Current)
+            {
+                case WeatherKind.Karli: return Has(EquipmentKind.KisMontu) ? 0.8f : 0.5f;
+                case WeatherKind.Firtina: return Has(EquipmentKind.Yagmurluk) ? 0.7f : 0.5f;
+                case WeatherKind.Yagmurlu: return Has(EquipmentKind.Yagmurluk) ? 0.95f : 0.7f;
+                case WeatherKind.Soguk: return Has(EquipmentKind.KisMontu) ? 1f : 0.85f;
+                default: return 1f;
             }
         }
 

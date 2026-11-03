@@ -213,8 +213,9 @@ namespace KuryeTycoon
         {
             public int basePart;   // taban ücret
             public int kmPart;     // km başı × mesafe
+            public int weather;    // kötü hava ücreti (yoksa 0)
             public int extra;      // kurye ücretini karşılamak için gereken ek (yoksa 0)
-            public int Total => basePart + kmPart + extra;
+            public int Total => basePart + kmPart + weather + extra;
         }
 
         /// <summary>
@@ -227,10 +228,11 @@ namespace KuryeTycoon
             var q = new FeeQuote
             {
                 basePart = baseFee,
-                kmPart = Mathf.RoundToInt(feePerKm * GameData.Km(tiles))
+                kmPart = Mathf.RoundToInt(feePerKm * GameData.Km(tiles)),
+                weather = WeatherSystem.I != null ? WeatherSystem.I.CustomerSurcharge : 0
             };
             int required = ExpectedCourierPay(tiles, weightKg) + minProfit - commissionIncome;
-            int normal = q.basePart + q.kmPart;
+            int normal = q.basePart + q.kmPart + q.weather;
             if (required > normal) q.extra = GameData.CeilTo10(required - normal);
             return q;
         }

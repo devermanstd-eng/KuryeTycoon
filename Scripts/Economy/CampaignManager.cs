@@ -40,6 +40,30 @@ namespace KuryeTycoon
         [Range(0, 4)] public int weekdayBoostCount = 2;
         public float weekdayMaxPercent = 0.30f;
 
+        [Header("Kötü hava boostu (otomatik)")]
+        public bool weatherBoost = true;
+        public float coldBoost = 0.05f;
+        public float rainBoost = 0.10f;
+        public float snowBoost = 0.15f;
+        public float stormBoost = 0.20f;
+
+        /// <summary>Şu anki havaya göre otomatik boost (0 = yok). Saat boostuyla toplanmaz, yüksek olan geçerli.</summary>
+        public float WeatherBoostPercent
+        {
+            get
+            {
+                if (!weatherBoost || WeatherSystem.I == null) return 0f;
+                switch (WeatherSystem.I.Current)
+                {
+                    case WeatherKind.Soguk: return coldBoost;
+                    case WeatherKind.Yagmurlu: return rainBoost;
+                    case WeatherKind.Karli: return snowBoost;
+                    case WeatherKind.Firtina: return stormBoost;
+                    default: return 0f;
+                }
+            }
+        }
+
         [Header("Haftalık hedef")]
         public bool weeklyChallenge = true;
         public int weeklyTarget = 200;
@@ -182,8 +206,9 @@ namespace KuryeTycoon
         {
             get
             {
+                if (!ready) return 0f;
                 var w = ActiveWindow;
-                return w != null ? w.percent : 0f;
+                return Mathf.Max(w != null ? w.percent : 0f, WeatherBoostPercent);
             }
         }
 

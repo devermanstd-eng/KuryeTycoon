@@ -404,7 +404,9 @@ namespace KuryeTycoon
                           $"{clock.SeasonName} · {weather.Name}";
             if (FamilyLoan.I != null && !FamilyLoan.I.Finished) info += "    " + FamilyLoan.I.TopBarText;
             var boost = CampaignManager.I.ActiveWindow;
-            if (boost != null) info += $"    BOOST %{boost.percent * 100f:0} ({boost.TimeText})";
+            float wBoost = CampaignManager.I.WeatherBoostPercent;
+            if (boost != null && boost.percent >= wBoost) info += $"    BOOST %{boost.percent * 100f:0} ({boost.TimeText})";
+            else if (wBoost > 0f) info += $"    HAVA BOOSTU %{wBoost * 100f:0}";
             if (eco.taxDebt > 0) info += $"    VERGİ BORCU: {Ft(eco.taxDebt)}";
             GUI.Label(new Rect(280, 0, sw - 280 - 430, TopBar), info, barText);
 
@@ -490,6 +492,7 @@ namespace KuryeTycoon
                 GUILayout.Label($"Sepet {Ft(o.basket)} · Komisyon {Ft(o.commissionIncome)} + Teslimat ücreti {Ft(o.deliveryFee)} " +
                                 $"= Gelir {Ft(o.CompanyIncome)} · İptale {Mathf.Max(0f, o.createdAt + om.pendingTimeout - now):0} dk", small);
                 GUILayout.Label($"Teslimat ücreti: taban {Ft(o.feeBase)} + {GameData.KmText(o.distance)} × {Ft(eco.feePerKm)} = {Ft(o.feeKm)}" +
+                                (o.feeWeather > 0 ? $" + kötü hava {Ft(o.feeWeather)}" : "") +
                                 (o.feeExtra > 0 ? $" + ek {Ft(o.feeExtra)} (kurye ücretini karşılamak için)" : ""),
                                 o.feeExtra > 0 ? warn : small);
 
@@ -571,6 +574,8 @@ namespace KuryeTycoon
                 if (c.tipsTotal > 0)
                     GUILayout.Label($"Bahşişler: toplam {Ft(c.tipsTotal)}" + (c.tipsToday > 0 ? $" (bugün {Ft(c.tipsToday)})" : "") + " — tamamı kuryenin", small);
                 GUILayout.Label($"Meslek: {c.OccupationName}", small);
+                if (c.occupation == Occupation.Ogrenci)
+                    GUILayout.Label($"Bu dönem ders programı: {Courier.ScheduleText(c.scheduleSeed, GameClock.I)}", small);
                 GUILayout.Label($"Bugün: {c.OccupationStatus}" + (c.dayOff ? " · İzin günü yapıyor" : ""), small);
                 Bar("Moral", c.morale, Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), c.morale));
                 Bar("Yorgunluk", c.fatigue, new Color(1f, 0.6f, 0.2f));
@@ -683,6 +688,8 @@ namespace KuryeTycoon
                 GUILayout.Label($"{cand.name} — {v.name} · Tecrübe {cand.level}", header);
                 GUILayout.Label($"\"{cand.note}\"", note);
                 GUILayout.Label($"Meslek: {Courier.OccupationLabel(cand.occupation)}", small);
+                if (cand.occupation == Occupation.Ogrenci)
+                    GUILayout.Label($"Bu dönem ders programı: {Courier.ScheduleText(cand.scheduleSeed, GameClock.I)}", small);
                 GUILayout.Label(cand.pickiness >= 0.75f ? "Teklif konusunda çok seçici" : cand.pickiness >= 0.45f ? "Teklif konusunda normal" : "Teklif konusunda pek seçici değil", small);
                 GUILayout.Label((cand.alsoOwnsBike ? "Yedekte bisikleti de var · " : "") +
                                 (cand.insured ? "Kendi sigortası var" : "Sigortası yok"), small);
@@ -973,6 +980,20 @@ namespace KuryeTycoon
                 string state = on ? "  ŞU AN AKTİF" : (past ? "  (bitti)" : "");
                 GUILayout.Label($"{w.TimeText}  %{w.percent * 100f:0}  — {w.label}{state}", on ? header : (past ? small : label));
             }
+
+            GUILayout.Space(8);
+            GUILayout.Label("Kötü hava boostu (otomatik)", header);
+            camp.weatherBoost = GUILayout.Toggle(camp.weatherBoost, " Kötü havada otomatik boost", toggle);
+            camp.coldBoost = PercentSlider("Soğuk", camp.coldBoost, 0f, 0.60f);
+            camp.rainBoost = PercentSlider("Yağmur", camp.rainBoost, 0f, 0.60f);
+            camp.snowBoost = PercentSlider("Kar", camp.snowBoost, 0f, 0.60f);
+            camp.stormBoost = PercentSlider("Fırtına", camp.stormBoost, 0f, 0.60f);
+            var wx = WeatherSystem.I;
+            GUILayout.Label($"Şu an: {wx.Name} · sipariş ×{wx.DemandFactor:0.00} · kurye hava bonusu {Ft(wx.WeatherBonus)} · " +
+                            $"müşteriye kötü hava ücreti {Ft(wx.CustomerSurcharge)} · hava boostu %{camp.WeatherBoostPercent * 100f:0}", label);
+            GUILayout.Label("Kötü havada siparişler artar ama bisiklet, scooter ve motor kuryeleri dışarı çıkmaya daha az isteklidir " +
+                            "(yağmurluk ve kış montu bu isteksizliği azaltır, arabalılar etkilenmez). Hava boostu onları çevrimiçi çeker. " +
+                            "Saat boostuyla toplanmaz, hangisi yüksekse o geçerli olur. Müşteriden alınan kötü hava ücreti de bu masrafı kısmen karşılar.", small);
 
             GUILayout.Space(8);
             GUILayout.Label("Hafta sonu boostları", header);

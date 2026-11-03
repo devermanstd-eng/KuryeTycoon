@@ -319,8 +319,8 @@ namespace KuryeTycoon
             var quote = EconomyManager.I.QuoteFee(commission, dist, kg);
             int fee = quote.Total;
 
-            // Pahalı teslimat ücreti = müşteri vazgeçebilir
-            float accept = Mathf.Clamp(1.35f - fee / 2200f, 0.15f, 1f);
+            // Pahalı teslimat ücreti = müşteri vazgeçebilir (kötü hava ücretini çoğu müşteri anlayışla karşılar)
+            float accept = Mathf.Clamp(1.35f - (fee - quote.weather * 0.7f) / 2200f, 0.15f, 1f);
             if (Random.value > accept)
             {
                 lostToday++;
@@ -343,6 +343,7 @@ namespace KuryeTycoon
                 feeBase = quote.basePart,
                 feeKm = quote.kmPart,
                 feeExtra = quote.extra,
+                feeWeather = quote.weather,
                 createdAt = now
             };
             // Nakit ödeme: marketlerde daha sık. Müşteri yuvarlak banknot verir, para üstü hazırlanır.
