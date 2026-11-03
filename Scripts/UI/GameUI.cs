@@ -342,6 +342,9 @@ namespace KuryeTycoon
                 if (o.shopQueue) GUILayout.Label("Önceki kurye dükkandaki sıra yüzünden bıraktı.", small);
                 GUILayout.Label($"Sepet {Ft(o.basket)} · Komisyon {Ft(o.commissionIncome)} + Teslimat ücreti {Ft(o.deliveryFee)} " +
                                 $"= Gelir {Ft(o.CompanyIncome)} · İptale {Mathf.Max(0f, o.createdAt + om.pendingTimeout - now):0} dk", small);
+                GUILayout.Label($"Teslimat ücreti: taban {Ft(o.feeBase)} + {GameData.KmText(o.distance)} × {Ft(eco.feePerKm)} = {Ft(o.feeKm)}" +
+                                (o.feeExtra > 0 ? $" + ek {Ft(o.feeExtra)} (kurye ücretini karşılamak için)" : ""),
+                                o.feeExtra > 0 ? warn : small);
 
                 GUILayout.BeginHorizontal();
                 int count = 0;
@@ -1010,8 +1013,10 @@ namespace KuryeTycoon
             e.baseFee = MoneySlider("Taban ücret", e.baseFee, 200, 1500, 10);
             e.feePerKm = MoneySlider("Km başı", e.feePerKm, 0, 400, 10);
             e.minProfit = MoneySlider("Min. kâr/sipariş", e.minProfit, 0, 1000, 50);
-            GUILayout.Label("Kural: Teslimat ücreti = en büyüğü( taban + km ücreti × km , en pahalı kuryenin ücreti + min. kâr − komisyon ). " +
-                            "Böylece hiçbir siparişte zarar edilmez. Ücret yükseldikçe vazgeçen müşteri artar.", small);
+            GUILayout.Label("Kural: Teslimat ücreti = taban + km ücreti × km. Bu, siparişi büyük ihtimalle götürecek kuryenin " +
+                            "(o ağırlığı taşıyabilen ve müsait en ucuz kurye) ücreti + min. kâr − komisyonu karşılamıyorsa fark 'ek' olarak eklenir. " +
+                            "Zararına iş yine yapılmaz: kâr bırakmayan kuryeye sipariş atanmaz, uygun kurye beklenir. " +
+                            "Ücret yükseldikçe vazgeçen müşteri artar.", small);
 
             GUILayout.Space(8);
             GUILayout.Label("Kurye ücretleri (araca göre)", header);
@@ -1036,11 +1041,11 @@ namespace KuryeTycoon
             const int tiles = 15;
             int commission = Mathf.RoundToInt(basket * 0.22f);
             int fee = e.QuoteDeliveryFee(commission, tiles, 2f);
-            int pay = e.MaxCourierPay(tiles, 2f);
+            int pay = e.ExpectedCourierPay(tiles, 2f);
             GUILayout.Label($"Sepet {Ft(basket)}, komisyon %22 = {Ft(commission)}", small);
             GUILayout.Label($"Mesafe {GameData.KmText(tiles)} → teslimat ücreti {Ft(fee)}", small);
             GUILayout.Label($"Şirket geliri = {Ft(commission + fee)}", small);
-            GUILayout.Label($"En pahalı kuryeye ödeme = {Ft(pay)} → kâr {Ft(commission + fee - pay)}", label);
+            GUILayout.Label($"Muhtemel kuryeye ödeme = {Ft(pay)} → kâr {Ft(commission + fee - pay)}", label);
         }
 
         // ---------------------------------------------------------------- kontroller

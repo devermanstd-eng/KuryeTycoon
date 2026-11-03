@@ -169,15 +169,53 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Müşteriden alınacak teslimat ücreti:
-        /// en büyüğü( taban + km ücreti × km , en pahalı kurye ücreti + min. kâr − komisyon )
+        /// Siparişi büyük ihtimalle götürecek kuryenin ücreti: bu ağırlığı taşıyabilen ve şu an müsait
+        /// olan en ucuz kurye. Müsait kimse yoksa ekipte taşıyabilen en ucuz kurye; o da yoksa en ucuz uygun araç tipi.
+        /// Böylece ekipteki pahalı (arabalı) kurye sadece ağır siparişlerin fiyatını etkiler.
         /// </summary>
-        public int QuoteDeliveryFee(int commissionIncome, int tiles, float weightKg)
+        public int ExpectedCourierPay(int tiles, float weightKg)
         {
-            int normal = baseFee + Mathf.RoundToInt(feePerKm * GameData.Km(tiles));
-            int required = MaxCourierPay(tiles, weightKg) + minProfit - commissionIncome;
-            return GameData.CeilTo10(Mathf.Max(normal, required, 0));
+            int best = int.MaxValue;
+            foreach (var c in CourierManager.I.Couriers)
+                if (c.CanCarry(weightKg) && c.CanTakeMore) best = Mathf.Min(best, CourierPay(c, tiles));
+            if (best == int.MaxValue)
+                foreach (var c in CourierManager.I.Couriers)
+                    if (c.CanCarry(weightKg)) best = Mathf.Min(best, CourierPay(c, tiles));
+            if (best == int.MaxValue)
+                foreach (var v in GameData.Vehicles)
+                    if (weightKg <= v.maxWeightKg) best = Mathf.Min(best, PayFor(v, tiles));
+            return best == int.MaxValue ? 0 : best;
         }
+
+        /// <summary>Teslimat ücretinin dökümü (sipariş kartında gösterilir).</summary>
+        public struct FeeQuote
+        {
+            public int basePart;   // taban ücret
+            public int kmPart;     // km başı × mesafe
+            public int extra;      // kurye ücretini karşılamak için gereken ek (yoksa 0)
+            public int Total => basePart + kmPart + extra;
+        }
+
+        /// <summary>
+        /// Müşteriden alınacak teslimat ücreti:
+        /// taban + km ücreti × km; bu, muhtemel kuryenin ücreti + min. kâr − komisyonu karşılamıyorsa fark "ek" olarak eklenir.
+        /// Zararına iş kuralı ayrıca atama anında korunur (kâr bırakmayan kuryeye atanmaz).
+        /// </summary>
+        public FeeQuote QuoteFee(int commissionIncome, int tiles, float weightKg)
+        {
+            var q = new FeeQuote
+            {
+                basePart = baseFee,
+                kmPart = Mathf.RoundToInt(feePerKm * GameData.Km(tiles))
+            };
+            int required = ExpectedCourierPay(tiles, weightKg) + minProfit - commissionIncome;
+            int normal = q.basePart + q.kmPart;
+            if (required > normal) q.extra = GameData.CeilTo10(required - normal);
+            return q;
+        }
+
+        public int QuoteDeliveryFee(int commissionIncome, int tiles, float weightKg) =>
+            QuoteFee(commissionIncome, tiles, weightKg).Total;
 
         public void RegisterDelivery(Order o)
         {

@@ -251,7 +251,8 @@ namespace KuryeTycoon
             }
 
             int commission = Mathf.RoundToInt(basket * shop.Commission);
-            int fee = EconomyManager.I.QuoteDeliveryFee(commission, dist, kg);
+            var quote = EconomyManager.I.QuoteFee(commission, dist, kg);
+            int fee = quote.Total;
 
             // Pahalı teslimat ücreti = müşteri vazgeçebilir
             float accept = Mathf.Clamp(1.35f - fee / 2200f, 0.15f, 1f);
@@ -274,6 +275,9 @@ namespace KuryeTycoon
                 weightKg = kg,
                 commissionIncome = commission,
                 deliveryFee = fee,
+                feeBase = quote.basePart,
+                feeKm = quote.kmPart,
+                feeExtra = quote.extra,
                 createdAt = now
             };
             o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);

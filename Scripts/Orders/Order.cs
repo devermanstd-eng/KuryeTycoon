@@ -47,6 +47,7 @@ namespace KuryeTycoon
         public float weightKg;        // sipariş ağırlığı
         public int commissionIncome;  // sepet × komisyon oranı (bize kalır)
         public int deliveryFee;       // müşteriden alınan teslimat ücreti (bize kalır)
+        public int feeBase, feeKm, feeExtra; // teslimat ücretinin dökümü
         public int courierPay;        // atama anında sabitlenen kurye ödemesi
         public int boostPay;          // boost saatindeki ek ödeme (şirketin kârından)
         public int tip;               // bahşiş (kuryeye gider)

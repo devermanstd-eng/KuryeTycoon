@@ -34,7 +34,7 @@ Ayarları Inspector'dan değiştirmek istersen boş bir GameObject'e `GameBootst
 | Kuryenin kendi parası | Kazancının %30'unu biriktirir. Araç yükseltmek zorunlu değil: aracından memnun olanlar hiç değiştirmez, istediği bir araç olan kurye parası yetince onu kendi cebinden alır. Araç arızalanırsa yedek aracıyla çalışır. İsterse platform üzerinden kendi parasıyla sigorta yaptırır; şirket kaza masrafı ödemez |
 | Moral ve yorgunluk | Aynı anda kaç paket alacağını ve sipariş reddetme ihtimalini belirler |
 | Ödeme | Paket başı sabit + km başı (bisiklet 175 → araba 286 Ft) + hava/gece/yoğun saat bonusu × bonus çarpanı |
-| Kâr kuralı | Teslimat ücreti, en pahalı kuryeye bile verilse min. kâr kalacak şekilde hesaplanır; zararına atama engellenir |
+| Kâr kuralı | Teslimat ücreti = taban + km ücreti × km; siparişi büyük ihtimalle götürecek kuryenin (o ağırlığı taşıyabilen, müsait en ucuz kurye) ücretini + min. kârı karşılamıyorsa fark 'ek' olarak eklenir. Kâr bırakmayan kuryeye sipariş atanmaz (zararına iş yok). Sipariş kartında ücret dökümü görünür |
 | Siparişler | Sözleşmeli dükkanlardan gelir; pahalı ücrette müşteri vazgeçer, kurye bulunmazsa iptal olur |
 | Dükkanlar | Burger Queen, Döner Kral, Starbocks, Szpar Express, Market 24, McDanold's, Pizza Hat, InterSzpar, KFG, Sushi Samurai |
 | Sipariş ağırlığı | Bisiklet, scooter, motor ve araba 20 kg'a kadar; 20 kg ve üstü "ağır sipariş", sadece araba. Taşıyacak kurye yoksa sipariş alınamaz |
