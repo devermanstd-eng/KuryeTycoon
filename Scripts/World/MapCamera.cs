@@ -46,10 +46,8 @@ namespace KuryeTycoon
 
         float FitSize(Camera cam)
         {
-            // Döndürülmüş haritanın ekrandaki kaplama alanı
-            float w0 = CityMap.Width + 1f, h0 = CityMap.Height + 1f;
-            float a = yaw * Mathf.Deg2Rad, c = Mathf.Abs(Mathf.Cos(a)), s = Mathf.Abs(Mathf.Sin(a));
-            float w = w0 * c + h0 * s, h = w0 * s + h0 * c;
+            // En uzakta harita her zaman düz (kuzey yukarıda) durduğu için döndürmesiz sığdırılır
+            float w = CityMap.Width + 1f, h = CityMap.Height + 1f;
             return Mathf.Max(h / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
         }
 
@@ -98,16 +96,23 @@ namespace KuryeTycoon
             float tilt = maxTilt * t01;
             // Kamera +Z'ye bakar (harita XY düzleminde, binalar −Z yönünde yükselir).
             // Önce dikey eksen (Z) etrafında döner, sonra eğilir. Uzakta açı 0: harita düz ve kuzey yukarıda.
-            var rot = Quaternion.Euler(0f, 0f, -yaw) * Quaternion.Euler(-tilt, 0f, 0f);
+            var rot = Quaternion.Euler(0f, 0f, -EffectiveYaw(zoom)) * Quaternion.Euler(-tilt, 0f, 0f);
             cam.transform.rotation = rot;
             var ground = new Vector3(f.x, f.y, 0f);
             cam.transform.position = ground - rot * Vector3.forward * 60f;
         }
 
+        /// <summary>
+        /// Uygulanan açı: 3D görünümde (eğik) seçilen açı tam uygulanır, yakınlaşıp uzaklaşırken dönmez.
+        /// Binalar yere indikten sonra (düz 2D bölümde) açı yumuşakça sıfırlanır; en uzakta harita kuzey yukarıda.
+        /// Seçilen açı unutulmaz: tekrar yakınlaşınca aynı yumuşaklıkla geri gelir.
+        /// </summary>
+        float EffectiveYaw(float zoom) => Mathf.DeltaAngle(0f, yaw) * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.05f, tiltStart, zoom));
+
         Vector2 ClampFocus(Camera cam, Vector2 f, float zoom)
         {
             if (zoom < 0.02f) return MapCenter;
-            if (zoom > tiltStart || Mathf.Abs(Mathf.DeltaAngle(yaw, 0f)) > 1f)
+            if (zoom > tiltStart || Mathf.Abs(Mathf.DeltaAngle(EffectiveYaw(zoom), 0f)) > 1f)
             {
                 // Dönük/eğik görünümde harita sınırları içinde serbest
                 return new Vector2(Mathf.Clamp(f.x, 0f, CityMap.Width - 1), Mathf.Clamp(f.y, 0f, CityMap.Height - 1));
@@ -178,7 +183,7 @@ namespace KuryeTycoon
             if (cam == null) return;
             float size = SizeFor(cam, targetZoom);
             // Ekrana göre: "yukarı" kameranın baktığı yön (döndürülmüşse ona göre)
-            float a = -yaw * Mathf.Deg2Rad;
+            float a = -EffectiveYaw(Zoom) * Mathf.Deg2Rad;
             var d = new Vector2(dir.x * Mathf.Cos(a) - dir.y * Mathf.Sin(a), dir.x * Mathf.Sin(a) + dir.y * Mathf.Cos(a));
             targetFocus += d * size * 0.25f;
         }
@@ -231,7 +236,7 @@ namespace KuryeTycoon
         {
             float t = I != null ? I.Tilt01 : 0f;
             // Düz görünümde "yukarı" ekranın yukarısı: kamera döndürülmüşse ona göre
-            var up = Quaternion.Euler(0f, 0f, I != null ? -I.yaw : 0f) * new Vector3(0f, upTopDown, 0f);
+            var up = Quaternion.Euler(0f, 0f, I != null ? -I.EffectiveYaw(I.Zoom) : 0f) * new Vector3(0f, upTopDown, 0f);
             return Vector3.Lerp(up, new Vector3(0f, 0f, -height), t);
         }
     }
