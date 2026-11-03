@@ -109,7 +109,9 @@ namespace KuryeTycoon
         // Haftalık rapor için biriken veriler
         PeriodStats week = new PeriodStats();
         int weekStartDay = -1;
-        int weekBatched, weekCancelled, weekLost, weekHeavyLost;
+        int weekBatched, weekCancelled, weekLost, weekHeavyLost, weekCancelledRejected;
+        readonly int[] weekCancelByHour = new int[24];
+        float repAtWeekStart = -1f;
         long cashAtWeekStart = long.MinValue;
         long lastWeekNet = long.MinValue;
         readonly List<(string date, int deliveries, long net)> weekDays = new List<(string, int, long)>();
@@ -556,12 +558,29 @@ namespace KuryeTycoon
             {
                 var extra = new List<string>();
                 if (om.batchedToday > 0) extra.Add($"{om.batchedToday} toplu");
-                if (om.cancelledToday > 0) extra.Add($"{om.cancelledToday} iptal (kurye yok)");
+                if (om.cancelledToday > 0)
+                {
+                    int none = om.cancelledToday - om.cancelledRejectedToday;
+                    var parts = new List<string>();
+                    if (none > 0) parts.Add($"{none} kurye yok/hepsi meşgul");
+                    if (om.cancelledRejectedToday > 0) parts.Add($"{om.cancelledRejectedToday} kuryeler reddetti");
+                    extra.Add($"{om.cancelledToday} iptal ({string.Join(", ", parts)})");
+                }
                 if (om.lostToday > 0) extra.Add($"{om.lostToday} müşteri ücret pahalı diye vazgeçti");
                 if (om.heavyLostToday > 0) extra.Add($"{om.heavyLostToday} taşıyacak kurye yoktu");
                 if (extra.Count > 0) sb.Append(" · " + string.Join(" · ", extra));
             }
             sb.Append('\n');
+            if (om != null)
+            {
+                string hint = CancelHint(om.cancelledByHour, clock.DayOfWeekOf(clock.Day - 1) >= 5);
+                if (hint != null) sb.Append(hint + "\n");
+                if (om.reputationAtDayStart >= 0f)
+                {
+                    float dr = CompanyProfile.Reputation - om.reputationAtDayStart;
+                    sb.Append($"İtibar: {CompanyProfile.Reputation:0.00}/5 (dünden {(dr >= 0 ? "+" : "−")}{Mathf.Abs(dr):0.00}) · itibar düştükçe sipariş azalır\n");
+                }
+            }
 
             // Gelir
             sb.Append($"\nGELİR: {Ft(s.Income)}\n");
@@ -621,6 +640,27 @@ namespace KuryeTycoon
                     .Add("Gün sonu raporlarını kapat (Ayarlar'dan açılabilir)", () => showDailyReport = false));
         }
 
+        /// <summary>İptallerin en yoğun olduğu 3 saatlik dilimi ve o saatlere uygun kurye tipini söyler.</summary>
+        static string CancelHint(int[] byHour, bool weekend)
+        {
+            int total = 0; foreach (var v in byHour) total += v;
+            if (total < 3) return null;
+            int best = 0, bestSum = -1;
+            for (int h = 0; h < 24; h++)
+            {
+                int sum = byHour[h] + byHour[(h + 1) % 24] + byHour[(h + 2) % 24];
+                if (sum > bestSum) { bestSum = sum; best = h; }
+            }
+            int mid = (best + 1) % 24;
+            string who;
+            if (weekend) who = "hafta sonu kuryesi veya öğrenci";
+            else if (mid >= 7 && mid < 14) who = "tam zamanlı kurye, emekli veya sabah vardiyalı işçi";
+            else if (mid >= 14 && mid < 17) who = "tam zamanlı kurye veya akşam vardiyalı işçi";
+            else if (mid >= 17 && mid < 23) who = "öğrenci veya ofis çalışanı (akşamları çalışırlar)";
+            else who = "gece çalışan kurye (gece talebi düşük, ücretsiz bırakılabilir)";
+            return $"İptallerin çoğu {best:00}:00–{(best + 3) % 24:00}:00 arası ({bestSum}/{total}) → bu saatler için {who} işe al.";
+        }
+
         // ---------- Haftalık rapor ----------
 
         void AccumulateWeek(PeriodStats day)
@@ -634,6 +674,9 @@ namespace KuryeTycoon
             {
                 weekBatched += om.batchedToday;
                 weekCancelled += om.cancelledToday;
+                weekCancelledRejected += om.cancelledRejectedToday;
+                for (int h = 0; h < 24; h++) weekCancelByHour[h] += om.cancelledByHour[h];
+                if (repAtWeekStart < 0f) repAtWeekStart = om.reputationAtDayStart >= 0f ? om.reputationAtDayStart : CompanyProfile.Reputation;
                 weekLost += om.lostToday;
                 weekHeavyLost += om.heavyLostToday;
             }
@@ -652,10 +695,18 @@ namespace KuryeTycoon
             sb.Append($"TESLİMAT: {s.deliveries} paket (günde ortalama {s.deliveries / days})");
             var extra = new List<string>();
             if (weekBatched > 0) extra.Add($"{weekBatched} toplu");
-            if (weekCancelled > 0) extra.Add($"{weekCancelled} iptal");
+            if (weekCancelled > 0)
+                extra.Add($"{weekCancelled} iptal" + (weekCancelledRejected > 0 ? $" (bunun {weekCancelledRejected}'i kuryeler reddettiği için)" : ""));
             if (weekLost > 0) extra.Add($"{weekLost} müşteri vazgeçti");
             if (weekHeavyLost > 0) extra.Add($"{weekHeavyLost} taşıyacak kurye yoktu");
             if (extra.Count > 0) sb.Append("\n   " + string.Join(" · ", extra));
+            string whint = CancelHint(weekCancelByHour, false);
+            if (whint != null) sb.Append("\n   " + whint.Replace("İptallerin çoğu", "Hafta boyunca iptallerin çoğu"));
+            if (repAtWeekStart >= 0f)
+            {
+                float dr = CompanyProfile.Reputation - repAtWeekStart;
+                sb.Append($"\n   İtibar: {CompanyProfile.Reputation:0.00}/5 (hafta başından {(dr >= 0 ? "+" : "−")}{Mathf.Abs(dr):0.00})");
+            }
 
             sb.Append($"\n\nGELİR: {Ft(s.Income)}  (komisyon {Ft(s.commission)}, teslimat ücreti {Ft(s.fees)}" +
                       (s.otherIncome > 0 ? $", diğer {Ft(s.otherIncome)}" : "") + ")");
@@ -725,7 +776,9 @@ namespace KuryeTycoon
             lastWeekNet = net;
             week = new PeriodStats();
             weekStartDay = clock.Day;
-            weekBatched = weekCancelled = weekLost = weekHeavyLost = 0;
+            weekBatched = weekCancelled = weekLost = weekHeavyLost = weekCancelledRejected = 0;
+            System.Array.Clear(weekCancelByHour, 0, 24);
+            repAtWeekStart = CompanyProfile.Reputation;
             cashAtWeekStart = money;
             weekDays.Clear();
         }

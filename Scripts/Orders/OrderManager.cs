@@ -23,7 +23,11 @@ namespace KuryeTycoon
         public float pendingTimeout = 30f;
 
         public int lostToday;       // ücret pahalı geldiği için vazgeçen müşteri
-        public int cancelledToday;  // kurye bulunamadığı için iptal
+        public int cancelledToday;  // kurye bulunamadığı için iptal (toplam)
+        public int cancelledRejectedToday; // bunlardan: kuryeler gördü ama teklifi reddetti
+        public readonly int[] cancelledByHour = new int[24];
+        public float reputationAtDayStart = -1f;
+        public float cancelReputationPenalty = 0.015f;
         public int rejectedToday;   // kuryelerin reddettiği teklif
         public int heavyLostToday;  // taşıyabilecek kurye olmadığı için alınamayan ağır sipariş
         public int batchedToday;    // toplu teslimata eklenen sipariş
@@ -39,9 +43,10 @@ namespace KuryeTycoon
 
         public void Init()
         {
+            reputationAtDayStart = CompanyProfile.Reputation;
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
+            GameClock.I.OnNewDay += () => { cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
         }
 
         /// <summary>
@@ -349,8 +354,13 @@ namespace KuryeTycoon
                 if (o.marker != null) Destroy(o.marker.gameObject);
                 Pending.RemoveAt(i);
                 cancelledToday++;
-                CompanyProfile.AddReputation(-0.04f);
-                EventManager.I.Notify($"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu. İtibar düştü.");
+                cancelledByHour[GameClock.I.Hour]++;
+                bool rejected = o.priceDeclines > 0 || o.rejectedBy.Count > 0;
+                if (rejected) cancelledRejectedToday++;
+                CompanyProfile.AddReputation(-cancelReputationPenalty);
+                EventManager.I.Notify(rejected
+                    ? $"#{o.id} ({o.shop.Name}) iptal oldu: kuryeler teklifi gördü ama kabul etmedi. İtibar düştü."
+                    : $"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu. İtibar düştü.");
             }
         }
 

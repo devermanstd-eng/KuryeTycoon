@@ -327,7 +327,7 @@ namespace KuryeTycoon
                 om.prioritizeProfit = GUILayout.Toggle(om.prioritizeProfit, " Atamada kârı öncele (kapalıysa en hızlı kurye)", toggle);
             else
                 GUILayout.Label("Basit dispatcher: en yakın kuryeye teklif eder. Akıllı atama için Geliştirmeler'e bak.", small);
-            GUILayout.Label($"Bugün: vazgeçen müşteri (ücret pahalı) {om.lostToday} · iptal (kurye yok) {om.cancelledToday} · " +
+            GUILayout.Label($"Bugün: vazgeçen müşteri (ücret pahalı) {om.lostToday} · iptal {om.cancelledToday} (kuryeler reddetti {om.cancelledRejectedToday}) · " +
                             $"kuryelerin reddettiği {om.rejectedToday} · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday} · toplu teslimat {om.batchedToday}", small);
             GUILayout.Label($"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; {GameData.HeavyKg:0} kg ve üstü sadece araba.", small);
 

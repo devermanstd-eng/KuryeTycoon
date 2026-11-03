@@ -121,8 +121,37 @@ namespace KuryeTycoon
             "Yılmaz", "Kaya", "Demir", "Şahin", "Çelik", "Nagy", "Kovács", "Tóth", "Szabó", "Horváth"
         };
 
-        public static string RandomName() =>
-            FirstNames[Random.Range(0, FirstNames.Length)] + " " + LastNames[Random.Range(0, LastNames.Length)];
+        /// <summary>Rastgele isim. Kuryeler, başvurular ve destek ekibinde aynı isim iki kez çıkmaz.</summary>
+        public static string RandomName()
+        {
+            string n = "";
+            for (int tries = 0; tries < 60; tries++)
+            {
+                n = FirstNames[Random.Range(0, FirstNames.Length)] + " " + LastNames[Random.Range(0, LastNames.Length)];
+                if (!NameTaken(n)) return n;
+            }
+            // Bütün kombinasyonlar doluysa baş harfle ayır
+            for (char ch = 'A'; ch <= 'Z'; ch++)
+                if (!NameTaken(n + " " + ch + ".")) return n + " " + ch + ".";
+            return n;
+        }
+
+        static bool NameTaken(string n)
+        {
+            var cm = CourierManager.I;
+            if (cm != null)
+            {
+                foreach (var c in cm.Couriers) if (c.courierName == n) return true;
+                foreach (var a in cm.Applications) if (a.name == n) return true;
+            }
+            var sm = SupportManager.I;
+            if (sm != null)
+            {
+                foreach (var a in sm.Agents) if (a.name == n) return true;
+                foreach (var a in sm.Candidates) if (a.name == n) return true;
+            }
+            return false;
+        }
 
         static readonly string[] ApplicationNotes =
         {
