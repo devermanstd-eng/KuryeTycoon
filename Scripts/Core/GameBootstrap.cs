@@ -114,7 +114,7 @@ namespace KuryeTycoon
                 "• Ekipman eksikse kuryenin kartında ne kaybettiğini görürsün (kışın mont, yazın tişört...).\n" +
                 "• Kampanyalar sekmesinde boostlar ve haftalık hedef ödülü var (kârından ödenir).\n" +
                 "• Destek sekmesinden maaşlı destek personeli al: vardiyalarında şikayetleri kendileri çözer.\n" +
-                "• Platform paketin 6 kurye hesabı kaldırıyor. Geliştirmeler'den paketi yükselt ve kalıcı iyileştirmeler al.\n" +
+                $"• Platform paketin {UpgradeManager.I.CourierCap} kurye hesabı kaldırıyor. Geliştirmeler'den paketi yükselt ve kalıcı iyileştirmeler al.\n" +
                 "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
                 "• Yıl sonunda vergi ödersin; yıl içinde de habersiz vergi ve harçlar çıkabilir, kasanda yedek tut.\n\n" +
                 "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–5 = hız (1x, 2x, 4x, 8x, 16x)"));

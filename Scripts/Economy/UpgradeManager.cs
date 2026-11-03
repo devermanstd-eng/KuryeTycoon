@@ -25,7 +25,10 @@ namespace KuryeTycoon
     {
         public static UpgradeManager I { get; private set; }
 
-        static readonly int[] AccountCap = { 6, 12, 20, 35, 60 };
+        // Hesap sınırları kabaca açık dükkanların talebine göre ayarlı; başlangıç bilerek biraz dar:
+        // 4 = başlangıçtaki 2 dükkan (akşam zirvesinde zorlanır), 8 = 3–4 dükkan, 14 = 1. bölge dolu,
+        // 22 = 2. bölge dolu, 32 = tüm şehir. Seviye açıklamaları bu dizilerden otomatik yazılır.
+        static readonly int[] AccountCap = { 4, 8, 14, 22, 32 };
         static readonly int[] PlatformFee = { 0, 1500, 3000, 5000, 8000 };
 
         public static readonly UpgradeDef[] Defs =
@@ -38,11 +41,11 @@ namespace KuryeTycoon
                 costs = new[] { 80000, 200000, 450000, 900000 },
                 levelText = new[]
                 {
-                    "Başlangıç paketi: 6 kurye hesabı, ücretsiz",
-                    "Büyüme paketi: 12 kurye hesabı, sunucu 1 500 Ft/gün",
-                    "Profesyonel paket: 20 kurye hesabı, sunucu 3 000 Ft/gün",
-                    "Şehir paketi: 35 kurye hesabı, sunucu 5 000 Ft/gün",
-                    "Kurumsal paket: 60 kurye hesabı, sunucu 8 000 Ft/gün"
+                    $"Başlangıç paketi: {AccountCap[0]} kurye hesabı, ücretsiz",
+                    $"Büyüme paketi: {AccountCap[1]} kurye hesabı, sunucu {Ft(PlatformFee[1])}/gün",
+                    $"Profesyonel paket: {AccountCap[2]} kurye hesabı, sunucu {Ft(PlatformFee[2])}/gün",
+                    $"Şehir paketi: {AccountCap[3]} kurye hesabı, sunucu {Ft(PlatformFee[3])}/gün",
+                    $"Kurumsal paket: {AccountCap[4]} kurye hesabı, sunucu {Ft(PlatformFee[4])}/gün"
                 }
             },
             new UpgradeDef
