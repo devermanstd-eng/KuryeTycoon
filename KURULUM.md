@@ -46,7 +46,7 @@ Bu modeller de lisans gereği repoya konmaz; her bilgisayarda bir kez:
 
 1. Paket sayfasında **Add to My Assets**.
 2. Unity'de **Window > Package Manager** → **My Assets** → *SimplePoly City* → **Download** → **Import** → **Import**.
-3. Paket eski (Unity 5) olduğu için malzemeleri çevir: **Window > Rendering > Render Pipeline Converter** → üstte *Built-in to URP* → **Material Upgrade** işaretle → **Initialize Converters** → **Convert Assets**.
+3. Malzemeler kurulum menüsünde otomatik URP'ye çevrilir (paket Unity 5 için yapılmış). Pembe kalan olursa paketin klasörünü seç → **Kurye Tycoon > Seçili Klasördeki Malzemeleri URP'ye Çevir**.
 4. **Kurye Tycoon > Şehir Paketini Kur (SimplePoly City)**. Prefablar isimlerine göre `Assets/Resources/SehirPaketi/Binalar`, `/Agaclar`, `/Yollar` klasörlerine ayrılır.
 5. Yeni oyun başlat ve yakınlaş.
 

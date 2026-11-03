@@ -76,6 +76,7 @@ namespace KuryeTycoon.EditorTools
                 EditorUtility.DisplayDialog("Kurye Tycoon", emptyMessage, "Tamam");
                 return;
             }
+            MalzemeCevirici.CevirPrefablar(paths);
             if (!AssetDatabase.IsValidFolder("Assets/Resources")) AssetDatabase.CreateFolder("Assets", "Resources");
             if (!AssetDatabase.IsValidFolder(Target)) AssetDatabase.CreateFolder("Assets/Resources", "KuryeKarakterleri");
 
@@ -203,15 +204,17 @@ namespace KuryeTycoon.EditorTools
             Ensure(Root, "Agaclar");
             Ensure(Root, "Yollar");
 
+            var all = new List<string>(buildings); all.AddRange(trees); all.AddRange(roads);
+            int conv = MalzemeCevirici.CevirPrefablar(all);
             int nb = CopyAll(buildings, Root + "/Binalar");
             int nt = CopyAll(trees, Root + "/Agaclar");
             int nr = CopyAll(roads, Root + "/Yollar");
             AssetDatabase.Refresh();
 
             EditorUtility.DisplayDialog("Kurye Tycoon",
-                $"Şehir paketi kuruldu:\n• {nb} bina\n• {nt} ağaç\n• {nr} yol parçası (şimdilik kullanılmıyor)\n\n" +
+                $"Şehir paketi kuruldu:\n• {conv} malzeme URP'ye çevrildi\n• {nb} bina\n• {nt} ağaç\n• {nr} yol parçası (şimdilik kullanılmıyor)\n\n" +
                 "Yanlış klasöre düşen olursa Assets/Resources/SehirPaketi altında sürükleyerek taşı (araba, insan vb. Binalar'dan silinebilir).\n\n" +
-                "Binalar pembe görünürse: Window > Rendering > Render Pipeline Converter > Material Upgrade.\n" +
+                "Hâlâ pembe görünen olursa: paketin klasörünü seç > Kurye Tycoon > Seçili Klasördeki Malzemeleri URP'ye Çevir.\n" +
                 "Yeni oyun başlatınca yakınlaştırdığında paketin binaları görünür.", "Tamam");
         }
 
@@ -224,6 +227,91 @@ namespace KuryeTycoon.EditorTools
                 if (AssetDatabase.LoadAssetAtPath<GameObject>(dst) != null) continue;
                 if (AssetDatabase.CopyAsset(src, dst)) n++;
             }
+            return n;
+        }
+    }
+
+    /// <summary>
+    /// Eski (Built-in, Unity 5) paketlerin malzemelerini URP Lit'e çevirir. Render Pipeline Converter
+    /// çalışmazsa diye: doku ve rengi malzemenin kayıtlı özelliklerinden okur (shader pembe olsa bile).
+    /// </summary>
+    public static class MalzemeCevirici
+    {
+        [MenuItem("Kurye Tycoon/Seçili Klasördeki Malzemeleri URP'ye Çevir")]
+        static void CevirSecili()
+        {
+            var folders = new List<string>();
+            foreach (var o in Selection.objects)
+            {
+                string path = AssetDatabase.GetAssetPath(o);
+                if (AssetDatabase.IsValidFolder(path)) folders.Add(path);
+            }
+            if (folders.Count == 0)
+            {
+                EditorUtility.DisplayDialog("Kurye Tycoon", "Önce Project penceresinde paketin klasörünü seç (ör. SimplePoly City).", "Tamam");
+                return;
+            }
+            var mats = new List<string>();
+            foreach (var g in AssetDatabase.FindAssets("t:Material", folders.ToArray())) mats.Add(AssetDatabase.GUIDToAssetPath(g));
+            int n = Cevir(mats);
+            EditorUtility.DisplayDialog("Kurye Tycoon", $"{n} malzeme URP'ye çevrildi ({mats.Count} malzeme bulundu).", "Tamam");
+        }
+
+        /// <summary>Prefabların kullandığı malzemeleri çevirir.</summary>
+        public static int CevirPrefablar(IEnumerable<string> prefabPaths)
+        {
+            var mats = new List<string>();
+            foreach (var dep in AssetDatabase.GetDependencies(new List<string>(prefabPaths).ToArray(), true))
+                if (dep.EndsWith(".mat") && dep.StartsWith("Assets/")) mats.Add(dep);
+            return Cevir(mats);
+        }
+
+        static int Cevir(List<string> matPaths)
+        {
+            var lit = Shader.Find("Universal Render Pipeline/Lit");
+            if (lit == null) return 0;
+            int n = 0;
+            foreach (var path in matPaths)
+            {
+                var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (m == null || m.shader == null) continue;
+                string sh = m.shader.name;
+                if (sh.StartsWith("Universal Render Pipeline") || sh.StartsWith("Shader Graphs") || sh.StartsWith("Sprites")) continue;
+
+                // Kayıtlı özelliklerden doku ve renk (shader artık bu özellikleri tanımasa da dosyada durur)
+                Texture tex = null;
+                Color col = Color.white;
+                bool hasCol = false;
+                var so = new SerializedObject(m);
+                var texEnvs = so.FindProperty("m_SavedProperties.m_TexEnvs");
+                if (texEnvs != null)
+                    for (int i = 0; i < texEnvs.arraySize; i++)
+                    {
+                        var e = texEnvs.GetArrayElementAtIndex(i);
+                        string name = e.FindPropertyRelative("first").stringValue;
+                        if (name == "_MainTex" || name == "_BaseMap")
+                        {
+                            var t = e.FindPropertyRelative("second.m_Texture").objectReferenceValue as Texture;
+                            if (t != null) { tex = t; break; }
+                        }
+                    }
+                var colors = so.FindProperty("m_SavedProperties.m_Colors");
+                if (colors != null)
+                    for (int i = 0; i < colors.arraySize; i++)
+                    {
+                        var e = colors.GetArrayElementAtIndex(i);
+                        string name = e.FindPropertyRelative("first").stringValue;
+                        if (name == "_Color" || name == "_BaseColor") { col = e.FindPropertyRelative("second").colorValue; hasCol = true; break; }
+                    }
+
+                m.shader = lit;
+                if (tex != null) m.SetTexture("_BaseMap", tex);
+                if (hasCol) m.SetColor("_BaseColor", col);
+                m.SetFloat("_Smoothness", 0.2f);
+                EditorUtility.SetDirty(m);
+                n++;
+            }
+            AssetDatabase.SaveAssets();
             return n;
         }
     }
