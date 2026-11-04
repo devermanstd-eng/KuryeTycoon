@@ -104,6 +104,8 @@ namespace KuryeTycoon
             DrawZoomButtons(sh);
             DrawLegend(sh);
             DrawCourierPopup(sw, sh);
+            DrawInfoMarker();
+            DrawInfoPopup(sw, sh);
             GUI.enabled = true;
             DrawEvent(sw, sh);
             if (pauseMenuOpen) DrawPauseMenu(sw, sh);
@@ -118,6 +120,7 @@ namespace KuryeTycoon
             if (e.type != EventType.KeyDown || e.keyCode != KeyCode.Escape) return;
             e.Use();
             // Önce açık pencere kapanır, sonra Esc menüsü açılır
+            if (InfoOpen && !pauseMenuOpen) { CloseInfo(); return; }
             if (panelOpen && !pauseMenuOpen) { panelOpen = false; return; }
             SetPauseMenu(!pauseMenuOpen);
         }
@@ -496,6 +499,7 @@ namespace KuryeTycoon
                            !(panelOpen && WindowRect(sh).Contains(m)) &&
                            !(legendOpen && LegendRect(sh).Contains(m)) &&
                            !(popupCourier != null && PopupRect(sw, sh).Contains(m)) &&
+                           !(InfoOpen && InfoRect(sw, sh).Contains(m)) &&
                            !new Rect(DockW + 10f, sh - 44f, 380f, 30f).Contains(m);
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
@@ -541,8 +545,10 @@ namespace KuryeTycoon
                     {
                         popupCourier = c;
                         popupScroll = Vector2.zero;
+                        CloseInfo();
                         e.Use();
                     }
+                    else if (HandleInfoClick(m)) e.Use();
                 }
             }
         }
@@ -1080,7 +1086,7 @@ namespace KuryeTycoon
                 GUILayout.BeginHorizontal();
                 var courier = c;
                 if (GUILayout.Button("Ekipman teklif et", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; panelOpen = true; scroll = Vector2.zero; };
-                if (GUILayout.Button("Nakit / ödeme detayı", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; };
+                if (GUILayout.Button("Nakit / ödeme detayı", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; CloseInfo(); };
                 GUI.enabled = modalFree && c.OrderCount == 0;
                 if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton)) deferred = () => cm.Fire(courier);
                 GUI.enabled = modalFree;
@@ -1175,48 +1181,58 @@ namespace KuryeTycoon
             foreach (var s in map.Shops)
             {
                 GUILayout.BeginVertical(box);
+                DrawShopCard(s, rv, true);
+                GUILayout.EndVertical();
+            }
+        }
+
+        /// <summary>Dükkan bilgisi ve sözleşme işlemleri (Dükkanlar penceresi ve haritada dükkana tıklayınca açılan kart).</summary>
+        void DrawShopCard(Shop s, RivalCompany rv, bool withTitle)
+        {
+            var map = CityMap.I;
+            if (withTitle)
+            {
                 GUILayout.Label(s.Name + (s.exclusive ? "  [Münhasır]" : s.contracted ? "  [Sözleşmeli]" : "") +
                                 (s.rivalContracted ? $"  · {(rv != null ? rv.companyName : "rakip")} ile de çalışıyor" : ""), header);
-                GUILayout.Label($"Komisyon %{s.Commission * 100f:0.#} · Hazırlık ~{s.def.prepMinutes:0} dk · " +
-                                $"Sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · Ağırlık {GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)} · Toplam sipariş {s.ordersTotal}", small);
-                if (s.def.kgMax >= GameData.HeavyKg)
-                    GUILayout.Label($"{GameData.HeavyKg:0} kg üstü ağır siparişler gelir: bunlar için arabalı kurye gerekir.", warn);
-                if (!map.IsUnlocked(s.tile))
-                {
-                    GUILayout.Label($"Kilitli: önce \"{CityMap.DistrictNames[s.def.unlockLevel]}\" bölgesini aç.", small);
-                }
-                else if (!s.contracted)
-                {
-                    var shop = s;
-                    if (GameClock.I.Day < s.resignBlockedUntil)
-                        GUILayout.Label($"Seninle çalışmayı bıraktı; {GameClock.I.DateOf(s.resignBlockedUntil)} tarihinden sonra yeniden teklif edebilirsin.", warn);
-                    else if (GUILayout.Button($"Sözleşme imzala — {Ft(s.def.contractCost)}", button))
-                        deferred = () => map.SignContract(shop);
-                }
-                else if (rv != null)
-                {
-                    var shop = s;
-                    Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);
-                    Bar("Memnuniyet", s.satisfaction / 100f, sc, $"{s.satisfaction:0}/100");
-                    float share = rv.ShareFor(s);
-                    GUILayout.Label($"Sözleşme bitişi: {GameClock.I.DateOf(s.contractEndDay)} · bu ay {s.monthOrders} sipariş (geçen ay {s.lastMonthOrders}) · " +
-                                    (s.exclusive ? "münhasır: siparişler +%15" : s.rivalContracted ? $"rakiple paylaşılıyor: payın ~%{share / 1.25f * 100f:0}" : "rakip yok"),
-                                    small);
-                    if (s.commissionBonus != 0f)
-                        GUILayout.Label($"Pazarlık/anlaşma farkı: {(s.commissionBonus > 0 ? "+" : "−")}{Mathf.Abs(s.commissionBonus) * 100f:0.#} puan (temel %{s.def.commission * 100f:0.#})", small);
-                    GUILayout.BeginHorizontal();
-                    GUI.enabled = modalFree && rv.CanNegotiate(s);
-                    if (GUILayout.Button($"Pazarlık: komisyon +2 puan (şans %{rv.NegotiateChance(s) * 100f:0})", smallButton))
-                        deferred = () => rv.Negotiate(shop);
-                    GUI.enabled = modalFree && rv.CanOfferExclusive(s);
-                    if (GUILayout.Button(s.exclusive ? "Münhasır" : $"Münhasırlık öner: −3 puan (şans %{rv.ExclusiveChance(s) * 100f:0})", smallButton))
-                        deferred = () => rv.OfferExclusive(shop);
-                    GUI.enabled = modalFree;
-                    GUILayout.EndHorizontal();
-                    if (GameClock.I.Day < s.negotiateCooldownUntil)
-                        GUILayout.Label($"Yeni teklif için {GameClock.I.DateOf(s.negotiateCooldownUntil)} tarihini bekle.", small);
-                }
-                GUILayout.EndVertical();
+            }
+            GUILayout.Label($"Komisyon %{s.Commission * 100f:0.#} · Hazırlık ~{s.def.prepMinutes:0} dk · " +
+                            $"Sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · Ağırlık {GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)} · Toplam sipariş {s.ordersTotal}", small);
+            if (s.def.kgMax >= GameData.HeavyKg)
+                GUILayout.Label($"{GameData.HeavyKg:0} kg üstü ağır siparişler gelir: bunlar için arabalı kurye gerekir.", warn);
+            if (!map.IsUnlocked(s.tile))
+            {
+                GUILayout.Label($"Kilitli: önce \"{CityMap.DistrictNames[s.def.unlockLevel]}\" bölgesini aç.", small);
+            }
+            else if (!s.contracted)
+            {
+                var shop = s;
+                if (GameClock.I.Day < s.resignBlockedUntil)
+                    GUILayout.Label($"Seninle çalışmayı bıraktı; {GameClock.I.DateOf(s.resignBlockedUntil)} tarihinden sonra yeniden teklif edebilirsin.", warn);
+                else if (GUILayout.Button($"Sözleşme imzala — {Ft(s.def.contractCost)}", button))
+                    deferred = () => map.SignContract(shop);
+            }
+            else if (rv != null)
+            {
+                var shop = s;
+                Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);
+                Bar("Memnuniyet", s.satisfaction / 100f, sc, $"{s.satisfaction:0}/100");
+                float share = rv.ShareFor(s);
+                GUILayout.Label($"Sözleşme bitişi: {GameClock.I.DateOf(s.contractEndDay)} · bu ay {s.monthOrders} sipariş (geçen ay {s.lastMonthOrders}) · " +
+                                (s.exclusive ? "münhasır: siparişler +%15" : s.rivalContracted ? $"rakiple paylaşılıyor: payın ~%{share / 1.25f * 100f:0}" : "rakip yok"),
+                                small);
+                if (s.commissionBonus != 0f)
+                    GUILayout.Label($"Pazarlık/anlaşma farkı: {(s.commissionBonus > 0 ? "+" : "−")}{Mathf.Abs(s.commissionBonus) * 100f:0.#} puan (temel %{s.def.commission * 100f:0.#})", small);
+                GUILayout.BeginHorizontal();
+                GUI.enabled = modalFree && rv.CanNegotiate(s);
+                if (GUILayout.Button($"Pazarlık: komisyon +2 puan (şans %{rv.NegotiateChance(s) * 100f:0})", smallButton))
+                    deferred = () => rv.Negotiate(shop);
+                GUI.enabled = modalFree && rv.CanOfferExclusive(s);
+                if (GUILayout.Button(s.exclusive ? "Münhasır" : $"Münhasırlık öner: −3 puan (şans %{rv.ExclusiveChance(s) * 100f:0})", smallButton))
+                    deferred = () => rv.OfferExclusive(shop);
+                GUI.enabled = modalFree;
+                GUILayout.EndHorizontal();
+                if (GameClock.I.Day < s.negotiateCooldownUntil)
+                    GUILayout.Label($"Yeni teklif için {GameClock.I.DateOf(s.negotiateCooldownUntil)} tarihini bekle.", small);
             }
         }
 

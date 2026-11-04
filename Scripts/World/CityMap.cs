@@ -392,6 +392,10 @@ namespace KuryeTycoon
         SpriteRenderer hq;
         Transform root, roofRoot, countryRoot;
         readonly List<Vector2Int> customerTiles = new List<Vector2Int>();
+        readonly HashSet<Vector2Int> customerSet = new HashSet<Vector2Int>();
+
+        /// <summary>Müşterilerin oturduğu (sipariş verebilen) bina karesi mi?</summary>
+        public bool IsCustomerBuilding(Vector2Int t) => customerSet.Contains(t);
         readonly List<Vector2Int> shopTiles = new List<Vector2Int>();
         readonly HashSet<Vector2Int> reserved = new HashSet<Vector2Int>();
 
@@ -435,7 +439,7 @@ namespace KuryeTycoon
                     if (RoadAt(x, y) || WaterAt(x, y) || RailAt(x, y)) continue;
                     var z = ZoneOf(x, y);
                     if (!IsFrontage(x, y)) continue;
-                    if (CustomerZone(z)) customerTiles.Add(t);
+                    if (CustomerZone(z)) { customerTiles.Add(t); customerSet.Add(t); }
                     if (ShopZone(z)) shopTiles.Add(t);
                 }
             }
