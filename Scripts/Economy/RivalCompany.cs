@@ -289,6 +289,7 @@ namespace KuryeTycoon
             foreach (var c in CourierManager.I.Couriers.ToArray())
             {
                 if (c.morale >= 0.35f || c.OrderCount > 0) continue;
+                if (UpgradeManager.I != null && UpgradeManager.I.LoyaltyProgram && c.level >= 3) continue;   // sadakat programı: kıdemli kurye kalır
                 if (Random.value < 0.2f) { CourierManager.I.PoachToRival(c, companyName); break; }
             }
         }
