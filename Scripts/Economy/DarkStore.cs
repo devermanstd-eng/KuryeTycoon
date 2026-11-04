@@ -56,7 +56,7 @@ namespace KuryeTycoon
         public static readonly long[] AssortDaily = { 0, 0, 1500, 3500 };
 
         public bool IsOpen => shop != null;
-        public Shop shop;
+        [System.NonSerialized] public Shop shop;   // haritadaki dükkan (kayda DarkStoreSave ile yazılır)
         public int size = 1;
         public readonly long[] stock = new long[Aisles];
         public readonly int[] assortment = { 2, 2, 2, 2, 2 };
