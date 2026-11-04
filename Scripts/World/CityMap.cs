@@ -401,9 +401,26 @@ namespace KuryeTycoon
             RefreshColors();
         }
 
+        float wetness;                           // ıslak zemin (0–1): yağmurda kararır
+
+        /// <summary>Islak zemin: yağmurda yollar ve zemin koyulaşıp maviye kayar (su birikintisi parlaklığı). 0 = kuru.</summary>
+        public void SetWetness(float amount)
+        {
+            amount = Mathf.Clamp01(amount);
+            if (Mathf.Abs(amount - wetness) < 0.001f) return;
+            wetness = amount;
+            RefreshColors();
+        }
+
         Color Snowy(Color c, float mul = 1f)
         {
-            if (snowCover <= 0f || c == WaterColor) return c;
+            if (c == WaterColor) return c;
+            if (wetness > 0f)
+            {
+                var wet = new Color(c.r * 0.62f, c.g * 0.66f, c.b * 0.78f + 0.04f, c.a);
+                c = Color.Lerp(c, wet, wetness * 0.8f * Mathf.Min(1f, mul + 0.3f));
+            }
+            if (snowCover <= 0f) return c;
             return Color.Lerp(c, SnowColor, snowCover * mul);
         }
         readonly List<Vector2Int> waterTiles = new List<Vector2Int>();

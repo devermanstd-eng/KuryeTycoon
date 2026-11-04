@@ -683,6 +683,20 @@ namespace KuryeTycoon
         // ---------------------------------------------------------------- üst bar
         GUIStyle topCaption, topValue, topName;
 
+        static string WeatherName(WeatherKind k)
+        {
+            switch (k)
+            {
+                case WeatherKind.Sicak: return "Sıcak";
+                case WeatherKind.Bulutlu: return "Bulutlu";
+                case WeatherKind.Yagmurlu: return "Yağmur";
+                case WeatherKind.Soguk: return "Soğuk";
+                case WeatherKind.Karli: return "Kar";
+                case WeatherKind.Firtina: return "Fırtına";
+                default: return "Güneş";
+            }
+        }
+
         static Icons.Kind WeatherIcon(WeatherKind k)
         {
             switch (k)
@@ -2121,6 +2135,18 @@ namespace KuryeTycoon
             if (lm != ShowLandmarks) ShowLandmarks = lm;
             bool wfx = GUILayout.Toggle(WeatherFx.Enabled, " Hava efektleri: yağmur, kar, rüzgâr, güneş, şimşek, kar örtüsü", toggle);
             if (wfx != WeatherFx.Enabled) WeatherFx.Enabled = wfx;
+            if (WeatherFx.Enabled && WeatherSystem.I != null)
+            {
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Havayı dene:", small, GUILayout.Width(90));
+                foreach (WeatherKind wk in System.Enum.GetValues(typeof(WeatherKind)))
+                {
+                    var kind = wk;
+                    if (SelectButton(WeatherSystem.I.Current == wk, WeatherName(wk), smallButton))
+                        deferred = () => WeatherSystem.I.Restore(kind);
+                }
+                GUILayout.EndHorizontal();
+            }
             bool traffic = GUILayout.Toggle(Traffic.Enabled, " Trafik: arabalar, otobüsler, yayalar (kapatmak performansı artırır)", toggle);
             if (traffic != Traffic.Enabled) deferred = () => { Traffic.Enabled = traffic; if (Traffic.I != null) Traffic.I.Build(); };
             if (Traffic.Enabled)

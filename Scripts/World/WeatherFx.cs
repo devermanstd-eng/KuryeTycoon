@@ -29,6 +29,10 @@ namespace KuryeTycoon
         readonly List<Drop> snow = new List<Drop>();
         readonly List<Drop> leaves = new List<Drop>();
         readonly List<Drop> gusts = new List<Drop>();
+        readonly List<Drop> clouds = new List<Drop>();    // yerde kayan bulut gölgeleri
+        readonly List<Drop> splashes = new List<Drop>();  // yağmur damlası sıçramaları
+        float wetness;             // yerin ıslaklığı (0–1)
+        float lastWetApplied = -1f;
 
         // Yumuşak geçen yoğunluklar (0–1)
         float rainAmt, snowAmt, windAmt, sunAmt, cloudAmt, coldAmt, stormAmt, heatAmt;
@@ -107,6 +111,16 @@ namespace KuryeTycoon
                 CityMap.I.SetSnowCover(Enabled ? snowCover : 0f);
             }
 
+            // Islak zemin: yağmurda kararır, yağmur durunca yavaşça kurur (güneşte hızlı)
+            float wetTarget = Mathf.Clamp01(rainAmt * 1.2f);
+            float wetRate = wetTarget > wetness ? 0.08f : (sunAmt > 0.5f ? 0.03f : 0.012f);
+            wetness = Mathf.MoveTowards(wetness, wetTarget, wetRate * dt);
+            if (CityMap.I != null && Mathf.Abs(wetness - lastWetApplied) > 0.02f)
+            {
+                lastWetApplied = wetness;
+                CityMap.I.SetWetness(Enabled ? wetness : 0f);
+            }
+
             if (!Enabled) return;
             Simulate(dt);
         }
@@ -126,8 +140,10 @@ namespace KuryeTycoon
             float w = windAmt;
             float scale = Screen.height / 900f;
 
-            Ensure(rain, Mathf.RoundToInt(rainAmt * 650f), () => new Drop { p = RandomScreen(), speed = Random.Range(900f, 1400f), len = Random.Range(14f, 26f) });
-            Ensure(snow, Mathf.RoundToInt(snowAmt * 420f), () => new Drop { p = RandomScreen(), speed = Random.Range(40f, 90f), size = Random.Range(2f, 5.5f), phase = Random.value * 10f });
+            Ensure(rain, Mathf.RoundToInt(rainAmt * 700f), () => new Drop { p = RandomScreen(), speed = Random.Range(900f, 1400f), len = Random.Range(18f, 34f) });
+            Ensure(splashes, Mathf.RoundToInt(rainAmt * 60f), () => new Drop { p = RandomScreen(), phase = Random.value, size = Random.Range(6f, 14f) });
+            Ensure(clouds, Mathf.RoundToInt(Mathf.Clamp01(cloudAmt + rainAmt) * 7f), () => new Drop { p = new Vector2(Random.Range(-Screen.width * 0.3f, Screen.width), Random.Range(0f, Screen.height)), size = Random.Range(0.5f, 0.9f) * Screen.height, speed = Random.Range(12f, 25f) });
+            Ensure(snow, Mathf.RoundToInt(snowAmt * 520f), () => new Drop { p = RandomScreen(), speed = Random.Range(40f, 90f), size = Random.Range(2f, 5.5f), phase = Random.value * 10f });
             Ensure(leaves, Mathf.RoundToInt(Mathf.Clamp01((w - 0.35f) * 1.6f) * (snowAmt > 0.5f ? 0f : 40f)), () => new Drop { p = RandomScreen(), speed = Random.Range(60f, 140f), size = Random.Range(3f, 6f), phase = Random.value * 10f, kind = Random.Range(0, 3) });
             Ensure(gusts, Mathf.RoundToInt(Mathf.Clamp01((w - 0.4f) * 1.7f) * 22f), () => new Drop { p = RandomScreen(), speed = Random.Range(500f, 900f), len = Random.Range(80f, 200f), phase = Random.value });
 
@@ -138,6 +154,20 @@ namespace KuryeTycoon
                 d.p += new Vector2(windX * 1.2f, d.speed) * dt * scale;
                 if (d.p.y > Screen.height + 30f || d.p.x > Screen.width + 120f) { d.p = new Vector2(Random.Range(-200f, Screen.width), Random.Range(-60f, -10f)); }
                 rain[i] = d;
+            }
+            for (int i = 0; i < splashes.Count; i++)
+            {
+                var d = splashes[i];
+                d.phase += dt * 2.5f;
+                if (d.phase >= 1f) { d.phase = 0f; d.p = RandomScreen(); d.size = Random.Range(6f, 14f); }
+                splashes[i] = d;
+            }
+            for (int i = 0; i < clouds.Count; i++)
+            {
+                var d = clouds[i];
+                d.p.x += (d.speed + windX * 0.15f) * dt * scale;
+                if (d.p.x - d.size > Screen.width) d.p = new Vector2(-d.size * 1.2f, Random.Range(0f, Screen.height));
+                clouds[i] = d;
             }
             for (int i = 0; i < snow.Count; i++)
             {
@@ -169,34 +199,46 @@ namespace KuryeTycoon
 
         void OnGUI()
         {
+            GUI.depth = 10;
             if (!Enabled || Event.current.type != EventType.Repaint) return;
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
-            GUI.depth = 10;   // arayüzün (GameUI) altında kalsın
+            // GUI.depth her olayda (Start'ta da) ayarlanır: arayüzün (GameUI) altında kalsın
             GUI.matrix = Matrix4x4.identity;
             float sw = Screen.width, sh = Screen.height;
             var full = new Rect(0, 0, sw, sh);
             var old = GUI.color;
 
             // Işık tonu: güneşte sıcak, bulutluda gri, yağmurda koyu mavi-gri, soğukta mavi
-            Tint(full, new Color(1f, 0.85f, 0.55f), sunAmt * (0.05f + heatAmt * 0.05f));
-            Tint(full, new Color(0.45f, 0.48f, 0.55f), cloudAmt * 0.10f);
-            Tint(full, new Color(0.12f, 0.16f, 0.24f), rainAmt * 0.16f + stormAmt * 0.10f);
-            Tint(full, new Color(0.65f, 0.80f, 1f), coldAmt * 0.07f);
+            Tint(full, new Color(1f, 0.82f, 0.50f), sunAmt * (0.08f + heatAmt * 0.08f));
+            Tint(full, new Color(0.42f, 0.45f, 0.52f), cloudAmt * 0.16f);
+            Tint(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.22f + stormAmt * 0.16f);
+            Tint(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.10f);
+
+            // Bulut gölgeleri: haritanın üstünden rüzgârla kayan koyu lekeler
+            foreach (var c in clouds)
+            {
+                GUI.color = new Color(0.05f, 0.06f, 0.09f, 0.16f * Mathf.Clamp01(cloudAmt + rainAmt));
+                GUI.DrawTexture(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f, c.size * 2f, c.size * 0.8f), glare);
+            }
 
             // Güneş: sağ üst köşede parlama ve hafif ışık hüzmeleri
             if (sunAmt > 0.02f)
             {
-                float a = sunAmt * (0.35f + heatAmt * 0.2f);
-                float size = sh * (0.9f + heatAmt * 0.3f);
-                GUI.color = new Color(1f, 0.92f, 0.65f, a);
-                GUI.DrawTexture(new Rect(sw - size * 0.55f, -size * 0.45f, size, size), glare);
+                float a = sunAmt * (0.55f + heatAmt * 0.25f);
+                float size = sh * (1.0f + heatAmt * 0.3f);
+                // Güneş üst barın hemen altında, sağ üstte
+                var sunC = new Vector2(sw * 0.88f, sh * 0.12f);
+                GUI.color = new Color(1f, 0.90f, 0.60f, a);
+                GUI.DrawTexture(new Rect(sunC.x - size / 2f, sunC.y - size / 2f, size, size), glare);
+                GUI.color = new Color(1f, 0.98f, 0.85f, sunAmt * 0.8f);
+                GUI.DrawTexture(new Rect(sunC.x - sh * 0.04f, sunC.y - sh * 0.04f, sh * 0.08f, sh * 0.08f), dot);
                 // Hüzmeler: köşeden çapraza doğru, yavaşça nefes alır
                 float t = Time.unscaledTime;
                 for (int i = 0; i < 4; i++)
                 {
                     float breathe = 0.5f + 0.5f * Mathf.Sin(t * 0.3f + i * 1.7f);
-                    GUI.color = new Color(1f, 0.95f, 0.75f, sunAmt * 0.06f * breathe);
-                    var pivot = new Vector2(sw - sh * 0.05f, -sh * 0.05f);
+                    GUI.color = new Color(1f, 0.95f, 0.75f, sunAmt * 0.10f * breathe);
+                    var pivot = new Vector2(sw * 0.88f, sh * 0.12f);
                     var m = GUI.matrix;
                     GUIUtility.RotateAroundPivot(35f + i * 12f, pivot);
                     GUI.DrawTexture(new Rect(pivot.x - sh * 0.08f, pivot.y, sh * (0.16f + i * 0.03f), sh * 1.6f), beam);
@@ -216,22 +258,30 @@ namespace KuryeTycoon
             if (rain.Count > 0)
             {
                 float angle = Mathf.Atan2(windAmt * 420f * 1.2f, 1100f) * Mathf.Rad2Deg;
-                GUI.color = new Color(0.75f, 0.82f, 0.95f, 0.35f + stormAmt * 0.1f);
+                GUI.color = new Color(0.80f, 0.86f, 0.98f, 0.55f + stormAmt * 0.15f);
                 var m = GUI.matrix;
                 foreach (var d in rain)
                 {
                     GUI.matrix = m;
                     GUIUtility.RotateAroundPivot(-angle, d.p);
-                    GUI.DrawTexture(new Rect(d.p.x, d.p.y, 1.4f, d.len), Texture2D.whiteTexture);
+                    GUI.DrawTexture(new Rect(d.p.x, d.p.y, 2f, d.len), Texture2D.whiteTexture);
                 }
                 GUI.matrix = m;
+                // Yerde sıçrayan damlalar: büyüyüp sönen halkalar
+                foreach (var sp in splashes)
+                {
+                    float r = sp.size * (0.4f + sp.phase);
+                    GUI.color = new Color(0.85f, 0.9f, 1f, 0.35f * (1f - sp.phase));
+                    GUI.DrawTexture(new Rect(sp.p.x - r, sp.p.y - r * 0.4f, r * 2f, r * 0.8f), dot);
+                }
             }
 
             // Kar taneleri
             foreach (var d in snow)
             {
-                GUI.color = new Color(1f, 1f, 1f, 0.85f);
-                GUI.DrawTexture(new Rect(d.p.x - d.size / 2f, d.p.y - d.size / 2f, d.size, d.size), dot);
+                GUI.color = new Color(1f, 1f, 1f, 0.95f);
+                float sz = d.size * 1.3f;
+                GUI.DrawTexture(new Rect(d.p.x - sz / 2f, d.p.y - sz / 2f, sz, sz), dot);
             }
 
             // Savrulan yapraklar
