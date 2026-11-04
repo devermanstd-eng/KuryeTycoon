@@ -692,9 +692,9 @@ namespace KuryeTycoon
 
             // Kuryeler kendi araçlarıyla, serbest çalışır: şirketin günlük gideri ofis kirası + platform sunucu ücreti
             DailyCrisisCheck();
-            Spend(officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
-            int fee = UpgradeManager.I != null ? UpgradeManager.I.PlatformFeePerDay : 0;
-            if (fee > 0) Spend(fee, "Platform sunucu ve lisans ücreti", ExpenseCategory.Gelistirme);
+            // Ofis kirası, platform ücreti, yazılım abonelikleri, tesis giderleri ve reklam bütçesi (geliştirmelere göre)
+            if (UpgradeManager.I != null) UpgradeManager.I.ChargeDaily();
+            else Spend(officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
 
             if (taxDebt > 0)
             {

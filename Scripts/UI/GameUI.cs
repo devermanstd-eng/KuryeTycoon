@@ -1575,36 +1575,49 @@ namespace KuryeTycoon
         {
             var up = UpgradeManager.I;
             var e = EconomyManager.I;
-            GUILayout.Label("Kalıcı geliştirmeler şirketini büyütür. En önemlisi platform paketi: kuryeler serbest çalışır ama " +
-                            "her biri uygulamanda bir hesap ister; paket kaç kurye hesabı olabileceğini belirler ve büyük paketin " +
-                            "günlük sunucu ücreti de yüksektir. Sadece gerçekten ihtiyacın olduğunda yükselt. " +
-                            "Geliştirmeler gider olarak vergiden düşülür. Aile borcunu unutma!", small);
-            GUILayout.Label($"Kasa: {Ft(e.money)} · Kurye: {CourierManager.I.Couriers.Count}/{up.CourierCap} · Günlük platform ücreti: {Ft(up.PlatformFeePerDay)}", label);
+            GUILayout.Label("Her geliştirmenin bir kurulum bedeli ve günlük işletme gideri var (abonelik, kira, malzeme, reklam bütçesi). " +
+                            "Büyük platform paketleri şehir büyüdükçe, tesisler ise merkez ofis büyüdükçe açılır. İşletme gideri olanları " +
+                            "küçültebilirsin (kurulum bedeli geri gelmez). Bütün giderler vergiden düşülür.", small);
+            GUILayout.Label($"Kasa: {Ft(e.money)} · Kurye: {CourierManager.I.Couriers.Count}/{up.CourierCap} · Günlük toplam gider: {Ft(up.TotalDailyCost)} " +
+                            $"(ayda ~{Ft(up.TotalDailyCost * 30L)})", label);
 
             foreach (var d in UpgradeManager.Defs)
             {
-                int lv = up.Level(d.kind);
+                var kind = d.kind;
+                int lv = up.Level(kind);
                 GUILayout.BeginVertical(box);
-                string lvText = d.MaxLevel > 1 ? $" · Seviye {lv}/{d.MaxLevel}" : (lv > 0 ? " · ALINDI" : "");
-                GUILayout.Label(d.name + lvText, header);
+                GUILayout.Label($"{d.name} · {d.levelNames[lv]} ({lv}/{d.MaxLevel})", header);
                 GUILayout.Label(d.summary, small);
-                GUILayout.Label("Şu an: " + d.LevelText(lv), label);
-                int cost = up.NextCost(d.kind);
+                int dailyNow = up.DailyCost(kind);
+                GUILayout.Label("Şu an: " + d.effect(lv) + (dailyNow > 0 ? $" · günlük {Ft(dailyNow)}" : ""), label);
+
+                int cost = up.NextCost(kind);
                 if (cost >= 0)
                 {
-                    GUILayout.Label("Sonraki: " + d.LevelText(lv + 1), small);
-                    if (up.IsLocked(d.kind))
-                    {
-                        GUILayout.Label($"Kilitli: önce \"{CityMap.DistrictNames[d.requiresDistrict]}\" bölgesini aç. ({Ft(cost)})", small);
-                    }
-                    else
-                    {
-                        var kind = d.kind;
-                        GUI.enabled = modalFree && e.money >= cost;
-                        if (GUILayout.Button($"Satın al — {Ft(cost)}", button)) deferred = () => up.Buy(kind);
-                        GUI.enabled = modalFree;
-                    }
+                    int dailyNext = d.DailyAt(lv + 1);
+                    GUILayout.Label($"Sonraki: {d.LevelText(lv + 1)} · günlük {Ft(dailyNext)}" +
+                                    (dailyNext > dailyNow ? $" (+{Ft(dailyNext - dailyNow)}/gün)" : ""), small);
+                    string lockReason = up.LockReason(kind);
+                    if (lockReason.Length > 0) GUILayout.Label($"Kilitli: {lockReason}. (Kurulum {Ft(cost)})", warn);
                 }
+                else GUILayout.Label("En yüksek seviyede.", small);
+
+                GUILayout.BeginHorizontal();
+                if (cost >= 0 && !up.IsLocked(kind))
+                {
+                    GUI.enabled = modalFree && e.FreeCash >= cost;
+                    if (GUILayout.Button($"Yükselt — {Ft(cost)}", button)) deferred = () => up.Buy(kind);
+                    GUI.enabled = modalFree;
+                }
+                if (lv > 0 && d.canDowngrade && d.DailyAt(lv) > d.DailyAt(lv - 1))
+                {
+                    string block = up.DowngradeBlock(kind);
+                    GUI.enabled = modalFree && block.Length == 0;
+                    if (GUILayout.Button(block.Length == 0 ? $"Küçült (−{Ft(d.DailyAt(lv) - d.DailyAt(lv - 1))}/gün)" : $"Küçültülemez: {block}", smallButton, GUILayout.Width(block.Length == 0 ? 170 : 260)))
+                        deferred = () => up.Downgrade(kind);
+                    GUI.enabled = modalFree;
+                }
+                GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }
         }

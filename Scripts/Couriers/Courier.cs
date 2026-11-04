@@ -459,6 +459,7 @@ namespace KuryeTycoon
                 if (fatigue > 0.5f) return;
                 // Boost, sadece zaten müsait olabilecek kuryeleri çeker (sınavdaki öğrenciyi değil)
                 float pOn = pref * (0.4f + morale * 0.6f) * WeatherWillingness() + (boost && pref >= 0.2f ? 0.35f : 0f);
+                if (UpgradeManager.I != null) pOn *= UpgradeManager.I.PeakAvailabilityMultiplier(GameClock.I.Hour);
                 if (Random.value < pOn)
                 {
                     GoOnline();
@@ -1335,7 +1336,7 @@ namespace KuryeTycoon
             float personal = HygieneLimit + 0.1f + tidiness * 0.25f;
             if (hygiene >= personal) return;
             float chance = 0.15f + tidiness * 0.45f;
-            if (UpgradeManager.I != null && UpgradeManager.I.Has(UpgradeKind.Hijyen)) chance += 0.3f;
+            if (UpgradeManager.I != null) chance += UpgradeManager.I.HygieneCleanBonus;
             if (Random.value < chance) CleanBag();
         }
 
