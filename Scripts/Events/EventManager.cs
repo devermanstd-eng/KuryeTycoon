@@ -80,18 +80,96 @@ namespace KuryeTycoon
 
         // ---------- Teslimat sonrası olaylar ----------
 
+        /// <summary>
+        /// Teslimattan sonra küçük bir ihtimalle sorun çıkar (gerçek hayattaki gibi nadir):
+        ///  • Dükkanda eksik ürün (en sık): ürün dükkanda yokmuş / paketlenmemiş. Dükkan müşteriye bildirir ve
+        ///    ücretini kendisi iade eder: şirkete ve kuryeye maliyeti yok, sadece bilgi. Markette (çok ürün) daha sık.
+        ///  • Kurye kaynaklı sorun: içecek döküldü, paket ezildi / ıslandı ya da kurye bir poşeti dükkanda unuttu.
+        ///    Dikkatsiz kuryede daha sık. Müşteri isterse (yaklaşık %60) desteğe ulaşır; iade tutarı kuryenin
+        ///    hesabından düşülür (Wolt kuralı). Desteğe ulaşmayan müşteri sadece düşük puan verir.
+        /// </summary>
         public void RollDeliveryIncident(Order o, Courier c)
         {
+            // Dükkan kaynaklı eksik ürün: market ~%1,5, restoran/kafe ~%0,7
+            float shopMissing = o.shop.def.isMarket ? 0.015f : 0.007f;
+            // Kurye kaynaklı: dikkatli kuryede ~%0,5, dikkatsizde ~%1,5
             float careRisk = 1f - c.care;
-            float missing = 0.02f + careRisk * 0.10f;
-            float damage = 0.015f + careRisk * 0.08f;
-            // Yağmurluğu olmayan açık araçlı kuryenin paketi ıslanır
-            if (WeatherSystem.I.IsRainy && c.V.exposed && !c.Has(EquipmentKind.Yagmurluk)) damage *= 2f;
-            if (c.Has(EquipmentKind.TermalCanta)) damage *= 0.6f;
+            float courierFault = 0.003f + careRisk * 0.025f;
+            // Yağmurluğu olmayan açık araçlı kuryenin paketi ıslanır; termal çanta korur
+            if (WeatherSystem.I.IsRainy && c.V.exposed && !c.Has(EquipmentKind.Yagmurluk)) courierFault *= 1.6f;
+            if (c.Has(EquipmentKind.TermalCanta)) courierFault *= 0.6f;
 
             float r = Random.value;
-            if (r < missing) MissingItem(o, c);
-            else if (r < missing + damage) Damaged(o, c);
+            if (r < shopMissing) ShopMissingItem(o);
+            else if (r < shopMissing + courierFault) CourierFault(o, c);
+        }
+
+        /// <summary>Dükkanda eksik ürün: dükkan müşteriye bildirir ve ürünün ücretini iade eder. Kimse bir şey ödemez.</summary>
+        void ShopMissingItem(Order o)
+        {
+            string item = o.items != null && o.items.Count > 0 ? o.items[Random.Range(0, o.items.Count)].name : "bir ürün";
+            int value = o.items != null && o.items.Count > 0 ? GameData.Round10(o.items.Find(i => i.name == item).unitPrice) : GameData.Round10(o.basket * 0.2f);
+            Notify($"#{o.id}: {o.shop.Name}'da \"{item}\" kalmamış. {o.shop.Name} müşteriye bildirdi ve ücretini ({Ft(value)}) kendisi iade etti; " +
+                   "sana ve kuryeye maliyeti yok.");
+        }
+
+        /// <summary>Kurye kaynaklı sorun: müşteri desteğe ulaşırsa tutar kuryenin hesabından düşülür.</summary>
+        void CourierFault(Order o, Courier c)
+        {
+            bool forgot = Random.value < 0.3f;
+            bool wet = WeatherSystem.I.IsRainy && c.V.exposed && !c.Has(EquipmentKind.Yagmurluk);
+            string what = forgot ? "bir poşeti dükkanda unuttu" : wet ? "paketi yağmurda ıslattı" : (o.shop.def.isMarket ? "poşeti yırttı, ürünler ezildi" : "içecek döküldü / paket ezildi");
+            int value = GameData.Round10(o.basket * (forgot ? Random.Range(0.15f, 0.35f) : Random.Range(0.25f, 0.6f)));
+
+            // Müşterilerin çoğu desteğe yazmaz, sadece düşük puan verir
+            if (Random.value > 0.6f)
+            {
+                o.rating = Mathf.Max(1f, o.rating - 1f);
+                CompanyProfile.AddReputation(-0.01f);
+                Notify($"#{o.id}: {c.ShortName} {what}. Müşteri şikayet etmedi ama düşük puan verdi ({o.rating:0.0}★).");
+                return;
+            }
+
+            if (RivalCompany.I != null) RivalCompany.I.OnIncident(o);
+
+            // Destek ekibi varsa kuralı uygular: iade, kuryenin hesabından düşülür
+            var agent = SupportManager.I.OnDutyAgent();
+            if (agent != null)
+            {
+                agent.handledTotal++;
+                SupportManager.I.handledThisMonth++;
+                long taken = ChargeCourier(o, c, value);
+                Notify($"#{o.id}: {c.ShortName} {what}. Müşteri desteğe yazdı; destek {Ft(value)} iade etti, " +
+                       (taken >= value ? $"tutar {c.ShortName}'ın hesabından düşüldü." : $"{Ft(taken)}'ı {c.ShortName}'ın hesabından düşüldü, kalanı şirket ödedi."));
+                return;
+            }
+
+            Push(new GameEvent(forgot ? "Eksik teslimat (kurye)" : "Hasarlı sipariş",
+                    $"#{o.id} · {o.shop.Name}: kurye {c.courierName} {what}. Müşteri desteğe yazdı ve {Ft(value)} iade istiyor.\n" +
+                    "Kural: kurye kaynaklı sorunlarda iade kuryenin hesabından düşülür. İstersen şirket olarak üstlenebilirsin.")
+                .Add($"İade et, kuryeden düş (kural, moral biraz düşer)", () => ChargeCourier(o, c, value))
+                .Add($"İade et, şirket karşılasın (−{Ft(value)}, kuryenin morali artar)", () =>
+                {
+                    EconomyManager.I.Spend(value, $"İade #{o.id} (şirket üstlendi)", ExpenseCategory.Iade);
+                    c.morale = Mathf.Min(1f, c.morale + 0.05f);
+                })
+                .Add($"%50 kupon ver, kimseden düşme (−{Ft(value / 2)}, itibar −0.03)", () =>
+                {
+                    EconomyManager.I.Spend(value / 2, $"Kupon #{o.id}", ExpenseCategory.Iade);
+                    CompanyProfile.AddReputation(-0.03f);
+                })
+                .Add("Reddet (itibar −0.15)", () => CompanyProfile.AddReputation(-0.15f)));
+        }
+
+        /// <summary>Müşteriye iade yapılır, tutar kuryenin hesabındaki kazançtan düşülür (yetmezse kalanı şirket öder).</summary>
+        long ChargeCourier(Order o, Courier c, int value)
+        {
+            EconomyManager.I.Spend(value, $"İade #{o.id}", ExpenseCategory.Iade);
+            long taken = System.Math.Min(c.balance, (long)value);
+            c.balance -= taken;   // şirketin kuryeye borcu azalır: iade fiilen kuryeden çıkar
+            c.morale = Mathf.Max(0f, c.morale - 0.05f);
+            c.AddInbox($"#{o.id} iadesi: {Ft(taken)} hesabından düşüldü ({o.shop.Name} siparişi).");
+            return taken;
         }
 
         /// <summary>Kirli çanta: hijyen %60'ın altındaysa müşteri şikayet edebilir.</summary>
@@ -113,55 +191,6 @@ namespace KuryeTycoon
                     EconomyManager.I.Spend(value, $"Hijyen kuponu #{o.id}", ExpenseCategory.Iade))
                 .Add("Kuryeyi uyar (paketi bitince temizler, moral biraz düşer)", () => CourierManager.I.RequestCleaning(c))
                 .Add("Görmezden gel (itibar −0.1)", () => CompanyProfile.AddReputation(-0.1f)));
-        }
-
-        void MissingItem(Order o, Courier c)
-        {
-            if (RivalCompany.I != null) RivalCompany.I.OnIncident(o);
-            int value = GameData.Round10(o.basket * Random.Range(0.15f, 0.4f));
-            if (SupportManager.I.TryHandleIncident(o, c, value, "eksik ürün")) return;
-            Push(new GameEvent("Eksik ürün!",
-                    $"{o.shop.Name} siparişinde (#{o.id}) müşteri bir ürünün eksik geldiğini söylüyor.\n" +
-                    $"Kurye: {c.courierName} · Ürün değeri: {Ft(value)}")
-                .Add($"Tam iade yap (−{Ft(value)})", () =>
-                    EconomyManager.I.Spend(value, $"İade #{o.id}", ExpenseCategory.Iade))
-                .Add($"Kupon ver (−{Ft(value / 2)}, itibar −0.05)", () =>
-                {
-                    EconomyManager.I.Spend(value / 2, $"Kupon #{o.id}", ExpenseCategory.Iade);
-                    CompanyProfile.AddReputation(-0.05f);
-                })
-                .Add("İade yap, yarısını kuryeden kes (moral −)", () =>
-                {
-                    EconomyManager.I.Spend(value, $"İade #{o.id}", ExpenseCategory.Iade);
-                    EconomyManager.I.AddIncome(value / 2, $"Kurye kesintisi: {c.courierName}");
-                    if (c != null) c.morale = Mathf.Max(0f, c.morale - 0.2f);
-                })
-                .Add("Reddet (itibar −0.2)", () => CompanyProfile.AddReputation(-0.2f)));
-        }
-
-        void Damaged(Order o, Courier c)
-        {
-            if (RivalCompany.I != null) RivalCompany.I.OnIncident(o);
-            int value = GameData.Round10(o.basket * Random.Range(0.5f, 1f));
-            if (SupportManager.I.TryHandleIncident(o, c, value, "hasarlı sipariş")) return;
-            string reason = WeatherSystem.I.IsRainy ? "Yağmurda çanta ıslanmış, " : "";
-            Push(new GameEvent("Hasarlı sipariş!",
-                    $"{reason}{o.shop.Name} siparişi (#{o.id}) hasarlı teslim edildi (dökülmüş içecek / ezilmiş paket).\n" +
-                    $"Kurye: {c.courierName} · Zarar: {Ft(value)}")
-                .Add($"Tazmin et (−{Ft(value)})", () =>
-                    EconomyManager.I.Spend(value, $"Tazminat #{o.id}", ExpenseCategory.Iade))
-                .Add($"%50 indirim kuponu (−{Ft(value / 2)}, itibar −0.05)", () =>
-                {
-                    EconomyManager.I.Spend(value / 2, $"Kupon #{o.id}", ExpenseCategory.Iade);
-                    CompanyProfile.AddReputation(-0.05f);
-                })
-                .Add("Tazmin et, yarısını kuryeden kes (moral −)", () =>
-                {
-                    EconomyManager.I.Spend(value, $"Tazminat #{o.id}", ExpenseCategory.Iade);
-                    EconomyManager.I.AddIncome(value / 2, $"Kurye kesintisi: {c.courierName}");
-                    if (c != null) c.morale = Mathf.Max(0f, c.morale - 0.2f);
-                })
-                .Add("Reddet (itibar −0.25)", () => CompanyProfile.AddReputation(-0.25f)));
         }
 
         // ---------- Günlük rastgele olaylar ----------

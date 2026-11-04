@@ -188,8 +188,8 @@ namespace KuryeTycoon
         [Range(0f, 0.6f)] public float cashChanceMarket = 0.25f;
 
         [Header("Adres sorunları")]
-        [Range(0f, 0.2f)] public float wrongAddressChance = 0.04f;
-        [Range(0f, 0.2f)] public float notHomeChance = 0.03f;
+        [Range(0f, 0.2f)] public float wrongAddressChance = 0.025f;
+        [Range(0f, 0.2f)] public float notHomeChance = 0.02f;
 
         AddressIssue RandomAddressIssue()
         {
