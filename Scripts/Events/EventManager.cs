@@ -118,15 +118,21 @@ namespace KuryeTycoon
         {
             bool forgot = Random.value < 0.3f;
             bool wet = WeatherSystem.I.IsRainy && c.V.exposed && !c.Has(EquipmentKind.Yagmurluk);
-            string what = forgot ? "bir poşeti dükkanda unuttu" : wet ? "paketi yağmurda ıslattı" : (o.shop.def.isMarket ? "poşeti yırttı, ürünler ezildi" : "içecek döküldü / paket ezildi");
-            int value = GameData.Round10(o.basket * (forgot ? Random.Range(0.15f, 0.35f) : Random.Range(0.25f, 0.6f)));
+            bool spill = !forgot && !wet && Random.value < 0.55f;
+            string kind = forgot ? "forgot" : spill ? "spill" : "crush";
+            // İade sadece etkilenen ürünün fiyatı (siparişin tamamı değil)
+            int value = GameData.Round10(Mathf.Max(100, Menus.DamagedValue(o.items, kind, out string item)));
+            string what = forgot ? $"\"{item}\" poşetini dükkanda unuttu"
+                        : spill ? $"\"{item}\" döküldü"
+                        : wet ? $"\"{item}\" yağmurda ıslandı"
+                        : (o.shop.def.isMarket ? $"poşet yırtıldı, \"{item}\" ezildi / kırıldı" : $"\"{item}\" ezildi");
 
             // Müşterilerin çoğu desteğe yazmaz, sadece düşük puan verir
             if (Random.value > 0.6f)
             {
                 o.rating = Mathf.Max(1f, o.rating - 1f);
                 CompanyProfile.AddReputation(-0.01f);
-                Notify($"#{o.id}: {c.ShortName} {what}. Müşteri şikayet etmedi ama düşük puan verdi ({o.rating:0.0}★).");
+                Notify($"#{o.id}: {c.ShortName} teslimatında {what}. Müşteri şikayet etmedi ama düşük puan verdi ({o.rating:0.0}★).");
                 return;
             }
 
@@ -139,13 +145,13 @@ namespace KuryeTycoon
                 agent.handledTotal++;
                 SupportManager.I.handledThisMonth++;
                 long taken = ChargeCourier(o, c, value);
-                Notify($"#{o.id}: {c.ShortName} {what}. Müşteri desteğe yazdı; destek {Ft(value)} iade etti, " +
+                Notify($"#{o.id}: {c.ShortName} teslimatında {what}. Müşteri desteğe yazdı; destek ürünün ücretini ({Ft(value)}) iade etti, " +
                        (taken >= value ? $"tutar {c.ShortName}'ın hesabından düşüldü." : $"{Ft(taken)}'ı {c.ShortName}'ın hesabından düşüldü, kalanı şirket ödedi."));
                 return;
             }
 
             Push(new GameEvent(forgot ? "Eksik teslimat (kurye)" : "Hasarlı sipariş",
-                    $"#{o.id} · {o.shop.Name}: kurye {c.courierName} {what}. Müşteri desteğe yazdı ve {Ft(value)} iade istiyor.\n" +
+                    $"#{o.id} · {o.shop.Name}: kurye {c.courierName} teslimatında {what}. Müşteri desteğe yazdı ve bu ürünün ücretini ({Ft(value)}) istiyor.\n" +
                     "Kural: kurye kaynaklı sorunlarda iade kuryenin hesabından düşülür. İstersen şirket olarak üstlenebilirsin.")
                 .Add($"İade et, kuryeden düş (kural, moral biraz düşer)", () => ChargeCourier(o, c, value))
                 .Add($"İade et, şirket karşılasın (−{Ft(value)}, kuryenin morali artar)", () =>

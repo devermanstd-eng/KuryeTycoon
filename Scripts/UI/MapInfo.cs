@@ -17,6 +17,24 @@ namespace KuryeTycoon
         Vector2 infoScroll;
         GUIStyle infoTitle;
 
+        bool showMenu;
+
+        static string CategoryName(char c, bool market)
+        {
+            if (market) return c == 'L' ? "Sıvı ürünler" : c == 'F' ? "Kırılgan / taze" : "Ürünler";
+            switch (c)
+            {
+                case 'M': return "Menüler";
+                case 'A': return "Ana yemekler";
+                case 'Y': return "Yan ürünler / fırın";
+                case 'I': return "İçecekler";
+                case 'K': return "Kahveler";
+                case 'C': return "Çorbalar";
+                case 'T': return "Tatlılar";
+                default: return "Ekstralar / soslar";
+            }
+        }
+
         bool InfoOpen => infoShop != null || infoBuilding;
 
         void CloseInfo() { infoShop = null; infoBuilding = false; }
@@ -165,6 +183,34 @@ namespace KuryeTycoon
                 GUILayout.EndHorizontal();
                 GUILayout.Space(6);
                 DrawShopCard(s, RivalCompany.I, false);
+
+                // Menü / ürünler
+                var menu = Menus.Of(s.Name);
+                if (menu.Length > 0)
+                {
+                    GUILayout.Space(4);
+                    if (GUILayout.Button(showMenu ? $"Menüyü gizle ({menu.Length} ürün)" : $"Menüyü göster ({menu.Length} ürün)", smallButton))
+                        showMenu = !showMenu;
+                    if (showMenu)
+                    {
+                        GUILayout.BeginVertical(box);
+                        char last = ' ';
+                        foreach (var it in menu)
+                        {
+                            if (!s.def.isMarket && it.cat != last)
+                            {
+                                last = it.cat;
+                                GUILayout.Label(CategoryName(it.cat, s.def.isMarket), header);
+                            }
+                            GUILayout.BeginHorizontal();
+                            GUILayout.Label(it.name, small);
+                            GUILayout.FlexibleSpace();
+                            GUILayout.Label(Ft(it.price), small);
+                            GUILayout.EndHorizontal();
+                        }
+                        GUILayout.EndVertical();
+                    }
+                }
 
                 // Bu dükkanın şu anki siparişleri
                 var list = new List<Order>();

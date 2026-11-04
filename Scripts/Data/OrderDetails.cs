@@ -10,6 +10,7 @@ namespace KuryeTycoon
         public string name;
         public int qty;
         public int unitPrice;
+        public char cat;      // menü kategorisi (M menü, A ana yemek, Y yan ürün, I içecek, K kahve, C çorba, T tatlı, E ekstra; marketlerde L sıvı, F kırılgan, N diğer)
         public int Total => qty * unitPrice;
     }
 
@@ -77,91 +78,4 @@ namespace KuryeTycoon
         public static string RandomNote() => CustomerNotes[Random.Range(0, CustomerNotes.Length)];
     }
 
-    /// <summary>Dükkan menüleri: sipariş içeriği bunlardan oluşur, sepet tutarı ürünlerin toplamıdır.</summary>
-    public static class Menus
-    {
-        struct M { public string n; public int p; public M(string n, int p) { this.n = n; this.p = p; } }
-
-        static readonly Dictionary<string, M[]> menus = new Dictionary<string, M[]>
-        {
-            { "Burger Queen", new[] { new M("Whooper menü", 2890), new M("Cheeseburger", 990), new M("Tavuk burger", 1490), new M("Büyük patates", 890),
-                                      new M("Soğan halkası", 790), new M("Kola 0,5 L", 590), new M("Milkshake", 990) } },
-            { "Döner Kral",   new[] { new M("Dürüm döner", 2490), new M("Porsiyon döner", 3290), new M("İskender", 3990), new M("Lahmacun", 1490),
-                                      new M("Ayran", 490), new M("Baklava (4 dilim)", 1290), new M("Mercimek çorbası", 990) } },
-            { "Starbocks",    new[] { new M("Latte", 1490), new M("Cappuccino", 1390), new M("Frappuccino", 1890), new M("Kruvasan", 990),
-                                      new M("Cheesecake", 1490), new M("Muffin", 890), new M("Sandviç", 1690) } },
-            { "Szpar Express",new[] { new M("Ekmek", 590), new M("Süt 1 L", 450), new M("Yumurta (10'lu)", 990), new M("Peynir", 1290),
-                                      new M("Su 6×1,5 L", 1290), new M("Elma 1 kg", 690), new M("Makarna", 490), new M("Kahve 250 g", 1990),
-                                      new M("Deterjan", 2490), new M("Tuvalet kağıdı (8'li)", 1890) } },
-            { "Market 24",    new[] { new M("Ekmek", 620), new M("Süt 1 L", 490), new M("Bira (4'lü)", 1590), new M("Cips", 690),
-                                      new M("Kola 1,5 L", 790), new M("Dondurma", 1290), new M("Sigara kağıdı", 290), new M("Çikolata", 450),
-                                      new M("Yumurta (10'lu)", 1090), new M("Peynir", 1390) } },
-            { "McDanold's",   new[] { new M("Big Mec menü", 2790), new M("McNugget (9'lu)", 1890), new M("Patates", 790), new M("McFlurry", 890),
-                                      new M("Kola 0,5 L", 590), new M("Çizburger", 890), new M("Elmalı turta", 490) } },
-            { "Pizza Hat",    new[] { new M("Margarita pizza", 3490), new M("Karışık pizza", 4290), new M("Pepperoni pizza", 3990),
-                                      new M("Sarımsaklı ekmek", 990), new M("Tavuk kanat (6'lı)", 1990), new M("Kola 1 L", 890) } },
-            { "InterSzpar",   new[] { new M("Su 6×1,5 L", 1190), new M("Süt 1 L", 420), new M("Ekmek", 550), new M("Tavuk göğsü 1 kg", 2990),
-                                      new M("Kıyma 500 g", 2190), new M("Patates 2 kg", 990), new M("Pirinç 1 kg", 890), new M("Zeytinyağı", 3490),
-                                      new M("Deterjan 3 L", 4490), new M("Bebek bezi", 5990), new M("Meyve suyu 1 L", 690), new M("Domates 1 kg", 1190) } },
-            { "KFG",          new[] { new M("Kova (8 parça)", 5490), new M("Zinger burger", 1990), new M("Strips (5'li)", 1890), new M("Patates", 790),
-                                      new M("Coleslaw", 690), new M("Kola 0,5 L", 590) } },
-            { "Sushi Samurai",new[] { new M("California roll (8'li)", 2990), new M("Somon nigiri (4'lü)", 2490), new M("Sushi tabağı (24 parça)", 8990),
-                                      new M("Miso çorbası", 990), new M("Gyoza", 1690), new M("Edamame", 990), new M("Yeşil çay", 590) } },
-            { "Fish & Ships", new[] { new M("Fish & chips", 2890), new M("Halászlé (balık çorbası)", 2290), new M("Kızarmış kalamar", 2490),
-                                      new M("Balık burger", 1990), new M("Tartar sos", 290), new M("Patates", 790), new M("Limonata", 690) } },
-            { "Otogar Büfé",  new[] { new M("Lángos", 990), new M("Hot dog", 890), new M("Tost", 790), new M("Pogácsa (3'lü)", 590),
-                                      new M("Simit", 490), new M("Çay", 290), new M("Kola 0,5 L", 590) } },
-            { "Villa Gourmet",new[] { new M("Dana bonfile", 7990), new M("Trüflü risotto", 5490), new M("Somon fileto", 6490), new M("Burrata salata", 3490),
-                                      new M("Tiramisu", 1990), new M("Şarap (şişe)", 5990), new M("Maden suyu", 490) } },
-            { "BioSzpar",     new[] { new M("Organik süt 1 L", 690), new M("Organik yumurta (10'lu)", 1390), new M("Ekşi mayalı ekmek", 1290),
-                                      new M("Avokado (2'li)", 990), new M("Granola", 1490), new M("Organik muz 1 kg", 890), new M("Badem sütü", 990),
-                                      new M("Kinoa 500 g", 1290), new M("Yerel bal", 2490) } },
-        };
-
-        /// <summary>Hedef tutara yakın, gerçekçi bir sepet oluşturur. Market siparişleri çok ürünlü ve adetlidir.</summary>
-        public static List<OrderItem> Generate(ShopDef shop, int target)
-        {
-            var list = new List<OrderItem>();
-            if (!menus.TryGetValue(shop.name, out var menu))
-            {
-                list.Add(new OrderItem { name = "Sipariş", qty = 1, unitPrice = target });
-                return list;
-            }
-            int total = 0;
-            int guard = 0;
-            while (total < target * 0.92f && guard++ < 40)
-            {
-                var m = menu[Random.Range(0, menu.Length)];
-                int maxQty = shop.isMarket ? 4 : 2;
-                int q = Random.Range(1, maxQty + 1);
-                if (total + m.p * q > target * 1.15f) q = 1;
-                if (total > 0 && total + m.p * q > target * 1.25f) break;
-                int idx = list.FindIndex(x => x.name == m.n);
-                if (idx >= 0) { var it = list[idx]; it.qty += q; list[idx] = it; }
-                else list.Add(new OrderItem { name = m.n, qty = q, unitPrice = m.p });
-                total += m.p * q;
-            }
-            return list;
-        }
-
-        public static int Sum(List<OrderItem> items)
-        {
-            int s = 0;
-            foreach (var i in items) s += i.Total;
-            return s;
-        }
-
-        public static string Text(List<OrderItem> items, int maxItems = 6)
-        {
-            if (items == null || items.Count == 0) return "";
-            var sb = new StringBuilder();
-            for (int i = 0; i < items.Count && i < maxItems; i++)
-            {
-                if (i > 0) sb.Append(", ");
-                sb.Append(items[i].qty > 1 ? $"{items[i].qty}× {items[i].name}" : items[i].name);
-            }
-            if (items.Count > maxItems) sb.Append($" +{items.Count - maxItems} ürün");
-            return sb.ToString();
-        }
-    }
 }
