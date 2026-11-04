@@ -30,6 +30,7 @@ namespace KuryeTycoon
         public int negotiateCooldownUntil; // bu güne kadar yeniden pazarlık yapılamaz
         public int resignBlockedUntil;     // ayrıldıktan sonra yeniden sözleşme için bekleme
         public bool lowSatisfactionWarned;
+        public float todayLoss;            // bugün kaybedilen memnuniyet (günlük üst sınır var: kötü bir gün her şeyi silmesin)
 
         public string Name => def.name;
         public float Commission => Mathf.Max(0.05f, def.commission + commissionBonus);

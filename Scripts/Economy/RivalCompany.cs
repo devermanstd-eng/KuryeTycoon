@@ -109,10 +109,23 @@ namespace KuryeTycoon
 
         // ================================================================ memnuniyet
 
+        /// <summary>Bir günde teslimat sorunlarından kaybedilebilecek en fazla memnuniyet.</summary>
+        public const float MaxDailyLoss = 12f;
+
         public static void AddSatisfaction(Shop s, float delta)
         {
             if (s == null) return;
             s.satisfaction = Mathf.Clamp(s.satisfaction + delta, 0f, 100f);
+        }
+
+        /// <summary>Teslimat kaynaklı düşüş: günlük üst sınırla (kötü bir günde dükkan bir anda küsmesin).</summary>
+        static void ServiceLoss(Shop s, float amount)
+        {
+            if (s == null || amount <= 0f) return;
+            float allowed = Mathf.Max(0f, MaxDailyLoss - s.todayLoss);
+            float d = Mathf.Min(amount, allowed);
+            s.todayLoss += d;
+            AddSatisfaction(s, -d);
         }
 
         /// <summary>Teslimat sonrası: zamanında artar, gecikme ve soğuk yemek düşürür.</summary>
@@ -121,13 +134,14 @@ namespace KuryeTycoon
             var s = o.shop;
             s.monthOrders++;
             myDeliveriesThisWeek++;
-            if (lateMinutes > 0f) AddSatisfaction(s, -Mathf.Min(4f, 0.5f + lateMinutes / 5f));
-            else AddSatisfaction(s, 0.4f);
-            if (o.deliveredCold) AddSatisfaction(s, -2f);
+            // Birkaç dakikalık gecikmeyi dükkan dert etmez; zamanında teslimat güven kazandırır
+            if (lateMinutes > 5f) ServiceLoss(s, Mathf.Min(2.5f, 0.3f + (lateMinutes - 5f) / 10f));
+            else AddSatisfaction(s, lateMinutes <= 0f ? 0.6f : 0.3f);
+            if (o.deliveredCold) ServiceLoss(s, 1f);
         }
 
-        public void OnCancelled(Order o) => AddSatisfaction(o.shop, -2.5f);
-        public void OnIncident(Order o) => AddSatisfaction(o.shop, -3f);
+        public void OnCancelled(Order o) => ServiceLoss(o.shop, 1.5f);
+        public void OnIncident(Order o) => ServiceLoss(o.shop, 1f);
 
         // ================================================================ oyuncunun hamleleri
 
@@ -215,18 +229,20 @@ namespace KuryeTycoon
             foreach (var s in shops)
             {
                 if (!s.contracted) continue;
-                s.satisfaction += (60f - s.satisfaction) * 0.01f; // zamanla ortalamaya döner
+                // Zamanla ortalamaya döner: dükkanlar kötü günleri unutur (60'ın altındaysa her gün aradaki farkın %8'i kapanır)
+                s.satisfaction += (60f - s.satisfaction) * (s.satisfaction < 60f ? 0.08f : 0.02f);
+                s.todayLoss = 0f;
 
                 if (s.satisfaction < 35f && !s.lowSatisfactionWarned)
                 {
                     s.lowSatisfactionWarned = true;
-                    EventManager.I.Push(new GameEvent("Dükkan memnun değil",
-                        $"{s.Name} hizmetinden şikayetçi (memnuniyet {s.satisfaction:0}/100). Gecikmeler, soğuk yemek ve iptaller yüzünden. " +
-                        "20'nin altına düşerse sözleşmeyi bozup rakibe geçebilir."));
+                    // Bilgi: oyunu durduran kart değil, bildirim kartı
+                    EventManager.I.Notify($"{s.Name} hizmetinden şikayetçi (memnuniyet {s.satisfaction:0}/100): gecikme, soğuk yemek ve iptaller. " +
+                                          "15'in altına düşerse sözleşmeyi bozabilir.");
                 }
                 else if (s.satisfaction >= 45f) s.lowSatisfactionWarned = false;
 
-                if (s.satisfaction < 20f && Random.value < 0.25f) { LoseShop(s, "memnuniyetsizlik yüzünden sözleşmeyi bozdu"); continue; }
+                if (s.satisfaction < 15f && Random.value < 0.2f) { LoseShop(s, "memnuniyetsizlik yüzünden sözleşmeyi bozdu"); continue; }
                 if (Day >= s.contractEndDay) Renewal(s);
             }
 
