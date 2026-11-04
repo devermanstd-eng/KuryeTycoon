@@ -138,6 +138,7 @@ namespace KuryeTycoon
             heightByTile.Clear();
             lastGrow = -1f;
             Build();
+            if (Traffic.I != null) Traffic.I.Build();   // trafik de paketin araçlarını kullanır
         }
 
         public void Build()

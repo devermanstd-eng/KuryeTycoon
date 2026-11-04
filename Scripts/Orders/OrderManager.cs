@@ -31,6 +31,8 @@ namespace KuryeTycoon
         public float cancelReputationPenalty = 0.015f;
         [Tooltip("Dükkanın teslimat yarıçapı (kare, kuş uçuşu değil Manhattan). 1 kare ≈ 0,2 km.")]
         public int deliveryRadius = 16;
+        [Tooltip("Siparişlerin yüzde kaçı yarıçaptan bağımsız, şehrin herhangi bir açık yerinden gelir (uzak sipariş).")]
+        [Range(0f, 1f)] public float farOrderChance = 0.2f;
         public int rejectedToday;   // kuryelerin reddettiği teklif
         public int heavyLostToday;  // taşıyabilecek kurye olmadığı için alınamayan ağır sipariş
         public int batchedToday;    // toplu teslimata eklenen sipariş
@@ -316,8 +318,11 @@ namespace KuryeTycoon
             }
 
             var map = CityMap.I;
-            // Müşteriler dükkanın teslimat yarıçapı içinden sipariş verir (yakınlar daha sık): şehir büyüse de mesafeler makul kalır
-            var custTile = map.RandomCustomerTileNear(shop.tile, deliveryRadius);
+            // Çoğu müşteri dükkanın yakınından sipariş verir, ama bazıları şehrin uzak bir yerinden de verebilir
+            // (uzak siparişte teslimat ücreti, kurye kazancı ve söz verilen süre mesafeyle birlikte artar)
+            var custTile = Random.value < farOrderChance
+                ? map.RandomCustomerTile(shop.tile)
+                : map.RandomCustomerTileNear(shop.tile, deliveryRadius);
             var custDoor = map.GetDoor(custTile);
             int dist = Mathf.Max(1, map.FindPath(shop.door, custDoor).Count - 1);
 
@@ -419,13 +424,10 @@ namespace KuryeTycoon
                 if (RivalCompany.I != null) RivalCompany.I.OnCancelled(o);
                 bool rejected = o.priceDeclines > 0 || o.rejectedBy.Count > 0;
                 if (rejected) cancelledRejectedToday++;
-                // Şirketin ilk günü: iptaller itibarı düşürmez (oyuncu daha düzenini kurmadan ceza yemesin)
-                bool grace = GameClock.I.CompanyDay <= 1;
-                if (!grace) CompanyProfile.AddReputation(-cancelReputationPenalty);
-                string tail = grace ? " (İlk gün: itibar etkilenmedi.)" : " İtibar düştü.";
+                CompanyProfile.AddReputation(-cancelReputationPenalty);
                 EventManager.I.Notify(rejected
-                    ? $"#{o.id} ({o.shop.Name}) iptal oldu: kuryeler teklifi gördü ama kabul etmedi.{tail}"
-                    : $"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu.{tail}");
+                    ? $"#{o.id} ({o.shop.Name}) iptal oldu: kuryeler teklifi gördü ama kabul etmedi. İtibar düştü."
+                    : $"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu. İtibar düştü.");
             }
         }
 

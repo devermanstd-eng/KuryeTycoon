@@ -7,7 +7,8 @@ namespace KuryeTycoon
     /// Şehri canlandıran trafik (süs, oyuna etkisi yok):
     ///  • Arabalar ve otobüsler yollarda sağdan gider, kavşaklarda rastgele döner (çoğunlukla düz devam eder).
     ///  • Yayalar yolların kenarındaki kaldırımlarda yürür (sadece yakınlaşınca görünür).
-    /// Hepsi tek kutu modeldir: uzaktan bakınca üstten renkli dikdörtgen, yakınlaşınca 3D görünür.
+    /// Şehir paketi kuruluysa (Kurye Tycoon > Şehir Paketini Kur) paketin araçları ve insanları kullanılır
+    /// (Resources/SehirPaketi/Araclar ve Insanlar); yoksa basit renkli kutular.
     /// Oyun duraklatılınca durur, hızlandırılınca biraz hızlanır.
     /// </summary>
     public class Traffic : MonoBehaviour
@@ -25,19 +26,53 @@ namespace KuryeTycoon
             set { PlayerPrefs.SetInt(PrefKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 
+        const string FacingKey = "KuryeTycoon.AracYonu";
+        /// <summary>Paketteki araçların burnu farklı yöne bakıyorsa düzeltme (0/90/180/270).</summary>
+        public static int FacingOffset
+        {
+            get { return PlayerPrefs.GetInt(FacingKey, 0); }
+            set { PlayerPrefs.SetInt(FacingKey, ((value % 360) + 360) % 360); PlayerPrefs.Save(); }
+        }
+
+        static GameObject[] packCars, packBuses, packPeople;
+        public static int PackVehicleCount { get { LoadPack(); return packCars.Length + packBuses.Length; } }
+        public static int PackPeopleCount { get { LoadPack(); return packPeople.Length; } }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() { packCars = packBuses = packPeople = null; }
+
+        static void LoadPack()
+        {
+            if (packCars != null) return;
+            var vehicles = Resources.LoadAll<GameObject>(City3D.PackFolder + "/Araclar");
+            var cars = new List<GameObject>();
+            var buses = new List<GameObject>();
+            foreach (var v in vehicles)
+            {
+                string n = v.name.ToLowerInvariant();
+                if (n.Contains("bus") || n.Contains("truck") || n.Contains("lorry") || n.Contains("garbage") || n.Contains("fire")) buses.Add(v);
+                else cars.Add(v);
+            }
+            packCars = cars.ToArray();
+            packBuses = buses.ToArray();
+            packPeople = Resources.LoadAll<GameObject>(City3D.PackFolder + "/Insanlar");
+        }
+
         enum Kind { Car, Bus, Walker }
 
         class Agent
         {
             public Kind kind;
             public Transform t;
+            public bool prefab;         // paket modeli (yüksekliği sabit) ya da kutu (yakınlaştıkça yükselir)
             public Vector2Int from, to;
             public float progress;      // 0–1 iki kare arasında
             public float speed;         // kare / saniye
             public float lane;          // yolun ortasından sağa uzaklık
             public float height;
-            public Vector2 visual;      // ekrandaki yumuşatılmış konum
+            public Vector2 visual;      // yumuşatılmış konum
             public float angle;
+            public Animator anim;
         }
 
         readonly List<Agent> agents = new List<Agent>();
@@ -71,6 +106,10 @@ namespace KuryeTycoon
             root.SetParent(transform, false);
             if (!Enabled) return;
 
+            packCars = null;
+            LoadPack();
+            bool usePack = City3D.UsePack;
+
             // Kutular için sprite malzemesi (vertex rengini gösterir, projenin render pipeline'ına uygun)
             var probe = SpriteFactory.Create("malzeme", root, false, Color.white, Vector3.zero, 1f, 0);
             mat = probe.sharedMaterial;
@@ -84,37 +123,107 @@ namespace KuryeTycoon
             if (roads.Count == 0) return;
 
             for (int i = 0; i < carCount; i++)
-                Spawn(Kind.Car, roads[rng.Next(roads.Count)], new Vector3(0.3f, 0.15f, 0.1f), CarColors[rng.Next(CarColors.Length)],
-                      0.55f + (float)rng.NextDouble() * 0.35f, 0.17f);
+            {
+                var a = NewAgent(Kind.Car, roads[rng.Next(roads.Count)], 0.55f + (float)rng.NextDouble() * 0.35f, 0.17f);
+                if (usePack && packCars.Length > 0) AttachPrefab(a, packCars[rng.Next(packCars.Length)], 0.34f, false);
+                else AttachBox(a, new Vector3(0.3f, 0.15f, 0.1f), CarColors[rng.Next(CarColors.Length)]);
+            }
             for (int i = 0; i < busCount; i++)
-                Spawn(Kind.Bus, roads[rng.Next(roads.Count)], new Vector3(0.56f, 0.19f, 0.17f),
-                      i % 2 == 0 ? new Color(0.95f, 0.78f, 0.20f) : new Color(0.20f, 0.45f, 0.80f), 0.4f, 0.17f);
+            {
+                var a = NewAgent(Kind.Bus, roads[rng.Next(roads.Count)], 0.4f, 0.17f);
+                if (usePack && packBuses.Length > 0) AttachPrefab(a, packBuses[rng.Next(packBuses.Length)], 0.58f, false);
+                else if (usePack && packCars.Length > 0) AttachPrefab(a, packCars[rng.Next(packCars.Length)], 0.34f, false);
+                else AttachBox(a, new Vector3(0.56f, 0.19f, 0.17f), i % 2 == 0 ? new Color(0.95f, 0.78f, 0.20f) : new Color(0.20f, 0.45f, 0.80f));
+            }
             for (int i = 0; i < pedestrianCount; i++)
-                Spawn(Kind.Walker, roads[rng.Next(roads.Count)], new Vector3(0.06f, 0.06f, 0.11f), ClothColors[rng.Next(ClothColors.Length)],
-                      0.1f + (float)rng.NextDouble() * 0.06f, rng.NextDouble() < 0.5 ? 0.44f : -0.44f);
+            {
+                var a = NewAgent(Kind.Walker, roads[rng.Next(roads.Count)], 0.1f + (float)rng.NextDouble() * 0.06f, rng.NextDouble() < 0.5 ? 0.44f : -0.44f);
+                if (usePack && packPeople.Length > 0) AttachPrefab(a, packPeople[rng.Next(packPeople.Length)], CharacterVisuals.TargetHeight * 0.92f, true);
+                else AttachBox(a, new Vector3(0.06f, 0.06f, 0.11f), ClothColors[rng.Next(ClothColors.Length)]);
+            }
             lastTilt = -1f;
+            lastWalkersVisible = true;
         }
 
-        void Spawn(Kind kind, Vector2Int at, Vector3 size, Color c, float speed, float lane)
+        Agent NewAgent(Kind kind, Vector2Int at, float speed, float lane)
         {
             var go = new GameObject(kind == Kind.Car ? "Araba" : kind == Kind.Bus ? "Otobüs" : "Yaya");
             go.transform.SetParent(root, false);
-            var mf = go.AddComponent<MeshFilter>();
-            var mr = go.AddComponent<MeshRenderer>();
+            var a = new Agent { kind = kind, t = go.transform, from = at, speed = speed, lane = lane };
+            a.to = NextTile(at, at - Vector2Int.up);
+            a.progress = (float)rng.NextDouble();
+            a.visual = Target(a);
+            a.t.localPosition = new Vector3(a.visual.x, a.visual.y, -0.003f);
+            agents.Add(a);
+            return a;
+        }
+
+        /// <summary>Basit kutu: uzaktan üstten dikdörtgen, yakınlaşınca 3D.</summary>
+        void AttachBox(Agent a, Vector3 size, Color c)
+        {
+            var mf = a.t.gameObject.AddComponent<MeshFilter>();
+            var mr = a.t.gameObject.AddComponent<MeshRenderer>();
             mr.sharedMaterial = mat;
-            // Yolların ve köprülerin üstünde, binaların altında (önündeki bina aracı örter)
-            mr.sortingOrder = 4;
+            mr.sortingOrder = 4;   // yolların ve köprülerin üstünde, binaların altında
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
             mf.sharedMesh = City3D.BoxMesh();
             City3D.Paint(mf.sharedMesh, c);
-            go.transform.localScale = new Vector3(size.x, size.y, 0.001f);
+            a.t.localScale = new Vector3(size.x, size.y, 0.001f);
+            a.height = size.z;
+        }
 
-            var a = new Agent { kind = kind, t = go.transform, from = at, speed = speed, lane = lane, height = size.z };
-            a.to = NextTile(at, at - Vector2Int.up);
-            a.progress = (float)rng.NextDouble();
-            a.visual = Target(a);
-            agents.Add(a);
+        /// <summary>
+        /// Paket modeli: araçlar boyuna göre (uzunluk), insanlar boylarına göre ölçeklenir. Model Y yukarı, Z ileri kabul edilir
+        /// (aracın burnu ters duruyorsa Ayarlar > Harita > Araç yönü).
+        /// </summary>
+        void AttachPrefab(Agent a, GameObject prefab, float targetSize, bool byHeight)
+        {
+            var inst = Instantiate(prefab, a.t, false);
+            inst.name = prefab.name;
+            inst.transform.localPosition = Vector3.zero;
+            inst.transform.localScale = Vector3.one;
+            inst.transform.localRotation = Quaternion.Euler(0f, 0f, -90f + FacingOffset) * Quaternion.Euler(-90f, 0f, 0f);
+
+            foreach (var mb in inst.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (mb == null) continue;
+                mb.enabled = false;
+                Destroy(mb);
+            }
+            foreach (var col in inst.GetComponentsInChildren<Collider>()) Destroy(col);
+            foreach (var rb in inst.GetComponentsInChildren<Rigidbody>()) Destroy(rb);
+            foreach (var l in inst.GetComponentsInChildren<Light>()) Destroy(l);
+            var renderers = inst.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) { Destroy(inst); AttachBox(a, new Vector3(0.3f, 0.15f, 0.1f), CarColors[0]); return; }
+            foreach (var r in renderers)
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+                r.sortingOrder = byHeight ? 19 : 4;   // yayalar kurye karakterleriyle aynı katmanda, araçlar binaların altında
+            }
+
+            // Boyut: ara (holder) dönmeden önceki duruşta ölç
+            var rot = a.t.rotation;
+            a.t.rotation = Quaternion.identity;
+            var b = Bounds(renderers);
+            float size = byHeight ? b.size.z : Mathf.Max(b.size.x, b.size.y);
+            float s = targetSize / Mathf.Max(0.001f, size);
+            inst.transform.localScale = Vector3.one * s;
+            b = Bounds(renderers);
+            inst.transform.position += new Vector3(a.t.position.x - b.center.x, a.t.position.y - b.center.y, -b.max.z);
+            a.t.rotation = rot;
+
+            a.prefab = true;
+            a.anim = inst.GetComponentInChildren<Animator>();
+            if (a.anim != null) a.anim.applyRootMotion = false;
+        }
+
+        static Bounds Bounds(Renderer[] rs)
+        {
+            var b = rs[0].bounds;
+            for (int i = 1; i < rs.Length; i++) b.Encapsulate(rs[i].bounds);
+            return b;
         }
 
         /// <summary>Kavşakta sonraki kare: geri dönmez (çıkmaz sokak hariç), çoğunlukla düz devam eder.</summary>
@@ -127,7 +236,7 @@ namespace KuryeTycoon
             foreach (var d in Dirs)
             {
                 var n = cur + d;
-                if (n == prev || !CityMap.RoadAt(n.x, n.y) || n.x < 0 || n.y < 0 || n.x >= CityMap.Width || n.y >= CityMap.Height) continue;
+                if (n == prev || n.x < 0 || n.y < 0 || n.x >= CityMap.Width || n.y >= CityMap.Height || !CityMap.RoadAt(n.x, n.y)) continue;
                 options.Add(n);
                 if (n == straight) hasStraight = true;
             }
@@ -184,8 +293,9 @@ namespace KuryeTycoon
                     a.angle = Mathf.LerpAngle(a.angle, want, paused ? 0f : Mathf.Clamp01(Time.deltaTime * 8f));
                     a.t.localRotation = Quaternion.Euler(0f, 0f, a.angle);
                 }
+                if (a.anim != null) a.anim.speed = paused ? 0f : gs;
 
-                if (rescale)
+                if (rescale && !a.prefab)
                 {
                     var s = a.t.localScale;
                     a.t.localScale = new Vector3(s.x, s.y, Mathf.Max(0.001f, a.height * tilt));

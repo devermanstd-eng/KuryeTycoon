@@ -2014,6 +2014,25 @@ namespace KuryeTycoon
             if (lm != ShowLandmarks) ShowLandmarks = lm;
             bool traffic = GUILayout.Toggle(Traffic.Enabled, " Trafik: arabalar, otobüsler, yayalar (kapatmak performansı artırır)", toggle);
             if (traffic != Traffic.Enabled) deferred = () => { Traffic.Enabled = traffic; if (Traffic.I != null) Traffic.I.Build(); };
+            if (Traffic.Enabled)
+            {
+                int nv = Traffic.PackVehicleCount, np = Traffic.PackPeopleCount;
+                GUILayout.Label(nv + np > 0
+                    ? $"Şehir paketinden {nv} araç ve {np} insan modeli kullanılıyor."
+                    : "Şehir paketinin araç ve insanları kurulu değil: basit kutular kullanılıyor. (Kurye Tycoon > Şehir Paketini Kur'u tekrar çalıştır.)", small);
+                if (nv > 0)
+                {
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label("Araç yönü düzeltme (burnu ters gidiyorsa):", small, GUILayout.Width(250));
+                    foreach (int ang in new[] { 0, 90, 180, 270 })
+                    {
+                        int a2 = ang;
+                        if (SelectButton(Traffic.FacingOffset == ang, $"{ang}°", smallButton))
+                            deferred = () => { Traffic.FacingOffset = a2; if (Traffic.I != null) Traffic.I.Build(); };
+                    }
+                    GUILayout.EndHorizontal();
+                }
+            }
             bool persp = GUILayout.Toggle(MapCamera.PerspectiveSetting, " Perspektif kamera (derinlik hissi; kapalıysa düz/ortografik)", toggle);
             if (persp != MapCamera.PerspectiveSetting) MapCamera.PerspectiveSetting = persp;
             GUILayout.Space(8);

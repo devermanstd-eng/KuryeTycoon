@@ -196,7 +196,6 @@ namespace KuryeTycoon
 
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
                 "Merkez ofisin Merkez Mahalle'deki Kossuth Meydanı'nda. 2 kuryen işbaşında ve 2 sözleşmeli dükkanın var.\n" +
-                "İlk gün iptal olan siparişler itibarını düşürmez: ekibini tanı, ilk siparişlerini teslim et.\n" +
                 "Aile borcunu ve taksitleri üst barda ve Finans sekmesinde görürsün.\n\n" +
                 "• Siparişler otomatik atanır; istersen Siparişler sekmesinden kendin ata.\n" +
                 "• Zararına iş yapılmaz: teslimat ücreti her zaman kurye ücretini karşılar.\n" +

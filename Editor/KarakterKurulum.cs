@@ -106,8 +106,11 @@ namespace KuryeTycoon.EditorTools
     {
         const string Root = "Assets/Resources/SehirPaketi";
 
-        static readonly string[] Skip = { "car", "truck", "bus", "taxi", "police_car", "policecar", "ambulance", "vehicle", "van", "bike",
-                                          "people", "person", "character", "human", "man_", "woman", "camera", "light", "lamp", "hydrant",
+        static readonly string[] Vehicles = { "car", "truck", "bus", "taxi", "police", "ambulance", "vehicle", "van", "pickup", "suv",
+                                              "sedan", "jeep", "firetruck", "fire_truck", "garbage", "tractor", "lorry" };
+        static readonly string[] People = { "people", "person", "character", "human", "man_", "woman", "citizen", "pedestrian",
+                                            "male", "female", "girl", "boy", "worker", "npc" };
+        static readonly string[] Skip = { "bike", "camera", "light", "lamp", "hydrant", "carpet", "card", "cart",
                                           "bench", "trash", "bin", "cone", "barrier", "fence", "sign", "traffic", "pole", "wire", "stadium" };
         static readonly string[] Roads = { "road", "street", "cross", "intersection", "crossing", "sidewalk", "pavement", "curb",
                                            "ground", "floor", "terrain", "plane", "tile", "parking", "bridge", "rail" };
@@ -162,6 +165,8 @@ namespace KuryeTycoon.EditorTools
             var buildings = new List<string>();
             var trees = new List<string>();
             var roads = new List<string>();
+            var vehicles = new List<string>();
+            var people = new List<string>();
             var unknown = new List<string>();
 
             foreach (var guid in guids)
@@ -175,6 +180,9 @@ namespace KuryeTycoon.EditorTools
                 string n = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
                 if (Has(n, Trees)) trees.Add(path);
                 else if (Has(n, Skip)) continue;
+                // "Bus_Station", "Police_Station", "Car_Parking" gibi binalar / yollar araç sayılmasın
+                else if (Has(n, People) && !Has(n, Buildings)) people.Add(path);
+                else if (Has(n, Vehicles) && !Has(n, Buildings) && !Has(n, Roads) && !n.Contains("wash")) vehicles.Add(path);
                 else if (Has(n, Roads)) roads.Add(path);
                 else if (Has(n, Buildings)) buildings.Add(path);
                 else unknown.Add(path);
@@ -205,16 +213,20 @@ namespace KuryeTycoon.EditorTools
             Ensure(Root, "Binalar");
             Ensure(Root, "Agaclar");
             Ensure(Root, "Yollar");
+            Ensure(Root, "Araclar");
+            Ensure(Root, "Insanlar");
 
-            var all = new List<string>(buildings); all.AddRange(trees); all.AddRange(roads);
+            var all = new List<string>(buildings); all.AddRange(trees); all.AddRange(roads); all.AddRange(vehicles); all.AddRange(people);
             int conv = MalzemeCevirici.CevirPrefablar(all);
             int nb = CopyAll(buildings, Root + "/Binalar");
             int nt = CopyAll(trees, Root + "/Agaclar");
             int nr = CopyAll(roads, Root + "/Yollar");
+            int nv = CopyAll(vehicles, Root + "/Araclar");
+            int np = CopyAll(people, Root + "/Insanlar");
             AssetDatabase.Refresh();
 
             EditorUtility.DisplayDialog("Kurye Tycoon",
-                $"Şehir paketi kuruldu:\n• {conv} malzeme URP'ye çevrildi\n• {nb} bina\n• {nt} ağaç\n• {nr} yol parçası (şimdilik kullanılmıyor)\n\n" +
+                $"Şehir paketi kuruldu:\n• {conv} malzeme URP'ye çevrildi\n• {nb} bina\n• {nt} ağaç\n• {nr} yol parçası\n• {nv} araç (trafik)\n• {np} insan (yayalar)\n\n" +
                 "Yanlış klasöre düşen olursa Assets/Resources/SehirPaketi altında sürükleyerek taşı (araba, insan vb. Binalar'dan silinebilir).\n\n" +
                 "Hâlâ pembe görünen olursa: paketin klasörünü seç > Kurye Tycoon > Seçili Klasördeki Malzemeleri URP'ye Çevir.\n" +
                 "Yeni oyun başlatınca yakınlaştırdığında paketin binaları görünür.", "Tamam");
