@@ -118,14 +118,25 @@ namespace KuryeTycoon
             s.satisfaction = Mathf.Clamp(s.satisfaction + delta, 0f, 100f);
         }
 
-        /// <summary>Teslimat kaynaklı düşüş: günlük üst sınırla (kötü bir günde dükkan bir anda küsmesin).</summary>
-        static void ServiceLoss(Shop s, float amount)
+        /// <summary>
+        /// Dükkanın hizmetten beklediği memnuniyet: son günlerin karnesine göre. Az sipariş varken nötr (65).
+        /// Gecikme, soğuk yemek, iptal ve şikayet oranı arttıkça hedef düşer; her şey yolundaysa 90'lara çıkar.
+        /// Memnuniyet her gün bu hedefe doğru yavaşça yaklaşır: tek bir kötü sipariş ya da kötü bir saat dükkanı küstürmez.
+        /// </summary>
+        public static float TargetSatisfaction(Shop s)
         {
-            if (s == null || amount <= 0f) return;
-            float allowed = Mathf.Max(0f, MaxDailyLoss - s.todayLoss);
-            float d = Mathf.Min(amount, allowed);
-            s.todayLoss += d;
-            AddSatisfaction(s, -d);
+            float total = s.perfOk + s.perfLate + s.perfCancel;
+            if (total < 8f) return 65f;
+            float bad = (s.perfLate + 0.7f * s.perfCold + 2f * s.perfCancel + s.perfIncident) / total;
+            return Mathf.Clamp(92f - bad * 110f, 10f, 95f);
+        }
+
+        public static string PerformanceText(Shop s)
+        {
+            float total = s.perfOk + s.perfLate + s.perfCancel;
+            if (total < 8f) return "Henüz yeterli sipariş yok: dükkan seni tanıyor (hedef memnuniyet 65).";
+            return $"Son günler: zamanında %{s.perfOk / total * 100f:0}, gecikmeli %{s.perfLate / total * 100f:0}, iptal %{s.perfCancel / total * 100f:0}" +
+                   (s.perfCold > 0.5f ? $", soğuk {s.perfCold:0}" : "") + $" → memnuniyet {TargetSatisfaction(s):0}'a doğru gidiyor.";
         }
 
         /// <summary>Teslimat sonrası: zamanında artar, gecikme ve soğuk yemek düşürür.</summary>
@@ -134,14 +145,15 @@ namespace KuryeTycoon
             var s = o.shop;
             s.monthOrders++;
             myDeliveriesThisWeek++;
-            // Birkaç dakikalık gecikmeyi dükkan dert etmez; zamanında teslimat güven kazandırır
-            if (lateMinutes > 5f) ServiceLoss(s, Mathf.Min(2.5f, 0.3f + (lateMinutes - 5f) / 10f));
-            else AddSatisfaction(s, lateMinutes <= 0f ? 0.6f : 0.3f);
-            if (o.deliveredCold) ServiceLoss(s, 1f);
+            // Karneye yazılır: birkaç dakikalık gecikmeyi dükkan dert etmez, çok geç kalan tam gecikme sayılır
+            if (lateMinutes <= 5f) s.perfOk += 1f;
+            else if (lateMinutes <= 15f) { s.perfOk += 0.5f; s.perfLate += 0.5f; }
+            else s.perfLate += 1f;
+            if (o.deliveredCold) s.perfCold += 1f;
         }
 
-        public void OnCancelled(Order o) => ServiceLoss(o.shop, 1.5f);
-        public void OnIncident(Order o) => ServiceLoss(o.shop, 1f);
+        public void OnCancelled(Order o) => o.shop.perfCancel += 1f;
+        public void OnIncident(Order o) => o.shop.perfIncident += 1f;
 
         // ================================================================ oyuncunun hamleleri
 
@@ -229,8 +241,9 @@ namespace KuryeTycoon
             foreach (var s in shops)
             {
                 if (!s.contracted) continue;
-                // Zamanla ortalamaya döner: dükkanlar kötü günleri unutur (60'ın altındaysa her gün aradaki farkın %8'i kapanır)
-                s.satisfaction += (60f - s.satisfaction) * (s.satisfaction < 60f ? 0.08f : 0.02f);
+                // Memnuniyet son günlerin karnesine doğru yavaşça gider (günde aradaki farkın %12'si); karne her gün %20 unutulur
+                s.satisfaction = Mathf.Clamp(s.satisfaction + (TargetSatisfaction(s) - s.satisfaction) * 0.12f, 0f, 100f);
+                s.perfOk *= 0.8f; s.perfLate *= 0.8f; s.perfCold *= 0.8f; s.perfCancel *= 0.8f; s.perfIncident *= 0.8f;
                 s.todayLoss = 0f;
 
                 if (s.satisfaction < 35f && !s.lowSatisfactionWarned)
@@ -289,6 +302,7 @@ namespace KuryeTycoon
             foreach (var c in CourierManager.I.Couriers.ToArray())
             {
                 if (c.morale >= 0.35f || c.OrderCount > 0) continue;
+                if (UpgradeManager.I != null && UpgradeManager.I.LoyaltyProgram && c.level >= 3) continue;   // sadakat programı: kıdemli kurye kalır
                 if (Random.value < 0.2f) { CourierManager.I.PoachToRival(c, companyName); break; }
             }
         }

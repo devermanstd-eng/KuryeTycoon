@@ -73,8 +73,28 @@ namespace KuryeTycoon
         public VehicleKind dreamVehicle;       // parası olursa almak istediği araç (kendisininkiyle aynıysa hiç yükseltmez)
 
         [Header("Şirket ekipmanı")]
-        public bool hasCompanyKit;             // başlangıç kitini taşıyor
-        public bool depositPaid;               // 20 000 Ft depozito kesildi mi
+        public bool hasCompanyKit;             // (eski kayıt) başlangıç kitini taşıyor
+        public bool depositPaid;               // (eski kayıt) 20 000 Ft depozito kesildi mi
+
+        // Depozitolu şirket ekipmanı: kurye ister, şirket verir (depodan ya da satın alır), bedeli depozito olarak kuryenin
+        // kazancından kesilir. Ayrılırken ekipmanı iade ederse depozito geri ödenir, etmezse şirkette kalır.
+        public List<EquipmentKind> depositGear = new List<EquipmentKind>();
+        public long depositOwed;               // henüz kesilmemiş depozito (kazandıkça kesilir)
+        public long depositPaidTotal;          // kesilmiş, şirkette duran depozito
+        public float gearNudgeUntil;           // şirket "ekipmanını al" diye hatırlattı (bu zamana kadar daha istekli)
+
+        /// <summary>Eski kayıttaki başlangıç kiti ve sabit depozitoyu yeni depozito sistemine taşır (tekrar çağrılabilir).</summary>
+        public void MigrateGear()
+        {
+            if (!hasCompanyKit) return;
+            long owed = 0;
+            foreach (var k in GameData.StarterKit)
+                if (equipment.Contains(k) && !depositGear.Contains(k)) { depositGear.Add(k); owed += GameData.Equip(k).price; }
+            if (depositPaid) depositPaidTotal += GameData.DepositAmount;
+            else depositOwed += owed;
+            hasCompanyKit = false;
+            depositPaid = false;
+        }
 
         public readonly HashSet<VehicleKind> ownedVehicles = new HashSet<VehicleKind>();
         public readonly HashSet<EquipmentKind> equipment = new HashSet<EquipmentKind>();
@@ -545,9 +565,8 @@ namespace KuryeTycoon
             earnedWeek += amount;
             balance += amount;
 
-            // Toplam kazancı eşiğe ulaşınca ekipman depozitosu hesaptan kesilir
-            if (hasCompanyKit && !depositPaid && totalEarned >= GameData.DepositThreshold && balance >= GameData.DepositAmount)
-                EconomyManager.I.CollectDeposit(this);
+            // Kesilmemiş ekipman depozitosu varsa kazancından kesilir
+            if (depositOwed > 0 && balance > 0) EconomyManager.I.CollectGearDeposit(this);
         }
 
         /// <summary>Nakit bahşiş: doğrudan kuryenin cebine gider.</summary>
@@ -1020,7 +1039,7 @@ namespace KuryeTycoon
                 float now = GameClock.I.TotalMinutes;
 
                 // Dükkanda bazen sıra olur
-                if (!current.shopQueue && Random.value < 0.25f)
+                if (!current.shopQueue && Random.value < 0.25f * UpgradeManager.I.ShopQueueMultiplier)
                 {
                     current.readyAt = Mathf.Max(current.readyAt, now) + Random.Range(5f, 20f);
                     current.shopQueue = true;
@@ -1326,7 +1345,7 @@ namespace KuryeTycoon
 
         /// <summary>
         /// Gün içinde: uyarıldıysa paket bitince hemen temizler; kirlenmişse titizliğine göre arada temizler.
-        /// Hijyen istasyonu varsa merkeze uğrayıp daha sık temizler.
+        /// Uygulamada çanta fotoğrafı kontrolü varsa daha sık temizler.
         /// </summary>
         void HourlyHygiene()
         {

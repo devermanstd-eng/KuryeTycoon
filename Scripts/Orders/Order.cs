@@ -30,7 +30,9 @@ namespace KuryeTycoon
         public int negotiateCooldownUntil; // bu güne kadar yeniden pazarlık yapılamaz
         public int resignBlockedUntil;     // ayrıldıktan sonra yeniden sözleşme için bekleme
         public bool lowSatisfactionWarned;
-        public float todayLoss;            // bugün kaybedilen memnuniyet (günlük üst sınır var: kötü bir gün her şeyi silmesin)
+        public float todayLoss;            // (eski) günlük kayıp sınırı
+        // Son günlerin hizmet karnesi (her gün %20 unutulur: ~5 günlük hafıza). Memnuniyet buna göre yavaşça değişir.
+        public float perfOk, perfLate, perfCold, perfCancel, perfIncident;
 
         public string Name => def.name;
         public float Commission => Mathf.Max(0.05f, def.commission + commissionBonus);
