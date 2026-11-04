@@ -816,7 +816,8 @@ namespace KuryeTycoon
             path = null;
             if (vehicleSwitchPending) RefreshVehicle();
             if (State == CourierState.Izinli) return;
-            if (wantsOffline) GoOffline(wantsOfflineReason);
+            if (suspendAfterOrders) { suspendAfterOrders = false; wantsOffline = false; SetOnLeave(1, "hesabı donduruldu"); }
+            else if (wantsOffline) GoOffline(wantsOfflineReason);
             else if (fatigue >= 0.95f) GoOffline("Çok yoruldu, eve gitti");
             else if (State != CourierState.Mola) State = CourierState.Bosta;
         }
@@ -1233,6 +1234,21 @@ namespace KuryeTycoon
             }
         }
 
+        bool suspendAfterOrders;
+
+        /// <summary>Hesabı dondur: elindeki paketler bitince o gün çalışamaz (gece yarısı açılır).</summary>
+        public void Suspend(int days)
+        {
+            if (OrderCount > 0)
+            {
+                suspendAfterOrders = true;
+                wantsOffline = true;
+                wantsOfflineReason = "Hesabı donduruldu";
+                return;
+            }
+            SetOnLeave(days, "hesabı donduruldu");
+        }
+
         public void SetOnLeave(int days, string reason)
         {
             unavailableDays = Mathf.Max(unavailableDays, days);
@@ -1247,7 +1263,7 @@ namespace KuryeTycoon
             tipsToday = 0;
             earnedToday = 0;
             kmToday = 0f;
-            if (clock.DayOfWeek == 0) earnedWeek = 0; // yeni hafta (rapor bu sıfırlamadan önce hazırlanır)
+            if (clock.DayOfWeek == 0) { earnedWeek = 0; hygieneComplaintsWeek = 0; } // yeni hafta (rapor bu sıfırlamadan önce hazırlanır)
 
             // Çanta temizliği kuryenin kendi sorumluluğu: her gece zorunlu olarak temizler (şirkete maliyeti yok)
             if (hygiene < MaxHygiene - 0.01f || cleanRequested) CleanBag();
@@ -1280,7 +1296,8 @@ namespace KuryeTycoon
 
         // ================================================================== hijyen
 
-        public const float HygieneLimit = 0.6f;
+        public const float HygieneLimit = 0.45f;   // bunun altında koku fark edilir: düşük puan ve nadiren şikayet
+        public int hygieneComplaintsWeek;          // bu haftaki hijyen şikayeti (3'te şirkete bildirilir)
         public const int BagWornUses = 400;
 
         /// <summary>Çok kullanılan çanta yıpranır: temizlense de en fazla %75'e çıkar.</summary>
@@ -1290,8 +1307,8 @@ namespace KuryeTycoon
         void DirtyBag(Order o)
         {
             bagUses++;
-            float d = 0.012f;
-            if (o.shop.def.hotFood) d *= 1.5f;              // yağ, sos
+            float d = 0.008f;
+            if (o.shop.def.hotFood) d *= 1.3f;              // yağ, sos
             if (o.IsHeavy || o.weightKg > 10f) d *= 1.3f;
             if (WeatherSystem.I.IsRainy && V.exposed) d *= 1.5f;
             d *= Mathf.Lerp(1.4f, 0.8f, care);              // dikkatsiz kurye daha çok döker
@@ -1314,8 +1331,10 @@ namespace KuryeTycoon
         {
             if (OrderCount > 0 || hygiene >= MaxHygiene - 0.01f) return;
             if (cleanRequested) { CleanBag(); return; }
-            if (hygiene >= HygieneLimit + 0.1f) return;
-            float chance = tidiness * 0.35f;
+            // Herkesin kendi eşiği var: titiz kurye çanta biraz kirlenince, dağınık kurye ancak iyice kirlenince temizler
+            float personal = HygieneLimit + 0.1f + tidiness * 0.25f;
+            if (hygiene >= personal) return;
+            float chance = 0.15f + tidiness * 0.45f;
             if (UpgradeManager.I != null && UpgradeManager.I.Has(UpgradeKind.Hijyen)) chance += 0.3f;
             if (Random.value < chance) CleanBag();
         }
@@ -1331,7 +1350,7 @@ namespace KuryeTycoon
         }
 
         public string HygieneText =>
-            hygiene >= 0.8f ? "Temiz" : hygiene >= HygieneLimit ? "Biraz kirli" : hygiene >= 0.35f ? "Kirli — müşteriler şikayet ediyor" : "Çok kirli — sık şikayet";
+            hygiene >= 0.75f ? "Temiz" : hygiene >= HygieneLimit ? "Biraz kirli" : hygiene >= 0.25f ? "Kirli — düşük puan, şikayet riski" : "Çok kirli — şikayet riski yüksek";
 
         public List<string> ActivePenalties()
         {

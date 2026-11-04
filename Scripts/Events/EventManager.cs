@@ -178,25 +178,43 @@ namespace KuryeTycoon
             return taken;
         }
 
-        /// <summary>Kirli çanta: hijyen %60'ın altındaysa müşteri şikayet edebilir.</summary>
+        /// <summary>
+        /// Kirli çanta (hijyen %45'in altı): yemek kokusu fark edilir. Müşteri çoğunlukla sadece düşük puan verir;
+        /// nadiren şikayet eder (çok kirli çantada teslimat başına en fazla ~%4, paketli market ürününde yarısı).
+        /// Şikayet platform kuralıyla kendiliğinden işlenir: kurye uyarılır ve ilk boşlukta çantasını temizler.
+        /// Aynı kurye bir haftada 3. şikayeti alırsa karar şirkete gelir.
+        /// </summary>
         public void RollHygieneComplaint(Order o, Courier c)
         {
             if (c.hygiene >= Courier.HygieneLimit) return;
-            float chance = (Courier.HygieneLimit - c.hygiene) * 1.2f;
+            float chance = (Courier.HygieneLimit - c.hygiene) * 0.1f;
+            if (o.shop.def.isMarket || !o.shop.def.hotFood) chance *= 0.5f;
             if (Random.value >= chance) return;
 
-            CompanyProfile.AddReputation(-0.03f);
-            int value = GameData.Round10(Mathf.Max(300f, o.basket * 0.1f));
-            if (SupportManager.I.TryHandleIncident(o, c, value, "hijyen")) return;
+            c.hygieneComplaintsWeek++;
+            o.rating = Mathf.Max(1f, o.rating - 0.8f);
+            CompanyProfile.AddReputation(-0.01f);
+            CourierManager.I.RequestCleaning(c, false);
 
-            string worn = c.BagWorn ? " Çanta yıpranmış, temizlik yetmeyebilir." : "";
-            Push(new GameEvent("Hijyen şikayeti!",
-                    $"#{o.id} müşterisi, kurye {c.courierName}'ın çantasının kirli olduğunu ve yemeğin kötü koktuğunu söylüyor.\n" +
-                    $"Çanta hijyeni: %{c.hygiene * 100f:0}.{worn}")
-                .Add($"Özür dile + %10 kupon (−{Ft(value)})", () =>
-                    EconomyManager.I.Spend(value, $"Hijyen kuponu #{o.id}", ExpenseCategory.Iade))
-                .Add("Kuryeyi uyar (paketi bitince temizler, moral biraz düşer)", () => CourierManager.I.RequestCleaning(c))
-                .Add("Görmezden gel (itibar −0.1)", () => CompanyProfile.AddReputation(-0.1f)));
+            if (c.hygieneComplaintsWeek < 3)
+            {
+                Notify($"#{o.id}: müşteri {c.ShortName}'ın çantasının koktuğunu bildirdi (hijyen %{c.hygiene * 100f:0}). " +
+                       $"{c.ShortName} uyarıldı, paketi bitince çantasını temizleyecek.");
+                return;
+            }
+
+            c.hygieneComplaintsWeek = 0;
+            var e = GameData.Equip(EquipmentKind.TermalCanta);
+            string worn = c.BagWorn ? " Çantası yıpranmış: temizlense de tam temiz olmuyor." : "";
+            var ev = new GameEvent("Tekrarlayan hijyen şikayeti",
+                    $"{c.courierName} bu hafta 3. kez hijyen şikayeti aldı (çanta hijyeni %{c.hygiene * 100f:0}, titizlik {c.tidiness:0.00}).{worn}\n" +
+                    "Çanta temizliği kuryenin sorumluluğu; şirket olarak nasıl davranacağına sen karar ver.")
+                .Add("Ciddi uyarı yap (moral biraz düşer)", () => { c.morale = Mathf.Max(0f, c.morale - 0.05f); c.AddInbox("Son uyarı: çanta temizliği şikayetleri tekrarlarsa hesabın dondurulabilir."); });
+            if (c.BagWorn)
+                ev.Add($"Yeni termal çanta ver (−{Ft(e.price)})", () => CourierManager.I.ReplaceBag(c));
+            ev.Add("Hesabını 1 gün dondur (bugün çalışamaz, moral düşer)", () => CourierManager.I.SuspendForDay(c))
+              .Add("Görmezden gel (itibar −0.05)", () => CompanyProfile.AddReputation(-0.05f));
+            Push(ev);
         }
 
         // ---------- Günlük rastgele olaylar ----------

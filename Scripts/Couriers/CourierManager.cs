@@ -439,6 +439,15 @@ namespace KuryeTycoon
             if (notify) EventManager.I.Notify($"{c.ShortName} uyarıldı: paketi bitince çantasını temizleyecek.");
         }
 
+        /// <summary>Hesabı 1 gün dondur: kurye bugün çevrimiçi olamaz (izinli sayılır), morali düşer.</summary>
+        public void SuspendForDay(Courier c)
+        {
+            c.Suspend(1);
+            c.morale = Mathf.Max(0f, c.morale - 0.15f);
+            c.AddInbox("Hesabın hijyen şikayetleri yüzünden 1 gün donduruldu. Çantanı temizle.");
+            EventManager.I.Notify($"{c.ShortName}'ın hesabı 1 gün donduruldu.");
+        }
+
         /// <summary>Çantası kirli tüm kuryeleri uyar (ücretsiz).</summary>
         public int WarnAllDirty()
         {
