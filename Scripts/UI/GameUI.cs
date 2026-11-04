@@ -1706,6 +1706,8 @@ namespace KuryeTycoon
             GUILayout.Label("Harita", header);
             bool lm = GUILayout.Toggle(ShowLandmarks, " Yer adlarını göster (park, nehir, AVM, bölgeler)", toggle);
             if (lm != ShowLandmarks) ShowLandmarks = lm;
+            bool persp = GUILayout.Toggle(MapCamera.PerspectiveSetting, " Perspektif kamera (derinlik hissi; kapalıysa düz/ortografik)", toggle);
+            if (persp != MapCamera.PerspectiveSetting) MapCamera.PerspectiveSetting = persp;
             GUILayout.Space(8);
 
             GUILayout.Label("3D şehir (yakınlaştırınca)", header);

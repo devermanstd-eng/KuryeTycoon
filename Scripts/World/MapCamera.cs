@@ -18,6 +18,18 @@ namespace KuryeTycoon
         public float minOrthoSize = 3.2f;       // en yakın
         public float maxTilt = 50f;             // en yakında kameranın eğimi (derece)
         public float baseTilt = 38f;            // açılı görünümde en uzaktaki eğim (derece)
+        public float fov = 30f;                 // perspektif kameranın dikey görüş açısı (dar: maket hissi, az bozulma)
+
+        const string PerspKey = "KuryeTycoon.PerspektifKamera";
+        /// <summary>Açılı görünümde perspektif kamera (uzak taraf küçülür, derinlik hissi). Kapalıysa ortografik.</summary>
+        public static bool PerspectiveSetting
+        {
+            get { return PlayerPrefs.GetInt(PerspKey, 1) == 1; }
+            set { PlayerPrefs.SetInt(PerspKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>Şu an perspektif mi? Düz harita modunda (M) her zaman ortografik: plan gibi, ölçek her yerde aynı.</summary>
+        bool UsePerspective => PerspectiveSetting && angled > 0.5f;
         public float tiltStart = 0.45f;         // bu yakınlıktan sonra eğilmeye başlar
         public float tiltFull = 0.8f;           // bu yakınlıkta tam eğik
         public float smooth = 10f;
@@ -81,7 +93,9 @@ namespace KuryeTycoon
             // Eğik bakınca harita ekranda dikeyde kısalır (cos eğim); binaların boyu için biraz pay bırakılır.
             float tilt = TiltDegrees(0f) * Mathf.Deg2Rad;
             float w = CityMap.Width + 1f, h = (CityMap.Height + 1f) * Mathf.Cos(tilt) + 2.2f * Mathf.Sin(tilt);
-            return Mathf.Max(h / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
+            float fit = Mathf.Max(h / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
+            // Perspektifte haritanın yakın (alt) kenarı büyüyüp taşmasın diye biraz pay
+            return UsePerspective ? fit * 1.1f : fit;
         }
 
         float SizeFor(Camera cam, float zoom)
@@ -122,17 +136,31 @@ namespace KuryeTycoon
 
         void Apply(Camera cam, float zoom, Vector2 f)
         {
-            cam.orthographic = true;
-            cam.orthographicSize = SizeFor(cam, zoom);
-            cam.nearClipPlane = 0.1f;
-            cam.farClipPlane = 300f;
+            float size = SizeFor(cam, zoom);
+            // Perspektif: haritanın odak noktasında ortografikteki "size" kadar alan görünecek uzaklık
+            float dist = 60f;
+            if (UsePerspective)
+            {
+                cam.orthographic = false;
+                cam.fieldOfView = fov;
+                dist = size / Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad);
+                cam.nearClipPlane = Mathf.Max(0.05f, dist * 0.02f);
+                cam.farClipPlane = dist + 200f;
+            }
+            else
+            {
+                cam.orthographic = true;
+                cam.orthographicSize = size;
+                cam.nearClipPlane = 0.1f;
+                cam.farClipPlane = 300f;
+            }
             float tilt = TiltDegrees(zoom);
             // Kamera +Z'ye bakar (harita XY düzleminde, binalar −Z yönünde yükselir).
             // Önce dikey eksen (Z) etrafında döner, sonra eğilir. Kuzey yukarıda: sadece eğik.
             var rot = Quaternion.Euler(0f, 0f, -EffectiveYaw(zoom)) * Quaternion.Euler(-tilt, 0f, 0f);
             cam.transform.rotation = rot;
             var ground = new Vector3(f.x, f.y, 0f);
-            cam.transform.position = ground - rot * Vector3.forward * 60f;
+            cam.transform.position = ground - rot * Vector3.forward * dist;
         }
 
         /// <summary>
