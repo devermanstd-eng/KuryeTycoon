@@ -292,7 +292,7 @@ namespace KuryeTycoon
             }
             GUILayout.EndHorizontal();
             if (newGameSlot >= 0 && slotSaves[newGameSlot] != null)
-                GUILayout.Label($"{newGameSlot + 1}. yuvadaki "{slotSaves[newGameSlot].companyName}" kaydı, yeni oyun ilk kez kaydedilince silinir.", warn);
+                GUILayout.Label($"{newGameSlot + 1}. yuvadaki \"{slotSaves[newGameSlot].companyName}\" kaydı, yeni oyun ilk kez kaydedilince silinir.", warn);
             GUILayout.Space(6);
             GUILayout.Label("Kurye Şirketini Kur", title);
             GUILayout.Label($"Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan {Ft(GameBootstrap.I.familyLoanAmount)} ile kendi kurye " +
