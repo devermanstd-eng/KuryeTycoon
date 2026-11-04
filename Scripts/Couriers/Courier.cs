@@ -1020,7 +1020,7 @@ namespace KuryeTycoon
                 float now = GameClock.I.TotalMinutes;
 
                 // Dükkanda bazen sıra olur
-                if (!current.shopQueue && Random.value < 0.25f)
+                if (!current.shopQueue && Random.value < 0.25f * UpgradeManager.I.ShopQueueMultiplier)
                 {
                     current.readyAt = Mathf.Max(current.readyAt, now) + Random.Range(5f, 20f);
                     current.shopQueue = true;
@@ -1326,7 +1326,7 @@ namespace KuryeTycoon
 
         /// <summary>
         /// Gün içinde: uyarıldıysa paket bitince hemen temizler; kirlenmişse titizliğine göre arada temizler.
-        /// Hijyen istasyonu varsa merkeze uğrayıp daha sık temizler.
+        /// Uygulamada çanta fotoğrafı kontrolü varsa daha sık temizler.
         /// </summary>
         void HourlyHygiene()
         {

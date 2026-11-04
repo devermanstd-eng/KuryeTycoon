@@ -142,6 +142,11 @@ namespace KuryeTycoon
 
         public void Hire(SupportCandidate c)
         {
+            if (UpgradeManager.I != null && Agents.Count >= UpgradeManager.I.SupportCap)
+            {
+                EventManager.I.Notify($"Ofiste yer yok: en fazla {UpgradeManager.I.SupportCap} destek personeli çalışabilir. Gelişim > Merkez ofis'i büyüt.");
+                return;
+            }
             if (!Candidates.Remove(c)) return;
             Agents.Add(new SupportAgent
             {
