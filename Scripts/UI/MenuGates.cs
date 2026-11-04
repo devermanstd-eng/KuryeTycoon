@@ -66,13 +66,22 @@ namespace KuryeTycoon
         Rect DockRect(Tab t, float sh)
         {
             if (t == Tab.Ayarlar) return new Rect(7f, sh - 74f, DockW - 14f, 62f);
-            float y = TopBar + 10f;
+            float y = TopBar + 10f, step = DockStep(sh);
             foreach (var d in DockItems)
             {
-                if (d.tab == t) return new Rect(7f, y, DockW - 14f, 62f);
-                if (d.tab != Tab.Ayarlar) y += 66f;
+                if (d.tab == t) return new Rect(7f, y, DockW - 14f, step - 4f);
+                if (d.tab != Tab.Ayarlar) y += step;
             }
             return Rect.zero;
+        }
+
+        /// <summary>Simge çubuğunda iki simge arası (ekran kısaysa simgeler sıkışır; Ayarlar en altta ayrı).</summary>
+        static float DockStep(float sh)
+        {
+            int n = 0;
+            foreach (var d in DockItems) if (d.tab != Tab.Ayarlar) n++;
+            float avail = sh - TopBar - 10f - 84f;
+            return Mathf.Clamp(avail / Mathf.Max(1, n), 44f, 66f);
         }
 
         // ---------------------------------------------------------------- pencere haritayı kapatmasın

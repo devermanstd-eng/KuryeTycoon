@@ -100,7 +100,7 @@ namespace KuryeTycoon
             if (c.Has(EquipmentKind.TermalCanta)) courierFault *= 0.6f;
 
             float r = Random.value;
-            if (r < shopMissing) ShopMissingItem(o);
+            if (r < shopMissing) { if (!o.shop.own) ShopMissingItem(o); }   // kendi marketinde eksik ürün stok sisteminde
             else if (r < shopMissing + courierFault) CourierFault(o, c);
         }
 
@@ -228,7 +228,7 @@ namespace KuryeTycoon
 
             var contracted = new List<Shop>();
             foreach (var s in map.Shops)
-                if (s.contracted && map.IsUnlocked(s.tile)) contracted.Add(s);
+                if (s.contracted && !s.own && map.IsUnlocked(s.tile)) contracted.Add(s);
 
             if (contracted.Count == 0 || Random.value > 0.45f) return;
             var shop = contracted[Random.Range(0, contracted.Count)];

@@ -12,7 +12,7 @@ namespace KuryeTycoon
     /// </summary>
     public partial class GameUI
     {
-        enum ToastType { Bad, Boost, Good }
+        enum ToastType { Bad, Boost, Good, Info, Message }
 
         class Toast
         {
@@ -30,6 +30,7 @@ namespace KuryeTycoon
         {
             var type = Classify(msg);
             if (type == null) return;
+            if (type.Value == ToastType.Message) msg = msg.Substring(Mathf.Min(msg.Length, 8));   // "Mesaj — " öneki
             if (type.Value == ToastType.Good) GameSounds.Play(Sfx.Iyi);
             else if (type.Value == ToastType.Bad) GameSounds.Play(Sfx.Kotu);
             float now = Time.unscaledTime;
@@ -49,6 +50,11 @@ namespace KuryeTycoon
         static ToastType? Classify(string msg)
         {
             string m = msg.ToLowerInvariant();
+            if (msg.StartsWith("Mesaj —")) return ToastType.Message;
+            if (msg.StartsWith("İpucu:") || msg.StartsWith("Şehir etkinliği") || msg.StartsWith("Şehir:")) return ToastType.Info;
+            if (m.Contains("kötü yorum viral")) return ToastType.Bad;
+            if (m.Contains("övgüsü viral") || m.Contains("marketin açıldı") || m.Contains("market açıldı")) return ToastType.Good;
+            if (m.Contains("raflar boş")) return ToastType.Bad;
             if (m.Contains("hedef tamamlandı") || m.Contains("hedefler geldi") || m.Contains("açıldı!") || m.Contains("sözleşme imzalandı") ||
                 m.Contains("ekibe katıldı") || m.Contains("kilometre taşı") || m.Contains("ödül"))
                 return ToastType.Good;
@@ -81,6 +87,11 @@ namespace KuryeTycoon
                 {
                     case ToastType.Good: accent = UITheme.Good; icon = Icons.Kind.Star; head = "Harika"; break;
                     case ToastType.Boost: accent = new Color(1f, 0.62f, 0.20f); icon = Icons.Kind.Bolt; head = "Boost"; break;
+                    case ToastType.Info:
+                        accent = new Color(0.40f, 0.70f, 1f);
+                        bool city = t.text.StartsWith("Şehir");
+                        icon = city ? Icons.Kind.Calendar : Icons.Kind.Clock; head = city ? "Şehir" : "İpucu"; break;
+                    case ToastType.Message: accent = new Color(0.55f, 0.85f, 0.65f); icon = Icons.Kind.Phone; head = "Kurye mesajı · tıkla"; break;
                     default: accent = UITheme.Bad; icon = Icons.Kind.Warning; head = "Dikkat"; break;
                 }
                 string body = t.text + (t.count > 1 ? $"  (+{t.count - 1})" : "");
@@ -99,7 +110,12 @@ namespace KuryeTycoon
                 GUI.Label(new Rect(r.x + 58f, r.y + 18f, w - 74f, h - 22f), body, toastText);
                 GUI.color = oldColor;
 
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none)) { var dead = t; deferred += () => toasts.Remove(dead); }
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+                {
+                    var dead = t;
+                    bool openMsgs = t.type == ToastType.Message;
+                    deferred += () => { toasts.Remove(dead); if (openMsgs && !(panelOpen && tab == Tab.Mesajlar)) OpenTab(Tab.Mesajlar); };
+                }
                 y += h + 8f;
             }
             small.normal.textColor = UITheme.TextDim;

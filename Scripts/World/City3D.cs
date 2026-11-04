@@ -121,6 +121,9 @@ namespace KuryeTycoon
         void Awake() { I = this; }
 
         /// <summary>Karedeki binanın şu anki boyu (yükselme oranı dahil). Etiketler ve müşteri noktaları çatıya oturur.</summary>
+        /// <summary>Binaların tam boyları (kare birimi, yükselme oranı hariç). Gece pencere ışıkları kullanır.</summary>
+        public Dictionary<Vector2Int, float> BuildingHeights => heightByTile;
+
         public float HeightAt(Vector2Int tile)
         {
             float g = MapCamera.I != null ? MapCamera.I.Tilt01 : 0f;

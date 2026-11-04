@@ -33,9 +33,10 @@ namespace KuryeTycoon
         public float todayLoss;            // (eski) günlük kayıp sınırı
         // Son günlerin hizmet karnesi (her gün %20 unutulur: ~5 günlük hafıza). Memnuniyet buna göre yavaşça değişir.
         public float perfOk, perfLate, perfCold, perfCancel, perfIncident;
+        public bool own;                   // kendi marketin (dark store): komisyon yok, satışın tamamı senin, stok senin
 
         public string Name => def.name;
-        public float Commission => Mathf.Max(0.05f, def.commission + commissionBonus);
+        public float Commission => own ? 1f : Mathf.Max(0.05f, def.commission + commissionBonus);
     }
 
     public class Order
@@ -156,7 +157,9 @@ namespace KuryeTycoon
         public bool UsesStairs => floor > 0 && (!elevator || elevatorBroken);
 
         public int CompanyIncome => commissionIncome + deliveryFee;
-        public int Profit => CompanyIncome - courierPay - boostPay;
+        /// <summary>Kendi marketinde satılan malın alış maliyeti (stoktan düşer; kârdan çıkarılır).</summary>
+        public int stockCost;
+        public int Profit => CompanyIncome - courierPay - boostPay - stockCost;
         public float DistanceKm => GameData.Km(distance);
         /// <summary>20 kg ve üstü: sadece arabalı kuryeler alabilir.</summary>
         public bool IsHeavy => weightKg >= GameData.HeavyKg;

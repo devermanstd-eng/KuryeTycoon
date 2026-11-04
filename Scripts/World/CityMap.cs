@@ -767,6 +767,43 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Kendi marketin (dark store) için açık bölgede boş bir dükkan karesi bulur; tile verilirse (kayıttan) orayı kullanır.</summary>
+        public Shop AddOwnShop(ShopDef def, Vector2Int? at = null)
+        {
+            Vector2Int tile;
+            if (at.HasValue) tile = at.Value;
+            else
+            {
+                var best = new Vector2Int(-1, -1);
+                float bestScore = float.MaxValue;
+                foreach (var t in shopTiles)
+                {
+                    if (reserved.Contains(t) || !IsUnlocked(t)) continue;
+                    var z = ZoneOf(t);
+                    // Depo: ana caddede değil, merkeze yakın ve ucuz bir yer (depo / karma bölge tercih)
+                    float score = Vector2Int.Distance(t, HQTile) + (z == Zone.Warehouse || z == Zone.Mixed ? 0f : 6f);
+                    if (score < bestScore) { bestScore = score; best = t; }
+                }
+                if (best.x < 0) return null;
+                tile = best;
+            }
+            reserved.Add(tile);
+            var shop = new Shop
+            {
+                def = def,
+                tile = tile,
+                door = GetDoor(tile),
+                contracted = true,
+                exclusive = true,
+                own = true,
+                satisfaction = 100f,
+                contractEndDay = int.MaxValue / 2
+            };
+            shop.sr = SpriteFactory.Create(def.name, root, false, def.color, ToWorld(tile), 0.8f, 2);
+            Shops.Add(shop);
+            return shop;
+        }
+
         public void RefreshColors()
         {
             if (ground == null) return;

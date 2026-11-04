@@ -9,8 +9,9 @@ namespace KuryeTycoon
     /// </summary>
     public partial class GameUI : MonoBehaviour
     {
-        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler }
-        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar", "Haftalık Hedefler" };
+        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler, Mesajlar, Market, Istatistik }
+        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar", "Haftalık Hedefler",
+                                                  "Mesajlar ve Yorumlar", "Kendi Marketin", "İstatistikler" };
 
         public float panelWidth = 460f;     // açılan pencerenin genişliği
         const float TopBar = 60f;
@@ -110,6 +111,7 @@ namespace KuryeTycoon
             DrawZoomButtons(sh);
             DrawLegend(sh);
             DrawGoalTracker();
+            DrawCityEventMarker(sw);
             DrawCourierPopup(sw, sh);
             DrawInfoMarker();
             DrawInfoPopup(sw, sh);
@@ -149,7 +151,7 @@ namespace KuryeTycoon
         void DrawPauseMenu(float sw, float sh)
         {
             Fill(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.55f));
-            float w = 400f, h = 420f;
+            float w = 440f, h = 450f;
             var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
             UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
             GUILayout.BeginArea(new Rect(r.x + 20, r.y + 16, w - 40, h - 32));
@@ -162,7 +164,18 @@ namespace KuryeTycoon
             if (save != null)
             {
                 GUI.enabled = SaveSystem.CanSaveNow;
-                if (GUILayout.Button("Kaydet", button, GUILayout.Height(34))) deferred = () => save.Save(false);
+                if (GUILayout.Button($"Kaydet ({SaveSystem.Slot + 1}. yuva)", button, GUILayout.Height(34))) deferred = () => save.Save(false);
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Başka yuvaya kaydet:", small, GUILayout.Width(140));
+                for (int i = 0; i < SaveSystem.SlotCount; i++)
+                {
+                    if (i == SaveSystem.Slot) continue;
+                    int slot = i;
+                    bool full = SaveSystem.SlotHasSave(i);
+                    if (GUILayout.Button($"{i + 1}" + (full ? " (üstüne yaz)" : ""), smallButton))
+                        deferred = () => { SaveSystem.Slot = slot; save.Save(false); setupSaveChecked = false; };
+                }
+                GUILayout.EndHorizontal();
                 GUI.enabled = true;
                 GUILayout.Label(string.IsNullOrEmpty(save.LastSaveText) ? "Bu oturumda henüz kaydedilmedi." : $"Son kayıt: {save.LastSaveText}", small);
                 save.autoSave = GUILayout.Toggle(save.autoSave, " Her gece otomatik kaydet", toggle);
@@ -203,36 +216,84 @@ namespace KuryeTycoon
         }
 
         // ---------------------------------------------------------------- kurulum
-        SaveData setupSave;
+        SaveData setupSave;                 // herhangi bir yuvada kayıt var mı (pencere boyu için)
+        readonly SaveData[] slotSaves = new SaveData[SaveSystem.SlotCount];
         bool setupSaveChecked;
+        int newGameSlot = -1, confirmDeleteSlot = -1;
+        Vector2 setupScroll;
 
         void DrawSetup(float sw, float sh)
         {
             if (!setupSaveChecked)
             {
                 setupSaveChecked = true;
-                setupSave = SaveSystem.ReadSave();
+                setupSave = null;
+                for (int i = 0; i < SaveSystem.SlotCount; i++)
+                {
+                    slotSaves[i] = SaveSystem.ReadSave(i);
+                    if (slotSaves[i] != null && setupSave == null) setupSave = slotSaves[i];
+                }
+                if (newGameSlot < 0) { int e = SaveSystem.FirstEmptySlot(); newGameSlot = e >= 0 ? e : SaveSystem.Slot; }
             }
             bool hasError = !string.IsNullOrEmpty(GameBootstrap.LastLoadError);
 
             Fill(new Rect(0, 0, sw, sh), new Color(0.08f, 0.09f, 0.11f));
-            float w = 620f, h = 760f + (setupSave != null ? 120f : 0f) + (hasError ? 40f : 0f);
+            float w = 620f, h = 760f + (setupSave != null ? 70f + SaveSystem.SlotCount * 44f : 50f) + (hasError ? 40f : 0f);
+            h = Mathf.Min(h, sh - 20f);
             var r = new Rect((sw - w) / 2f, Mathf.Max(10f, (sh - h) / 2f), w, h);
             UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
 
             GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 40));
+            setupScroll = GUILayout.BeginScrollView(setupScroll);
             if (hasError) GUILayout.Label(GameBootstrap.LastLoadError, warn);
             if (setupSave != null)
             {
                 GUILayout.BeginVertical(box);
-                GUILayout.Label("Kayıtlı oyun", header);
-                GUILayout.Label(SaveSystem.Summary(setupSave), small);
-                if (GUILayout.Button("Kayıtlı oyuna devam et", bigButton, GUILayout.Height(40)))
-                    deferred = () => { if (!GameBootstrap.I.LoadGame()) setupSaveChecked = false; };
+                GUILayout.Label("Kayıtlı oyunlar", header);
+                for (int i = 0; i < SaveSystem.SlotCount; i++)
+                {
+                    int slot = i;
+                    var sd = slotSaves[i];
+                    GUILayout.BeginHorizontal();
+                    GUILayout.Label($"{i + 1}. yuva", label, GUILayout.Width(58));
+                    if (sd == null)
+                    {
+                        GUILayout.Label("boş", small);
+                        GUILayout.FlexibleSpace();
+                    }
+                    else
+                    {
+                        GUILayout.Label(SaveSystem.Summary(sd), small, GUILayout.Width(w - 48 - 58 - 190));
+                        GUILayout.FlexibleSpace();
+                        if (confirmDeleteSlot == i)
+                        {
+                            if (GUILayout.Button("Evet, sil", smallButton, GUILayout.Width(70)))
+                                deferred = () => { SaveSystem.DeleteSlot(slot); confirmDeleteSlot = -1; newGameSlot = -1; setupSaveChecked = false; };
+                            if (GUILayout.Button("Vazgeç", smallButton, GUILayout.Width(60))) deferred = () => confirmDeleteSlot = -1;
+                        }
+                        else
+                        {
+                            if (GUILayout.Button("Devam et", smallButton, GUILayout.Width(80)))
+                                deferred = () => { SaveSystem.Slot = slot; if (!GameBootstrap.I.LoadGame()) setupSaveChecked = false; };
+                            if (GUILayout.Button("Sil", smallButton, GUILayout.Width(44))) deferred = () => confirmDeleteSlot = slot;
+                        }
+                    }
+                    GUILayout.EndHorizontal();
+                }
                 GUILayout.EndVertical();
-                GUILayout.Label("Ya da yeni bir şirket kur (yeni oyun ilk gece kaydedilince eski kaydın yerini alır):", small);
                 GUILayout.Space(6);
             }
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Yeni oyunun kayıt yuvası:", small, GUILayout.Width(170));
+            for (int i = 0; i < SaveSystem.SlotCount; i++)
+            {
+                int slot = i;
+                if (SelectButton(newGameSlot == i, $"{i + 1}" + (slotSaves[i] != null ? " (dolu)" : ""), smallButton)) deferred = () => newGameSlot = slot;
+            }
+            GUILayout.EndHorizontal();
+            if (newGameSlot >= 0 && slotSaves[newGameSlot] != null)
+                GUILayout.Label($"{newGameSlot + 1}. yuvadaki "{slotSaves[newGameSlot].companyName}" kaydı, yeni oyun ilk kez kaydedilince silinir.", warn);
+            GUILayout.Space(6);
             GUILayout.Label("Kurye Şirketini Kur", title);
             GUILayout.Label($"Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan {Ft(GameBootstrap.I.familyLoanAmount)} ile kendi kurye " +
                             "şirketini kuruyorsun. Bu parayı Temmuz sonuna kadar taksitlerle geri ödemen gerekiyor.", label);
@@ -289,7 +350,7 @@ namespace KuryeTycoon
             GUILayout.Space(12);
             DrawDifficultyPicker();
 
-            GUILayout.FlexibleSpace();
+            GUILayout.Space(14);
             if (GUILayout.Button("Şirketi Kur ve Başla", bigButton, GUILayout.Height(50)))
             {
                 Difficulty.Level = setupDifficulty;
@@ -297,8 +358,10 @@ namespace KuryeTycoon
                 CompanyProfile.Name = string.IsNullOrEmpty(companyName.Trim()) ? "Hızlı Kurye" : companyName.Trim();
                 CompanyProfile.Primary = primary;
                 CompanyProfile.Secondary = secondary;
+                if (newGameSlot >= 0) SaveSystem.Slot = newGameSlot;
                 deferred = () => GameBootstrap.I.StartGame();
             }
+            GUILayout.EndScrollView();
             GUILayout.EndArea();
         }
 
@@ -870,15 +933,18 @@ namespace KuryeTycoon
         static readonly (Tab tab, Icons.Kind icon, string label)[] DockItems =
         {
             (Tab.Siparisler, Icons.Kind.Orders, "Siparişler"),
+            (Tab.Mesajlar, Icons.Kind.Phone, "Mesajlar"),
             (Tab.Hedefler, Icons.Kind.Flag, "Hedefler"),
             (Tab.Kuryeler, Icons.Kind.Couriers, "Kuryeler"),
             (Tab.IseAlim, Icons.Kind.Hiring, "İşe Alım"),
             (Tab.Dukkanlar, Icons.Kind.Shops, "Dükkanlar"),
+            (Tab.Market, Icons.Kind.Basket, "Market"),
             (Tab.Ekipman, Icons.Kind.Equipment, "Ekipman"),
             (Tab.Kampanyalar, Icons.Kind.Campaigns, "Kampanya"),
             (Tab.Destek, Icons.Kind.Support, "Destek"),
             (Tab.Gelistirmeler, Icons.Kind.Upgrades, "Gelişim"),
             (Tab.Finans, Icons.Kind.Finance, "Finans"),
+            (Tab.Istatistik, Icons.Kind.Chart, "Grafik"),
             (Tab.Ayarlar, Icons.Kind.Settings, "Ayarlar"),
         };
 
@@ -906,6 +972,7 @@ namespace KuryeTycoon
             {
                 case Tab.Siparisler: return OrderManager.I != null ? OrderManager.I.Pending.Count : 0;
                 case Tab.IseAlim: return CourierManager.I != null ? CourierManager.I.Applications.Count : 0;
+                case Tab.Mesajlar: return CourierMessages.I != null ? CourierMessages.I.Unread : 0;
                 default: return 0;
             }
         }
@@ -928,12 +995,13 @@ namespace KuryeTycoon
             var mouse = Event.current.mousePosition;
             dockTip = null;
             float y = TopBar + 10f;
+            float step = DockStep(sh), ih = step - 4f;
             for (int i = 0; i < DockItems.Length; i++)
             {
                 var item = DockItems[i];
                 // Ayarlar en altta
                 float iy = item.tab == Tab.Ayarlar ? sh - 74f : y;
-                var r = new Rect(7f, iy, DockW - 14f, 62f);
+                var r = new Rect(7f, iy, DockW - 14f, item.tab == Tab.Ayarlar ? 62f : ih);
                 bool locked = !TabOpen(item.tab);   // ilk günlerde kilitli menüler (bkz. Guide)
                 bool active = panelOpen && tab == item.tab;
                 bool hover = r.Contains(mouse) && modalFree;
@@ -943,9 +1011,10 @@ namespace KuryeTycoon
                 else if (hover) UITheme.Box(r, locked ? UITheme.Card : UITheme.CardHi, 14f);
 
                 var iconCol = locked ? LockedIcon : (active ? UITheme.AccentText : (hover ? UITheme.Text : UITheme.TextDim));
-                Icons.Draw(new Rect(r.center.x - 15f, r.y + 8f, 30f, 30f), item.icon, iconCol);
+                float isz = Mathf.Clamp(r.height - 32f, 18f, 30f);   // dar ekranda simgeler küçülür
+                Icons.Draw(new Rect(r.center.x - isz / 2f, r.y + (r.height - isz - 18f) / 2f, isz, isz), item.icon, iconCol);
                 dockLabel.normal.textColor = iconCol;
-                GUI.Label(new Rect(r.x - 4f, r.y + 42f, r.width + 8f, 16f), locked ? "Kilitli" : item.label, dockLabel);
+                GUI.Label(new Rect(r.x - 4f, r.yMax - 19f, r.width + 8f, 16f), locked ? "Kilitli" : item.label, dockLabel);
 
                 int badge = locked ? 0 : BadgeOf(item.tab);
                 if (badge > 0)
@@ -957,7 +1026,7 @@ namespace KuryeTycoon
                 }
 
                 if (GUI.Button(r, GUIContent.none, GUIStyle.none)) { var t = item.tab; deferred = () => TryOpenTab(t); }
-                if (item.tab != Tab.Ayarlar) y += 66f;
+                if (item.tab != Tab.Ayarlar) y += step;
             }
 
             if (!panelOpen) return;
@@ -999,6 +1068,9 @@ namespace KuryeTycoon
                 case Tab.Finans: DrawFinance(); break;
                 case Tab.Ayarlar: DrawSettings(); break;
                 case Tab.Hedefler: DrawGoals(); break;
+                case Tab.Mesajlar: DrawMessages(); break;
+                case Tab.Market: DrawMarket(); break;
+                case Tab.Istatistik: DrawStatistics(); break;
             }
 
             GUILayout.EndScrollView();
@@ -1322,6 +1394,7 @@ namespace KuryeTycoon
 
             foreach (var s in map.Shops)
             {
+                if (s.own) continue;   // kendi marketin: Market penceresinde
                 GUILayout.BeginVertical(box);
                 DrawShopCard(s, rv, true);
                 GUILayout.EndVertical();
@@ -1331,6 +1404,7 @@ namespace KuryeTycoon
         /// <summary>Dükkan bilgisi ve sözleşme işlemleri (Dükkanlar penceresi ve haritada dükkana tıklayınca açılan kart).</summary>
         void DrawShopCard(Shop s, RivalCompany rv, bool withTitle)
         {
+            if (s.own) { DrawOwnStoreSummary(withTitle); return; }
             var map = CityMap.I;
             if (withTitle)
             {
@@ -2133,6 +2207,8 @@ namespace KuryeTycoon
             GUILayout.Label("Harita", header);
             bool lm = GUILayout.Toggle(ShowLandmarks, " Yer adlarını göster (park, nehir, AVM, bölgeler)", toggle);
             if (lm != ShowLandmarks) ShowLandmarks = lm;
+            bool dn = GUILayout.Toggle(DayNight.Enabled, " Gece ve gündüz: akşam turuncu ışık, gece karanlık, pencere ışıkları ve sokak lambaları", toggle);
+            if (dn != DayNight.Enabled) DayNight.Enabled = dn;
             bool wfx = GUILayout.Toggle(WeatherFx.Enabled, " Hava efektleri: yağmur, kar, rüzgâr, güneş, şimşek, kar örtüsü", toggle);
             if (wfx != WeatherFx.Enabled) WeatherFx.Enabled = wfx;
             if (WeatherFx.Enabled && WeatherSystem.I != null)

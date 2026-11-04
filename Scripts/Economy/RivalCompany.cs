@@ -240,7 +240,7 @@ namespace KuryeTycoon
 
             foreach (var s in shops)
             {
-                if (!s.contracted) continue;
+                if (!s.contracted || s.own) continue;
                 // Memnuniyet son günlerin karnesine doğru yavaşça gider (günde aradaki farkın %12'si); karne her gün %20 unutulur
                 s.satisfaction = Mathf.Clamp(s.satisfaction + (TargetSatisfaction(s) - s.satisfaction) * 0.12f, 0f, 100f);
                 s.perfOk *= 0.8f; s.perfLate *= 0.8f; s.perfCold *= 0.8f; s.perfCancel *= 0.8f; s.perfIncident *= 0.8f;
@@ -277,7 +277,7 @@ namespace KuryeTycoon
             if (Random.value < 0.35f)
             {
                 var cands = new List<Shop>();
-                foreach (var s in CityMap.I.Shops) if (!s.rivalContracted && !s.exclusive) cands.Add(s);
+                foreach (var s in CityMap.I.Shops) if (!s.rivalContracted && !s.exclusive && !s.own) cands.Add(s);
                 if (cands.Count > 0)
                 {
                     var s = cands[Random.Range(0, cands.Count)];
@@ -314,7 +314,7 @@ namespace KuryeTycoon
             {
                 s.lastMonthOrders = s.monthOrders;
                 s.monthOrders = 0;
-                if (!s.contracted || s.lastMonthOrders < volumeTier || s.commissionBonus <= -0.04f || Random.value < 0.5f) continue;
+                if (!s.contracted || s.own || s.lastMonthOrders < volumeTier || s.commissionBonus <= -0.04f || Random.value < 0.5f) continue;
 
                 var shop = s;
                 EventManager.I.Push(new GameEvent($"{s.Name} indirim istiyor",

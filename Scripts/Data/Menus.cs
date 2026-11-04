@@ -507,6 +507,20 @@ namespace KuryeTycoon
             };
         }
 
+        /// <summary>Yeni bir dükkana (ör. kendi marketin) başka bir dükkanın ürün listesini fiyat çarpanıyla verir.</summary>
+        public static void Register(string name, string baseShop, float priceMul)
+        {
+            Ensure();
+            if (!menus.TryGetValue(baseShop, out var src)) return;
+            var copy = new Item[src.Length];
+            for (int i = 0; i < src.Length; i++)
+            {
+                copy[i] = src[i];
+                copy[i].price = Mathf.Max(10, Mathf.RoundToInt(src[i].price * priceMul / 10f) * 10 - 1);
+            }
+            menus[name] = copy;
+        }
+
         /// <summary>Dükkanın bütün ürünleri (dükkan kartında menü göstermek için).</summary>
         public static Item[] Of(string shopName)
         {

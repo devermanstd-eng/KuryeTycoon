@@ -4,12 +4,12 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>Teslimat dışı giderlerin türü (Finans'ta ayrı gösterilir).</summary>
-    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger, Vergi, Maas, Gelistirme }
+    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger, Vergi, Maas, Gelistirme, Stok }
 
     public class PeriodStats
     {
         public static readonly string[] CategoryNames =
-            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar", "Personel maaşları", "Geliştirmeler" };
+            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar", "Personel maaşları", "Geliştirmeler", "Market stoku" };
 
         public long commission;     // dükkan komisyonları
         public long fees;           // müşteriden alınan teslimat ücretleri
@@ -17,7 +17,7 @@ namespace KuryeTycoon
         public long courierPay;     // kurye ödemeleri (paket + km + bonus)
         public long boosts;         // boost ödemeleri (kârdan)
         public long rewards;        // haftalık / aylık hedef ödülleri (kârdan)
-        public readonly long[] byCategory = new long[11];
+        public readonly long[] byCategory = new long[12];
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
         public long payoutsPaid;    // kuryelerin hesabına yatan (hakediş ödemesi)
         public long cashCollected;  // kuryelerden tahsil edilen nakit (offload)

@@ -149,12 +149,15 @@ namespace KuryeTycoon
         public List<string> feed = new List<string>();
         public GuideSave guide;                // rehber adımı ve açılan menüler (eski kayıtlarda yok)
         public int difficulty;                 // DifficultyLevel (eski kayıtlarda 0 = Normal)
+        public DarkStoreSave darkStore;        // kendi marketin (eski kayıtlarda yok)
+        public CityEventsSave cityEvents;
+        public MessagesSave messages;
     }
 
     // =====================================================================
 
     /// <summary>
-    /// Kayıt sistemi (tek kayıt yuvası, JSON). Oyun her gece gün sonundan sonra, açık ya da sırada bekleyen
+    /// Kayıt sistemi (3 kayıt yuvası, JSON). Oyun her gece gün sonundan sonra, açık ya da sırada bekleyen
     /// olay kartı kalmayınca otomatik kaydeder (bekleyen bir karar kayıtla kaybolmasın diye). ESC menüsünden elle de kaydedilir.
     ///
     /// Bilerek kaydedilmeyenler: yoldaki/bekleyen siparişler (yüklemede iptal olur; gece kaydedildiği için genelde 0–2),
@@ -173,8 +176,54 @@ namespace KuryeTycoon
         public string LastSaveText { get; private set; } = "";
         bool autosavePending;
 
-        public static string SavePath => Path.Combine(Application.persistentDataPath, "kayit.json");
-        static string BackupPath => Path.Combine(Application.persistentDataPath, "kayit_onceki.json");
+        // ---------- Kayıt yuvaları (3): 1. yuva eski "kayit.json" (eski kayıtlar bozulmasın) ----------
+        public const int SlotCount = 3;
+        const string SlotKey = "KuryeTycoon.KayitYuvasi";
+        static int slotCache = -1;
+
+        /// <summary>Şu an kullanılan yuva (0–2). Oyun bu yuvaya kaydeder, "Kayıtlı oyuna devam et" bu yuvadan yükler.</summary>
+        public static int Slot
+        {
+            get
+            {
+                if (slotCache < 0) slotCache = Mathf.Clamp(PlayerPrefs.GetInt(SlotKey, 0), 0, SlotCount - 1);
+                return slotCache;
+            }
+            set
+            {
+                slotCache = Mathf.Clamp(value, 0, SlotCount - 1);
+                PlayerPrefs.SetInt(SlotKey, slotCache);
+                PlayerPrefs.Save();
+            }
+        }
+
+        public static string SlotPath(int slot) =>
+            Path.Combine(Application.persistentDataPath, slot <= 0 ? "kayit.json" : $"kayit_{slot + 1}.json");
+        static string SlotBackupPath(int slot) =>
+            Path.Combine(Application.persistentDataPath, slot <= 0 ? "kayit_onceki.json" : $"kayit_{slot + 1}_onceki.json");
+
+        public static string SavePath => SlotPath(Slot);
+        static string BackupPath => SlotBackupPath(Slot);
+
+        public static bool SlotHasSave(int slot) => File.Exists(SlotPath(slot));
+
+        /// <summary>Yuvadaki kaydı siler (yedek dosyası da).</summary>
+        public static void DeleteSlot(int slot)
+        {
+            try
+            {
+                if (File.Exists(SlotPath(slot))) File.Delete(SlotPath(slot));
+                if (File.Exists(SlotBackupPath(slot))) File.Delete(SlotBackupPath(slot));
+            }
+            catch (System.Exception ex) { Debug.LogWarning($"Kayıt silinemedi: {ex.Message}"); }
+        }
+
+        /// <summary>İlk boş yuva (hepsi doluysa −1).</summary>
+        public static int FirstEmptySlot()
+        {
+            for (int i = 0; i < SlotCount; i++) if (!SlotHasSave(i)) return i;
+            return -1;
+        }
 
         static string Ft(long v) => GameData.Ft(v);
 
@@ -199,12 +248,14 @@ namespace KuryeTycoon
 
         public static bool HasSave => File.Exists(SavePath);
 
-        public static SaveData ReadSave()
+        public static SaveData ReadSave() => ReadSave(Slot);
+
+        public static SaveData ReadSave(int slot)
         {
             try
             {
-                if (!HasSave) return null;
-                var d = JsonUtility.FromJson<SaveData>(File.ReadAllText(SavePath));
+                if (!SlotHasSave(slot)) return null;
+                var d = JsonUtility.FromJson<SaveData>(File.ReadAllText(SlotPath(slot)));
                 return d != null && d.economy != null ? d : null;
             }
             catch (System.Exception ex)
@@ -234,7 +285,7 @@ namespace KuryeTycoon
                 File.Copy(tmp, SavePath, true);
                 File.Delete(tmp);
                 LastSaveText = $"{GameClock.I.DateOf(GameClock.I.Day)} {GameClock.I.Hour:00}:{GameClock.I.Minute:00}";
-                if (!auto) EventManager.I.Notify("Oyun kaydedildi.");
+                if (!auto) EventManager.I.Notify($"Oyun kaydedildi ({Slot + 1}. yuva).");
                 return true;
             }
             catch (System.Exception ex)
@@ -305,10 +356,14 @@ namespace KuryeTycoon
                 goals = GoalManager.I != null ? GoalManager.I.CaptureSave() : null,
                 loan = FamilyLoan.I.CaptureSave(),
                 guide = Guide.I != null ? Guide.I.CaptureSave() : null,
-                difficulty = (int)Difficulty.Level
+                difficulty = (int)Difficulty.Level,
+                darkStore = DarkStore.I != null ? DarkStore.I.CaptureSave() : null,
+                cityEvents = CityEvents.I != null ? CityEvents.I.CaptureSave() : null,
+                messages = CourierMessages.I != null ? CourierMessages.I.CaptureSave() : null
             };
 
             foreach (var s in CityMap.I.Shops)
+                if (!s.own)   // kendi marketin ayrıca kaydedilir (darkStore)
                 d.shops.Add(new ShopSave
                 {
                     name = s.def.name, contracted = s.contracted, exclusive = s.exclusive, rivalContracted = s.rivalContracted,
@@ -364,6 +419,7 @@ namespace KuryeTycoon
                 s.lastMonthOrders = ss.lastMonthOrders; s.negotiateCooldownUntil = ss.negotiateCooldownUntil;
                 s.resignBlockedUntil = ss.resignBlockedUntil;
             }
+            if (DarkStore.I != null) DarkStore.I.RestoreSave(d.darkStore);
             CityMap.I.RefreshColors();
             if (d.gearStock != null)
                 for (int i = 0; i < cm.gearStock.Length && i < d.gearStock.Length; i++) cm.gearStock[i] = d.gearStock[i];
@@ -405,7 +461,9 @@ namespace KuryeTycoon
             if (StatsHistory.I != null) StatsHistory.I.Restore(d.history);
             if (Milestones.I != null) Milestones.I.Restore(d.milestoneIds, d.milestoneDates);
             if (d.feed != null) EventManager.I.Feed.AddRange(d.feed);
-            if (Guide.I != null) Guide.I.RestoreSave(d.guide);   // null / eski kayıt: rehber yok, menüler şarta göre açılır
+            if (Guide.I != null) Guide.I.RestoreSave(d.guide);
+            if (CityEvents.I != null) CityEvents.I.RestoreSave(d.cityEvents);
+            if (CourierMessages.I != null) CourierMessages.I.RestoreSave(d.messages);   // null / eski kayıt: rehber yok, menüler şarta göre açılır
         }
     }
 }

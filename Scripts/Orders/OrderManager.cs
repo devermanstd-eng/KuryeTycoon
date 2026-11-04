@@ -108,7 +108,7 @@ namespace KuryeTycoon
 
         /// <summary>Dükkanın şu anki talep ağırlığı (yoğunluk × saat çarpanı).</summary>
         static float ShopDemand(Shop s) =>
-            s.def.weight * DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend) * RivalShare(s);
+            s.def.weight * DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend) * RivalShare(s) * CityEvents.ShopFactor(s);
 
         /// <summary>Rakip de bu dükkanla çalışıyorsa siparişler paylaşılır; münhasırsa artar.</summary>
         static float RivalShare(Shop s) => RivalCompany.I != null ? RivalCompany.I.ShareFor(s) : 1f;
@@ -142,11 +142,12 @@ namespace KuryeTycoon
             float demand = 0f;
             foreach (var s in CityMap.I.Shops)
                 if (s.contracted && CityMap.I.IsUnlocked(s.tile))
-                    demand += DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend) * RivalShare(s);
+                    demand += DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend) * RivalShare(s) * CityEvents.ShopFactor(s)
+                              * (s.own ? s.def.weight / 0.7f : 1f);   // kendi marketin: depo büyüklüğü ve stok talebi değiştirir
 
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
-                         * Difficulty.OrderRate;
+                         * Difficulty.OrderRate * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor;
             spawnAcc += rate * dm;
             while (spawnAcc >= 1f)
             {
@@ -327,6 +328,9 @@ namespace KuryeTycoon
             var custTile = Random.value < farOrderChance
                 ? map.RandomCustomerTile(shop.tile)
                 : map.RandomCustomerTileNear(shop.tile, deliveryRadius);
+            // Şehir etkinliği (konser, festival): siparişlerin bir kısmı etkinlik alanının çevresinden gelir
+            if (CityEvents.TryEventSpot(out var spot, out int spotRadius))
+                custTile = map.RandomCustomerTileNear(spot, spotRadius);
             var custDoor = map.GetDoor(custTile);
             int dist = Mathf.Max(1, map.FindPath(shop.door, custDoor).Count - 1);
 
@@ -334,6 +338,13 @@ namespace KuryeTycoon
             // Sepet gerçek ürünlerden oluşur (menüden); tutar ürünlerin toplamı
             var items = Menus.Generate(shop.def, basket);
             basket = Mathf.Max(shop.def.basketMin / 2, Menus.Sum(items));
+            // Kendi marketin: ürünler stoktan düşer; stokta olmayanlar sepetten çıkar, sepetin çoğu yoksa sipariş kaçar
+            int stockCost = 0;
+            if (shop.own && (DarkStore.I == null || !DarkStore.I.TakeOrder(items, ref basket, out stockCost)))
+            {
+                lostToday++;
+                return;
+            }
 
             // Ağırlık: sepet büyüdükçe artar, biraz da rastgelelik
             float t = Mathf.InverseLerp(shop.def.basketMin, shop.def.basketMax, basket);
@@ -388,7 +399,8 @@ namespace KuryeTycoon
                 createdAt = now,
                 items = items,
                 customerName = GameData.RandomName(),
-                customerNote = Addresses.RandomNote()
+                customerNote = Addresses.RandomNote(),
+                stockCost = stockCost
             };
             o.SetAddress(custTile, custDoor);
             // Nakit ödeme: marketlerde daha sık. Müşteri yuvarlak banknot verir, para üstü hazırlanır.
@@ -659,6 +671,8 @@ namespace KuryeTycoon
 
             CampaignManager.I.OnDelivered(c);
             if (GoalManager.I != null) GoalManager.I.OnDelivered(o);
+            if (DarkStore.I != null) DarkStore.I.OnDelivered(o);
+            if (CourierMessages.I != null) CourierMessages.I.OnDelivered(o, c, late);
             EventManager.I.RollHygieneComplaint(o, c);
             EventManager.I.RollDeliveryIncident(o, c);
         }

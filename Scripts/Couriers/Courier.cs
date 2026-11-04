@@ -503,6 +503,19 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Kurye mesajlarından: elinde paket yoksa kısa mola verir (yorgunluk azalır).</summary>
+        public bool TakeBreak(float minutes, string reason)
+        {
+            if (!IsOnline || OrderCount > 0 || State == CourierState.Mola) return false;
+            breakUntil = GameClock.I.TotalMinutes + minutes;
+            breakReason = reason;
+            State = CourierState.Mola;
+            return true;
+        }
+
+        /// <summary>Kurye mesajlarından: bugünlük işi bırakır (elindeki paketleri bitirince).</summary>
+        public void EndShiftEarly(string reason) => RequestOffline(reason);
+
         void RequestOffline(string reason)
         {
             if (OrderCount > 0)

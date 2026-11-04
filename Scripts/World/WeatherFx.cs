@@ -217,7 +217,7 @@ namespace KuryeTycoon
         void OnGUI()
         {
             GUI.depth = 10;
-            if (!Enabled || Event.current.type != EventType.Repaint) return;
+            if (Event.current.type != EventType.Repaint) return;
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
             // GUI.depth her olayda (Start'ta da) ayarlanır: arayüzün (GameUI) altında kalsın
             GUI.matrix = Matrix4x4.identity;
@@ -225,8 +225,13 @@ namespace KuryeTycoon
             var full = new Rect(0, 0, sw, sh);
             var old = GUI.color;
 
+            // Gece ve gündüz: akşam turuncu, gece karanlık; pencere ışıkları ve sokak lambaları (hava efektleri kapalıyken de)
+            DayNight.Draw(sw, sh);
+            if (!Enabled) { GUI.color = old; return; }
+            float sunV = sunAmt * DayNight.Daylight01;
+
             // Işık tonu: güneşte sıcak, bulutluda gri, yağmurda koyu mavi-gri, soğukta mavi
-            Tint(full, new Color(1f, 0.82f, 0.50f), sunAmt * (0.08f + heatAmt * 0.08f));
+            Tint(full, new Color(1f, 0.82f, 0.50f), sunV * (0.08f + heatAmt * 0.08f));
             Tint(full, new Color(0.42f, 0.45f, 0.52f), cloudAmt * 0.16f);
             Tint(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.22f + stormAmt * 0.16f);
             Tint(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.10f);
@@ -234,27 +239,27 @@ namespace KuryeTycoon
             // Bulut gölgeleri: haritanın üstünden rüzgârla kayan koyu lekeler
             foreach (var c in clouds)
             {
-                GUI.color = new Color(0.05f, 0.06f, 0.09f, 0.18f * Mathf.Clamp01(cloudAmt + rainAmt + sunAmt * 0.5f));
+                GUI.color = new Color(0.05f, 0.06f, 0.09f, 0.18f * Mathf.Clamp01(cloudAmt + rainAmt + sunV * 0.5f));
                 GUI.DrawTexture(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f + c.size * 0.25f, c.size * 2f, c.size * 0.8f), puff);
             }
 
             // Güneş: sağ üst köşede parlama ve hafif ışık hüzmeleri
-            if (sunAmt > 0.02f)
+            if (sunV > 0.02f)
             {
-                float a = sunAmt * (0.55f + heatAmt * 0.25f);
+                float a = sunV * (0.55f + heatAmt * 0.25f);
                 float size = sh * (1.0f + heatAmt * 0.3f);
                 // Güneş üst barın hemen altında, sağ üstte
                 var sunC = new Vector2(sw * 0.88f, sh * 0.12f);
                 GUI.color = new Color(1f, 0.90f, 0.60f, a);
                 GUI.DrawTexture(new Rect(sunC.x - size / 2f, sunC.y - size / 2f, size, size), glare);
-                GUI.color = new Color(1f, 0.98f, 0.85f, sunAmt * 0.8f);
+                GUI.color = new Color(1f, 0.98f, 0.85f, sunV * 0.8f);
                 GUI.DrawTexture(new Rect(sunC.x - sh * 0.04f, sunC.y - sh * 0.04f, sh * 0.08f, sh * 0.08f), dot);
                 // Hüzmeler: köşeden çapraza doğru, yavaşça nefes alır
                 float t = Time.unscaledTime;
                 for (int i = 0; i < 4; i++)
                 {
                     float breathe = 0.5f + 0.5f * Mathf.Sin(t * 0.3f + i * 1.7f);
-                    GUI.color = new Color(1f, 0.95f, 0.75f, sunAmt * 0.10f * breathe);
+                    GUI.color = new Color(1f, 0.95f, 0.75f, sunV * 0.10f * breathe);
                     var pivot = new Vector2(sw * 0.88f, sh * 0.12f);
                     var m = GUI.matrix;
                     GUIUtility.RotateAroundPivot(35f + i * 12f, pivot);

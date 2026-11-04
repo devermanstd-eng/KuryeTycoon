@@ -12,7 +12,8 @@ namespace KuryeTycoon
     public static class Icons
     {
         public enum Kind { Orders, Couriers, Hiring, Support, Upgrades, Shops, Equipment, Campaigns, Finance, Settings, Close,
-                          Wallet, Coins, Star, Clock, Sun, Cloud, Rain, Snow, Storm, Bolt, Pause, Play, Warning, Heart, Flag }
+                          Wallet, Coins, Star, Clock, Sun, Cloud, Rain, Snow, Storm, Bolt, Pause, Play, Warning, Heart, Flag,
+                          Phone, Basket, Chart, Moon, Calendar, Save }
 
         const int Size = 96;
         static readonly Dictionary<Kind, Texture2D> cache = new Dictionary<Kind, Texture2D>();
@@ -295,6 +296,51 @@ namespace KuryeTycoon
                 case Kind.Flag: // bayrak (hedefler)
                     return p => U(Box(p, V(-0.55f, 0f), V(0.08f, 0.88f), 0.05f),
                                   Triangle(p, V(-0.5f, 0.85f), V(-0.5f, 0.05f), V(0.78f, 0.45f)) - 0.04f);
+                case Kind.Phone: // telefon + mesaj noktası
+                    return p =>
+                    {
+                        float body = Sub(Box(p, V(-0.08f, 0f), V(0.46f, 0.86f), 0.16f), Box(p, V(-0.08f, 0.05f), V(0.34f, 0.62f), 0.04f));
+                        float btn = Circle(p, V(-0.08f, -0.74f), 0.07f);
+                        float badge = Circle(p, V(0.48f, 0.62f), 0.26f);
+                        return U(Sub(Sub(body, btn), Circle(p, V(0.48f, 0.62f), 0.36f)), badge);
+                    };
+                case Kind.Basket: // market sepeti
+                    return p =>
+                    {
+                        float basket = Mathf.Max(Triangle(p, V(-0.88f, 0.12f), V(0.88f, 0.12f), V(0f, -1.6f)), -(p.y + 0.78f));
+                        basket = U(basket, Box(p, V(0f, 0.18f), V(0.92f, 0.1f), 0.05f));
+                        float slots = 1f;
+                        for (int i = -1; i <= 1; i++) slots = U(slots, Box(p, V(i * 0.3f, -0.32f), V(0.06f, 0.26f), 0.03f));
+                        float handle = Mathf.Max(Ring(p, V(0f, 0.2f), 0.52f, 0.07f), -(p.y - 0.25f));
+                        return U(Sub(basket, slots), handle);
+                    };
+                case Kind.Chart: // çizgi grafik
+                    return p =>
+                    {
+                        float axis = U(Box(p, V(-0.82f, 0f), V(0.06f, 0.86f), 0.03f), Box(p, V(0f, -0.82f), V(0.86f, 0.06f), 0.03f));
+                        float line = U(U(Segment(p, V(-0.6f, -0.5f), V(-0.2f, 0.0f), 0.08f), Segment(p, V(-0.2f, 0.0f), V(0.15f, -0.25f), 0.08f)),
+                                       Segment(p, V(0.15f, -0.25f), V(0.72f, 0.55f), 0.08f));
+                        float dot = Circle(p, V(0.72f, 0.55f), 0.14f);
+                        return U(U(axis, line), dot);
+                    };
+                case Kind.Moon: // hilal
+                    return p => Sub(Circle(p, V(0f, 0f), 0.75f), Circle(p, V(0.35f, 0.25f), 0.62f));
+                case Kind.Calendar: // takvim
+                    return p =>
+                    {
+                        float page = Sub(Box(p, V(0f, -0.08f), V(0.8f, 0.72f), 0.12f), Box(p, V(0f, -0.25f), V(0.66f, 0.42f), 0.04f));
+                        float rings = U(Box(p, V(-0.4f, 0.72f), V(0.08f, 0.18f), 0.04f), Box(p, V(0.4f, 0.72f), V(0.08f, 0.18f), 0.04f));
+                        float day = Box(p, V(-0.25f, -0.15f), V(0.16f, 0.14f), 0.03f);
+                        return U(U(page, rings), day);
+                    };
+                case Kind.Save: // disket
+                    return p =>
+                    {
+                        float body = Sub(Box(p, V(0f, 0f), V(0.8f, 0.8f), 0.1f), Triangle(p, V(0.45f, 0.95f), V(0.95f, 0.95f), V(0.95f, 0.45f)));
+                        float label = Box(p, V(0f, -0.38f), V(0.5f, 0.3f), 0.05f);
+                        float shutter = Box(p, V(-0.05f, 0.52f), V(0.38f, 0.22f), 0.03f);
+                        return Sub(Sub(body, label), shutter);
+                    };
                 default: // kapat (çarpı)
                     return p => U(Segment(p, V(-0.6f, -0.6f), V(0.6f, 0.6f), 0.11f), Segment(p, V(-0.6f, 0.6f), V(0.6f, -0.6f), 0.11f));
             }
