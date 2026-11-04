@@ -233,41 +233,124 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Giriş seviyesi ekipman. Şirkete maliyeti kit başı 5 000 Ft;
-        /// kuryeden de 30 000 Ft kazanınca 20 000 Ft depozito alınır.
+        /// İşe başlayan kurye termal çanta ve tişörtü depozitoyla alır (Wolt'taki gibi): şirket depodan verir ya da satın alır,
+        /// bedeli kuryenin ilk kazançlarından depozito olarak kesilir.
         /// </summary>
         void GiveStarterKit(Courier c)
         {
-            EconomyManager.I.Spend(GameData.StarterKitCost, $"Başlangıç kiti: {c.courierName}", ExpenseCategory.Ekipman);
-            foreach (var k in GameData.StarterKit) { c.equipment.Add(k); c.NoteGear(k); }
-            c.hasCompanyKit = true;
+            foreach (var k in GameData.StarterKit) IssueGear(c, k, false);
+        }
+
+        // ---------- Depozitolu ekipman ----------
+        // Ekipmanı şirket dağıtmaz: kurye ihtiyaç duyunca kendisi ister. Şirket depodan (iade edilenlerden) verir, depoda yoksa
+        // satın alır; bedeli depozito olarak kuryenin kazancından kesilir. Kurye ayrılırken ekipmanı iade ederse depozito geri
+        // ödenir ve ekipman depoya döner; iade etmezse depozito şirkette kalır.
+
+        /// <summary>İade edilmiş, depoda bekleyen ekipman (tür başına adet).</summary>
+        public readonly int[] gearStock = new int[System.Enum.GetValues(typeof(EquipmentKind)).Length];
+
+        public bool IssueGear(Courier c, EquipmentKind k, bool notify = true)
+        {
+            if (c == null || c.Has(k)) return false;
+            var e = GameData.Equip(k);
+            long price = PriceOf(k);
+            bool fromStock = gearStock[(int)k] > 0;
+            if (fromStock) gearStock[(int)k]--;
+            else EconomyManager.I.Spend(price, $"Ekipman alımı: {e.name} ({c.courierName} için)", ExpenseCategory.Ekipman);
+            c.equipment.Add(k);
+            c.NoteGear(k);
+            if (c.depositGear == null) c.depositGear = new List<EquipmentKind>();
+            c.depositGear.Add(k);
+            c.depositOwed += price;
+            c.equipRefusedUntil.Remove(k);
+            EconomyManager.I.CollectGearDeposit(c);
+            c.AddInbox($"{e.name} teslim aldın ({(fromStock ? "depodan" : "yeni")}). Depozito {Ft(price)}: ayrılırken iade edersen geri ödenir.");
+            if (notify)
+                EventManager.I.Notify($"{c.ShortName} {e.name} istedi ve aldı ({(fromStock ? "depodan" : "şirket satın aldı")}); {Ft(price)} depozito kazancından kesilecek.");
+            return true;
+        }
+
+        /// <summary>Kuryeye ekipmanını almasını hatırlat (ücretsiz): 2 gün boyunca isteme ihtimali artar.</summary>
+        public void RemindGear(Courier c, EquipmentKind k, bool notify = true)
+        {
+            if (c.Has(k)) return;
+            c.gearNudgeUntil = GameClock.I.TotalMinutes + 2f * 1440f;
+            c.AddInbox($"Hatırlatma: {GameData.Equip(k).name} almak ister misin? Depozito karşılığı ofisten alabilirsin.");
+            if (notify) EventManager.I.Notify($"{c.ShortName}'a {GameData.Equip(k).name} hatırlatıldı.");
+        }
+
+        public int RemindAll(EquipmentKind k)
+        {
+            int n = 0;
+            foreach (var c in Couriers)
+                if (!c.Has(k) && Usefulness(c, k) >= 0.5f) { RemindGear(c, k, false); n++; }
+            EventManager.I.Notify(n > 0 ? $"{GameData.Equip(k).name}: {n} kuryeye hatırlatıldı." : $"{GameData.Equip(k).name}: hatırlatılacak kurye yok.");
+            return n;
+        }
+
+        static float BaseNeed(EquipmentKind k)
+        {
+            switch (k)
+            {
+                case EquipmentKind.TermalCanta: return 0.5f;
+                case EquipmentKind.KisMontu: return 0.35f;
+                case EquipmentKind.Yagmurluk: return 0.3f;
+                case EquipmentKind.YazTisort: return 0.3f;
+                case EquipmentKind.Kask: return 0.12f;
+                default: return 0.1f;   // powerbank
+            }
+        }
+
+        /// <summary>Her sabah: kurye eksik ve şu an işine yarayan bir ekipmanı kendisi isteyebilir (günde en fazla bir tane).</summary>
+        void DailyGearRequests()
+        {
+            float now = GameClock.I.TotalMinutes;
+            foreach (var c in Couriers)
+            {
+                if (c.deliveries < 3) continue;   // önce birkaç teslimat yapıp işi tanısın
+                bool nudged = now < c.gearNudgeUntil;
+                foreach (EquipmentKind k in System.Enum.GetValues(typeof(EquipmentKind)))
+                {
+                    if (c.Has(k)) continue;
+                    float u = Usefulness(c, k);
+                    if (u < 0.5f) continue;
+                    float p = BaseNeed(k) * u * Mathf.Lerp(0.6f, 1.2f, c.care) * (nudged ? 2f : 1f);
+                    if (k == EquipmentKind.Kask) p *= Mathf.Lerp(0.5f, 1.3f, c.care);
+                    if (c.balance + c.savings < PriceOf(k)) p *= 0.3f;     // depozitoyu karşılayamayacaksa çekinir
+                    if (Random.value < p) { IssueGear(c, k); break; }
+                }
+            }
         }
 
         /// <summary>
-        /// Ayrılan kurye ekipmanı iade ederse depozitosu geri ödenir ve kit depoya döner.
-        /// İade etmezse depozito şirkette kalır.
+        /// Ayrılan kurye depozitolu ekipmanı iade ederse kesilmiş depozitosu geri ödenir ve ekipman depoya döner.
+        /// İade etmezse kesilmiş depozito şirkette kalır.
         /// </summary>
         void HandleLeaving(Courier c)
         {
             EconomyManager.I.FinalSettlement(c);   // nakit ve hakedişler kapatılır
-            if (!c.hasCompanyKit) return;
-            bool returns = Random.value < (c.depositPaid ? 0.9f : 0.7f);
+            c.MigrateGear();
+            if (c.depositGear == null || c.depositGear.Count == 0) return;
+            string gear = string.Join(", ", c.depositGear.ConvertAll(k => GameData.Equip(k).name));
+            // Depozitosu tamamen kesilmiş kurye ekipmanı daha çok iade eder (parasını geri almak ister)
+            bool returns = Random.value < (c.depositOwed <= 0 ? 0.85f : 0.55f);
+            long paid = c.depositPaidTotal;
             if (returns)
             {
-                if (c.depositPaid)
-                {
-                    EconomyManager.I.RefundDeposit(c);
-                    EventManager.I.Notify($"{c.courierName} ekipmanı iade etti, {GameData.Ft(GameData.DepositAmount)} depozitosu geri ödendi.");
-                }
-                else EventManager.I.Notify($"{c.courierName} ekipmanı iade etti (depozito henüz kesilmemişti).");
+                foreach (var k in c.depositGear) gearStock[(int)k]++;
+                EconomyManager.I.RefundGearDeposit(c);
+                EventManager.I.Notify($"{c.courierName} ekipmanını iade etti ({gear}); " +
+                                      (paid > 0 ? $"{GameData.Ft(paid)} depozitosu geri ödendi." : "depozitosu henüz kesilmemişti.") + " Ekipman depoya döndü.");
             }
-            else if (c.depositPaid)
+            else
             {
-                EconomyManager.I.KeepDeposit(c);
-                EventManager.I.Notify($"{c.courierName} ekipmanı iade etmedi, {GameData.Ft(GameData.DepositAmount)} depozito şirkette kaldı.");
+                EconomyManager.I.KeepGearDeposit(c);
+                EventManager.I.Notify($"{c.courierName} ekipmanını iade etmedi ({gear}); " +
+                                      (paid > 0 ? $"{GameData.Ft(paid)} depozito şirkette kaldı." : "depozito kesilmemişti, ekipman kayıp.") +
+                                      (c.depositOwed > 0 ? $" Kesilemeyen {GameData.Ft(c.depositOwed)} kayıp." : ""));
             }
-            else EventManager.I.Notify($"{c.courierName} ekipmanı iade etmedi (depozito henüz kesilmemişti).");
-            c.hasCompanyKit = false;
+            c.depositGear.Clear();
+            c.depositOwed = 0;
         }
 
         public bool Fire(Courier c)
@@ -499,6 +582,7 @@ namespace KuryeTycoon
 
         void OnNewDay()
         {
+            if (GameBootstrap.I != null && GameBootstrap.I.Started) DailyGearRequests();
             var clock = GameClock.I;
             var season = clock.Season;
             float bonusM = EconomyManager.I.bonusMultiplier;
