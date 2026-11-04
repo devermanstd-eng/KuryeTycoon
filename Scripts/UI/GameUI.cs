@@ -99,6 +99,7 @@ namespace KuryeTycoon
             DrawPanel(sh);
             DrawFeed(sw, sh);
             DrawZoomButtons(sh);
+            DrawLegend(sh);
             DrawCourierPopup(sw, sh);
             GUI.enabled = true;
             DrawEvent(sw, sh);
@@ -325,6 +326,15 @@ namespace KuryeTycoon
             var cam = Camera.main;
             if (cam == null || CityMap.I == null) return;
 
+            // Yer adları (park, nehir, AVM, bölge): kilitli bölgedekiler soluk
+            if (ShowLandmarks)
+                foreach (var lm in CityMap.Landmarks)
+                {
+                    bool open = CityMap.I.IsUnlocked(Mathf.RoundToInt(lm.pos.x));
+                    var c = open ? lm.color : UITheme.WithAlpha(lm.color, 0.45f);
+                    LandmarkLabel(cam, CityMap.ToWorld(lm.pos) + MapCamera.LabelOffset(0f, 0.05f), lm.name, c);
+                }
+
             foreach (var s in CityMap.I.Shops)
             {
                 if (!CityMap.I.IsUnlocked(s.tile.x)) continue;
@@ -354,6 +364,68 @@ namespace KuryeTycoon
                 bool hi = c == popupCourier || c == hoverCourier;
                 WorldLabel(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n),
                     $"{c.ShortName} ({c.V.letter})", hi ? new Color(1f, 0.85f, 0.2f) : Color.white);
+            }
+        }
+
+        const string LandmarkKey = "KuryeTycoon.HaritaEtiketleri";
+        static bool ShowLandmarks
+        {
+            get { return PlayerPrefs.GetInt(LandmarkKey, 1) == 1; }
+            set { PlayerPrefs.SetInt(LandmarkKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        GUIStyle landmarkStyle;
+
+        /// <summary>Yer adı: zeminsiz, gölgeli, italik yazı (dükkan ve kurye etiketlerinden ayırt edilsin).</summary>
+        void LandmarkLabel(Camera cam, Vector3 world, string text, Color color)
+        {
+            Vector3 sp = cam.WorldToScreenPoint(world);
+            if (sp.z < 0f) return;
+            if (landmarkStyle == null)
+                landmarkStyle = new GUIStyle(worldLabel) { fontStyle = FontStyle.BoldAndItalic, fontSize = 13, alignment = TextAnchor.MiddleCenter };
+            float x = sp.x / uiScale;
+            float y = (Screen.height - sp.y) / uiScale;
+            var r = new Rect(x - 110f, y - 11f, 220f, 22f);
+            landmarkStyle.normal.textColor = new Color(0f, 0f, 0f, color.a * 0.75f);
+            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, landmarkStyle);
+            landmarkStyle.normal.textColor = color;
+            GUI.Label(r, text, landmarkStyle);
+        }
+
+        bool legendOpen;
+
+        /// <summary>Harita lejantı: renklerin ne anlama geldiği.</summary>
+        void DrawLegend(float sh)
+        {
+            if (!legendOpen) return;
+            var items = new List<(Color c, string t)>
+            {
+                (CityMap.RoadColor, "Yol"),
+                (CityMap.BridgeColor, "Köprü (nehri sadece buradan geç)"),
+                (CityMap.WaterColor, "Nehir"),
+                (CityMap.GrassColor, "Park"),
+                (CityMap.PlazaColor, "Meydan"),
+                (CityMap.LegendColor(Zone.OldTown), "Eski şehir (3–5 kat)"),
+                (CityMap.LegendColor(Zone.HighRise), "Kule bloklar (7–12 kat, asansör)"),
+                (CityMap.LegendColor(Zone.Houses), "Bahçeli evler (1–2 kat)"),
+                (CityMap.LegendColor(Zone.Mixed), "Çarşı (3–6 kat)"),
+                (CityMap.MallColor, "AVM"),
+                (CityMap.LegendColor(Zone.Campus), "Kampüs (2–4 kat)"),
+                (CityMap.LegendColor(Zone.Warehouse), "Sanayi (1–2 kat)"),
+                (CityMap.RailBedColor, "Tren yolu"),
+                (CompanyProfile.Primary, "Merkez ofis"),
+            };
+            float rowH = 19f, w = 250f, h = items.Count * rowH + 34f;
+            var r = new Rect(panelWidth + 10f, sh - 52f - h, w, h);
+            UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.92f), 12f, 4f);
+            small.normal.textColor = UITheme.Text;
+            GUI.Label(new Rect(r.x + 12, r.y + 6, w - 24, 20), "Lejant", small);
+            for (int i = 0; i < items.Count; i++)
+            {
+                float yy = r.y + 28f + i * rowH;
+                UITheme.Box(new Rect(r.x + 12, yy + 3, 14, 13), items[i].c, 3f);
+                small.normal.textColor = UITheme.TextDim;
+                GUI.Label(new Rect(r.x + 34, yy, w - 44, rowH), items[i].t, small);
             }
         }
 
@@ -469,7 +541,8 @@ namespace KuryeTycoon
             if (GUI.Button(new Rect(x + 76, y, 34, 30), "◄", button)) mc.Rotate(-45f);
             if (GUI.Button(new Rect(x + 114, y, 34, 30), "►", button)) mc.Rotate(45f);
             if (GUI.Button(new Rect(x + 152, y, 60, 30), "Tümü", smallButton)) mc.ResetView();
-            var r = new Rect(x + 218, y + 3, 440, 24);
+            if (GUI.Button(new Rect(x + 216, y, 66, 30), legendOpen ? "Lejant ✓" : "Lejant", smallButton)) legendOpen = !legendOpen;
+            var r = new Rect(x + 288, y + 3, 440, 24);
             UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.75f), 12f);
             GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height),
                 "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · N: kuzey · 0: tüm harita", small);
@@ -1626,6 +1699,11 @@ namespace KuryeTycoon
             GUILayout.Label("Gün sonu raporu", header);
             e.showDailyReport = GUILayout.Toggle(e.showDailyReport, " Her gece gün sonu raporunu göster (oyun duraklar)", toggle);
             e.showWeeklyReport = GUILayout.Toggle(e.showWeeklyReport, " Her Pazar gecesi haftalık raporu göster", toggle);
+            GUILayout.Space(8);
+
+            GUILayout.Label("Harita", header);
+            bool lm = GUILayout.Toggle(ShowLandmarks, " Yer adlarını göster (park, nehir, AVM, bölgeler)", toggle);
+            if (lm != ShowLandmarks) ShowLandmarks = lm;
             GUILayout.Space(8);
 
             GUILayout.Label("3D şehir (yakınlaştırınca)", header);

@@ -236,16 +236,12 @@ namespace KuryeTycoon
                     var p = P(new Vector2(x, y));
                     var tr = new Rect(p.x - s / 2f, p.y - s / 2f, s + 0.5f, s + 0.5f);
                     Color col;
-                    if (cm.IsRoad(x, y)) col = new Color(0.27f, 0.29f, 0.38f);
-                    else
-                    {
-                        bool front = (x > 0 && cm.IsRoad(x - 1, y)) || (x < CityMap.Width - 1 && cm.IsRoad(x + 1, y)) ||
-                                     (y > 0 && cm.IsRoad(x, y - 1)) || (y < CityMap.Height - 1 && cm.IsRoad(x, y + 1));
-                        col = front ? new Color(0.18f, 0.20f, 0.27f) : new Color(0.10f, 0.30f, 0.25f);
-                    }
+                    if (cm.IsRoad(x, y)) col = CityMap.BridgeAt(x, y) ? new Color(0.36f, 0.36f, 0.42f) : new Color(0.27f, 0.29f, 0.38f);
+                    else if (CityMap.WaterAt(x, y)) col = new Color(0.12f, 0.28f, 0.45f);
+                    else col = Color.Lerp(cm.MiniColor(x, y), new Color(0.10f, 0.12f, 0.17f), 0.62f);   // uygulamadaki koyu harita teması
                     if (!cm.IsUnlocked(x)) col = Color.Lerp(col, Color.black, 0.5f);
                     Fill(tr, col);
-                    if (!cm.IsRoad(x, y)) Fill(new Rect(tr.x + 1.5f, tr.y + 1.5f, tr.width - 3f, tr.height - 3f), Color.Lerp(col, Color.white, 0.03f));
+                    if (!cm.IsRoad(x, y) && !CityMap.WaterAt(x, y)) Fill(new Rect(tr.x + 1.5f, tr.y + 1.5f, tr.width - 3f, tr.height - 3f), Color.Lerp(col, Color.white, 0.03f));
                 }
 
             // Yakındaki dükkanlar (POI)

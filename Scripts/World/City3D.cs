@@ -168,16 +168,31 @@ namespace KuryeTycoon
                     var tile = new Vector2Int(x, y);
                     if (map.IsRoad(x, y))
                     {
-                        if (roads3D) AddRoad(map, tile);
+                        // Köprüler teknelerin üstünde çizilsin (sortingOrder 3)
+                        bool bridge = CityMap.BridgeAt(x, y);
+                        if (roads3D) AddRoad(map, tile, bridge ? 3 : 1);
+                        if (bridge)
+                        {
+                            var rail = new Color(0.80f, 0.78f, 0.74f);
+                            AddBoxR(tile, new Vector2(0.06f, 1.0f), 0.07f, rail, null, false, new Vector2(-0.46f, 0f), false);
+                            AddBoxR(tile, new Vector2(0.06f, 1.0f), 0.07f, rail, null, false, new Vector2(0.46f, 0f), false);
+                        }
                         continue;
                     }
+                    // Nehir ve tren yolu 2D haritadan görünür (su, raylar); üstlerine bir şey konmaz
+                    if (CityMap.WaterAt(x, y) || CityMap.RailAt(x, y)) continue;
+
+                    var zone = CityMap.ZoneOf(tile);
                     bool frontage = IsAdjacentToRoad(map, x, y);
-                    int region = x <= CityMap.UnlockMaxX[1] ? 1 : (x <= CityMap.UnlockMaxX[2] ? 2 : 3);
                     float face = FaceAngle(map, tile);
-                    // Paket yolları açıksa bina kareleri kaldırım, parklar çim zemin alır
+                    int floors = Addresses.Floors(tile);
+
+                    // Paket yolları açıksa zemin: kaldırım ya da çim (bölgeye göre)
                     if (roads3D)
                     {
-                        var gnd = frontage ? groundBlock : (groundGrass != null ? groundGrass : groundBlock);
+                        bool grass = zone == Zone.Park || zone == Zone.Houses ||
+                                     (!frontage && (zone == Zone.HighRise || zone == Zone.Mixed || zone == Zone.Campus));
+                        var gnd = grass && groundGrass != null ? groundGrass : groundBlock;
                         if (gnd != null) AddFlat(gnd, tile, 0f);
                     }
 
@@ -185,41 +200,84 @@ namespace KuryeTycoon
                     {
                         // Merkez ofis her zaman şirket renginde kutu: haritada hemen tanınsın
                         AddBox(tile, 0.84f, 1.9f, CompanyProfile.Primary, null, true);
+                        continue;
                     }
-                    else if (shopTiles.TryGetValue(tile, out var shop))
+
+                    if (shopTiles.TryGetValue(tile, out var shop))
                     {
+                        // AVM'deki dükkanlar AVM binasının içinde: ayrı bina yok
+                        if (zone == Zone.Mall) continue;
                         // Dükkan: paket binası biraz küçük (etrafında dükkan renginde zemin görünür) ya da renkli kutu
                         if (pack) AddPrefab(Pick(packBuildings, rng, 2, true), tile, 0.66f, face, shop);
                         else AddBox(tile, 0.8f, 0.75f, shop.def.color, shop, false);
+                        continue;
                     }
-                    else if (!frontage)
+
+                    switch (zone)
                     {
-                        int n = 1 + rng.Next(3);
-                        for (int i = 0; i < n; i++)
-                        {
-                            var off = new Vector2((float)rng.NextDouble() * 0.6f - 0.3f, (float)rng.NextDouble() * 0.6f - 0.3f);
-                            float h = 0.25f + (float)rng.NextDouble() * 0.25f;
-                            if (packTreesOk)
-                                AddPrefab(packTrees[rng.Next(packTrees.Length)], tile, 0f, (float)rng.NextDouble() * 360f, null, off, h + 0.15f);
-                            else
+                        case Zone.Plaza:
+                            if (x == 6 && y == 6)
                             {
-                                var c = Color.Lerp(new Color(0.16f, 0.42f, 0.22f), new Color(0.28f, 0.55f, 0.25f), (float)rng.NextDouble());
-                                AddBox(tile, 0.22f, h, c, null, false, off, false);
+                                // Meydan çeşmesi ve heykel
+                                AddBoxR(tile, new Vector2(0.5f, 0.5f), 0.06f, new Color(0.70f, 0.68f, 0.64f), null, false, new Vector2(0f, 0.2f), false);
+                                AddBoxR(tile, new Vector2(0.36f, 0.36f), 0.07f, new Color(0.45f, 0.72f, 0.90f), null, false, new Vector2(0f, 0.2f), false);
+                                AddBoxR(tile, new Vector2(0.08f, 0.08f), 0.32f, new Color(0.62f, 0.60f, 0.56f), null, false, new Vector2(0f, 0.2f), false);
                             }
-                        }
-                    }
-                    else if (pack)
-                    {
-                        AddPrefab(Pick(packBuildings, rng, Addresses.Floors(tile), false), tile, region == 3 ? 0.9f : 0.84f, face, null);
-                    }
-                    else
-                    {
-                        float h, size = 0.82f;
-                        // Yükseklik adresteki kat sayısıyla tutarlı
-                        h = 0.25f + Addresses.Floors(tile) * 0.16f;
-                        if (region == 3) size = 0.88f;
-                        var c = Color.Lerp(new Color(0.42f, 0.45f, 0.52f), new Color(0.58f, 0.55f, 0.50f), (float)rng.NextDouble());
-                        AddBox(tile, size, h, c, null, false);
+                            break;
+
+                        case Zone.Park:
+                            if (CityMap.IsBlockCenter(x, y))
+                            {
+                                if (x / CityMap.Block == 2)   // Belediye Parkı: anıt kule
+                                {
+                                    AddBoxR(tile, new Vector2(0.34f, 0.34f), 0.08f, new Color(0.78f, 0.76f, 0.70f), null, false, default, false);
+                                    AddBoxR(tile, new Vector2(0.16f, 0.16f), 0.95f, new Color(0.86f, 0.84f, 0.78f), null, false, default, false);
+                                }
+                                else AddBoxR(tile, new Vector2(0.62f, 0.46f), 0.01f, new Color(0.30f, 0.58f, 0.80f), null, false, default, false); // gölet
+                            }
+                            else AddTrees(tile, rng, 3 + rng.Next(2), packTreesOk);
+                            break;
+
+                        case Zone.Mall:
+                            if (CityMap.IsBlockCenter(x, y))
+                            {
+                                // Bloğun tamamını kaplayan büyük AVM binası + cam çatılı orta bölüm
+                                AddBoxR(tile, new Vector2(2.7f, 2.7f), 0.7f, CityMap.MallColor, null, false, default, false);
+                                AddBoxR(tile, new Vector2(1.5f, 0.8f), 0.82f, new Color(0.62f, 0.80f, 0.90f), null, false, default, false);
+                                for (int dx = -1; dx <= 1; dx++)
+                                    for (int dy = -1; dy <= 1; dy++) heightByTile[new Vector2Int(x + dx, y + dy)] = 0.82f;
+                            }
+                            break;
+
+                        case Zone.Warehouse:
+                            // Geniş, alçak depolar (iç kareler de dahil)
+                            AddBox(tile, frontage ? 0.9f : 0.82f, 0.28f + (float)rng.NextDouble() * 0.12f, CityMap.RoofColor(zone, x, y), null, false);
+                            break;
+
+                        case Zone.Houses:
+                            if (frontage)
+                            {
+                                // Müstakil ev: yola yakın küçük bina, arkasında bahçe ağacı
+                                var front = FrontDir(map, tile) * 0.14f;
+                                if (pack) AddPrefab(Pick(packBuildings, rng, floors, false), tile, 0.55f, face, null, front);
+                                else AddBox(tile, 0.55f, 0.18f + floors * 0.12f, CityMap.RoofColor(zone, x, y), null, false, front);
+                                AddTrees(tile, rng, 1, packTreesOk, -front * 2.2f, 0.12f);
+                            }
+                            else AddTrees(tile, rng, 2 + rng.Next(2), packTreesOk);
+                            break;
+
+                        default: // eski şehir, kule bloklar, çarşı, kampüs
+                            if (!frontage)
+                            {
+                                // İç avlu: eski şehirde az ağaç, diğerlerinde yeşil alan
+                                if (zone == Zone.OldTown) AddTrees(tile, rng, 1, packTreesOk);
+                                else AddTrees(tile, rng, 1 + rng.Next(3), packTreesOk);
+                            }
+                            else if (pack)
+                                AddPrefab(Pick(packBuildings, rng, floors, false), tile, zone == Zone.HighRise ? 0.8f : 0.86f, face, null);
+                            else
+                                AddBox(tile, zone == Zone.HighRise ? 0.74f : 0.84f, 0.25f + floors * 0.16f, CityMap.RoofColor(zone, x, y), null, false);
+                            break;
                     }
                 }
             }
@@ -294,6 +352,33 @@ namespace KuryeTycoon
             return 0f;
         }
 
+        /// <summary>Binadan yola doğru birim vektör.</summary>
+        static Vector2 FrontDir(CityMap map, Vector2Int t)
+        {
+            if (t.y > 0 && map.IsRoad(t.x, t.y - 1)) return Vector2.down;
+            if (t.y < CityMap.Height - 1 && map.IsRoad(t.x, t.y + 1)) return Vector2.up;
+            if (t.x > 0 && map.IsRoad(t.x - 1, t.y)) return Vector2.left;
+            if (t.x < CityMap.Width - 1 && map.IsRoad(t.x + 1, t.y)) return Vector2.right;
+            return Vector2.zero;
+        }
+
+        /// <summary>Kareye ağaç koyar (paketin ağaçları ya da yeşil kutular). center verilirse ağaçlar onun etrafında toplanır.</summary>
+        void AddTrees(Vector2Int tile, System.Random rng, int n, bool packTreesOk, Vector2 center = default, float spread = 0.3f)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                var off = center + new Vector2((float)rng.NextDouble() * spread * 2f - spread, (float)rng.NextDouble() * spread * 2f - spread);
+                float h = 0.25f + (float)rng.NextDouble() * 0.25f;
+                if (packTreesOk)
+                    AddPrefab(packTrees[rng.Next(packTrees.Length)], tile, 0f, (float)rng.NextDouble() * 360f, null, off, h + 0.15f);
+                else
+                {
+                    var c = Color.Lerp(new Color(0.16f, 0.42f, 0.22f), new Color(0.28f, 0.55f, 0.25f), (float)rng.NextDouble());
+                    AddBox(tile, 0.22f, h, c, null, false, off, false);
+                }
+            }
+        }
+
         Transform Holder(string name, Vector2Int tile, Vector2 offset)
         {
             var go = new GameObject(name);
@@ -364,7 +449,7 @@ namespace KuryeTycoon
         // ---------- Yollar ve zemin ----------
 
         /// <summary>Komşu yollara göre parça seçer: düz, köşe, T, dörtlü kavşak.</summary>
-        void AddRoad(CityMap map, Vector2Int t)
+        void AddRoad(CityMap map, Vector2Int t, int order = 1)
         {
             bool n = t.y < CityMap.Height - 1 && map.IsRoad(t.x, t.y + 1);
             bool s = t.y > 0 && map.IsRoad(t.x, t.y - 1);
@@ -372,29 +457,29 @@ namespace KuryeTycoon
             bool w = t.x > 0 && map.IsRoad(t.x - 1, t.y);
             int count = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
             // Açılar Z ekseninde, saat yönünün tersine: 0 = kuzey, 90 = batı, 180 = güney, 270 = doğu
-            if (count >= 4) { AddFlat(roadCross, t, 0f); return; }
+            if (count >= 4) { AddFlat(roadCross, t, 0f, order); return; }
             if (count == 3 && roadT != null)
             {
                 // Kanonik T: batı-kuzey-doğu (güney yok)
                 float a = !s ? 0f : !e ? 90f : !n ? 180f : 270f;
-                AddFlat(roadT, t, a + RoadOffset(2));
+                AddFlat(roadT, t, a + RoadOffset(2), order);
                 return;
             }
             if (count == 2 && !(n && s) && !(e && w) && roadCorner != null)
             {
                 // Kanonik köşe: kuzey-doğu
                 float a = (n && e) ? 0f : (n && w) ? 90f : (s && w) ? 180f : 270f;
-                AddFlat(roadCorner, t, a + RoadOffset(1));
+                AddFlat(roadCorner, t, a + RoadOffset(1), order);
                 return;
             }
-            if (count >= 3) { AddFlat(roadCross, t, 0f); return; }
+            if (count >= 3) { AddFlat(roadCross, t, 0f, order); return; }
             // Düz: kanonik kuzey-güney
             float st = (e || w) && !(n || s) ? 90f : 0f;
-            AddFlat(roadStraight, t, st + RoadOffset(0));
+            AddFlat(roadStraight, t, st + RoadOffset(0), order);
         }
 
         /// <summary>Düz parça: kareyi tam kaplar, yüzeyi zeminin hemen üstünde, yükselmez.</summary>
-        void AddFlat(GameObject prefab, Vector2Int tile, float angle)
+        void AddFlat(GameObject prefab, Vector2Int tile, float angle, int order = 1)
         {
             if (prefab == null) return;
             var holder = Holder(prefab.name, tile, Vector2.zero);
@@ -409,7 +494,7 @@ namespace KuryeTycoon
             {
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.receiveShadows = false;
-                r.sortingOrder = 1; // zemin karelerinin üstünde, binaların altında
+                r.sortingOrder = order; // zemin karelerinin üstünde, binaların altında
             }
             var b = CombinedBounds(renderers);
             float s = 1.01f / Mathf.Max(0.001f, Mathf.Max(b.size.x, b.size.y));
@@ -423,9 +508,13 @@ namespace KuryeTycoon
         // ---------- Kutu bina (paket yoksa) ----------
 
         void AddBox(Vector2Int tile, float size, float height, Color c, Shop shop, bool hq, Vector2 offset = default, bool registerHeight = true)
+            => AddBoxR(tile, new Vector2(size, size), height, c, shop, hq, offset, registerHeight);
+
+        /// <summary>Dikdörtgen tabanlı kutu (köprü korkuluğu, AVM, çeşme için).</summary>
+        void AddBoxR(Vector2Int tile, Vector2 size, float height, Color c, Shop shop, bool hq, Vector2 offset = default, bool registerHeight = true)
         {
             var holder = Holder(shop != null ? shop.def.name + " (3D)" : hq ? "Merkez Ofis (3D)" : "Bina", tile, offset);
-            holder.localScale = new Vector3(size, size, 0.001f);
+            holder.localScale = new Vector3(size.x, size.y, 0.001f);
             var mf = holder.gameObject.AddComponent<MeshFilter>();
             var mr = holder.gameObject.AddComponent<MeshRenderer>();
             mr.sharedMaterial = mat;

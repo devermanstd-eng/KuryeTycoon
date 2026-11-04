@@ -17,7 +17,7 @@ namespace KuryeTycoon
     /// Şehrin adres sistemi. Tutarlıdır: aynı bina her zaman aynı sokakta, aynı numarada, aynı kat sayısındadır.
     ///  • Dikey yollar (x = 0, 4, 8 …) "Cadde", yatay yollar (y = 0, 4, 8 …) "Sokak".
     ///  • Bina numarası, kapısının açıldığı yol boyunca konumuna göre (bir taraf tek, karşı taraf çift).
-    ///  • Kat sayısı bölgeye göre: Merkez apartmanlar (4–10), Doğu (2–6), Sanayi & Kampüs müstakil/alçak (1–3).
+    ///  • Kat sayısı blok türüne göre: kule bloklar 7–12, eski şehir 3–5, çarşı 3–6, kampüs 2–4, bahçeli ev ve sanayi 1–2.
     ///  • 5+ katlı binalarda asansör var; 7+ katlılar iki bloklu (A, B).
     /// </summary>
     public static class Addresses
@@ -47,9 +47,16 @@ namespace KuryeTycoon
         public static int Floors(Vector2Int t)
         {
             var r = TileRng(t);
-            if (t.x <= CityMap.UnlockMaxX[1]) return 4 + r.Next(7);   // 4–10
-            if (t.x <= CityMap.UnlockMaxX[2]) return 2 + r.Next(5);   // 2–6
-            return 1 + r.Next(3);                                      // 1–3
+            switch (CityMap.ZoneOf(t))
+            {
+                case Zone.HighRise: return 7 + r.Next(6);    // 7–12 kule bloklar
+                case Zone.OldTown: return 3 + r.Next(3);     // 3–5 eski şehir
+                case Zone.Houses: return 1 + r.Next(2);      // 1–2 bahçeli ev
+                case Zone.Mall: return 2;
+                case Zone.Campus: return 2 + r.Next(3);      // 2–4 yurt / fakülte
+                case Zone.Warehouse: return 1 + r.Next(2);   // 1–2 depo / atölye
+                default: return 3 + r.Next(4);               // 3–6 çarşı
+            }
         }
 
         public static bool HasElevator(Vector2Int t) => Floors(t) >= 5;
