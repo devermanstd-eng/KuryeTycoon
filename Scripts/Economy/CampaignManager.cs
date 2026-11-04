@@ -110,6 +110,8 @@ namespace KuryeTycoon
             {
                 c.monthDeliveries = 0;
                 c.monthlyRewardClaimed = false;
+                c.earnedMonth = 0;
+                c.kmMonth = 0f;
             }
             rewardsPaidThisMonth = 0;
             rewardsClaimedThisMonth = 0;
@@ -121,6 +123,11 @@ namespace KuryeTycoon
         {
             foreach (var c in CourierManager.I.Couriers)
             {
+                c.lastWeekDeliveries = c.weekDeliveries;
+                c.offersSeenLastWeek = c.offersSeenWeek;
+                c.offersAcceptedLastWeek = c.offersAcceptedWeek;
+                c.offersSeenWeek = c.offersAcceptedWeek = 0;
+                c.kmWeek = 0f;
                 c.weekDeliveries = 0;
                 c.weeklyRewardClaimed = false;
             }
@@ -160,6 +167,8 @@ namespace KuryeTycoon
                 string list = "";
                 foreach (var w in today) list += (list.Length > 0 ? ", " : "") + $"{w.TimeText} %{w.percent * 100f:0}";
                 EventManager.I.Notify($"{clock.DayName} boostları: {list}");
+                if (CourierManager.I != null)
+                    foreach (var c in CourierManager.I.Couriers) c.AddInbox($"Bugünün boostları: {list}");
             }
         }
 
@@ -233,6 +242,7 @@ namespace KuryeTycoon
                 c.weeklyRewardClaimed = true;
                 EconomyManager.I.SpendCampaign(weeklyReward, $"Haftalık hedef ödülü: {c.courierName}");
                 c.Earn(weeklyReward);
+                c.AddInbox($"Tebrikler! Haftalık hedefe ulaştın ({weeklyTarget} paket), {Ft(weeklyReward)} ödül hesabına yazıldı.");
                 c.morale = Mathf.Min(1f, c.morale + 0.15f);
                 rewardsPaidThisWeek += weeklyReward;
                 rewardsClaimedThisWeek++;
@@ -244,6 +254,7 @@ namespace KuryeTycoon
                 c.monthlyRewardClaimed = true;
                 EconomyManager.I.SpendCampaign(monthlyReward, $"Aylık hedef ödülü: {c.courierName}");
                 c.Earn(monthlyReward);
+                c.AddInbox($"Ayın kuryesi! {monthlyTarget}+ paket, {Ft(monthlyReward)} ödül hesabına yazıldı.");
                 c.morale = Mathf.Min(1f, c.morale + 0.25f);
                 rewardsPaidThisMonth += monthlyReward;
                 rewardsClaimedThisMonth++;

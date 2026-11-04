@@ -238,7 +238,7 @@ namespace KuryeTycoon
         void GiveStarterKit(Courier c)
         {
             EconomyManager.I.Spend(GameData.StarterKitCost, $"Başlangıç kiti: {c.courierName}", ExpenseCategory.Ekipman);
-            foreach (var k in GameData.StarterKit) c.equipment.Add(k);
+            foreach (var k in GameData.StarterKit) { c.equipment.Add(k); c.NoteGear(k); }
             c.hasCompanyKit = true;
         }
 
@@ -415,6 +415,8 @@ namespace KuryeTycoon
             eco.Spend(price, $"{e.name} → {c.courierName}", ExpenseCategory.Ekipman);
             if (courierPart > 0) eco.ChargeCourier(c, courierPart, $"{e.name} payı: {c.courierName}");
             c.equipment.Add(k);
+            c.NoteGear(k);
+            c.AddInbox(courierPart == 0 ? $"{e.name} teslim aldın (şirket ödedi)." : $"{e.name} teslim aldın, {Ft(courierPart)} hesabından kesildi.");
             c.equipRefusedUntil.Remove(k);
             c.morale = Mathf.Min(1f, c.morale + (courierPart == 0 ? 0.03f : 0.01f));
             if (notify)
@@ -432,6 +434,7 @@ namespace KuryeTycoon
             if (c.cleanRequested) return;
             c.cleanRequested = true;
             c.morale = Mathf.Max(0f, c.morale - 0.02f);
+            c.AddInbox("Çantan kirli, lütfen temizle. Müşteriler şikayet ediyor.");
             if (notify) EventManager.I.Notify($"{c.ShortName} uyarıldı: paketi bitince çantasını temizleyecek.");
         }
 

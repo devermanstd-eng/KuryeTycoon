@@ -135,8 +135,61 @@ namespace KuryeTycoon
         float modelFacing = 180f;
         Vector2 lastModelPos;
 
+        // ================================================================== telefon uygulaması verileri
+        public int courierId;
+        public float kmToday, kmWeek, kmMonth;
+        public long earnedMonth;
+        public int lastWeekDeliveries;
+        public int offersSeenWeek, offersAcceptedWeek, offersSeenLastWeek, offersAcceptedLastWeek;
+        public int depositDay = -1;
+        public List<string> gearNames = new List<string>();
+        public List<int> gearDays = new List<int>();
+        public List<string> inboxText = new List<string>();
+        public List<string> inboxWhen = new List<string>();
+
+        // Son değerlendirdiği teklif (telefonda teklif ekranı olarak görünür)
+        [System.NonSerialized] public Order lastOffer;
+        [System.NonSerialized] public int lastOfferPay;
+        [System.NonSerialized] public bool lastOfferAccepted;
+        [System.NonSerialized] public string lastOfferReason = "";
+        [System.NonSerialized] public float lastOfferRealTime = -999f;
+
+        public void NoteOffer(Order o, int pay, bool accepted, string reason)
+        {
+            lastOffer = o;
+            lastOfferPay = pay;
+            lastOfferAccepted = accepted;
+            lastOfferReason = reason ?? "";
+            lastOfferRealTime = Time.unscaledTime;
+            offersSeenWeek++;
+            if (accepted) offersAcceptedWeek++;
+        }
+
+        /// <summary>Ekipmanı teslim aldığı gün (profilde görünür).</summary>
+        public void NoteGear(EquipmentKind k)
+        {
+            string n = GameData.Equip(k).name;
+            int i = gearNames.IndexOf(n);
+            int day = GameClock.I != null ? GameClock.I.Day : 1;
+            if (i >= 0) gearDays[i] = day;
+            else { gearNames.Add(n); gearDays.Add(day); }
+        }
+
+        /// <summary>Kuryenin telefonundaki gelen kutusuna mesaj.</summary>
+        public void AddInbox(string text)
+        {
+            var c = GameClock.I;
+            inboxText.Insert(0, text);
+            inboxWhen.Insert(0, c != null ? $"{c.DateOf(c.Day)} {c.Hour:00}:{c.Minute:00}" : "");
+            if (inboxText.Count > 30) { inboxText.RemoveAt(30); inboxWhen.RemoveAt(30); }
+        }
+
+        public IReadOnlyList<Vector2Int> PathList => path;
+        public int PathIndex => pathIndex;
+
         public void Init(CourierCandidate c, Vector2Int start)
         {
+            courierId = Random.Range(1000000, 9999999);
             courierName = c.name;
             vehicle = c.vehicle;
             occupation = c.occupation;
@@ -479,6 +532,7 @@ namespace KuryeTycoon
         /// <summary>Kazanç (ücret, boost, uygulama bahşişi, ödül) hesaba yazılır; kesim gününde ödenir.</summary>
         public void Earn(long amount)
         {
+            earnedMonth += amount;
             totalEarned += amount;
             earnedToday += amount;
             earnedWeek += amount;
@@ -492,6 +546,7 @@ namespace KuryeTycoon
         /// <summary>Nakit bahşiş: doğrudan kuryenin cebine gider.</summary>
         public void EarnCashTip(long amount)
         {
+            earnedMonth += amount;
             totalEarned += amount;
             earnedToday += amount;
             earnedWeek += amount;
@@ -504,6 +559,7 @@ namespace KuryeTycoon
             receivedTotal += amount;
             pendingPayout = System.Math.Max(0L, pendingPayout - amount);
             savings += (long)(amount * SavingRate);
+            AddInbox($"Hesabına {GameData.Ft(amount)} yattı.");
         }
 
         public bool CanTakeCash(long amount) => !cashBlocked && cashHeld + amount <= CashLimit;
@@ -533,6 +589,7 @@ namespace KuryeTycoon
                 if (!cashBlocked)
                     EventManager.I.Notify($"{courierName} nakit borcunu ({GameData.Ft(cashHeld)}) kapatmadı, hesabı kilitlendi. Ödeyene kadar sipariş alamaz.");
                 cashBlocked = true;
+                AddInbox("Nakit borcunu kapatmadığın için hesabın kilitlendi. Kapatana kadar sipariş alamazsın.");
                 morale = Mathf.Max(0f, morale - 0.05f);
             }
         }
@@ -914,6 +971,9 @@ namespace KuryeTycoon
                 Vector2 target = path[pathIndex];
                 Vector2 delta = target - Position;
                 float d = delta.magnitude;
+                float moved = Mathf.Min(d, remaining);
+                float km = moved * GameData.KmPerTile;
+                kmToday += km; kmWeek += km; kmMonth += km;
                 if (d <= remaining)
                 {
                     Position = target;
@@ -1164,6 +1224,7 @@ namespace KuryeTycoon
             deliveriesToday = 0;
             tipsToday = 0;
             earnedToday = 0;
+            kmToday = 0f;
             if (clock.DayOfWeek == 0) earnedWeek = 0; // yeni hafta (rapor bu sıfırlamadan önce hazırlanır)
 
             // Çanta temizliği kuryenin kendi sorumluluğu: her gece zorunlu olarak temizler (şirkete maliyeti yok)
@@ -1244,6 +1305,7 @@ namespace KuryeTycoon
             hygiene = 1f;
             cleanRequested = false;
             equipment.Add(EquipmentKind.TermalCanta);
+            NoteGear(EquipmentKind.TermalCanta);
         }
 
         public string HygieneText =>

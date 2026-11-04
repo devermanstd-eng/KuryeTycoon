@@ -320,6 +320,8 @@ namespace KuryeTycoon
         {
             if (c.depositPaid) return;
             c.depositPaid = true;
+            c.depositDay = GameClock.I.Day;
+            c.AddInbox($"Ekipman depozitosu {Ft(GameData.DepositAmount)} hesabından kesildi. Ekipmanı iade edince geri ödenir.");
             c.balance -= GameData.DepositAmount;          // kuryenin hesabından kesilir
             Today.depositNet += GameData.DepositAmount;
             depositsHeld += GameData.DepositAmount;
@@ -418,6 +420,7 @@ namespace KuryeTycoon
             if (amount <= 0) return;
             c.balance -= amount;
             c.earlyPayouts++;
+            c.AddInbox($"Erken ödeme talebin alındı: {Ft(amount)} (2–3 iş günü).");
             c.earlyPayoutTotal += amount;
             SchedulePayout(c, amount, true);
             EventManager.I.Notify($"{c.ShortName} erken ödeme istedi: {Ft(amount)} (hesabının %80'i, 2–3 iş günü içinde).");

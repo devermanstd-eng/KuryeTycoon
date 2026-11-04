@@ -505,6 +505,7 @@ namespace KuryeTycoon
             int boost = CampaignManager.I.BoostAmount(pay);
             if (!c.WillAcceptOffer(o, pay + boost))
             {
+                c.NoteOffer(o, pay + boost, false, $"kazanç düşük (saatlik ~{Ft((long)c.OfferHourly(o, pay + boost))})");
                 o.rejectedBy.Add(c);
                 o.priceDeclines++;
                 rejectedToday++;
@@ -516,12 +517,14 @@ namespace KuryeTycoon
 
             if (Random.value < c.RejectChance)
             {
+                c.NoteOffer(o, pay + boost, false, c.fatigue >= 0.75f ? "çok yorgun" : "morali düşük");
                 o.rejectedBy.Add(c);
                 rejectedToday++;
                 EventManager.I.Notify($"{c.ShortName} #{o.id} siparişini reddetti (moral %{c.morale * 100f:0}, yorgunluk %{c.fatigue * 100f:0}).");
                 return false;
             }
 
+            c.NoteOffer(o, pay + boost, true, "");
             o.courierPay = pay;
             o.boostPay = CampaignManager.I.BoostAmount(pay); // müşteriye yansımaz, kârdan ödenir
             o.courier = c;
