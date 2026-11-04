@@ -40,7 +40,7 @@ namespace KuryeTycoon
         float snowCover;           // şehirdeki kar örtüsü (0–0,55)
         float lastCoverApplied = -1f;
 
-        Texture2D dot, glare, beam;
+        Texture2D dot, glare, beam, puff;
 
         void Awake() { I = this; }
 
@@ -49,6 +49,7 @@ namespace KuryeTycoon
             dot = SoftDot(32);
             glare = RadialGlare(256);
             beam = Beam(64, 256);
+            puff = CloudPuff(256, 128);
         }
 
         // ---------------------------------------------------------------- hedefler
@@ -142,7 +143,15 @@ namespace KuryeTycoon
 
             Ensure(rain, Mathf.RoundToInt(rainAmt * 700f), () => new Drop { p = RandomScreen(), speed = Random.Range(900f, 1400f), len = Random.Range(18f, 34f) });
             Ensure(splashes, Mathf.RoundToInt(rainAmt * 60f), () => new Drop { p = RandomScreen(), phase = Random.value, size = Random.Range(6f, 14f) });
-            Ensure(clouds, Mathf.RoundToInt(Mathf.Clamp01(cloudAmt + rainAmt) * 7f), () => new Drop { p = new Vector2(Random.Range(-Screen.width * 0.3f, Screen.width), Random.Range(0f, Screen.height)), size = Random.Range(0.5f, 0.9f) * Screen.height, speed = Random.Range(12f, 25f) });
+            // Bulutlar: güneşte birkaç küçük beyaz bulut, bulutluda çok ve büyük, yağmurda/fırtınada koyu ve kalabalık
+            int cloudCount = Mathf.RoundToInt(sunAmt * 3f + cloudAmt * 8f + rainAmt * 3f + stormAmt * 3f + snowAmt * 2f);
+            Ensure(clouds, cloudCount, () => new Drop
+            {
+                p = new Vector2(Random.Range(-Screen.width * 0.2f, Screen.width), Random.Range(Screen.height * 0.08f, Screen.height * 0.9f)),
+                size = Random.Range(0.28f, 0.55f) * Screen.height * (sunAmt > 0.5f ? 0.7f : 1f),
+                speed = Random.Range(14f, 30f),
+                phase = Random.value
+            });
             Ensure(snow, Mathf.RoundToInt(snowAmt * 520f), () => new Drop { p = RandomScreen(), speed = Random.Range(40f, 90f), size = Random.Range(2f, 5.5f), phase = Random.value * 10f });
             Ensure(leaves, Mathf.RoundToInt(Mathf.Clamp01((w - 0.35f) * 1.6f) * (snowAmt > 0.5f ? 0f : 40f)), () => new Drop { p = RandomScreen(), speed = Random.Range(60f, 140f), size = Random.Range(3f, 6f), phase = Random.value * 10f, kind = Random.Range(0, 3) });
             Ensure(gusts, Mathf.RoundToInt(Mathf.Clamp01((w - 0.4f) * 1.7f) * 22f), () => new Drop { p = RandomScreen(), speed = Random.Range(500f, 900f), len = Random.Range(80f, 200f), phase = Random.value });
@@ -217,8 +226,8 @@ namespace KuryeTycoon
             // Bulut gölgeleri: haritanın üstünden rüzgârla kayan koyu lekeler
             foreach (var c in clouds)
             {
-                GUI.color = new Color(0.05f, 0.06f, 0.09f, 0.16f * Mathf.Clamp01(cloudAmt + rainAmt));
-                GUI.DrawTexture(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f, c.size * 2f, c.size * 0.8f), glare);
+                GUI.color = new Color(0.05f, 0.06f, 0.09f, 0.18f * Mathf.Clamp01(cloudAmt + rainAmt + sunAmt * 0.5f));
+                GUI.DrawTexture(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f + c.size * 0.25f, c.size * 2f, c.size * 0.8f), puff);
             }
 
             // Güneş: sağ üst köşede parlama ve hafif ışık hüzmeleri
@@ -295,6 +304,17 @@ namespace KuryeTycoon
                 GUI.matrix = m;
             }
 
+            // Bulutlar (gölgeleri yukarıda yere düştü): yağmurda koyulaşır
+            float darkness = Mathf.Clamp01(rainAmt * 0.55f + stormAmt * 0.35f + snowAmt * 0.15f);
+            var cloudCol = Color.Lerp(new Color(1f, 1f, 1f), new Color(0.38f, 0.40f, 0.45f), darkness);
+            float cloudAlpha = Mathf.Clamp01(0.35f + cloudAmt * 0.25f + rainAmt * 0.15f) * (sunAmt > 0.5f ? 0.75f : 1f);
+            foreach (var c in clouds)
+            {
+                float w2 = c.size * 2f, h2 = c.size;
+                GUI.color = new Color(cloudCol.r, cloudCol.g, cloudCol.b, cloudAlpha);
+                GUI.DrawTexture(new Rect(c.p.x - w2 / 2f, c.p.y - h2 / 2f - c.size * 0.35f, w2, h2), puff);
+            }
+
             // Şimşek
             if (flash > 0f) Tint(full, new Color(0.9f, 0.93f, 1f), flash * 0.55f);
 
@@ -337,6 +357,35 @@ namespace KuryeTycoon
                     float a = Mathf.Clamp01(1f - d);
                     a = a * a * (0.6f + 0.4f * a);
                     px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+                }
+            t.SetPixels32(px); t.Apply();
+            return t;
+        }
+
+        /// <summary>Kabarık bulut: üst üste binen yumuşak yuvarlaklar (her oyunda aynı şekil).</summary>
+        static Texture2D CloudPuff(int w, int h)
+        {
+            var t = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            var px = new Color32[w * h];
+            var rng = new System.Random(31);
+            var blobs = new List<Vector3>();   // x, y, yarıçap (0–1 arası, w'ye göre)
+            for (int i = 0; i < 9; i++)
+                blobs.Add(new Vector3(0.18f + (float)rng.NextDouble() * 0.64f, 0.35f + (float)rng.NextDouble() * 0.25f, 0.12f + (float)rng.NextDouble() * 0.12f));
+            blobs.Add(new Vector3(0.5f, 0.45f, 0.26f));
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    float u = (x + 0.5f) / w, v = (y + 0.5f) / h * 0.5f;   // en-boy oranı 2:1
+                    float a = 0f;
+                    foreach (var b in blobs)
+                    {
+                        float d = Vector2.Distance(new Vector2(u, v), new Vector2(b.x, b.y * 0.5f)) / b.z;
+                        a = Mathf.Max(a, Mathf.Clamp01(1f - d * d));
+                    }
+                    a = Mathf.SmoothStep(0f, 1f, a);
+                    // Alt kısım biraz koyu (hacim hissi)
+                    byte shade = (byte)(Mathf.Lerp(215f, 255f, Mathf.Clamp01(v * 2.6f)));
+                    px[y * w + x] = new Color32(shade, shade, (byte)Mathf.Min(255, shade + 8), (byte)(a * 255f));
                 }
             t.SetPixels32(px); t.Apply();
             return t;
