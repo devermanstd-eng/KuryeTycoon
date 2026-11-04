@@ -146,6 +146,7 @@ namespace KuryeTycoon
         public List<string> milestoneIds = new List<string>();
         public List<string> milestoneDates = new List<string>();
         public List<string> feed = new List<string>();
+        public GuideSave guide;                // rehber adımı ve açılan menüler (eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -299,7 +300,8 @@ namespace KuryeTycoon
                 ops = OperationsManager.I.CaptureSave(),
                 rival = RivalCompany.I.CaptureSave(),
                 goals = GoalManager.I != null ? GoalManager.I.CaptureSave() : null,
-                loan = FamilyLoan.I.CaptureSave()
+                loan = FamilyLoan.I.CaptureSave(),
+                guide = Guide.I != null ? Guide.I.CaptureSave() : null
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -394,6 +396,7 @@ namespace KuryeTycoon
             if (StatsHistory.I != null) StatsHistory.I.Restore(d.history);
             if (Milestones.I != null) Milestones.I.Restore(d.milestoneIds, d.milestoneDates);
             if (d.feed != null) EventManager.I.Feed.AddRange(d.feed);
+            if (Guide.I != null) Guide.I.RestoreSave(d.guide);   // null / eski kayıt: rehber yok, menüler şarta göre açılır
         }
     }
 }
