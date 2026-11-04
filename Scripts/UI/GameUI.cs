@@ -132,7 +132,7 @@ namespace KuryeTycoon
             Fill(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.55f));
             float w = 400f, h = 420f;
             var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
-            Fill(r, new Color(0.14f, 0.15f, 0.18f));
+            UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
             GUILayout.BeginArea(new Rect(r.x + 20, r.y + 16, w - 40, h - 32));
             GUILayout.Label("Menü", title);
             GUILayout.Label("Oyun duraklatıldı. Esc ile kapanır.", small);
@@ -199,7 +199,7 @@ namespace KuryeTycoon
             Fill(new Rect(0, 0, sw, sh), new Color(0.08f, 0.09f, 0.11f));
             float w = 620f, h = 680f + (setupSave != null ? 120f : 0f) + (hasError ? 40f : 0f);
             var r = new Rect((sw - w) / 2f, Mathf.Max(10f, (sh - h) / 2f), w, h);
-            Fill(r, new Color(0.14f, 0.15f, 0.18f));
+            UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
 
             GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 40));
             if (hasError) GUILayout.Label(GameBootstrap.LastLoadError, warn);
@@ -375,7 +375,7 @@ namespace KuryeTycoon
             return new Vector2(sp.x / uiScale, (Screen.height - sp.y) / uiScale);
         }
 
-        Rect PopupRect(float sw, float sh) => new Rect(sw - 380f, TopBar + 8f, 370f, Mathf.Max(260f, Mathf.Min(620f, sh - TopBar - 150f)));
+        Rect PopupRect(float sw, float sh) => PhoneRect(sw, sh);
 
         /// <summary>Fare konumundaki kurye (simgesi ya da isim etiketi).</summary>
         Courier CourierAt(Vector2 m)
@@ -469,8 +469,368 @@ namespace KuryeTycoon
             if (GUI.Button(new Rect(x + 76, y, 34, 30), "◄", button)) mc.Rotate(-45f);
             if (GUI.Button(new Rect(x + 114, y, 34, 30), "►", button)) mc.Rotate(45f);
             if (GUI.Button(new Rect(x + 152, y, 60, 30), "Tümü", smallButton)) mc.ResetView();
-            var r = new Rect(x + 218, y + 4, 430, 22);
-            Fill(r, new Color(0f, 0f, 0f, 0.5f));
+            var r = new Rect(x + 218, y + 3, 440, 24);
+            UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.75f), 12f);
+            GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height),
+                "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · N: kuzey · 0: tüm harita", small);
+        }
+
+        /// <summary>Kurye panelindeki sipariş kutusu: içerik, adres, kat, nakit, kalan süre.</summary>
+        /// <summary>Telefondaki sipariş kartı: durum etiketi, ürünler, adres, kat, nakit, kalan süre.</summary>
+        void OrderBox(Order o, Courier c, bool inBag, float now)
+        {
+            GUILayout.BeginVertical(phoneCard);
+            bool currentOne = c.CurrentOrder == o;
+            string where = inBag ? (currentOne ? "TESLİM EDİLİYOR" : "ÇANTADA") : (currentOne ? "DÜKKANA GİDİYOR" : "ALINACAK");
+            Color tagC = inBag ? (currentOne ? UITheme.Accent : UITheme.Good) : (currentOne ? UITheme.Warn : UITheme.TextDim);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label($"#{o.id}  {o.shop.Name}", header);
+            GUILayout.FlexibleSpace();
+            Tag(where, tagC);
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label($"{o.ItemCount} ürün · {GameData.KgText(o.weightKg)} — {o.ItemsText}", small);
+            Divider();
+            GUILayout.Label($"<b>{o.customerName}</b>", label);
+            GUILayout.Label(o.AddressText, small);
+            GUILayout.Label(o.BuildingText, o.UsesStairs && o.floor >= 4 ? warn : small);
+            if (currentOne && c.State == CourierState.KataCikiyor)
+                GUILayout.Label($"Binada · ~{c.DoorMinutesLeft:0.0} dk sonra teslim", label);
+            if (o.cashPay) GUILayout.Label($"NAKİT  {Ft(o.CashAmount)} alacak · müşteri {Ft(o.cashGiven)} verecek · para üstü {Ft(o.CashChange)}", warn);
+            if (!string.IsNullOrEmpty(o.customerNote)) GUILayout.Label($"“{o.customerNote}”", note);
+            Divider();
+            float left = o.deadlineAt - now;
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(left >= 0 ? $"{left:0} dk kaldı" : $"{-left:0} dk gecikmede", left >= 0 ? label : warn);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"<b>{Ft(o.courierPay + o.boostPay)}</b>", label);
+            GUILayout.EndHorizontal();
+            GUILayout.EndVertical();
+        }
+
+        /// <summary>Küçük renkli etiket (hap).</summary>
+        void Tag(string text, Color c)
+        {
+            var st = phoneSection;
+            var size = st.CalcSize(new GUIContent(text));
+            var r = GUILayoutUtility.GetRect(size.x + 14, 20, GUILayout.Width(size.x + 14), GUILayout.Height(20));
+            UITheme.Box(r, UITheme.WithAlpha(c, 0.22f), 10f);
+            var old = st.normal.textColor;
+            var oldAlign = st.alignment;
+            var oldMargin = st.margin;
+            st.normal.textColor = c;
+            st.alignment = TextAnchor.MiddleCenter;
+            GUI.Label(r, text, st);
+            st.normal.textColor = old;
+            st.alignment = oldAlign;
+            st.margin = oldMargin;
+        }
+
+        void Divider()
+        {
+            var r = GUILayoutUtility.GetRect(10, 9, GUILayout.ExpandWidth(true));
+            Fill(new Rect(r.x, r.y + 4, r.width, 1), UITheme.Line);
+        }
+
+        void PopupSection(string text)
+        {
+            GUILayout.Label(text.ToUpperInvariant(), phoneSection);
+        }
+
+        float phoneAnim;            // 0 → 1: telefon sağdan kayarak gelir
+        Courier phoneAnimFor;
+
+        Rect PhoneRect(float sw, float sh)
+        {
+            float w = 340f;
+            float h = Mathf.Clamp(sh - TopBar - 70f, 440f, 700f);
+            float slide = (1f - Mathf.SmoothStep(0f, 1f, phoneAnim)) * (w + 40f);
+            return new Rect(sw - w - 18f + slide, TopBar + 14f, w, h);
+        }
+
+        /// <summary>Kurye telefonu: kuryenin uygulaması gibi görünen detay ekranı.</summary>
+        void DrawCourierPopup(float sw, float sh)
+        {
+            var c = popupCourier;
+            if (c == null) { phoneAnim = 0f; return; }
+            if (!CourierManager.I.Couriers.Contains(c)) { popupCourier = null; return; }
+            if (phoneAnimFor != c) { phoneAnimFor = c; if (phoneAnim > 0.5f) phoneAnim = 0.85f; }
+            if (Event.current.type == EventType.Repaint) phoneAnim = Mathf.MoveTowards(phoneAnim, 1f, Time.unscaledDeltaTime * 4f);
+
+            var r = PhoneRect(sw, sh);
+            var prim = CompanyProfile.Primary;
+            var sec = CompanyProfile.Secondary;
+
+            // --- Kasa: gövde, metal kenar, yan tuşlar
+            UITheme.Box(new Rect(r.x - 3, r.y + 120, 4, 46), new Color(0.32f, 0.33f, 0.36f), 2f);   // ses tuşları
+            UITheme.Box(new Rect(r.x - 3, r.y + 176, 4, 46), new Color(0.32f, 0.33f, 0.36f), 2f);
+            UITheme.Box(new Rect(r.xMax - 1, r.y + 150, 4, 70), new Color(0.32f, 0.33f, 0.36f), 2f); // güç tuşu
+            UITheme.Box(new Rect(r.x - 2, r.y + 8, r.width + 4, r.height + 8), new Color(0f, 0f, 0f, 0.35f), 48f); // gölge
+            UITheme.Box(r, new Color(0.035f, 0.037f, 0.045f), 46f);
+            UITheme.Outline(r, new Color(0.38f, 0.40f, 0.44f), 2f, 46f);
+
+            var scr = new Rect(r.x + 10, r.y + 10, r.width - 20, r.height - 20);
+            UITheme.Box(scr, new Color(0.055f, 0.06f, 0.075f), 37f);
+
+            // --- Durum çubuğu: saat, dinamik ada, sinyal, pil
+            var clock = GameClock.I;
+            var st = phoneSection;
+            var oldC = st.normal.textColor; var oldA = st.alignment; int oldF = st.fontSize;
+            st.normal.textColor = Color.white; st.fontSize = 12; st.alignment = TextAnchor.MiddleLeft;
+            GUI.Label(new Rect(scr.x + 26, scr.y + 10, 70, 22), $"{clock.Hour:00}:{clock.Minute:00}", st);
+            UITheme.Box(new Rect(scr.center.x - 48, scr.y + 9, 96, 26), Color.black, 13f);           // dinamik ada
+            float sx = scr.xMax - 74;
+            for (int i = 0; i < 4; i++) UITheme.Box(new Rect(sx + i * 5, scr.y + 25 - 3 - i * 2.5f, 3, 3 + i * 2.5f), Color.white, 1f);
+            float battery = c.Has(EquipmentKind.Powerbank) ? 0.95f : Mathf.Clamp(1f - c.onlineMinutesToday / 720f, 0.08f, 1f);
+            var bat = new Rect(scr.xMax - 46, scr.y + 15, 24, 12);
+            UITheme.Outline(bat, UITheme.WithAlpha(Color.white, 0.7f), 1.2f, 3.5f);
+            UITheme.Box(new Rect(bat.xMax + 1, bat.y + 4, 2, 4), UITheme.WithAlpha(Color.white, 0.7f), 1f);
+            UITheme.Box(new Rect(bat.x + 2, bat.y + 2, (bat.width - 4) * battery, bat.height - 4), battery < 0.2f ? UITheme.Bad : Color.white, 2f);
+            st.normal.textColor = oldC; st.alignment = oldA; st.fontSize = oldF;
+
+            // --- Uygulama başlığı: avatar, isim, araç, durum
+            var head = new Rect(scr.x + 10, scr.y + 44, scr.width - 20, 84);
+            UITheme.Box(head, prim, 22f);
+            var av = new Rect(head.x + 14, head.y + 16, 52, 52);
+            UITheme.Box(av, sec, 26f);
+            barText.normal.textColor = prim; barText.fontSize = 22;
+            GUI.Label(av, c.courierName.Substring(0, 1), barText);
+            barText.fontSize = 12;
+            phoneTitle.normal.textColor = sec;
+            GUI.Label(new Rect(av.xMax + 12, head.y + 14, head.width - 120, 24), c.courierName, phoneTitle);
+            var sub = new GUIStyle(small) { wordWrap = false };
+            sub.normal.textColor = UITheme.WithAlpha(sec, 0.85f);
+            GUI.Label(new Rect(av.xMax + 12, head.y + 36, head.width - 110, 18), $"{c.V.name} · Tecrübe {c.level}", sub);
+            bool online = c.IsOnline;
+            var pill = new Rect(av.xMax + 12, head.y + 56, online ? 92 : 98, 18);
+            UITheme.Box(pill, UITheme.WithAlpha(Color.black, 0.22f), 9f);
+            UITheme.Box(new Rect(pill.x + 8, pill.y + 6, 6, 6), online ? UITheme.Good : UITheme.TextDim, 3f);
+            GUI.Label(new Rect(pill.x + 18, pill.y, pill.width - 20, 18), online ? "Çevrimiçi" : "Çevrimdışı", sub);
+            var close = new Rect(head.xMax - 34, head.y + 10, 24, 24);
+            UITheme.Box(close, UITheme.WithAlpha(Color.black, 0.22f), 12f);
+            barText.normal.textColor = sec;
+            GUI.Label(close, "X", barText);
+            if (GUI.Button(close, GUIContent.none, GUIStyle.none)) deferred = () => popupCourier = null;
+
+            // --- İçerik
+            var content = new Rect(scr.x + 10, head.yMax + 8, scr.width - 20, scr.yMax - head.yMax - 70);
+            GUILayout.BeginArea(content);
+            GUILayout.Label(c.StateName, small);
+
+            // Bugün: üç küçük kutucuk
+            GUILayout.BeginHorizontal();
+            StatTile("Bugün", $"{c.deliveriesToday} paket");
+            StatTile("Kazanç", Ft(c.earnedToday));
+            StatTile("Hesap", Ft(c.balance));
+            GUILayout.EndHorizontal();
+
+            popupScroll = GUILayout.BeginScrollView(popupScroll, GUIStyle.none, GUI.skin.verticalScrollbar);
+
+            PopupSection($"Üstündekiler · {c.CarryingList.Count} çantada · {c.ToPickList.Count} alınacak");
+            if (c.CarryingList.Count == 0 && c.ToPickList.Count == 0)
+            {
+                GUILayout.BeginVertical(phoneCard);
+                GUILayout.Label("Şu an üstünde sipariş yok.", small);
+                GUILayout.EndVertical();
+            }
+            float nowP = GameClock.I.TotalMinutes;
+            foreach (var o in c.CarryingList) OrderBox(o, c, true, nowP);
+            foreach (var o in c.ToPickList) OrderBox(o, c, false, nowP);
+
+            PopupSection("Üzerindeki nakit");
+            GUILayout.BeginVertical(phoneCard);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(Ft(c.cashHeld), phoneBig);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label($"limit {Ft(Courier.CashLimit)}", small);
+            GUILayout.EndHorizontal();
+            float share = c.cashHeld / (float)Courier.CashLimit;
+            Bar("", share, share >= 0.7f ? UITheme.Bad : UITheme.Good, $"%{share * 100f:0}");
+            if (c.cashBlocked) GUILayout.Label("HESABI KİLİTLİ: nakit borcunu kapatana kadar sipariş alamaz.", warn);
+            else if (c.cashHeld > 0) GUILayout.Label("Şirkete borcu; ay sonuna kadar kapatmalı.", small);
+            GUILayout.Label($"Keep cash ile kapatabileceği: {Ft(System.Math.Min(c.cashHeld, c.KeepCashCapacity))}", small);
+            GUILayout.EndVertical();
+
+            PopupSection("Nakit siparişler");
+            GUILayout.BeginVertical(phoneCard);
+            Row("Nakit teslimat", $"{c.cashOrders} paket");
+            Row("Müşterilerden alınan", Ft(c.cashTakenTotal));
+            Row("Keep cash ile mahsup", Ft(c.keepCashTotal));
+            Row("Offload ile ödenen", Ft(c.offloadTotal));
+            GUILayout.EndVertical();
+
+            PopupSection("Erken ödeme");
+            GUILayout.BeginVertical(phoneCard);
+            if (c.earlyPayouts > 0) { Row("İstediği", $"{c.earlyPayouts} kez"); Row("Toplam", Ft(c.earlyPayoutTotal)); }
+            else GUILayout.Label("Henüz erken ödeme istemedi.", small);
+            GUILayout.EndVertical();
+
+            PopupSection("Hesap");
+            GUILayout.BeginVertical(phoneCard);
+            Row("Hesabında (kesilmemiş)", Ft(c.balance));
+            Row("Sıradaki kesim", EconomyManager.I.NextCutText);
+            foreach (var p in EconomyManager.I.Payouts)
+                if (p.courier == c) Row(p.early ? "Yatacak (erken)" : "Yatacak", $"{Ft(p.amount)} · {GameClock.I.DateOf(p.payDay)}");
+            Row("Bugüne kadar yatan", Ft(c.receivedTotal));
+            Row("Toplam kazanç", Ft(c.totalEarned));
+            Row("Bahşişler", Ft(c.tipsTotal));
+            Row("Araç birikimi", Ft(c.savings));
+            GUILayout.EndVertical();
+            GUILayout.Space(6);
+
+            GUILayout.EndScrollView();
+            GUILayout.EndArea();
+
+            // --- Alt düğmeler ve ana ekran çizgisi
+            var bottom = new Rect(scr.x + 12, scr.yMax - 58, scr.width - 24, 36);
+            GUILayout.BeginArea(bottom);
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Button("Haritada göster", accentButton, GUILayout.Height(34)) && MapCamera.I != null)
+            {
+                var pos = c.Position;
+                deferred = () => MapCamera.I.FocusOn(pos, 0.9f);
+            }
+            if (GUILayout.Button("Kurye kartı", phoneButton))
+                deferred = () => { tab = Tab.Kuryeler; scroll = Vector2.zero; };
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+            UITheme.Box(new Rect(scr.center.x - 60, scr.yMax - 12, 120, 5), UITheme.WithAlpha(Color.white, 0.55f), 2.5f);
+        }
+
+        void StatTile(string name, string value)
+        {
+            GUILayout.BeginVertical(phoneCard, GUILayout.ExpandWidth(true));
+            GUILayout.Label(name.ToUpperInvariant(), phoneSection);
+            var v = new GUIStyle(label) { fontStyle = FontStyle.Bold, wordWrap = false, fontSize = 12 };
+            GUILayout.Label(value, v);
+            GUILayout.EndVertical();
+        }
+
+        void Row(string name, string value)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(name, small);
+            GUILayout.FlexibleSpace();
+            var v = new GUIStyle(label) { wordWrap = false, alignment = TextAnchor.MiddleRight };
+            GUILayout.Label(value, v);
+            GUILayout.EndHorizontal();
+        }
+
+        static float BuildingTop(Vector2Int tile) => City3D.I != null ? City3D.I.HeightAt(tile) : 0f;
+
+        static Vector3 CourierLabelOffset(int stackIndex) =>
+            MapCamera.LabelOffset(0.55f + 0.4f * stackIndex, 0.6f + 0.3f * stackIndex);
+
+        Vector2 GuiToScreenPx(Vector2 m) => new Vector2(m.x * uiScale, Screen.height - m.y * uiScale);
+
+        bool dragging, dragMoved;
+        int dragButton;
+        Vector2 dragStart, dragLast;
+
+        // ---------------------------------------------------------------- haritada kurye seçme
+        Vector2 ToGui(Camera cam, Vector3 world)
+        {
+            Vector3 sp = cam.WorldToScreenPoint(world);
+            return new Vector2(sp.x / uiScale, (Screen.height - sp.y) / uiScale);
+        }
+
+        Rect PopupRect(float sw, float sh) => PhoneRect(sw, sh);
+
+        /// <summary>Fare konumundaki kurye (simgesi ya da isim etiketi).</summary>
+        Courier CourierAt(Vector2 m)
+        {
+            var cam = Camera.main;
+            if (cam == null || CourierManager.I == null) return null;
+            Courier best = null;
+            float bestD = float.MaxValue;
+            var stack = new Dictionary<Vector2Int, int>();
+            foreach (var c in CourierManager.I.Couriers)
+            {
+                var key = Vector2Int.RoundToInt(c.Position);
+                stack.TryGetValue(key, out int n);
+                stack[key] = n + 1;
+                Vector2 sp = ToGui(cam, CityMap.ToWorld(c.Position));
+                Vector2 lp = ToGui(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n));
+                Vector2 mp = ToGui(cam, CityMap.ToWorld(c.Position) + MapCamera.LabelOffset(0f, 0.18f)); // karakterin gövdesi
+                float d = float.MaxValue;
+                float ds = Mathf.Min(Vector2.Distance(m, sp), Vector2.Distance(m, mp));
+                if (ds < 20f) d = ds;
+                if (Mathf.Abs(m.x - lp.x) < 55f && Mathf.Abs(m.y - lp.y) < 10f) d = Mathf.Min(d, Mathf.Abs(m.y - lp.y));
+                if (d < bestD) { bestD = d; best = c; }
+            }
+            return best;
+        }
+
+        void HandleMapMouse(float sw, float sh)
+        {
+            var e = Event.current;
+            Vector2 m = e.mousePosition;
+            bool overMap = m.x > panelWidth && m.y > TopBar &&
+                           !(popupCourier != null && PopupRect(sw, sh).Contains(m)) &&
+                           !new Rect(panelWidth + 10f, sh - 44f, 205f, 30f).Contains(m);
+            if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
+                hoverCourier = overMap && modalFree ? CourierAt(m) : null;
+
+            // Yakınlaştırma: fare tekerleği, imlecin olduğu yere
+            if (e.type == EventType.ScrollWheel && overMap && modalFree && MapCamera.I != null)
+            {
+                float steps = Mathf.Clamp(-e.delta.y / 3f, -2f, 2f);
+                if (Mathf.Abs(steps) < 0.01f) steps = -Mathf.Sign(e.delta.y);
+                MapCamera.I.ZoomAt(steps, GuiToScreenPx(m));
+                e.Use();
+                return;
+            }
+
+            // Kaydırma: herhangi bir tuşla sürükle (sol tuşla birkaç piksel oynatınca başlar, tıklamayı bozmaz)
+            if (e.type == EventType.MouseDown && overMap && modalFree)
+            {
+                dragging = true;
+                dragMoved = false;
+                dragButton = e.button;
+                dragStart = dragLast = m;
+            }
+            else if (e.type == EventType.MouseDrag && dragging && MapCamera.I != null)
+            {
+                if (!dragMoved && (dragButton != 0 || Vector2.Distance(m, dragStart) > 4f)) dragMoved = true;
+                if (dragMoved)
+                {
+                    // Sağ tuş: döndür. Sol / orta tuş: kaydır.
+                    if (dragButton == 1) MapCamera.I.RotateDrag((m.x - dragLast.x) * uiScale);
+                    else MapCamera.I.DragPixels(GuiToScreenPx(dragLast), GuiToScreenPx(m));
+                    dragLast = m;
+                    e.Use();
+                }
+            }
+            else if (e.type == EventType.MouseUp && dragging)
+            {
+                bool wasClick = !dragMoved && dragButton == 0;
+                dragging = false;
+                if (wasClick && overMap && modalFree)
+                {
+                    var c = CourierAt(m);
+                    if (c != null)
+                    {
+                        popupCourier = c;
+                        popupScroll = Vector2.zero;
+                        e.Use();
+                    }
+                }
+            }
+        }
+
+        void DrawZoomButtons(float sh)
+        {
+            var mc = MapCamera.I;
+            if (mc == null) return;
+            float x = panelWidth + 10f, y = sh - 44f;
+            if (GUI.Button(new Rect(x, y, 34, 30), "+", button)) mc.ZoomStep(1.5f);
+            if (GUI.Button(new Rect(x + 38, y, 34, 30), "−", button)) mc.ZoomStep(-1.5f);
+            if (GUI.Button(new Rect(x + 76, y, 34, 30), "◄", button)) mc.Rotate(-45f);
+            if (GUI.Button(new Rect(x + 114, y, 34, 30), "►", button)) mc.Rotate(45f);
+            if (GUI.Button(new Rect(x + 152, y, 60, 30), "Tümü", smallButton)) mc.ResetView();
+            var r = new Rect(x + 218, y + 3, 440, 24);
+            UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.75f), 12f);
             GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height),
                 "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · N: kuzey · 0: tüm harita", small);
         }
@@ -595,8 +955,9 @@ namespace KuryeTycoon
             float x = sp.x / uiScale;
             float y = (Screen.height - sp.y) / uiScale;
             var r = new Rect(x - 90f, y - 10f, 180f, 20f);
-            worldLabel.normal.textColor = new Color(0f, 0f, 0f, 0.85f);
-            GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, worldLabel);
+            // Okunurluk için yarı saydam hap zemin
+            float tw = worldLabel.CalcSize(new GUIContent(text)).x + 14f;
+            UITheme.Box(new Rect(x - tw / 2f, y - 9f, tw, 18f), new Color(0.05f, 0.055f, 0.07f, 0.72f), 9f);
             worldLabel.normal.textColor = color;
             GUI.Label(r, text, worldLabel);
         }
@@ -607,31 +968,71 @@ namespace KuryeTycoon
             var clock = GameClock.I;
             var eco = EconomyManager.I;
             var weather = WeatherSystem.I;
+            var prim = CompanyProfile.Primary;
+            var sec = CompanyProfile.Secondary;
 
-            Fill(new Rect(0, 0, sw, TopBar), CompanyProfile.Primary);
-            barTitle.normal.textColor = CompanyProfile.Secondary;
-            barText.normal.textColor = CompanyProfile.Secondary;
+            // Zemin: şirket rengi, altında ince gölge
+            Fill(new Rect(0, 0, sw, TopBar), prim);
+            Fill(new Rect(0, TopBar - 3, sw, 3), Color.Lerp(prim, Color.black, 0.25f));
+            Fill(new Rect(0, TopBar, sw, 4), new Color(0f, 0f, 0f, 0.18f));
 
-            GUI.Label(new Rect(14, 0, 260, TopBar), CompanyProfile.Name, barTitle);
+            // Logo: yuvarlak kare içinde baş harf + şirket adı
+            var logo = new Rect(12, 8, 32, 32);
+            UITheme.Box(logo, sec, 9f);
+            barText.normal.textColor = prim;
+            barText.fontSize = 17;
+            GUI.Label(logo, CompanyProfile.Initial, barText);
+            barText.fontSize = 12;
+            barTitle.normal.textColor = sec;
+            GUI.Label(new Rect(52, 0, 220, TopBar), CompanyProfile.Name, barTitle);
 
-            string info = $"Kasa: {Ft(eco.money)} (serbest {Ft(eco.FreeCash)})    " +
-                          $"İtibar: {CompanyProfile.Reputation:0.0}/5    Çevrimiçi: {CourierManager.I.OnlineCount}/{CourierManager.I.Couriers.Count}    {clock.TimeText}    " +
-                          $"{clock.SeasonName} · {weather.Name}";
-            if (FamilyLoan.I != null && !FamilyLoan.I.Finished) info += "    " + FamilyLoan.I.TopBarText;
+            // Bilgi çipleri
+            var chips = new List<(string text, Color bg)>();
+            Color chip = UITheme.WithAlpha(Color.black, 0.16f);
+            chips.Add(($"Kasa  {Ft(eco.money)}", chip));
+            chips.Add(($"Serbest  {Ft(eco.FreeCash)}", eco.FreeCash < 0 ? UITheme.WithAlpha(UITheme.Bad, 0.85f) : chip));
+            chips.Add(($"★ {CompanyProfile.Reputation:0.0}", chip));
+            chips.Add(($"● {CourierManager.I.OnlineCount}/{CourierManager.I.Couriers.Count} çevrimiçi", chip));
+            chips.Add((clock.TimeText, chip));
+            chips.Add(($"{clock.SeasonName} · {weather.Name}", chip));
             var boost = CampaignManager.I.ActiveWindow;
             float wBoost = CampaignManager.I.WeatherBoostPercent;
-            if (boost != null && boost.percent >= wBoost) info += $"    BOOST %{boost.percent * 100f:0} ({boost.TimeText})";
-            else if (wBoost > 0f) info += $"    HAVA BOOSTU %{wBoost * 100f:0}";
-            if (eco.taxDebt > 0) info += $"    VERGİ BORCU: {Ft(eco.taxDebt)}";
-            GUI.Label(new Rect(280, 0, sw - 280 - 430, TopBar), info, barText);
+            if (boost != null && boost.percent >= wBoost) chips.Add(($"BOOST %{boost.percent * 100f:0} · {boost.TimeText}", UITheme.WithAlpha(UITheme.Warn, 0.9f)));
+            else if (wBoost > 0f) chips.Add(($"HAVA BOOSTU %{wBoost * 100f:0}", UITheme.WithAlpha(UITheme.Warn, 0.9f)));
+            if (eco.taxDebt > 0) chips.Add(($"VERGİ BORCU {Ft(eco.taxDebt)}", UITheme.WithAlpha(UITheme.Bad, 0.9f)));
+            if (FamilyLoan.I != null && !FamilyLoan.I.Finished) chips.Add((FamilyLoan.I.TopBarText, chip));
 
-            float bx = sw - 422f;
-            if (SelectButtonAt(new Rect(bx, 9, 42, 30), clock.Paused, "II")) clock.Paused = !clock.Paused;
-            float[] speeds = { 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
+            float speedW = 9 * 44f + 16f;
+            float x = 280f, maxX = sw - speedW - 16f;
+            barText.normal.textColor = sec;
+            foreach (var (t, bg) in chips)
+            {
+                float w = barText.CalcSize(new GUIContent(t)).x + 22f;
+                if (x + w > maxX) break;
+                var r = new Rect(x, 11, w, 26);
+                UITheme.Box(r, bg, 13f);
+                GUI.Label(r, t, barText);
+                x += w + 6f;
+            }
+
+            // Hız seçici: tek hap içinde, seçili olan açık renkte
+            float bx = sw - speedW - 8f;
+            var group = new Rect(bx, 7, speedW, 34);
+            UITheme.Box(group, UITheme.WithAlpha(Color.black, 0.2f), 17f);
+            float[] speeds = { 0f, 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
             for (int i = 0; i < speeds.Length; i++)
             {
                 float s = speeds[i];
-                if (SelectButtonAt(new Rect(bx + 46 + i * 46, 9, 42, 30), IsSpeed(clock, s), s + "x")) SetSpeed(s);
+                var r = new Rect(bx + 8 + i * 44f, 11, 40, 26);
+                bool on = s == 0f ? clock.Paused : IsSpeed(clock, s);
+                if (on) UITheme.Box(r, sec, 13f);
+                barText.normal.textColor = on ? prim : sec;
+                GUI.Label(r, s == 0f ? "II" : s + "x", barText);
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none))
+                {
+                    if (s == 0f) clock.Paused = !clock.Paused;
+                    else SetSpeed(s);
+                }
             }
         }
 
@@ -641,14 +1042,15 @@ namespace KuryeTycoon
         void DrawPanel(float sh)
         {
             var r = new Rect(0, TopBar, panelWidth, sh - TopBar);
-            Fill(r, new Color(0.12f, 0.13f, 0.16f, 0.98f));
+            Fill(r, UITheme.Bg);
+            Fill(new Rect(r.xMax - 1, r.y, 1, r.height), UITheme.Line);
 
             var names = (string[])BaseTabNames.Clone();
             int apps = CourierManager.I.Applications.Count;
             if (apps > 0) names[(int)Tab.IseAlim] = $"İşe Alım ({apps})";
 
             GUILayout.BeginArea(new Rect(r.x + 8, r.y + 8, r.width - 16, r.height - 16));
-            int newTab = GUILayout.SelectionGrid((int)tab, names, 5, smallButton, GUILayout.Height(48));
+            int newTab = GUILayout.SelectionGrid((int)tab, names, 5, smallButton, GUILayout.Height(58));
             if (newTab != (int)tab) { var t = (Tab)newTab; deferred = () => { tab = t; scroll = Vector2.zero; }; }
             GUILayout.Space(6);
             scroll = GUILayout.BeginScrollView(scroll);
@@ -1806,22 +2208,17 @@ namespace KuryeTycoon
         }
 
         // ---------------------------------------------------------------- kontroller
+        /// <summary>Seçili olan şirket renginde dolu görünen düğme.</summary>
         bool SelectButton(bool selected, string text, GUIStyle style, params GUILayoutOption[] options)
         {
-            var old = GUI.backgroundColor;
-            if (selected) GUI.backgroundColor = SelectedTint;
-            bool clicked = GUILayout.Button(selected ? "» " + text + " «" : text, style, options);
-            GUI.backgroundColor = old;
-            return clicked;
+            bool now = GUILayout.Toggle(selected, text, style, options);
+            return now != selected;
         }
 
         bool SelectButtonAt(Rect r, bool selected, string text)
         {
-            var old = GUI.backgroundColor;
-            if (selected) GUI.backgroundColor = SelectedTint;
-            bool clicked = GUI.Button(r, text, button);
-            GUI.backgroundColor = old;
-            return clicked;
+            bool now = GUI.Toggle(r, selected, text, button);
+            return now != selected;
         }
 
         /// <summary>Etiket, kaydırıcı ve değer aynı hizada.</summary>
@@ -1862,12 +2259,13 @@ namespace KuryeTycoon
         void Bar(string name, float v, Color c, string valueText)
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label(name, small, GUILayout.Width(70));
+            if (!string.IsNullOrEmpty(name)) GUILayout.Label(name, small, GUILayout.Width(70));
             Rect r = GUILayoutUtility.GetRect(100, 16, GUILayout.ExpandWidth(true));
-            r.y += 3;
-            r.height = 10;
-            Fill(r, new Color(0f, 0f, 0f, 0.4f));
-            Fill(new Rect(r.x, r.y, r.width * Mathf.Clamp01(v), r.height), c);
+            r.y += 4;
+            r.height = 8;
+            UITheme.Box(r, new Color(0f, 0f, 0f, 0.45f), 4f);
+            float fw = r.width * Mathf.Clamp01(v);
+            if (fw > 1f) UITheme.Box(new Rect(r.x, r.y, Mathf.Max(8f, fw), r.height), c, 4f);
             GUILayout.Label(valueText, small, GUILayout.Width(52));
             GUILayout.EndHorizontal();
         }
@@ -1878,10 +2276,16 @@ namespace KuryeTycoon
             var feed = EventManager.I.Feed;
             if (feed.Count == 0) return;
             int lines = Mathf.Min(5, feed.Count);
-            var r = new Rect(sw - 520f, sh - 22f * lines - 16f, 510f, 22f * lines + 8f);
-            Fill(r, new Color(0f, 0f, 0f, 0.6f));
+            var r = new Rect(sw - 530f, sh - 22f * lines - 22f, 518f, 22f * lines + 12f);
+            UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.88f), 12f, 4f);
             for (int i = 0; i < lines; i++)
-                GUI.Label(new Rect(r.x + 8, r.y + 4 + i * 22f, r.width - 16, 22f), feed[i], small);
+            {
+                var row = new Rect(r.x + 10, r.y + 6 + i * 22f, r.width - 20, 22f);
+                UITheme.Box(new Rect(row.x, row.y + 8, 5, 5), i == 0 ? UITheme.Accent : UITheme.WithAlpha(UITheme.TextDim, 0.5f), 2.5f);
+                small.normal.textColor = i == 0 ? UITheme.Text : UITheme.TextDim;
+                GUI.Label(new Rect(row.x + 12, row.y, row.width - 12, row.height), feed[i], small);
+            }
+            small.normal.textColor = UITheme.TextDim;
         }
 
         // ---------------------------------------------------------------- olay kartı
@@ -1890,22 +2294,28 @@ namespace KuryeTycoon
             var ev = EventManager.I.Current;
             if (ev == null) return;
 
-            Fill(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.55f));
-            float w = 560f;
-            float bodyH = label.CalcHeight(new GUIContent(ev.body), w - 48f);
-            float h = 100f + bodyH + ev.choices.Count * 44f;
+            Fill(new Rect(0, 0, sw, sh), new Color(0.02f, 0.025f, 0.035f, 0.62f));
+            float w = 580f;
+            float bodyH = label.CalcHeight(new GUIContent(ev.body), w - 56f);
+            float h = Mathf.Min(sh - 40f, 118f + bodyH + ev.choices.Count * 46f);
             var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
-            Fill(r, new Color(0.15f, 0.16f, 0.20f));
-            Fill(new Rect(r.x, r.y, r.width, 6f), CompanyProfile.Primary);
+            UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
+            UITheme.Box(new Rect(r.x, r.y, r.width, 54f), UITheme.WithAlpha(UITheme.Accent, 0.16f), 18f);
+            UITheme.Box(new Rect(r.x + 26, r.y + 18, 6, 22), UITheme.Accent, 3f);
 
-            GUILayout.BeginArea(new Rect(r.x + 24, r.y + 20, w - 48, h - 30));
+            GUILayout.BeginArea(new Rect(r.x + 28, r.y + 12, w - 56, h - 24));
+            GUILayout.BeginHorizontal();
+            GUILayout.Space(14);
             GUILayout.Label(ev.title, title);
-            GUILayout.Label(ev.body, label);
+            GUILayout.EndHorizontal();
             GUILayout.Space(10);
+            GUILayout.Label(ev.body, label);
+            GUILayout.Space(12);
             for (int i = 0; i < ev.choices.Count; i++)
             {
                 int idx = i;
-                if (GUILayout.Button(ev.choices[i].label, button, GUILayout.Height(36)))
+                // İlk seçenek vurgulu (çoğunlukla önerilen / "Tamam")
+                if (GUILayout.Button(ev.choices[i].label, i == 0 ? accentButton : button, GUILayout.Height(38)))
                     deferred = () => EventManager.I.Choose(idx);
             }
             GUILayout.EndArea();
@@ -1929,48 +2339,64 @@ namespace KuryeTycoon
             return t;
         }
 
+        Color themeColor;
+
         void InitStyles()
         {
-            if (stylesReady) return;
+            // Şirket rengi değişince (kurulum, kayıt yükleme) düğmeler yeniden boyanır
+            if (stylesReady && themeColor == CompanyProfile.Primary) return;
             stylesReady = true;
+            themeColor = CompanyProfile.Primary;
 
-            var text = new Color(0.92f, 0.93f, 0.95f);
+            var font = UITheme.UIFont;
+            var text = UITheme.Text;
 
-            label = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true };
+            label = new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true, richText = true };
+            if (font != null) label.font = font;
             label.normal.textColor = text;
 
             small = new GUIStyle(label) { fontSize = 11 };
-            small.normal.textColor = new Color(0.72f, 0.74f, 0.79f);
+            small.normal.textColor = UITheme.TextDim;
 
             warn = new GUIStyle(small);
-            warn.normal.textColor = new Color(1f, 0.68f, 0.3f);
+            warn.normal.textColor = UITheme.Warn;
 
             note = new GUIStyle(small) { fontStyle = FontStyle.Italic };
-            note.normal.textColor = new Color(0.8f, 0.85f, 0.95f);
+            note.normal.textColor = new Color(0.78f, 0.84f, 0.96f);
 
-            header = new GUIStyle(label) { fontSize = 15, fontStyle = FontStyle.Bold };
+            header = new GUIStyle(label) { fontSize = 15, fontStyle = FontStyle.Bold, margin = new RectOffset(4, 4, 6, 3) };
             header.normal.textColor = Color.white;
 
-            title = new GUIStyle(header) { fontSize = 24 };
+            title = new GUIStyle(header) { fontSize = 23 };
 
+            // Kart: yuvarlak köşeli, hafif açık zemin
             box = new GUIStyle(GUI.skin.box)
             {
-                padding = new RectOffset(8, 8, 6, 6),
-                margin = new RectOffset(0, 0, 4, 4)
+                padding = new RectOffset(12, 12, 9, 9),
+                margin = new RectOffset(0, 0, 5, 5),
+                border = new RectOffset(10, 10, 10, 10)
             };
-            box.normal.background = MakeTex(new Color(1f, 1f, 1f, 0.06f));
+            UITheme.SetBg(box.normal, UITheme.Card, 10);
 
-            button = new GUIStyle(GUI.skin.button) { fontSize = 13, wordWrap = true };
-            smallButton = new GUIStyle(GUI.skin.button) { fontSize = 11, wordWrap = true };
-            bigButton = new GUIStyle(GUI.skin.button) { fontSize = 18, fontStyle = FontStyle.Bold };
+            // Düğmeler: düz, yuvarlak köşeli; seçili (on) hali şirket renginde
+            button = MakeButton(13, 9);
+            smallButton = MakeButton(11, 8);
+            bigButton = MakeButton(18, 12);
+            bigButton.fontStyle = FontStyle.Bold;
 
             toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 13 };
+            if (font != null) toggle.font = font;
             toggle.normal.textColor = text;
             toggle.onNormal.textColor = text;
             toggle.hover.textColor = Color.white;
             toggle.onHover.textColor = Color.white;
 
-            textField = new GUIStyle(GUI.skin.textField) { fontSize = 18 };
+            textField = new GUIStyle(GUI.skin.textField) { fontSize = 18, padding = new RectOffset(10, 10, 6, 6), border = new RectOffset(8, 8, 8, 8) };
+            if (font != null) textField.font = font;
+            UITheme.SetBg(textField.normal, new Color(0.06f, 0.065f, 0.08f), 8);
+            UITheme.SetBg(textField.focused, new Color(0.05f, 0.055f, 0.07f), 8);
+            textField.normal.textColor = text;
+            textField.focused.textColor = Color.white;
 
             worldLabel = new GUIStyle(GUI.skin.label)
             {
@@ -1978,20 +2404,73 @@ namespace KuryeTycoon
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter
             };
+            if (font != null) worldLabel.font = font;
 
             barTitle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 20,
+                fontSize = 19,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleLeft
             };
-            barText = new GUIStyle(GUI.skin.label) { fontSize = 13, alignment = TextAnchor.MiddleLeft };
+            if (font != null) barTitle.font = font;
+            barText = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+            if (font != null) barText.font = font;
             logoLetter = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 48,
                 fontStyle = FontStyle.Bold,
                 alignment = TextAnchor.MiddleCenter
             };
+            if (font != null) logoLetter.font = font;
+
+            phoneTitle = new GUIStyle(label) { fontSize = 16, fontStyle = FontStyle.Bold, wordWrap = false };
+            phoneTitle.normal.textColor = Color.white;
+            phoneSection = new GUIStyle(label) { fontSize = 10, fontStyle = FontStyle.Bold, margin = new RectOffset(6, 4, 10, 2) };
+            phoneSection.normal.textColor = UITheme.TextDim;
+            phoneBig = new GUIStyle(label) { fontSize = 20, fontStyle = FontStyle.Bold };
+            phoneBig.normal.textColor = Color.white;
+            phoneCard = new GUIStyle(box) { padding = new RectOffset(12, 12, 10, 10), margin = new RectOffset(2, 2, 4, 4), border = new RectOffset(14, 14, 14, 14) };
+            UITheme.SetBg(phoneCard.normal, new Color(0.11f, 0.12f, 0.15f), 14);
+            accentButton = MakeButton(13, 9);
+            accentButton.normal = accentButton.onNormal;
+            accentButton.hover = accentButton.onHover;
+            accentButton.active = accentButton.onActive;
+            accentButton.fontStyle = FontStyle.Bold;
+            phoneButton = MakeButton(12, 14);
+            phoneButton.fixedHeight = 34;
+            phoneButton.fontStyle = FontStyle.Bold;
         }
+
+        GUIStyle phoneTitle, phoneSection, phoneBig, phoneCard, phoneButton, accentButton;
+
+        /// <summary>Yuvarlak köşeli düz düğme stili. Seçili (on) hali şirket renginde.</summary>
+        GUIStyle MakeButton(int fontSize, int radius)
+        {
+            var st = new GUIStyle(GUI.skin.button)
+            {
+                fontSize = fontSize,
+                wordWrap = true,
+                border = new RectOffset(radius, radius, radius, radius),
+                padding = new RectOffset(10, 10, 6, 6),
+                margin = new RectOffset(3, 3, 3, 3)
+            };
+            if (UITheme.UIFont != null) st.font = UITheme.UIFont;
+            var baseC = new Color(0.19f, 0.205f, 0.245f);
+            UITheme.SetBg(st.normal, baseC, radius);
+            UITheme.SetBg(st.hover, new Color(0.25f, 0.27f, 0.32f), radius);
+            UITheme.SetBg(st.active, new Color(0.14f, 0.15f, 0.18f), radius);
+            UITheme.SetBg(st.focused, baseC, radius);
+            var acc = UITheme.Accent;
+            UITheme.SetBg(st.onNormal, acc, radius);
+            UITheme.SetBg(st.onHover, Color.Lerp(acc, Color.white, 0.15f), radius);
+            UITheme.SetBg(st.onActive, Color.Lerp(acc, Color.black, 0.2f), radius);
+            UITheme.SetBg(st.onFocused, acc, radius);
+            st.normal.textColor = st.hover.textColor = st.active.textColor = st.focused.textColor = UITheme.Text;
+            st.onNormal.textColor = st.onHover.textColor = st.onActive.textColor = st.onFocused.textColor = UITheme.AccentText;
+            return st;
+        }
+
+        /// <summary>Şirket rengi değişince (kurulum ekranında) düğme stillerini yeniden üret.</summary>
+        public void RefreshTheme() { stylesReady = false; }
     }
 }
