@@ -117,7 +117,7 @@ namespace KuryeTycoon
         Rect GoalTrackerRect()
         {
             int n = GoalManager.I != null ? GoalManager.I.Goals.Count : 0;
-            return new Rect(DockW + 10f, TopBar + 10f, 290f, 34f + n * 34f);
+            return new Rect(DockW + 10f, TopBar + 10f, 330f, 34f + n * 34f);
         }
 
         bool TrackerVisible => !panelOpen && GoalManager.I != null && GoalManager.I.Goals.Count > 0;
@@ -144,9 +144,9 @@ namespace KuryeTycoon
                 if (g.done) { UITheme.Box(dot, UITheme.Good, 7f); }
                 else UITheme.Outline(dot, UITheme.TextDim, 1.5f, 7f);
                 small.normal.textColor = g.done ? UITheme.TextDim : UITheme.Text;
-                GUI.Label(new Rect(r.x + 32f, yy, r.width - 100f, 20f), g.Title, small);
+                GUI.Label(new Rect(r.x + 32f, yy, r.width - 130f, 20f), g.Title, small);
                 small.normal.textColor = g.done ? UITheme.Good : UITheme.TextDim;
-                GUI.Label(new Rect(r.xMax - 62f, yy, 52f, 20f), g.done ? "✓" : $"{g.progress}/{g.target}", small);
+                GUI.Label(new Rect(r.xMax - 92f, yy, 82f, 20f), g.done ? "✓" : g.ProgressText, small);
                 var bar = new Rect(r.x + 32f, yy + 21f, r.width - 44f, 4f);
                 UITheme.Box(bar, UITheme.WithAlpha(Color.white, 0.08f), 2f);
                 UITheme.Box(new Rect(bar.x, bar.y, bar.width * g.Progress01, bar.height), g.done ? UITheme.Good : UITheme.Accent, 2f);
@@ -160,14 +160,14 @@ namespace KuryeTycoon
             var gm = GoalManager.I;
             if (gm == null) return;
             GUILayout.Label($"Bu haftanın hedefleri · {gm.DaysLeft} gün kaldı", header);
-            Intro("hedefler", "Her pazartesi 3 yeni hedef gelir. Tamamladığın hedefin ödülü hemen kasaya girer.",
+            Intro("hedefler", "Her pazartesi 6 yeni hedef gelir. Tamamladığın hedefin ödülü hemen kasaya girer.",
                   "Hedefler şirketinin büyüklüğüne göre seçilir. Yarım kalan hedef için ceza yok.");
             GUILayout.Space(6);
             foreach (var g in gm.Goals)
             {
                 GUILayout.BeginVertical(box);
                 GUILayout.Label((g.done ? "✓ " : "") + g.Title, header);
-                Bar("İlerleme", g.Progress01, g.done ? UITheme.Good : UITheme.Accent, $"{g.progress}/{g.target}");
+                Bar("İlerleme", g.Progress01, g.done ? UITheme.Good : UITheme.Accent, g.ProgressText);
                 GUILayout.Label($"Ödül: {Ft(g.reward)}" + (g.reputation > 0f ? " + itibar" : "") + (g.done ? " · alındı" : ""), g.done ? small : note);
                 GUILayout.EndVertical();
             }

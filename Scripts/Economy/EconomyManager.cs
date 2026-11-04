@@ -338,6 +338,45 @@ namespace KuryeTycoon
             CheckBankruptcy();
         }
 
+        /// <summary>Kuryenin kesilmemiş ekipman depozitosunu hesabındaki kazançtan keser (yettiği kadar).</summary>
+        public void CollectGearDeposit(Courier c)
+        {
+            long amt = System.Math.Min(c.depositOwed, c.balance);
+            if (amt <= 0) return;
+            c.balance -= amt;
+            c.depositOwed -= amt;
+            c.depositPaidTotal += amt;
+            if (c.depositDay < 0) c.depositDay = GameClock.I.Day;
+            Today.depositNet += amt;
+            depositsHeld += amt;
+            Log($"+{Ft(amt)} ekipman depozitosu: {c.courierName} (iade borcu)");
+            c.AddInbox($"Ekipman depozitosu: {Ft(amt)} kazancından kesildi" + (c.depositOwed > 0 ? $", kalan {Ft(c.depositOwed)}." : ". Depozito tamamlandı."));
+        }
+
+        /// <summary>Ekipmanı iade eden kuryeye kesilmiş depozitosu geri ödenir.</summary>
+        public void RefundGearDeposit(Courier c)
+        {
+            long amt = c.depositPaidTotal;
+            if (amt <= 0) return;
+            money -= amt;
+            Today.depositNet -= amt;
+            depositsHeld -= amt;
+            c.depositPaidTotal = 0;
+            Log($"−{Ft(amt)} depozito iadesi: {c.courierName}");
+        }
+
+        /// <summary>Ekipmanı iade etmeyen kuryenin kesilmiş depozitosu şirkete gelir olarak kalır.</summary>
+        public void KeepGearDeposit(Courier c)
+        {
+            long amt = c.depositPaidTotal;
+            if (amt <= 0) return;
+            depositsHeld -= amt;
+            Year.otherIncome += amt;
+            Today.otherIncome += amt;
+            c.depositPaidTotal = 0;
+            Log($"İade edilmeyen ekipman: {c.courierName} depozitosu gelire geçti ({Ft(amt)})");
+        }
+
         /// <summary>Ekipmanı iade etmeyen kuryenin depozitosu şirkete gelir olarak kalır.</summary>
         public void KeepDeposit(Courier c)
         {

@@ -47,7 +47,7 @@ namespace KuryeTycoon
             new TutorialStepDef
             {
                 title = "Hedefler", target = Tab.Hedefler,
-                text = "Her pazartesi 3 hedef gelir. Tamamladığın hedefin ödülü hemen kasana girer."
+                text = "Her pazartesi 6 hedef gelir. Tamamladığın hedefin ödülü hemen kasana girer."
             },
             new TutorialStepDef
             {

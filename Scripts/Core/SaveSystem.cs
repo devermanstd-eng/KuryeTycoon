@@ -133,6 +133,7 @@ namespace KuryeTycoon
         public EconomySave economy;
         public List<CourierSave> couriers = new List<CourierSave>();
         public int equipmentPayment;
+        public int[] gearStock;
         public bool autoAssign, prioritizeProfit;
         public string campaignJson;
         public int[] upgradeLevels;
@@ -293,6 +294,7 @@ namespace KuryeTycoon
                 weather = (int)WeatherSystem.I.Current,
                 economy = EconomyManager.I.CaptureSave(cm.Couriers),
                 equipmentPayment = (int)cm.equipmentPayment,
+                gearStock = (int[])cm.gearStock.Clone(),
                 autoAssign = OrderManager.I.autoAssign,
                 prioritizeProfit = OrderManager.I.prioritizeProfit,
                 campaignJson = JsonUtility.ToJson(CampaignManager.I),
@@ -363,6 +365,8 @@ namespace KuryeTycoon
                 s.resignBlockedUntil = ss.resignBlockedUntil;
             }
             CityMap.I.RefreshColors();
+            if (d.gearStock != null)
+                for (int i = 0; i < cm.gearStock.Length && i < d.gearStock.Length; i++) cm.gearStock[i] = d.gearStock[i];
 
             // Kuryeler (merkez ofiste başlarlar)
             foreach (var cs in d.couriers)
@@ -374,6 +378,8 @@ namespace KuryeTycoon
                 if (c.ownedVehicles.Count == 0) c.ownedVehicles.Add(c.vehicle);
                 c.equipment.Clear();
                 foreach (int k in cs.equipment) c.equipment.Add((EquipmentKind)k);
+                if (c.depositGear == null) c.depositGear = new List<EquipmentKind>();
+                c.MigrateGear();   // eski kayıt: başlangıç kiti depozitosu yeni sisteme
                 c.equipRefusedUntil.Clear();
                 for (int i = 0; i < cs.refusedKinds.Count && i < cs.refusedUntil.Count; i++)
                     c.equipRefusedUntil[(EquipmentKind)cs.refusedKinds[i]] = cs.refusedUntil[i];

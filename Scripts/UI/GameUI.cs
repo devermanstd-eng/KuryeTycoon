@@ -1146,10 +1146,10 @@ namespace KuryeTycoon
                     GUILayout.Label($"Üzerindeki nakit: {Ft(c.cashHeld)} / {Ft(Courier.CashLimit)}" +
                                     (c.cashBlocked ? " · HESABI KİLİTLİ (nakit borcunu kapatana kadar sipariş alamaz)" : " · ay sonuna kadar kapatmalı"),
                                     c.cashBlocked || c.cashHeld >= Courier.CashLimit * 0.7f ? warn : small);
-                if (c.hasCompanyKit)
-                    GUILayout.Label($"Şirket ekipmanı: {GameData.StarterKitText} · " +
-                                    (c.depositPaid ? $"depozito alındı ({Ft(GameData.DepositAmount)}, ayrılırken iade edilir)"
-                                                   : $"depozito {Ft(GameData.DepositThreshold)} kazanınca kesilecek (şu an {Ft(c.totalEarned)})"), small);
+                if (c.depositGear != null && c.depositGear.Count > 0)
+                    GUILayout.Label($"Depozitolu ekipman: {string.Join(", ", c.depositGear.ConvertAll(k => GameData.Equip(k).name))} · " +
+                                    $"kesilen depozito {Ft(c.depositPaidTotal)}" + (c.depositOwed > 0 ? $", kesilecek {Ft(c.depositOwed)}" : "") +
+                                    " (ayrılırken iade ederse geri ödenir)", small);
                 GUILayout.Label(c.insured ? $"Sigorta: var ({(c.insuredViaCompany ? EconomyManager.I.Plan.name : "dışarıdan")}, kendi öder, haftalık {Ft(c.CurrentPremium)}; bugüne kadar {Ft(c.insurancePaid)})"
                                           : "Sigorta: yok (kazada masrafları kendi öder, daha uzun süre çalışamaz)",
                                 c.insured ? small : warn);
@@ -1347,6 +1347,7 @@ namespace KuryeTycoon
                 var shop = s;
                 Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);
                 Bar("Memnuniyet", s.satisfaction / 100f, sc, $"{s.satisfaction:0}/100");
+                GUILayout.Label(RivalCompany.PerformanceText(s), small);
                 float share = rv.ShareFor(s);
                 GUILayout.Label($"Sözleşme bitişi: {GameClock.I.DateOf(s.contractEndDay)} · bu ay {s.monthOrders} sipariş (geçen ay {s.lastMonthOrders}) · " +
                                 (s.exclusive ? "münhasır: siparişler +%15" : s.rivalContracted ? $"rakiple paylaşılıyor: payın ~%{share / 1.25f * 100f:0}" : "rakip yok"),
@@ -1381,25 +1382,20 @@ namespace KuryeTycoon
                 case Season.Sonbahar: GUILayout.Label("SONBAHAR: Yağmur sezonu ve kış yaklaşıyor. Yağmurluk ve montları şimdiden al.", header); break;
                 default: GUILayout.Label("İLKBAHAR: Yağmur sezonu, yağmurluksuz kuryeler ıslanır ve hastalanabilir.", header); break;
             }
-            // Teklif ve ödeme şekli
-            Intro("ekipman", "Ekipmanı zorla veremezsin, teklif edersin. Her kuryenin eksikleri Kuryeler penceresinde yazar.",
+            // Depozito sistemi (açıklama kısa, ayrıntısı "Ayrıntı"da)
+            var eco = EconomyManager.I;
+            Intro("ekipman", "Kuryeler ekipmanı ihtiyaç duyunca kendileri ister; bedeli depozito olarak kazançlarından kesilir. Eksikleri Kuryeler penceresinde yazar.",
                   "Ekipman kısa vadede kârı düşürür ama gider olarak vergiden düşülür; hız, moral, puan ve daha az hastalık/kaza olarak geri döner. " +
-                  "Kuryenin kabul edip etmemesi ödeme şekline, mevsime, ne kadar kalmayı düşündüğüne, hesabındaki paraya ve moraline bağlı. " +
-                  $"Reddeden kuryeye aynı ekipman {cm.manualRetryDays:0} gün tekrar sorulamaz.");
-            GUILayout.Label("Ekipmanı kim öder?", label);
-            GUILayout.BeginHorizontal();
-            for (int pi = 0; pi < 3; pi++)
-            {
-                var pay = (EquipmentPayment)pi;
-                if (SelectButton(cm.equipmentPayment == pay, CourierManager.PaymentLabel(pay), smallButton)) deferred = () => cm.equipmentPayment = pay;
-            }
-            GUILayout.EndHorizontal();
-            GUILayout.Label(cm.equipmentPayment == EquipmentPayment.Sirket ? "Şirket öder: kuryelerin çoğu kabul eder, maliyet tamamen şirketin." :
-                            cm.equipmentPayment == EquipmentPayment.YariYariya ? "Yarı yarıya: kuryenin payı hesabından kesilir; kabul edenler azalır." :
-                            "Kurye öder: şirkete maliyeti yok ama çoğu reddeder, özellikle mevsimi değilse ve uzun kalmayacaksa.", small);
-            GUILayout.Label($"Başlangıç kiti ({GameData.StarterKitText}) her yeni kuryeye verilir; şirkete maliyeti kit başı {Ft(GameData.StarterKitCost)}. " +
-                            $"Kuryeden de {Ft(GameData.DepositThreshold)} kazanınca {Ft(GameData.DepositAmount)} depozito kesilir, " +
-                            "ayrılırken ekipmanı iade ederse geri ödenir.", label);
+                  "Kuryeler mevsime, yağmura ve dikkatlerine göre ister. Şirket depodan verir ya da depoda yoksa satın alır. " +
+                  "Kurye ayrılırken ekipmanı iade ederse depozitosu geri ödenir ve ekipman depoya döner; iade etmezse depozito sende kalır. " +
+                  $"Yeni kuryeler işe başlarken {GameData.StarterKitText} depozitoyla alır.");
+            long owed = 0;
+            foreach (var oc in cm.Couriers) owed += oc.depositOwed;
+            var stockParts = new List<string>();
+            foreach (var se in GameData.Equipment) if (cm.gearStock[(int)se.kind] > 0) stockParts.Add($"{cm.gearStock[(int)se.kind]}× {se.name}");
+            GUILayout.Label($"Elindeki depozito: {Ft(eco.depositsHeld)} (iade borcu) · Kuryelerden kesilecek: {Ft(owed)} · " +
+                            $"Depo: {(stockParts.Count > 0 ? string.Join(", ", stockParts) : "boş")}", label);
+            GUILayout.Label("İstersen eksik olanlara hatırlatabilirsin (ücretsiz): 2 gün boyunca isteme ihtimalleri artar.", small);
 
             // Hijyen özeti
             int dirty = 0, worn = 0;
@@ -1442,35 +1438,21 @@ namespace KuryeTycoon
             foreach (var e in GameData.Equipment)
             {
                 var kind = e.kind;
-                long courierPart = CourierManager.CourierCost(kind, cm.equipmentPayment);
+                int have = 0, need = 0;
+                foreach (var ec in cm.Couriers) { if (ec.Has(kind)) have++; else if (CourierManager.Usefulness(ec, kind) >= 0.5f) need++; }
                 GUILayout.BeginVertical(box);
-                GUILayout.Label($"{e.name} — {Ft(e.price)}" +
-                                (courierPart > 0 ? $" (şirket {Ft(e.price - courierPart)}, kurye {Ft(courierPart)})" : ""), header);
+                GUILayout.Label($"{e.name} — depozito {Ft(e.price)}", header);
                 GUILayout.Label(e.effect, small);
+                GUILayout.Label($"{have} kuryede var · şu an işine yarayıp eksik olan: {need} · depoda {cm.gearStock[(int)kind]}", need > 0 ? warn : small);
                 GUILayout.BeginHorizontal();
                 if (selectedCourier != null)
                 {
                     var sc = selectedCourier;
-                    if (sc.Has(kind)) GUILayout.Label($"{sc.ShortName}: var", small);
-                    else if (cm.OnCooldown(sc, kind)) GUILayout.Label($"{sc.ShortName} reddetti, {cm.CooldownText(sc, kind)} sonra tekrar sorulabilir", small);
-                    else
-                    {
-                        float chance = cm.AcceptChance(sc, kind, cm.equipmentPayment);
-                        if (GUILayout.Button($"{sc.ShortName}'a teklif et (kabul ~%{chance * 100f:0})", smallButton))
-                            deferred = () => cm.OfferEquipment(sc, kind);
-                    }
+                    if (sc.Has(kind)) GUILayout.Label($"{sc.ShortName}: var" + (sc.depositGear != null && sc.depositGear.Contains(kind) ? " (depozitolu)" : ""), small);
+                    else if (GameClock.I.TotalMinutes < sc.gearNudgeUntil) GUILayout.Label($"{sc.ShortName}'a hatırlatıldı", small);
+                    else if (GUILayout.Button($"{sc.ShortName}'a hatırlat", smallButton)) deferred = () => cm.RemindGear(sc, kind);
                 }
-                if (GUILayout.Button("Eksik olan herkese teklif et", smallButton))
-                {
-                    int askable = 0;
-                    foreach (var oc in cm.Couriers)
-                        if (!oc.Has(kind) && !cm.OnCooldown(oc, kind) && CourierManager.Usefulness(oc, kind) >= 0.15f) askable++;
-                    long maxCost = askable * CourierManager.CompanyCost(kind, cm.equipmentPayment);
-                    deferred = () => ConfirmIfExpensive(maxCost, "Herkese ekipman teklif et",
-                        $"{e.name} {askable} kuryeye teklif edilecek. Hepsi kabul ederse şirkete maliyeti en fazla {Ft(maxCost)} " +
-                        $"(ödeme şekli: {CourierManager.PaymentLabel(cm.equipmentPayment)}).",
-                        () => cm.OfferToAll(kind));
-                }
+                if (GUILayout.Button("Eksik olanlara hatırlat", smallButton)) deferred = () => cm.RemindAll(kind);
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }
@@ -1535,11 +1517,9 @@ namespace KuryeTycoon
 
             GUILayout.Space(10);
             GUILayout.Label("Operasyon sorumlusu", header);
-            GUILayout.Label("Maaşlı tek kişi. Her sabah 09:00'da aşağıdaki kurallara göre eksik ekipmanı kuryelere teklif eder " +
-                            $"(ödeme şekli Ekipman sekmesindeki seçim: {CourierManager.PaymentLabel(cm.equipmentPayment)}), " +
-                            "yıpranan çantaları yeniler ve gün içinde çantası kirlenen kuryeleri uyarır. Kurye teklifi yine reddedebilir; " +
-                            $"reddedene {OperationsManager.RetryDays:0} gün sonra tekrar sorar. Yetenekli sorumlu daha ikna edicidir, işleri ertelemez " +
-                            "ve toplu alımda %10 indirim alır. Az kuryen varken maaşına değmeyebilir, büyüdükçe seni bu işlerden kurtarır. " +
+            GUILayout.Label("Maaşlı tek kişi. Her sabah 09:00'da eksik ve işine yarayacak ekipmanı kuryelere hatırlatır (kuryeler depozitoyla alır), " +
+                            "yıpranan çantaları yeniler (bütçeden) ve gün içinde çantası kirlenen kuryeleri uyarır. Yetenekli sorumlu işleri ertelemez. " +
+                            "Az kuryen varken maaşına değmeyebilir, büyüdükçe seni bu işlerden kurtarır. " +
                             "Ne yaptığı gün sonu raporunda yazar.", small);
 
             if (ops.HasManager)
@@ -1616,7 +1596,7 @@ namespace KuryeTycoon
             }
             GUILayout.EndHorizontal();
             ops.monthlyBudget = MoneySlider("Aylık bütçe", ops.monthlyBudget, 0, 300000, 5000);
-            GUILayout.Label($"Bu ay sorumlunun ekipmana harcadığı (şirket payı): {Ft(ops.spentThisMonth)} / {Ft(ops.monthlyBudget)}",
+            GUILayout.Label($"Bu ay sorumlunun çanta yenilemeye harcadığı: {Ft(ops.spentThisMonth)} / {Ft(ops.monthlyBudget)}",
                             ops.BudgetLeft == 0 ? warn : small);
         }
 

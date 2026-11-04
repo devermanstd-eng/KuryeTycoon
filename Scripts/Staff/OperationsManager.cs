@@ -222,7 +222,6 @@ namespace KuryeTycoon
             }
 
             int offers = 0, accepted = 0, bags = 0;
-            var pay = cm.equipmentPayment;
             foreach (var c in cm.Couriers.ToArray())
             {
                 if (replaceWornBags && c.BagWorn)
@@ -233,23 +232,15 @@ namespace KuryeTycoon
                 }
 
                 if (c.deliveries < minDeliveries) continue;
+                // Ekipmanı kuryeler kendisi ister (depozitoyla); sorumlu sadece eksik olanlara hatırlatır
                 foreach (var k in Priority)
                 {
-                    if (!offerKinds[(int)k] || c.Has(k) || cm.OnCooldown(c, k)) continue;
-                    if (CourierManager.Usefulness(c, k) < 0.6f) continue; // sadece şimdi ya da yakında gerekeni sorar
-                    long companyPart = CourierManager.CompanyCost(k, pay, Discount);
-                    if (companyPart > BudgetLeft) { dayBudgetHit = true; continue; }
-
-                    var r = cm.OfferEquipment(c, k, false, Persuasion, RetryDays, Discount);
-                    if (r == OfferResult.Yapilamadi) continue;
+                    if (!offerKinds[(int)k] || c.Has(k)) continue;
+                    if (CourierManager.Usefulness(c, k) < 0.6f) continue; // sadece şimdi ya da yakında gerekeni hatırlatır
+                    if (GameClock.I.TotalMinutes < c.gearNudgeUntil) continue;
+                    cm.RemindGear(c, k, false);
                     offers++;
-                    if (r == OfferResult.Kabul)
-                    {
-                        accepted++;
-                        Spent(companyPart);
-                        dayGiven[k] = dayGiven.TryGetValue(k, out int n) ? n + 1 : 1;
-                    }
-                    else dayRefused.Add($"{c.ShortName}: {GameData.Equip(k).name} ({CourierManager.RefuseReason(c, k, pay)})");
+                    break;
                 }
             }
 
@@ -258,9 +249,9 @@ namespace KuryeTycoon
             dayBags += bags;
             lastPassSummary = offers == 0 && bags == 0
                 ? $"{GameClock.I.DayName}: yapılacak iş yoktu."
-                : $"{GameClock.I.DayName}: {offers} teklif, {accepted} kabul" + (bags > 0 ? $", {bags} çanta yenilendi" : "") + ".";
+                : $"{GameClock.I.DayName}: {offers} kuryeye ekipman hatırlatıldı" + (bags > 0 ? $", {bags} çanta yenilendi" : "") + ".";
             if (offers > 0 || bags > 0)
-                EventManager.I.Notify($"Operasyon ({FirstName}): {offers} ekipman teklifi, {accepted} kabul" +
+                EventManager.I.Notify($"Operasyon ({FirstName}): {offers} kuryeye ekipman hatırlattı" +
                                       (bags > 0 ? $", {bags} çanta yenilendi" : "") + ". Ayrıntı gün sonu raporunda.");
         }
 

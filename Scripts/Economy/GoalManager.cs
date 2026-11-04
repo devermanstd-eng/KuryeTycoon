@@ -3,7 +3,8 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    public enum GoalKind { Teslimat, YuksekPuan, IptalsizGun, SicakYemek, YeniSozlesme, BoostTeslimat, YeniKurye, ZamanindaTeslim }
+    public enum GoalKind { Teslimat, YuksekPuan, IptalsizGun, SicakYemek, YeniSozlesme, BoostTeslimat, YeniKurye, ZamanindaTeslim,
+                           UzakTeslimat, MarketTeslimat, GeceTeslimat, YagmurTeslimat, Bahsis, Kar, TopluTeslimat }
 
     [System.Serializable]
     public class Goal
@@ -30,10 +31,20 @@ namespace KuryeTycoon
                     case GoalKind.YeniSozlesme: return target > 1 ? $"{target} yeni dükkanla sözleşme imzala" : "Yeni bir dükkanla sözleşme imzala";
                     case GoalKind.BoostTeslimat: return $"Boost saatlerinde {target} teslimat yap";
                     case GoalKind.YeniKurye: return target > 1 ? $"{target} yeni kurye işe al" : "Yeni bir kurye işe al";
+                    case GoalKind.UzakTeslimat: return $"3 km'den uzak {target} sipariş teslim et";
+                    case GoalKind.MarketTeslimat: return $"{target} market siparişi teslim et";
+                    case GoalKind.GeceTeslimat: return $"Gece (22:00–03:00) {target} teslimat yap";
+                    case GoalKind.YagmurTeslimat: return $"Yağmur ya da karda {target} teslimat yap";
+                    case GoalKind.Bahsis: return $"Kuryelerin bu hafta {GameData.Ft(target)} bahşiş toplasın";
+                    case GoalKind.Kar: return $"Teslimatlardan {GameData.Ft(target)} kâr et";
+                    case GoalKind.TopluTeslimat: return $"{target} siparişi toplu teslimatla götür";
                     default: return $"{target} siparişi geç kalmadan teslim et";
                 }
             }
         }
+
+        public bool IsMoney => kind == GoalKind.Bahsis || kind == GoalKind.Kar;
+        public string ProgressText => IsMoney ? $"{GameData.Ft(progress)} / {GameData.Ft(target)}" : $"{progress}/{target}";
     }
 
     [System.Serializable]
@@ -46,7 +57,7 @@ namespace KuryeTycoon
     }
 
     /// <summary>
-    /// Haftalık hedefler: her pazartesi şirketin büyüklüğüne göre 3 hedef gelir (teslimat sayısı, yüksek puan,
+    /// Haftalık hedefler: her pazartesi şirketin büyüklüğüne göre 6 hedef gelir (teslimat sayısı, yüksek puan,
     /// iptalsiz gün, sıcak yemek, yeni sözleşme, boost saatleri, yeni kurye, zamanında teslim).
     /// Tamamlanan hedefin ödülü hemen kasaya girer. Biten hafta yarım kalan hedefler için ceza yoktur.
     /// </summary>
@@ -55,6 +66,7 @@ namespace KuryeTycoon
         public static GoalManager I { get; private set; }
 
         public readonly List<Goal> Goals = new List<Goal>();
+        public const int GoalsPerWeek = 6;
         public int weekStartDay;
         public int completedTotal;
         int weekDeliveries, lastWeekDeliveries;
@@ -100,15 +112,24 @@ namespace KuryeTycoon
             int baseDeliveries = Mathf.Max(25, Mathf.Max(couriers * 18, Mathf.RoundToInt(lastWeekDeliveries * 1.15f)));
             baseDeliveries = Mathf.RoundToInt(baseDeliveries / 5f) * 5;
 
+            int bd = baseDeliveries;
             var pool = new List<Goal>
             {
-                new Goal { kind = GoalKind.Teslimat, target = baseDeliveries, reward = baseDeliveries * 80L },
-                new Goal { kind = GoalKind.YuksekPuan, target = Round5(baseDeliveries * 0.5f), reward = Round5(baseDeliveries * 0.5f) * 110L, reputation = 0.03f },
-                new Goal { kind = GoalKind.IptalsizGun, target = 3, reward = 3500, reputation = 0.05f },
-                new Goal { kind = GoalKind.SicakYemek, target = Round5(baseDeliveries * 0.35f), reward = Round5(baseDeliveries * 0.35f) * 90L },
-                new Goal { kind = GoalKind.ZamanindaTeslim, target = Round5(baseDeliveries * 0.6f), reward = Round5(baseDeliveries * 0.6f) * 90L },
-                new Goal { kind = GoalKind.BoostTeslimat, target = Round5(Mathf.Max(10, baseDeliveries * 0.25f)), reward = 3000 },
+                new Goal { kind = GoalKind.Teslimat, target = bd, reward = bd * 250L },
+                new Goal { kind = GoalKind.YuksekPuan, target = Round5(bd * 0.5f), reward = Round5(bd * 0.5f) * 320L, reputation = 0.03f },
+                new Goal { kind = GoalKind.IptalsizGun, target = 3, reward = 9000, reputation = 0.05f },
+                new Goal { kind = GoalKind.SicakYemek, target = Round5(bd * 0.35f), reward = Round5(bd * 0.35f) * 280L },
+                new Goal { kind = GoalKind.ZamanindaTeslim, target = Round5(bd * 0.6f), reward = Round5(bd * 0.6f) * 280L },
+                new Goal { kind = GoalKind.BoostTeslimat, target = Round5(Mathf.Max(10, bd * 0.25f)), reward = 9000 },
+                new Goal { kind = GoalKind.UzakTeslimat, target = Round5(Mathf.Max(5, bd * 0.15f)), reward = Round5(Mathf.Max(5, bd * 0.15f)) * 500L },
+                new Goal { kind = GoalKind.MarketTeslimat, target = Round5(Mathf.Max(5, bd * 0.2f)), reward = Round5(Mathf.Max(5, bd * 0.2f)) * 400L },
+                new Goal { kind = GoalKind.GeceTeslimat, target = Round5(Mathf.Max(5, bd * 0.1f)), reward = Round5(Mathf.Max(5, bd * 0.1f)) * 600L },
+                new Goal { kind = GoalKind.Bahsis, target = Mathf.RoundToInt(Mathf.Max(5000, bd * 180) / 1000f) * 1000, reward = 8000 },
+                new Goal { kind = GoalKind.Kar, target = Mathf.RoundToInt(bd * 900 / 1000f) * 1000, reward = Mathf.RoundToInt(bd * 120 / 100f) * 100 },
+                new Goal { kind = GoalKind.TopluTeslimat, target = Round5(Mathf.Max(5, bd * 0.15f)), reward = Round5(Mathf.Max(5, bd * 0.15f)) * 450L },
             };
+            if (WeatherSystem.I != null && (GameClock.I.Season == Season.Sonbahar || GameClock.I.Season == Season.Kis || GameClock.I.Season == Season.Ilkbahar))
+                pool.Add(new Goal { kind = GoalKind.YagmurTeslimat, target = Round5(Mathf.Max(5, bd * 0.2f)), reward = Round5(Mathf.Max(5, bd * 0.2f)) * 450L });
             // Açık bölgede sözleşmesiz dükkan varsa
             foreach (var s in CityMap.I.Shops)
                 if (!s.contracted && CityMap.I.IsUnlocked(s.tile))
@@ -122,7 +143,7 @@ namespace KuryeTycoon
             // Teslimat hedefi her hafta var; diğer ikisi rastgele
             Goals.Add(pool[0]);
             pool.RemoveAt(0);
-            for (int i = 0; i < 2 && pool.Count > 0; i++)
+            for (int i = 0; i < GoalsPerWeek - 1 && pool.Count > 0; i++)
             {
                 int k = Random.Range(0, pool.Count);
                 Goals.Add(pool[k]);
@@ -162,6 +183,14 @@ namespace KuryeTycoon
             if (o.shop.def.hotFood && !o.deliveredCold) Advance(GoalKind.SicakYemek, 1);
             if (o.deliveredAt <= o.deadlineAt || o.customerFault) Advance(GoalKind.ZamanindaTeslim, 1);
             if (CampaignManager.I != null && CampaignManager.I.BoostActive) Advance(GoalKind.BoostTeslimat, 1);
+            if (o.DistanceKm >= 3f) Advance(GoalKind.UzakTeslimat, 1);
+            if (o.shop.def.isMarket) Advance(GoalKind.MarketTeslimat, 1);
+            int h = GameClock.I.Hour;
+            if (h >= 22 || h < 3) Advance(GoalKind.GeceTeslimat, 1);
+            if (WeatherSystem.I != null && (WeatherSystem.I.IsRainy || WeatherSystem.I.Current == WeatherKind.Karli)) Advance(GoalKind.YagmurTeslimat, 1);
+            if (o.tip > 0) Advance(GoalKind.Bahsis, o.tip);
+            if (o.Profit > 0) Advance(GoalKind.Kar, o.Profit);
+            if (o.batched) Advance(GoalKind.TopluTeslimat, 1);
         }
 
         public void OnCancelled() => cancelsToday++;
