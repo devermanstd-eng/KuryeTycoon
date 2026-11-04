@@ -87,15 +87,72 @@ namespace KuryeTycoon
 
         static Vector2 MapCenter => new Vector2((CityMap.Width - 1) / 2f, (CityMap.Height - 1) / 2f);
 
+        // ---------- En uzak görünüm: haritayı ekrana tam sığdır ve ortala ----------
+        float fitSize = 10f;
+        Vector2 fitCenter;
+        string fitKey;
+
+        /// <summary>En uzakta kameranın baktığı nokta (perspektifte haritanın ortası değil: yakın kenar büyük göründüğü için kayar).</summary>
+        Vector2 FitCenter
+        {
+            get
+            {
+                var cam = Camera.main;
+                if (cam != null) SolveFit(cam);
+                return fitKey != null ? fitCenter : MapCenter;
+            }
+        }
+
         float FitSize(Camera cam)
         {
-            // En uzakta harita kuzey yukarıda durduğu için döndürmesiz sığdırılır.
-            // Eğik bakınca harita ekranda dikeyde kısalır (cos eğim); binaların boyu için biraz pay bırakılır.
-            float tilt = TiltDegrees(0f) * Mathf.Deg2Rad;
-            float w = CityMap.Width + 1f, h = (CityMap.Height + 1f) * Mathf.Cos(tilt) + 2.2f * Mathf.Sin(tilt);
-            float fit = Mathf.Max(h / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
-            // Perspektifte haritanın yakın (alt) kenarı büyüyüp taşmasın diye biraz pay
-            return UsePerspective ? fit * 1.1f : fit;
+            SolveFit(cam);
+            return fitSize;
+        }
+
+        /// <summary>
+        /// Haritanın dört köşesini (ve arka köşelerde binaların tepesini) ekrana yansıtıp, hepsi kenarlara
+        /// eşit boşlukla sığacak şekilde kamera uzaklığını ve odak noktasını bulur. Ekran oranı, eğim ya da
+        /// kamera türü değişince yeniden hesaplanır.
+        /// </summary>
+        void SolveFit(Camera cam)
+        {
+            float tilt = TiltDegrees(0f);
+            bool persp = UsePerspective;
+            string key = $"{cam.aspect:0.000}|{tilt:0.00}|{persp}|{cam.rect}";
+            if (key == fitKey) return;
+
+            float w = CityMap.Width + 1f, h = CityMap.Height + 1f;
+            float cosT = Mathf.Max(0.2f, Mathf.Cos(tilt * Mathf.Deg2Rad));
+            float size = Mathf.Max(h * cosT / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
+            var c = MapCenter;
+            var pts = new[]
+            {
+                new Vector3(-0.5f, -0.5f, 0f), new Vector3(CityMap.Width - 0.5f, -0.5f, 0f),
+                new Vector3(-0.5f, CityMap.Height - 0.5f, 0f), new Vector3(CityMap.Width - 0.5f, CityMap.Height - 0.5f, 0f),
+                new Vector3(-0.5f, CityMap.Height - 0.5f, -2f), new Vector3(CityMap.Width - 0.5f, CityMap.Height - 0.5f, -2f),
+            };
+            const float fill = 0.94f;   // ekranın %94'ü (kenarlarda az boşluk)
+            for (int it = 0; it < 30; it++)
+            {
+                ApplyRaw(cam, size, c, tilt, 0f);
+                float minX = 9f, maxX = -9f, minY = 9f, maxY = -9f;
+                foreach (var p in pts)
+                {
+                    var v = cam.WorldToViewportPoint(p);
+                    minX = Mathf.Min(minX, v.x); maxX = Mathf.Max(maxX, v.x);
+                    minY = Mathf.Min(minY, v.y); maxY = Mathf.Max(maxY, v.y);
+                }
+                float scale = Mathf.Max((maxX - minX) / fill, (maxY - minY) / fill);
+                float cx = (minX + maxX) / 2f - 0.5f, cy = (minY + maxY) / 2f - 0.5f;
+                // Ekrandaki kaymayı zemindeki kaymaya çevir (dikeyde eğim yüzünden uzar)
+                c.x += cx * 2f * size * cam.aspect * 0.8f;
+                c.y += cy * 2f * size / cosT * 0.8f;
+                size *= Mathf.Lerp(1f, scale, 0.8f);
+                if (Mathf.Abs(scale - 1f) < 0.002f && Mathf.Abs(cx) < 0.002f && Mathf.Abs(cy) < 0.002f) break;
+            }
+            fitSize = Mathf.Max(minOrthoSize * 1.5f, size);
+            fitCenter = c;
+            fitKey = key;
         }
 
         float SizeFor(Camera cam, float zoom)
@@ -134,9 +191,10 @@ namespace KuryeTycoon
             Apply(cam, Zoom, focus);
         }
 
-        void Apply(Camera cam, float zoom, Vector2 f)
+        void Apply(Camera cam, float zoom, Vector2 f) => ApplyRaw(cam, SizeFor(cam, zoom), f, TiltDegrees(zoom), EffectiveYaw(zoom));
+
+        void ApplyRaw(Camera cam, float size, Vector2 f, float tilt, float yawDeg)
         {
-            float size = SizeFor(cam, zoom);
             // Perspektif: haritanın odak noktasında ortografikteki "size" kadar alan görünecek uzaklık
             float dist = 60f;
             if (UsePerspective)
@@ -154,10 +212,9 @@ namespace KuryeTycoon
                 cam.nearClipPlane = 0.1f;
                 cam.farClipPlane = 300f;
             }
-            float tilt = TiltDegrees(zoom);
             // Kamera +Z'ye bakar (harita XY düzleminde, binalar −Z yönünde yükselir).
             // Önce dikey eksen (Z) etrafında döner, sonra eğilir. Kuzey yukarıda: sadece eğik.
-            var rot = Quaternion.Euler(0f, 0f, -EffectiveYaw(zoom)) * Quaternion.Euler(-tilt, 0f, 0f);
+            var rot = Quaternion.Euler(0f, 0f, -yawDeg) * Quaternion.Euler(-tilt, 0f, 0f);
             cam.transform.rotation = rot;
             var ground = new Vector3(f.x, f.y, 0f);
             cam.transform.position = ground - rot * Vector3.forward * dist;
@@ -172,7 +229,7 @@ namespace KuryeTycoon
 
         Vector2 ClampFocus(Camera cam, Vector2 f, float zoom)
         {
-            if (zoom < 0.02f) return MapCenter;
+            if (zoom < 0.02f) return FitCenter;
             if (angled > 0.01f || zoom > tiltStart || Mathf.Abs(Mathf.DeltaAngle(EffectiveYaw(zoom), 0f)) > 1f)
             {
                 // Dönük/eğik görünümde harita sınırları içinde serbest
@@ -217,7 +274,7 @@ namespace KuryeTycoon
             // Uzaklaşırken binalar yere inip harita düz 2D'ye geçince yumuşakça kuzey yukarı haline döner.
             if (newZoom < targetZoom && newZoom < tiltStart) Straighten();
             targetZoom = newZoom;
-            if (targetZoom <= 0.001f) targetFocus = MapCenter;
+            if (targetZoom <= 0.001f) targetFocus = FitCenter;
         }
 
         public void ZoomStep(float steps)
@@ -285,7 +342,7 @@ namespace KuryeTycoon
         public void ResetView()
         {
             targetZoom = 0f;
-            targetFocus = MapCenter;
+            targetFocus = FitCenter;
             Straighten();
         }
 
