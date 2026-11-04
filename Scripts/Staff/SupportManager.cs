@@ -63,6 +63,7 @@ namespace KuryeTycoon
         public string note;
         public SupportShift chosenShift = SupportShift.Ogle;
         public WorkDays chosenDays = WorkDays.PztCum;
+        public float expiresAt;    // başvurunun geçerliliğinin bittiği an (oyun dakikası, gece yarısı)
     }
 
     /// <summary>
@@ -136,8 +137,28 @@ namespace KuryeTycoon
                 monthlySalary = SalaryFor(skill),
                 note = Notes[Random.Range(0, Notes.Length)],
                 chosenShift = (SupportShift)Random.Range(0, 3),
-                chosenDays = Random.value < 0.5f ? WorkDays.PztCum : WorkDays.CarPaz
+                chosenDays = Random.value < 0.5f ? WorkDays.PztCum : WorkDays.CarPaz,
+                expiresAt = ExpiryFromNow()
             });
+        }
+
+        /// <summary>Başvurular yarın gece yarısına kadar geçerli (en az 1, en çok 2 gün).</summary>
+        public const int CandidateValidDays = 2;
+
+        public static float ExpiryFromNow() =>
+            (Mathf.Floor(GameClock.I.TotalMinutes / 1440f) + CandidateValidDays) * 1440f;
+
+        /// <summary>Başvuruyu reddet; yerine ertesi gün yenisi gelir.</summary>
+        public void Reject(SupportCandidate c)
+        {
+            if (Candidates.Remove(c)) EventManager.I.Notify($"{c.name} adlı adayın destek başvurusu reddedildi.");
+        }
+
+        /// <summary>Süresi dolan başvuruları kaldırır.</summary>
+        void PruneExpired()
+        {
+            float now = GameClock.I.TotalMinutes;
+            Candidates.RemoveAll(c => c.expiresAt > 0f && now >= c.expiresAt);
         }
 
         public void Hire(SupportCandidate c)
@@ -163,7 +184,7 @@ namespace KuryeTycoon
             EventManager.I.Notify($"{a.name} destek ekibinden ayrıldı (son maaşı {Ft(due)}).");
         }
 
-        static long ProratedSalary(SupportAgent a)
+        public static long ProratedSalary(SupportAgent a)
         {
             int days = Mathf.Max(1, GameClock.I.DaysInMonth);
             return (long)Mathf.Round(a.monthlySalary * Mathf.Min(1f, a.daysEmployedThisMonth / (float)days) / 1000f) * 1000;
@@ -192,8 +213,9 @@ namespace KuryeTycoon
         void OnNewDay()
         {
             foreach (var a in Agents) a.daysEmployedThisMonth++;
+            PruneExpired();
             if (GameClock.I.DayOfWeek == 0) RefreshCandidates();
-            else if (Candidates.Count < 2) AddCandidate(); // işe alınan adayın yerine yenisi gelir
+            else if (Candidates.Count < 2) AddCandidate(); // işe alınan, reddedilen ya da süresi dolan adayın yerine yenisi gelir
 
             // Gün boyunca en az 8 saat destek varsa kuryelerin morali biraz artar
             if (CoveredHours(GameClock.I.DayOfWeek) >= 8)

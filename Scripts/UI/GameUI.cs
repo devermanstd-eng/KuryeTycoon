@@ -95,10 +95,11 @@ namespace KuryeTycoon
                 return;
             }
 
-            if (EventManager.I.Current == null) HandleMenuKey();
-            modalFree = EventManager.I.Current == null && !pauseMenuOpen;
+            if (ConfirmOpen) HandleConfirmKey();
+            else if (EventManager.I.Current == null) HandleMenuKey();
+            modalFree = EventManager.I.Current == null && !pauseMenuOpen && !ConfirmOpen;
             if (modalFree) HandleKeys();
-            if (!pauseMenuOpen) HandleMapMouse(sw, sh);
+            if (!pauseMenuOpen && !ConfirmOpen) HandleMapMouse(sw, sh);
 
             GUI.enabled = modalFree;
             DrawWorldLabels();
@@ -115,6 +116,7 @@ namespace KuryeTycoon
             GUI.enabled = true;
             DrawEvent(sw, sh);
             if (pauseMenuOpen) DrawPauseMenu(sw, sh);
+            if (ConfirmOpen) DrawConfirm(sw, sh);
         }
 
         // ---------------------------------------------------------------- ESC menüsü (kaydet / ana menü / çık)
@@ -1086,8 +1088,13 @@ namespace KuryeTycoon
                             "çevrimiçi olma isteğini artırır. Kendi araçlarını ve sigortalarını kendi kazançlarından öderler; " +
                             "para biriktirince daha iyi araç alırlar.", small);
 
+            VehicleFilterBar(courierFilter, CourierCountByVehicle, cm.Couriers.Count, f => courierFilter = f);
+            if (courierFilter >= 0 && CourierCountByVehicle((VehicleKind)courierFilter) == 0)
+                GUILayout.Label($"{GameData.Vehicle((VehicleKind)courierFilter).name} ile çalışan kurye yok.", small);
+
             foreach (var c in cm.Couriers)
             {
+                if (!PassesFilter(courierFilter, c.vehicle)) continue;
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{c.courierName} — {c.V.name} · Tecrübe {c.level}", header);
                 GUILayout.Label($"{c.StateName} · Teslimat {c.deliveries} (bugün {c.deliveriesToday}) · Kazancı {Ft(c.totalEarned)}", small);
@@ -1169,7 +1176,11 @@ namespace KuryeTycoon
                 if (GUILayout.Button("Ekipman teklif et", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; panelOpen = true; scroll = Vector2.zero; };
                 if (GUILayout.Button("Nakit / ödeme detayı", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; CloseInfo(); };
                 GUI.enabled = modalFree && c.OrderCount == 0;
-                if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton)) deferred = () => cm.Fire(courier);
+                if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton))
+                    deferred = () => AskConfirm("Kuryeyle yolları ayır",
+                        $"{courier.courierName} ({courier.V.name}, {courier.deliveries} teslimat) işten çıkarılsın mı? " +
+                        $"Hesabında bekleyen {Ft(courier.balance)} ve varsa depozitosu ödenir. Bu geri alınamaz.",
+                        "Evet, işten çıkar", () => cm.Fire(courier));
                 GUI.enabled = modalFree;
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
@@ -1200,9 +1211,16 @@ namespace KuryeTycoon
 
             if (cm.Applications.Count == 0)
                 GUILayout.Label("Şu an bekleyen başvuru yok. Yeni başvurular haber akışında duyurulur.", label);
+            else
+            {
+                VehicleFilterBar(applicationFilter, ApplicationCountByVehicle, cm.Applications.Count, f => applicationFilter = f);
+                if (applicationFilter >= 0 && ApplicationCountByVehicle((VehicleKind)applicationFilter) == 0)
+                    GUILayout.Label($"{GameData.Vehicle((VehicleKind)applicationFilter).name} ile başvuran yok.", small);
+            }
 
             foreach (var cand in cm.Applications)
             {
+                if (!PassesFilter(applicationFilter, cand.vehicle)) continue;
                 var v = GameData.Vehicle(cand.vehicle);
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{cand.name} — {v.name} · Tecrübe {cand.level}", header);
@@ -1221,7 +1239,12 @@ namespace KuryeTycoon
                 GUILayout.BeginHorizontal();
                 var c = cand;
                 GUI.enabled = modalFree && !up.CourierCapFull;
-                if (GUILayout.Button(up.CourierCapFull ? "İşe al (hesaplar dolu)" : "İşe al", button)) deferred = () => cm.Hire(c);
+                if (GUILayout.Button(up.CourierCapFull ? "İşe al (hesaplar dolu)" : "İşe al", button))
+                    deferred = () => AskConfirm("Kuryeyi işe al",
+                        $"{c.name} ({GameData.Vehicle(c.vehicle).name}, {Courier.OccupationLabel(c.occupation)}) işe alınsın mı? " +
+                        $"Kurye hesapları {cm.Couriers.Count}/{up.CourierCap} → {cm.Couriers.Count + 1}/{up.CourierCap}. " +
+                        $"Başlangıç kiti şirkete {Ft(GameData.StarterKitCost)}.",
+                        "Evet, işe al", () => cm.Hire(c));
                 GUI.enabled = modalFree;
                 if (GUILayout.Button("Reddet", button)) deferred = () => cm.Reject(c);
                 GUILayout.EndHorizontal();
@@ -1241,7 +1264,10 @@ namespace KuryeTycoon
             {
                 int next = map.UnlockLevel + 1;
                 if (GUILayout.Button($"Yeni bölge aç: {CityMap.DistrictNames[next]} — {Ft(CityMap.UnlockCost[next])}", button))
-                    deferred = () => map.TryUnlockNext();
+                    deferred = () => AskConfirm("Yeni bölge aç",
+                        $"{CityMap.DistrictNames[next]} {Ft(CityMap.UnlockCost[next])} karşılığında açılsın mı? " +
+                        $"Serbest kasan: {Ft(EconomyManager.I.FreeCash)}. Bölge açmak geri alınamaz.",
+                        $"Evet, aç ({Ft(CityMap.UnlockCost[next])})", () => map.TryUnlockNext());
             }
             GUILayout.Space(6);
 
@@ -1290,7 +1316,10 @@ namespace KuryeTycoon
                 if (GameClock.I.Day < s.resignBlockedUntil)
                     GUILayout.Label($"Seninle çalışmayı bıraktı; {GameClock.I.DateOf(s.resignBlockedUntil)} tarihinden sonra yeniden teklif edebilirsin.", warn);
                 else if (GUILayout.Button($"Sözleşme imzala — {Ft(s.def.contractCost)}", button))
-                    deferred = () => map.SignContract(shop);
+                    deferred = () => ConfirmIfExpensive(shop.def.contractCost, "Sözleşme imzala",
+                        $"{shop.def.name} ile {Ft(shop.def.contractCost)} karşılığında sözleşme imzalansın mı? " +
+                        $"Serbest kasan: {Ft(EconomyManager.I.FreeCash)}.",
+                        () => map.SignContract(shop));
             }
             else if (rv != null)
             {
@@ -1309,7 +1338,11 @@ namespace KuryeTycoon
                     deferred = () => rv.Negotiate(shop);
                 GUI.enabled = modalFree && rv.CanOfferExclusive(s);
                 if (GUILayout.Button(s.exclusive ? "Münhasır" : $"Münhasırlık öner: −3 puan (şans %{rv.ExclusiveChance(s) * 100f:0})", smallButton))
-                    deferred = () => rv.OfferExclusive(shop);
+                    deferred = () => AskConfirm("Münhasırlık öner",
+                        $"{shop.def.name} sadece seninle çalışsın diye teklif edilsin mi? Kabul ederse rakip çıkar, siparişler %15 artar, " +
+                        "komisyonun 3 puan düşer ve sözleşme 6 ay uzar. Reddederse memnuniyeti biraz düşer ve 30 gün tekrar teklif edemezsin. " +
+                        $"Kabul ihtimali yaklaşık %{rv.ExclusiveChance(shop) * 100f:0}.",
+                        "Evet, teklif et", () => rv.OfferExclusive(shop));
                 GUI.enabled = modalFree;
                 GUILayout.EndHorizontal();
                 if (GameClock.I.Day < s.negotiateCooldownUntil)
@@ -1409,7 +1442,17 @@ namespace KuryeTycoon
                             deferred = () => cm.OfferEquipment(sc, kind);
                     }
                 }
-                if (GUILayout.Button("Eksik olan herkese teklif et", smallButton)) deferred = () => cm.OfferToAll(kind);
+                if (GUILayout.Button("Eksik olan herkese teklif et", smallButton))
+                {
+                    int askable = 0;
+                    foreach (var oc in cm.Couriers)
+                        if (!oc.Has(kind) && !cm.OnCooldown(oc, kind) && CourierManager.Usefulness(oc, kind) >= 0.15f) askable++;
+                    long maxCost = askable * CourierManager.CompanyCost(kind, cm.equipmentPayment);
+                    deferred = () => ConfirmIfExpensive(maxCost, "Herkese ekipman teklif et",
+                        $"{e.name} {askable} kuryeye teklif edilecek. Hepsi kabul ederse şirkete maliyeti en fazla {Ft(maxCost)} " +
+                        $"(ödeme şekli: {CourierManager.PaymentLabel(cm.equipmentPayment)}).",
+                        () => cm.OfferToAll(kind));
+                }
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }
@@ -1451,7 +1494,11 @@ namespace KuryeTycoon
                 Bar("Yetenek", a.skill, new Color(0.4f, 0.75f, 1f));
                 GUILayout.Label($"Çözdüğü: {a.handledTotal} · Pazarlıkla kazandırdığı: {Ft(a.savedTotal)}", small);
                 var agent = a;
-                if (GUILayout.Button("İşten çıkar (bu ayın maaşı ödenir)", smallButton)) deferred = () => sm.Fire(agent);
+                if (GUILayout.Button("İşten çıkar (bu ayın maaşı ödenir)", smallButton))
+                    deferred = () => AskConfirm("Destek personelini çıkar",
+                        $"{agent.name} işten çıkarılsın mı? Bu ay çalıştığı günlerin maaşı ({Ft(SupportManager.ProratedSalary(agent))}) hemen ödenir. " +
+                        "Vardiyası boş kalır.",
+                        "Evet, işten çıkar", () => sm.Fire(agent));
                 GUILayout.EndVertical();
             }
 
@@ -1487,7 +1534,11 @@ namespace KuryeTycoon
                 GUILayout.Label($"İkna: kabul ihtimali +%{ops.Persuasion * 100f:0} · İşleri ertelemeden yapma: %{ops.Reliability * 100f:0}" +
                                 (ops.Discount > 0f ? " · Toplu alım indirimi %10" : ""), small);
                 if (!string.IsNullOrEmpty(ops.lastPassSummary)) GUILayout.Label("Son sabah turu: " + ops.lastPassSummary, small);
-                if (GUILayout.Button("İşten çıkar (bu ayın maaşı ödenir)", smallButton)) deferred = () => ops.Fire();
+                if (GUILayout.Button("İşten çıkar (bu ayın maaşı ödenir)", smallButton))
+                    deferred = () => AskConfirm("Operasyon sorumlusunu çıkar",
+                        $"{m.name} işten çıkarılsın mı? Bu ay çalıştığı günlerin maaşı ({Ft(ops.AccruedThisMonth)}) hemen ödenir; " +
+                        "eksik ekipman teklifleri ve çanta işleri yine sana kalır.",
+                        "Evet, işten çıkar", () => ops.Fire());
                 GUILayout.EndVertical();
             }
             else
@@ -1503,8 +1554,16 @@ namespace KuryeTycoon
                     long payrollAfter = TotalPayroll + cand.monthlySalary;
                     GUILayout.Label($"İşe alırsan aylık toplam maaş: {Ft(payrollAfter)} · serbest kasan: {Ft(EconomyManager.I.FreeCash)}",
                                     payrollAfter > EconomyManager.I.FreeCash ? warn : small);
+                    GUILayout.Label(ExpiryText(cand.expiresAt), small);
                     var c = cand;
-                    if (GUILayout.Button("İşe al", button)) deferred = () => ops.Hire(c);
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("İşe al", button))
+                        deferred = () => AskConfirm("Operasyon sorumlusunu işe al",
+                            $"{c.name} {Ft(c.monthlySalary)}/ay maaşla işe alınsın mı? Maaş ay başında, çalıştığı gün kadar ödenir. " +
+                            $"Aylık toplam maaşın {Ft(TotalPayroll + c.monthlySalary)} olur.",
+                            "Evet, işe al", () => ops.Hire(c));
+                    if (GUILayout.Button("Reddet", button)) deferred = () => ops.Reject(c);
+                    GUILayout.EndHorizontal();
                     GUILayout.EndVertical();
                 }
             }
@@ -1601,7 +1660,13 @@ namespace KuryeTycoon
                     {
                         var kind = d.kind;
                         GUI.enabled = modalFree && e.money >= cost;
-                        if (GUILayout.Button($"Satın al — {Ft(cost)}", button)) deferred = () => up.Buy(kind);
+                        if (GUILayout.Button($"Satın al — {Ft(cost)}", button))
+                        {
+                            string what = $"{d.name}: {d.LevelText(lv + 1)}";
+                            deferred = () => ConfirmIfExpensive(cost, "Geliştirme satın al",
+                                $"{what}. Bedeli {Ft(cost)}, serbest kasan {Ft(EconomyManager.I.FreeCash)}. Geliştirmeler geri satılamaz.",
+                                () => up.Buy(kind));
+                        }
                         GUI.enabled = modalFree;
                     }
                 }
@@ -1615,6 +1680,7 @@ namespace KuryeTycoon
             GUILayout.Space(6);
             GUILayout.Label($"Destek personeli başvuruları ({SupportManager.I.Candidates.Count}) — maaşlı, sabit vardiya", header);
             if (SupportManager.I.Candidates.Count == 0) GUILayout.Label("Şu an destek başvurusu yok; ertesi gün yenisi gelir.", small);
+            else GUILayout.Label($"Her başvuru {SupportManager.CandidateValidDays} gün geçerli; reddedilen ya da süresi dolanın yerine ertesi gün yenisi gelir.", small);
             foreach (var cand in sm.Candidates)
             {
                 GUILayout.BeginVertical(box);
@@ -1639,10 +1705,27 @@ namespace KuryeTycoon
                 if (SelectButton(c.chosenDays == WorkDays.PztCum, "Pazartesi–Cuma", smallButton)) deferred = () => c.chosenDays = WorkDays.PztCum;
                 if (SelectButton(c.chosenDays == WorkDays.CarPaz, "Çarşamba–Pazar", smallButton)) deferred = () => c.chosenDays = WorkDays.CarPaz;
                 GUILayout.EndHorizontal();
+                GUILayout.Label(ExpiryText(cand.expiresAt), small);
+                GUILayout.BeginHorizontal();
                 if (GUILayout.Button($"İşe al ({SupportManager.ShiftLabel(c.chosenShift)}, {(c.chosenDays == WorkDays.PztCum ? "Pzt–Cum" : "Çar–Paz")})", button))
-                    deferred = () => sm.Hire(c);
+                    deferred = () => AskConfirm("Destek personelini işe al",
+                        $"{c.name} {Ft(c.monthlySalary)}/ay maaşla, {SupportManager.ShiftLabel(c.chosenShift)} vardiyasında " +
+                        $"{(c.chosenDays == WorkDays.PztCum ? "Pazartesi–Cuma" : "Çarşamba–Pazar")} çalışmak üzere işe alınsın mı? " +
+                        $"Aylık toplam maaşın {Ft(TotalPayroll + c.monthlySalary)} olur.",
+                        "Evet, işe al", () => sm.Hire(c));
+                if (GUILayout.Button("Reddet", button, GUILayout.Width(90))) deferred = () => sm.Reject(c);
+                GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }
+        }
+
+        /// <summary>Başvurunun kalan süresi (destek ve operasyon adayları gece yarısı sona erer).</summary>
+        static string ExpiryText(float expiresAt)
+        {
+            if (expiresAt <= 0f || GameClock.I == null) return "";
+            float h = (expiresAt - GameClock.I.TotalMinutes) / 60f;
+            if (h <= 24f) return $"Başvuru bu gece sona erer ({Mathf.Max(0f, h):0} saat kaldı).";
+            return $"Başvuru yarın gece sona erer ({h:0} saat kaldı).";
         }
 
         void DrawCampaigns()
@@ -1769,7 +1852,10 @@ namespace KuryeTycoon
                 GUI.enabled = modalFree && e.money >= next.Remaining;
                 if (GUILayout.Button($"Taksiti öde ({Ft(next.Remaining)})", smallButton)) deferred = () => loan.Pay(next.Remaining);
                 GUI.enabled = modalFree && e.money >= 50000;
-                if (GUILayout.Button($"{Ft(50000)} erken öde", smallButton)) deferred = () => loan.Pay(50000);
+                if (GUILayout.Button($"{Ft(50000)} erken öde", smallButton))
+                    deferred = () => ConfirmIfExpensive(50000, "Aile borcuna erken ödeme",
+                        $"Annenle babana {Ft(50000)} erken ödensin mi? Serbest kasan {Ft(EconomyManager.I.FreeCash)}.",
+                        () => loan.Pay(50000));
                 GUI.enabled = modalFree && e.money >= loan.Remaining;
                 if (GUILayout.Button($"Tamamını öde ({Ft(loan.Remaining)})", smallButton)) deferred = () => loan.Pay(loan.Remaining);
                 GUI.enabled = modalFree;

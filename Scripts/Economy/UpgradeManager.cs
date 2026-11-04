@@ -28,10 +28,12 @@ namespace KuryeTycoon
     {
         public static UpgradeManager I { get; private set; }
 
-        // Hesap sınırları kabaca açık dükkanların talebine göre ayarlı; başlangıç bilerek biraz dar:
-        // 4 = başlangıçtaki 2 dükkan (akşam zirvesinde zorlanır), 8 = 3–4 dükkan, 14 = 1. bölge dolu,
-        // 22 = 2. bölge dolu, 32 = tüm şehir. Seviye açıklamaları bu dizilerden otomatik yazılır.
-        static readonly int[] AccountCap = { 4, 8, 14, 22, 32 };
+        // Hesap sınırları kabaca açık dükkanların talebine göre ayarlı (14 dükkan, 5 bölge); başlangıç bilerek biraz dar:
+        // 4 = başlangıçtaki dükkanlar (akşam zirvesinde zorlanır), 10 = merkez dolu, 20 = 2–3 bölge,
+        // 34 = 4 bölge, 55 = bütün şehir (yoğun saatte ~50–70 sipariş/saat). Tahmini değerler: test ederken
+        // CSV'de kurye sayısı tavana dayanıp kaçan sipariş artıyorsa tavanı yükseltin.
+        // Seviye açıklamaları bu dizilerden otomatik yazılır.
+        static readonly int[] AccountCap = { 4, 10, 20, 34, 55 };
         static readonly int[] PlatformFee = { 0, 1500, 3000, 5000, 8000 };
         static readonly string[] PlatformLevelNames = { "Başlangıç paketi", "Büyüme paketi", "Profesyonel paket", "Şehir paketi", "Kurumsal paket" };
 
