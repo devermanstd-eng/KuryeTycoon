@@ -986,7 +986,8 @@ namespace KuryeTycoon
 
         void ScheduleSurprise()
         {
-            nextSurpriseDay = GameClock.I.CompanyDay + Random.Range(surpriseMinDays, surpriseMaxDays + 1);
+            nextSurpriseDay = GameClock.I.CompanyDay +
+                              Mathf.Max(1, Mathf.RoundToInt(Random.Range(surpriseMinDays, surpriseMaxDays + 1) * Difficulty.SurpriseInterval));
         }
 
         static long Round1000(float v) => (long)(Mathf.Round(v / 1000f) * 1000f);

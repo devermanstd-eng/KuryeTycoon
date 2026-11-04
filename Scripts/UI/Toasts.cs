@@ -30,6 +30,8 @@ namespace KuryeTycoon
         {
             var type = Classify(msg);
             if (type == null) return;
+            if (type.Value == ToastType.Good) GameSounds.Play(Sfx.Iyi);
+            else if (type.Value == ToastType.Bad) GameSounds.Play(Sfx.Kotu);
             float now = Time.unscaledTime;
             // Aynı türden yeni bir kart zaten görünüyorsa onu güncelle (iptal yağmurunda ekran dolmasın)
             foreach (var t in toasts)

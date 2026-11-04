@@ -147,6 +147,7 @@ namespace KuryeTycoon
         public List<string> milestoneDates = new List<string>();
         public List<string> feed = new List<string>();
         public GuideSave guide;                // rehber adımı ve açılan menüler (eski kayıtlarda yok)
+        public int difficulty;                 // DifficultyLevel (eski kayıtlarda 0 = Normal)
     }
 
     // =====================================================================
@@ -301,7 +302,8 @@ namespace KuryeTycoon
                 rival = RivalCompany.I.CaptureSave(),
                 goals = GoalManager.I != null ? GoalManager.I.CaptureSave() : null,
                 loan = FamilyLoan.I.CaptureSave(),
-                guide = Guide.I != null ? Guide.I.CaptureSave() : null
+                guide = Guide.I != null ? Guide.I.CaptureSave() : null,
+                difficulty = (int)Difficulty.Level
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -345,6 +347,7 @@ namespace KuryeTycoon
         public static void ApplyAfterInit(SaveData d)
         {
             var cm = CourierManager.I;
+            Difficulty.Level = (DifficultyLevel)Mathf.Clamp(d.difficulty, 0, 2);
 
             // Harita: bölge ve dükkan sözleşmeleri
             CityMap.I.RestoreUnlockLevel(d.unlockLevel);

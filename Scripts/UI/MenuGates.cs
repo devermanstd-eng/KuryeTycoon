@@ -130,6 +130,7 @@ namespace KuryeTycoon
             GUILayout.Label("Arayüz", header);
             bool push = GUILayout.Toggle(PushMapSetting, " Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", toggle);
             if (push != PushMapSetting) PushMapSetting = push;
+            DrawFeedbackSettings();
             bool det = GUILayout.Toggle(ShowAllDetails, " Pencerelerdeki açıklamaların ayrıntısını hep göster", toggle);
             if (det != ShowAllDetails) ShowAllDetails = det;
             bool all = GUILayout.Toggle(Guide.AllMenusSetting, " Bütün menüleri baştan aç (deneyimli oyuncular için)", toggle);
@@ -143,6 +144,7 @@ namespace KuryeTycoon
                 if (GUILayout.Button(txt, smallButton, GUILayout.ExpandWidth(false)))
                     deferred = () => { if (g.TutorialDone) g.RestartTutorial(); else g.FinishTutorial(); };
             }
+            GUILayout.Label($"Zorluk: {Difficulty.Name(Difficulty.Level)} (yeni oyun kurarken seçilir)", small);
             GUILayout.Space(8);
         }
     }

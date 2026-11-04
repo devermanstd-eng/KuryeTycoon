@@ -101,7 +101,9 @@ namespace KuryeTycoon
             if (!pauseMenuOpen && !ConfirmOpen) HandleMapMouse(sw, sh);
 
             GUI.enabled = modalFree;
+            DrawHeat();          // sipariş yoğunluğu katmanı (etiketlerin altında)
             DrawWorldLabels();
+            DrawMapPops();       // uçan "+350 Ft" yazıları
             DrawTopBar(sw);
             DrawPanel(sh);
             DrawFeed(sw, sh);
@@ -214,7 +216,7 @@ namespace KuryeTycoon
             bool hasError = !string.IsNullOrEmpty(GameBootstrap.LastLoadError);
 
             Fill(new Rect(0, 0, sw, sh), new Color(0.08f, 0.09f, 0.11f));
-            float w = 620f, h = 680f + (setupSave != null ? 120f : 0f) + (hasError ? 40f : 0f);
+            float w = 620f, h = 760f + (setupSave != null ? 120f : 0f) + (hasError ? 40f : 0f);
             var r = new Rect((sw - w) / 2f, Mathf.Max(10f, (sh - h) / 2f), w, h);
             UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
 
@@ -284,9 +286,14 @@ namespace KuryeTycoon
             Fill(courier, secondary);
             Fill(new Rect(courier.x + 10, courier.y + 10, 40, 40), primary);
 
+            GUILayout.Space(12);
+            DrawDifficultyPicker();
+
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("Şirketi Kur ve Başla", bigButton, GUILayout.Height(50)))
             {
+                Difficulty.Level = setupDifficulty;
+                Difficulty.LastChoice = setupDifficulty;
                 CompanyProfile.Name = string.IsNullOrEmpty(companyName.Trim()) ? "Hızlı Kurye" : companyName.Trim();
                 CompanyProfile.Primary = primary;
                 CompanyProfile.Secondary = secondary;
@@ -327,6 +334,7 @@ namespace KuryeTycoon
                 case KeyCode.E: mc.Rotate(45f); e.Use(); break;
                 case KeyCode.N: mc.ResetRotation(); e.Use(); break;
                 case KeyCode.M: mc.ToggleFlatMode(); e.Use(); break;
+                case KeyCode.H: CycleHeat(); e.Use(); break;
                 case KeyCode.Alpha0: case KeyCode.Keypad0: case KeyCode.Home: mc.ResetView(); e.Use(); break;
             }
         }
@@ -582,7 +590,7 @@ namespace KuryeTycoon
                            !(InfoOpen && InfoRect(sw, sh).Contains(m)) &&
                            !(TrackerVisible && GoalTrackerRect().Contains(m)) &&
                            !ToastAt(m, sw) &&
-                           !new Rect(DockW + 10f, sh - 44f, 380f, 30f).Contains(m);
+                           !new Rect(DockW + 10f, sh - 44f, 500f, 30f).Contains(m);
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
 
@@ -647,10 +655,14 @@ namespace KuryeTycoon
             if (GUI.Button(new Rect(x + 152, y, 60, 30), "Tümü", smallButton)) mc.ResetView();
             if (GUI.Button(new Rect(x + 216, y, 66, 30), legendOpen ? "Lejant ✓" : "Lejant", smallButton)) legendOpen = !legendOpen;
             if (GUI.Button(new Rect(x + 286, y, 88, 30), mc.FlatMode ? "3D görünüm" : "Düz harita", smallButton)) mc.ToggleFlatMode();
-            var r = new Rect(x + 380, y + 3, 470, 24);
+            if (GUI.Button(new Rect(x + 378, y, 118, 30), HeatButtonText, smallButton)) CycleHeat();
+            string hint = heatMode != HeatMode.Kapali
+                ? HeatCaption
+                : "Tekerlek: yakınlaş · sürükle: kaydır · Q-E: döndür · H: yoğunluk";
+            float hw = small.CalcSize(new GUIContent(hint)).x + 16f;
+            var r = new Rect(x + 502, y + 3, hw, 24);
             UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.75f), 12f);
-            GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height),
-                "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · N: kuzey · M: düz harita · 0: tüm harita", small);
+            GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height), hint, small);
         }
 
         /// <summary>Kurye panelindeki sipariş kutusu: içerik, adres, kat, nakit, kalan süre.</summary>
@@ -1928,12 +1940,13 @@ namespace KuryeTycoon
             if (!showMilestones) return;
             foreach (var m in ms.Defs)
             {
+                string rw = m.RewardText;
                 if (ms.IsReached(m.id))
-                    GUILayout.Label($"• {m.title} — {ms.ReachedDate(m.id)}", label);
+                    GUILayout.Label($"• {m.title} — {ms.ReachedDate(m.id)}" + (rw.Length > 0 ? $" · ödül alındı: {rw}" : ""), label);
                 else
                 {
                     string p = m.progress != null ? m.progress() : "";
-                    GUILayout.Label($"   {m.title}" + (string.IsNullOrEmpty(p) ? "" : $" ({p})"), small);
+                    GUILayout.Label($"   {m.title}" + (string.IsNullOrEmpty(p) ? "" : $" ({p})") + (rw.Length > 0 ? $" · ödül: {rw}" : ""), small);
                 }
             }
             GUILayout.Space(6);

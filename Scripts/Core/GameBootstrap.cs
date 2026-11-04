@@ -76,6 +76,7 @@ namespace KuryeTycoon
             Make<FamilyLoan>("Hikaye - Aile Borcu");
             Make<Milestones>("Kilometre Taşları");
             Make<Guide>("Rehber");
+            Make<GameSounds>("Sesler");
             Make<SaveSystem>("Kayıt");
             Make<EventManager>("Olaylar");
             Make<GameUI>("Arayüz");
@@ -142,6 +143,8 @@ namespace KuryeTycoon
                 CompanyProfile.Secondary = d.secondary;
                 CompanyProfile.Reputation = Mathf.Clamp(d.reputation, 1f, 5f);
                 GameClock.I.RestoreTime(d.totalMinutes, d.startDay);
+                Difficulty.Level = (DifficultyLevel)Mathf.Clamp(d.difficulty, 0, 2);   // sistemler kurulmadan önce
+                OrderHeat.Reset();
 
                 GenerateWorld(d.mapSeed);
                 CourierManager.I.Init();
@@ -179,6 +182,7 @@ namespace KuryeTycoon
 
             EconomyManager.I.money = familyLoanAmount;
             EconomyManager.I.InitCashMarkers();
+            OrderHeat.Reset();
             GenerateWorld(Random.Range(1, int.MaxValue));
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v).StartShift();
