@@ -171,7 +171,7 @@ namespace KuryeTycoon
 
             var contracted = new List<Shop>();
             foreach (var s in map.Shops)
-                if (s.contracted && map.IsUnlocked(s.tile.x)) contracted.Add(s);
+                if (s.contracted && map.IsUnlocked(s.tile)) contracted.Add(s);
 
             if (contracted.Count == 0 || Random.value > 0.45f) return;
             var shop = contracted[Random.Range(0, contracted.Count)];

@@ -23,9 +23,10 @@ namespace KuryeTycoon
     public static class Addresses
     {
         static readonly string[] AvenueNames =
-            { "Kossuth", "Petőfi", "Rákóczi", "Széchenyi", "Dózsa György", "Arany János", "Bethlen", "Jókai", "Vörösmarty" };
+            { "Kossuth", "Petőfi", "Rákóczi", "Széchenyi", "Dózsa György", "Arany János", "Bethlen", "Jókai", "Vörösmarty",
+              "Andrássy", "Deák Ferenc", "Batthyány", "Mátyás Király" };
         static readonly string[] StreetNames =
-            { "Kölcsey", "Ady Endre", "Hunyadi", "Madách", "Bocskai", "Szent István" };
+            { "Kölcsey", "Ady Endre", "Hunyadi", "Madách", "Bocskai", "Szent István", "Kazinczy", "Bartók Béla", "Erkel Ferenc" };
 
         public static bool IsAvenue(Vector2Int road) => road.x % CityMap.Block == 0 && road.y % CityMap.Block != 0;
 
@@ -106,6 +107,15 @@ namespace KuryeTycoon
                                       new M("Coleslaw", 690), new M("Kola 0,5 L", 590) } },
             { "Sushi Samurai",new[] { new M("California roll (8'li)", 2990), new M("Somon nigiri (4'lü)", 2490), new M("Sushi tabağı (24 parça)", 8990),
                                       new M("Miso çorbası", 990), new M("Gyoza", 1690), new M("Edamame", 990), new M("Yeşil çay", 590) } },
+            { "Fish & Ships", new[] { new M("Fish & chips", 2890), new M("Halászlé (balık çorbası)", 2290), new M("Kızarmış kalamar", 2490),
+                                      new M("Balık burger", 1990), new M("Tartar sos", 290), new M("Patates", 790), new M("Limonata", 690) } },
+            { "Otogar Büfé",  new[] { new M("Lángos", 990), new M("Hot dog", 890), new M("Tost", 790), new M("Pogácsa (3'lü)", 590),
+                                      new M("Simit", 490), new M("Çay", 290), new M("Kola 0,5 L", 590) } },
+            { "Villa Gourmet",new[] { new M("Dana bonfile", 7990), new M("Trüflü risotto", 5490), new M("Somon fileto", 6490), new M("Burrata salata", 3490),
+                                      new M("Tiramisu", 1990), new M("Şarap (şişe)", 5990), new M("Maden suyu", 490) } },
+            { "BioSzpar",     new[] { new M("Organik süt 1 L", 690), new M("Organik yumurta (10'lu)", 1390), new M("Ekşi mayalı ekmek", 1290),
+                                      new M("Avokado (2'li)", 990), new M("Granola", 1490), new M("Organik muz 1 kg", 890), new M("Badem sütü", 990),
+                                      new M("Kinoa 500 g", 1290), new M("Yerel bal", 2490) } },
         };
 
         /// <summary>Hedef tutara yakın, gerçekçi bir sepet oluşturur. Market siparişleri çok ürünlü ve adetlidir.</summary>

@@ -331,14 +331,14 @@ namespace KuryeTycoon
             if (ShowLandmarks)
                 foreach (var lm in CityMap.Landmarks)
                 {
-                    bool open = CityMap.I.IsUnlocked(Mathf.RoundToInt(lm.pos.x));
+                    bool open = CityMap.I.IsUnlocked(Vector2Int.RoundToInt(lm.pos));
                     var c = open ? lm.color : UITheme.WithAlpha(lm.color, 0.45f);
                     LandmarkLabel(cam, CityMap.ToWorld(lm.pos) + MapCamera.LabelOffset(0f, 0.05f), lm.name, c);
                 }
 
             foreach (var s in CityMap.I.Shops)
             {
-                if (!CityMap.I.IsUnlocked(s.tile.x)) continue;
+                if (!CityMap.I.IsUnlocked(s.tile)) continue;
                 WorldLabel(cam, CityMap.ToWorld(s.tile) + MapCamera.LabelOffset(0.7f, BuildingTop(s.tile) + 0.2f),
                     s.contracted ? s.Name : s.Name + " (sözleşmesiz)",
                     s.contracted ? Color.white : new Color(0.7f, 0.7f, 0.7f));
@@ -972,7 +972,7 @@ namespace KuryeTycoon
                                 $"Sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · Ağırlık {GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)} · Toplam sipariş {s.ordersTotal}", small);
                 if (s.def.kgMax >= GameData.HeavyKg)
                     GUILayout.Label($"{GameData.HeavyKg:0} kg üstü ağır siparişler gelir: bunlar için arabalı kurye gerekir.", warn);
-                if (!map.IsUnlocked(s.tile.x))
+                if (!map.IsUnlocked(s.tile))
                 {
                     GUILayout.Label($"Kilitli: önce \"{CityMap.DistrictNames[s.def.unlockLevel]}\" bölgesini aç.", small);
                 }

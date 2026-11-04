@@ -137,7 +137,7 @@ namespace KuryeTycoon
             // Her sözleşmeli dükkan kendi türüne göre (yemek / market) saatlik talep üretir
             float demand = 0f;
             foreach (var s in CityMap.I.Shops)
-                if (s.contracted && CityMap.I.IsUnlocked(s.tile.x))
+                if (s.contracted && CityMap.I.IsUnlocked(s.tile))
                     demand += DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend) * RivalShare(s);
 
             float rate = baseRatePerShop * demand
@@ -166,13 +166,13 @@ namespace KuryeTycoon
         {
             float total = 0f;
             foreach (var s in CityMap.I.Shops)
-                if (s.contracted && CityMap.I.IsUnlocked(s.tile.x)) total += ShopDemand(s);
+                if (s.contracted && CityMap.I.IsUnlocked(s.tile)) total += ShopDemand(s);
             if (total <= 0f) return null;
 
             float r = Random.value * total;
             foreach (var s in CityMap.I.Shops)
             {
-                if (!s.contracted || !CityMap.I.IsUnlocked(s.tile.x)) continue;
+                if (!s.contracted || !CityMap.I.IsUnlocked(s.tile)) continue;
                 r -= ShopDemand(s);
                 if (r <= 0f) return s;
             }

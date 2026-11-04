@@ -105,7 +105,7 @@ namespace KuryeTycoon
             public bool prefab;
             public bool flat;         // yol / zemin: yükselmez, sadece görünür olur
             public Color baseColor;
-            public int tileX;
+            public Vector2Int tile;
             public Shop shop;
             public bool hq;
         }
@@ -216,7 +216,7 @@ namespace KuryeTycoon
                     switch (zone)
                     {
                         case Zone.Plaza:
-                            if (x == 6 && y == 6)
+                            if (tile == CityMap.PlazaCenter)
                             {
                                 // Meydan çeşmesi ve heykel
                                 AddBoxR(tile, new Vector2(0.5f, 0.5f), 0.06f, new Color(0.70f, 0.68f, 0.64f), null, false, new Vector2(0f, 0.2f), false);
@@ -228,7 +228,7 @@ namespace KuryeTycoon
                         case Zone.Park:
                             if (CityMap.IsBlockCenter(x, y))
                             {
-                                if (x / CityMap.Block == 2)   // Belediye Parkı: anıt kule
+                                if (tile == CityMap.BelediyeCenter)   // Belediye Parkı: anıt kule
                                 {
                                     AddBoxR(tile, new Vector2(0.34f, 0.34f), 0.08f, new Color(0.78f, 0.76f, 0.70f), null, false, default, false);
                                     AddBoxR(tile, new Vector2(0.16f, 0.16f), 0.95f, new Color(0.86f, 0.84f, 0.78f), null, false, default, false);
@@ -241,11 +241,24 @@ namespace KuryeTycoon
                         case Zone.Mall:
                             if (CityMap.IsBlockCenter(x, y))
                             {
-                                // Bloğun tamamını kaplayan büyük AVM binası + cam çatılı orta bölüm
-                                AddBoxR(tile, new Vector2(2.7f, 2.7f), 0.7f, CityMap.MallColor, null, false, default, false);
-                                AddBoxR(tile, new Vector2(1.5f, 0.8f), 0.82f, new Color(0.62f, 0.80f, 0.90f), null, false, default, false);
+                                float top;
+                                if (tile == CityMap.OtogarCenter)
+                                {
+                                    // Otogar: alçak, geniş peron binası ve önünde otobüsler
+                                    AddBoxR(tile, new Vector2(2.7f, 1.2f), 0.35f, CityMap.OtogarColor, null, false, new Vector2(0f, 0.7f), false);
+                                    for (int i = 0; i < 4; i++)
+                                        AddBoxR(tile, new Vector2(0.28f, 0.85f), 0.2f, new Color(0.95f, 0.78f, 0.20f), null, false, new Vector2(-0.9f + i * 0.6f, -0.5f), false);
+                                    top = 0.35f;
+                                }
+                                else
+                                {
+                                    // Bloğun tamamını kaplayan büyük AVM binası + cam çatılı orta bölüm
+                                    AddBoxR(tile, new Vector2(2.7f, 2.7f), 0.7f, CityMap.MallColor, null, false, default, false);
+                                    AddBoxR(tile, new Vector2(1.5f, 0.8f), 0.82f, new Color(0.62f, 0.80f, 0.90f), null, false, default, false);
+                                    top = 0.82f;
+                                }
                                 for (int dx = -1; dx <= 1; dx++)
-                                    for (int dy = -1; dy <= 1; dy++) heightByTile[new Vector2Int(x + dx, y + dy)] = 0.82f;
+                                    for (int dy = -1; dy <= 1; dy++) heightByTile[new Vector2Int(x + dx, y + dy)] = top;
                             }
                             break;
 
@@ -281,6 +294,7 @@ namespace KuryeTycoon
                     }
                 }
             }
+            BuildCountryside(map, pack, packTreesOk, rng);
             Refresh(true);
             foreach (var p in pieces) p.t.gameObject.SetActive(false);
         }
@@ -352,6 +366,34 @@ namespace KuryeTycoon
             return 0f;
         }
 
+        /// <summary>
+        /// Şehir dışı: ormanlar ve çiftlikler 3D (tarla, çayır, nehir ve kır yolları 2D haritadan görünür).
+        /// Parçalar merkez ofisin karesine bağlanır (o kare hep açık): kilitli bölge gibi kararmazlar.
+        /// </summary>
+        void BuildCountryside(CityMap map, bool pack, bool packTreesOk, System.Random rng)
+        {
+            var anchor = map.HQTile;
+            foreach (var t in map.CountryTrees)
+            {
+                var off = new Vector2(t.x - anchor.x, t.y - anchor.y);
+                if (packTreesOk)
+                    AddPrefab(packTrees[rng.Next(packTrees.Length)], anchor, 0f, (float)rng.NextDouble() * 360f, null, off, t.z + 0.15f, false);
+                else
+                {
+                    var c = Color.Lerp(new Color(0.14f, 0.38f, 0.20f), new Color(0.26f, 0.50f, 0.22f), (float)rng.NextDouble());
+                    AddBox(anchor, 0.3f, t.z, c, null, false, off, false);
+                }
+            }
+            foreach (var f in map.Farms)
+            {
+                var off = new Vector2(f.x - anchor.x, f.y - anchor.y);
+                if (pack) AddPrefab(Pick(packBuildings, rng, 1, false), anchor, 0.55f, 180f, null, off, 0f, false);
+                else AddBoxR(anchor, new Vector2(0.6f, 0.45f), 0.3f, new Color(0.85f, 0.80f, 0.70f), null, false, off, false);
+                // Kırmızı ahır
+                AddBoxR(anchor, new Vector2(0.7f, 0.5f), 0.35f, new Color(0.62f, 0.22f, 0.18f), null, false, off + new Vector2(0.9f, 0.2f), false);
+            }
+        }
+
         /// <summary>Binadan yola doğru birim vektör.</summary>
         static Vector2 FrontDir(CityMap map, Vector2Int t)
         {
@@ -391,7 +433,7 @@ namespace KuryeTycoon
 
         /// <summary>Prefabı kareye sığdırır (footprint) ya da verilen boya ölçekler, tabanı yere oturtur, yüzünü döndürür.</summary>
         void AddPrefab(GameObject prefab, Vector2Int tile, float footprint, float faceAngle, Shop shop,
-                       Vector2 offset = default, float targetHeight = 0f)
+                       Vector2 offset = default, float targetHeight = 0f, bool registerHeight = true)
         {
             if (prefab == null) return;
             var holder = Holder(prefab.name, tile, offset);
@@ -420,9 +462,9 @@ namespace KuryeTycoon
             inst.transform.position += new Vector3(holder.position.x - b.center.x, holder.position.y - b.center.y, -b.max.z);
             float height = b.size.z;
 
-            pieces.Add(new Piece { t = holder, height = height, prefab = true, tileX = tile.x, shop = shop });
-            if (targetHeight <= 0f) heightByTile[tile] = height;
-            Tint(renderers, !CityMap.I.IsUnlocked(tile.x));
+            pieces.Add(new Piece { t = holder, height = height, prefab = true, tile = tile, shop = shop });
+            if (targetHeight <= 0f && registerHeight) heightByTile[tile] = height;
+            Tint(renderers, !CityMap.I.IsUnlocked(tile));
         }
 
         static Bounds CombinedBounds(Renderer[] rs)
@@ -501,8 +543,8 @@ namespace KuryeTycoon
             inst.transform.localScale = Vector3.one * s;
             b = CombinedBounds(renderers);
             inst.transform.position += new Vector3(holder.position.x - b.center.x, holder.position.y - b.center.y, -0.002f - b.min.z); // üst yüzey zeminin hemen üstünde
-            pieces.Add(new Piece { t = holder, prefab = true, flat = true, tileX = tile.x });
-            Tint(renderers, !CityMap.I.IsUnlocked(tile.x));
+            pieces.Add(new Piece { t = holder, prefab = true, flat = true, tile = tile });
+            Tint(renderers, !CityMap.I.IsUnlocked(tile));
         }
 
         // ---------- Kutu bina (paket yoksa) ----------
@@ -522,7 +564,7 @@ namespace KuryeTycoon
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
             mf.sharedMesh = BoxMesh();
-            pieces.Add(new Piece { t = holder, mf = mf, height = height, baseColor = c, tileX = tile.x, shop = shop, hq = hq });
+            pieces.Add(new Piece { t = holder, mf = mf, height = height, baseColor = c, tile = tile, shop = shop, hq = hq });
             if (registerHeight) heightByTile[tile] = height;
         }
 
@@ -579,12 +621,12 @@ namespace KuryeTycoon
             {
                 if (p.prefab)
                 {
-                    Tint(p.t.GetComponentsInChildren<Renderer>(true), !map.IsUnlocked(p.tileX));
+                    Tint(p.t.GetComponentsInChildren<Renderer>(true), !map.IsUnlocked(p.tile));
                     continue;
                 }
                 var c = p.hq ? CompanyProfile.Primary : p.baseColor;
                 if (p.shop != null && !p.shop.contracted) c = Color.Lerp(c, new Color(0.45f, 0.47f, 0.52f), 0.55f);
-                if (!map.IsUnlocked(p.tileX)) c = Color.Lerp(c, Color.black, 0.65f);
+                if (!map.IsUnlocked(p.tile)) c = CityMap.LockedTint(c);
                 Paint(p.mf.mesh, c);
             }
             lastUnlock = map.UnlockLevel;

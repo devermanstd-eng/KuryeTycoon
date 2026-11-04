@@ -50,7 +50,7 @@ namespace KuryeTycoon
             if (leaving) { Destroy(gameObject); return; }
             var options = new List<Shop>();
             foreach (var s in CityMap.I.Shops)
-                if (s.rivalContracted && CityMap.I.IsUnlocked(s.tile.x)) options.Add(s);
+                if (s.rivalContracted && CityMap.I.IsUnlocked(s.tile)) options.Add(s);
             carrying = false;
             if (options.Count == 0)
             {

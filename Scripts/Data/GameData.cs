@@ -75,6 +75,12 @@ namespace KuryeTycoon
             // Bölge 3 — Sanayi & Kampüs
             new ShopDef { name = "KFG",           color = new Color(0.70f, 0.15f, 0.10f), prepMinutes = 10, basketMin = 3000, basketMax = 7500,  commission = 0.22f, weight = 1.1f, contractCost = 80000,  unlockLevel = 3, hotFood = true, kgMin = 0.7f, kgMax = 3f },
             new ShopDef { name = "Sushi Samurai", color = new Color(0.95f, 0.95f, 0.95f), prepMinutes = 20, basketMin = 5000, basketMax = 15000, commission = 0.25f, weight = 0.7f, contractCost = 100000, unlockLevel = 3, hotFood = false, kgMin = 0.5f, kgMax = 2.5f },
+            // Bölge 4 — Batı Liman
+            new ShopDef { name = "Fish & Ships",  color = new Color(0.20f, 0.55f, 0.75f), prepMinutes = 15, basketMin = 3500, basketMax = 9000,  commission = 0.22f, weight = 0.9f, contractCost = 120000, unlockLevel = 4, hotFood = true, kgMin = 0.6f, kgMax = 3f },
+            new ShopDef { name = "Otogar Büfé",   color = new Color(0.90f, 0.62f, 0.15f), prepMinutes = 5,  basketMin = 1500, basketMax = 4000,  commission = 0.25f, weight = 1.2f, contractCost = 90000,  unlockLevel = 4, hotFood = true, kgMin = 0.3f, kgMax = 1.5f },
+            // Bölge 5 — Yeşil Tepe
+            new ShopDef { name = "Villa Gourmet", color = new Color(0.55f, 0.25f, 0.45f), prepMinutes = 25, basketMin = 6000, basketMax = 20000, commission = 0.25f, weight = 0.6f, contractCost = 160000, unlockLevel = 5, hotFood = true, kgMin = 0.8f, kgMax = 4f },
+            new ShopDef { name = "BioSzpar",      color = new Color(0.45f, 0.70f, 0.25f), prepMinutes = 12, basketMin = 4000, basketMax = 20000, commission = 0.14f, weight = 0.6f, contractCost = 140000, unlockLevel = 5, hotFood = false, isMarket = true, kgMin = 2f, kgMax = 20f },
         };
 
         public static readonly EquipmentDef[] Equipment =
