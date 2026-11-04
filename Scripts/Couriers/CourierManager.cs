@@ -199,6 +199,7 @@ namespace KuryeTycoon
             if (!Applications.Remove(c)) return;
             Spawn(c);
             EventManager.I.Notify($"{c.name} ({GameData.Vehicle(c.vehicle).name}) ekibe katıldı!");
+            if (GoalManager.I != null) GoalManager.I.OnHire();
         }
 
         public void Reject(CourierCandidate c)

@@ -59,8 +59,12 @@ namespace KuryeTycoon
             queue.Enqueue(e);
         }
 
+        /// <summary>Her bildirimde çağrılır (arayüzdeki bildirim kartları için).</summary>
+        public static System.Action<string> Notified;
+
         public void Notify(string msg)
         {
+            Notified?.Invoke(msg);
             var c = GameClock.I;
             Feed.Insert(0, c != null ? $"[{c.Hour:00}:{c.Minute:00}] {msg}" : msg);
             if (Feed.Count > 40) Feed.RemoveAt(Feed.Count - 1);

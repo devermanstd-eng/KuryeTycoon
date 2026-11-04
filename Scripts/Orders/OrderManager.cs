@@ -29,6 +29,8 @@ namespace KuryeTycoon
         public readonly int[] cancelledByHour = new int[24];
         public float reputationAtDayStart = -1f;
         public float cancelReputationPenalty = 0.015f;
+        [Tooltip("Dükkanın teslimat yarıçapı (kare, kuş uçuşu değil Manhattan). 1 kare ≈ 0,2 km.")]
+        public int deliveryRadius = 16;
         public int rejectedToday;   // kuryelerin reddettiği teklif
         public int heavyLostToday;  // taşıyabilecek kurye olmadığı için alınamayan ağır sipariş
         public int batchedToday;    // toplu teslimata eklenen sipariş
@@ -219,9 +221,9 @@ namespace KuryeTycoon
                 {
                     // Doğru adres: yakınlardaki başka bir bina
                     var map = CityMap.I;
-                    var realTile = map.RandomCustomerTile(o.shop.tile);
+                    var realTile = map.RandomCustomerTileNear(o.customerTile, 8);
                     for (int i = 0; i < 10 && CityMap.Manhattan(realTile, o.customerTile) > 8; i++)
-                        realTile = map.RandomCustomerTile(o.shop.tile);
+                        realTile = map.RandomCustomerTileNear(o.customerTile, 8);
                     var realDoor = map.GetDoor(realTile);
                     int extra = Mathf.Max(1, map.FindPath(o.customerDoor, realDoor).Count - 1);
 
@@ -314,7 +316,8 @@ namespace KuryeTycoon
             }
 
             var map = CityMap.I;
-            var custTile = map.RandomCustomerTile(shop.tile);
+            // Müşteriler dükkanın teslimat yarıçapı içinden sipariş verir (yakınlar daha sık): şehir büyüse de mesafeler makul kalır
+            var custTile = map.RandomCustomerTileNear(shop.tile, deliveryRadius);
             var custDoor = map.GetDoor(custTile);
             int dist = Mathf.Max(1, map.FindPath(shop.door, custDoor).Count - 1);
 
@@ -412,13 +415,17 @@ namespace KuryeTycoon
                 Pending.RemoveAt(i);
                 cancelledToday++;
                 cancelledByHour[GameClock.I.Hour]++;
+                if (GoalManager.I != null) GoalManager.I.OnCancelled();
                 if (RivalCompany.I != null) RivalCompany.I.OnCancelled(o);
                 bool rejected = o.priceDeclines > 0 || o.rejectedBy.Count > 0;
                 if (rejected) cancelledRejectedToday++;
-                CompanyProfile.AddReputation(-cancelReputationPenalty);
+                // Şirketin ilk günü: iptaller itibarı düşürmez (oyuncu daha düzenini kurmadan ceza yemesin)
+                bool grace = GameClock.I.CompanyDay <= 1;
+                if (!grace) CompanyProfile.AddReputation(-cancelReputationPenalty);
+                string tail = grace ? " (İlk gün: itibar etkilenmedi.)" : " İtibar düştü.";
                 EventManager.I.Notify(rejected
-                    ? $"#{o.id} ({o.shop.Name}) iptal oldu: kuryeler teklifi gördü ama kabul etmedi. İtibar düştü."
-                    : $"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu. İtibar düştü.");
+                    ? $"#{o.id} ({o.shop.Name}) iptal oldu: kuryeler teklifi gördü ama kabul etmedi.{tail}"
+                    : $"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu.{tail}");
             }
         }
 
@@ -639,6 +646,7 @@ namespace KuryeTycoon
             if (History.Count > 50) History.RemoveAt(History.Count - 1);
 
             CampaignManager.I.OnDelivered(c);
+            if (GoalManager.I != null) GoalManager.I.OnDelivered(o);
             EventManager.I.RollHygieneComplaint(o, c);
             EventManager.I.RollDeliveryIncident(o, c);
         }

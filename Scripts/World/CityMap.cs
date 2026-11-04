@@ -320,12 +320,12 @@ namespace KuryeTycoon
                 }
 
             // Ormanlar: rastgele kümeler
-            for (int k = 0; k < 34; k++)
+            for (int k = 0; k < 22; k++)   // performans: orman sayısı sınırlı
             {
                 var c = new Vector2((float)rng.NextDouble() * (Width + 2 * ring) - ring, (float)rng.NextDouble() * (Height + 2 * ring) - ring);
                 if (NearCountryFeature(c, 2f)) { k--; if (rng.NextDouble() < 0.02) break; continue; }
                 float radius = 1.5f + (float)rng.NextDouble() * 3f;
-                int n = 8 + rng.Next(14);
+                int n = 7 + rng.Next(10);
                 for (int i = 0; i < n; i++)
                 {
                     float a = (float)rng.NextDouble() * Mathf.PI * 2f, d = Mathf.Sqrt((float)rng.NextDouble()) * radius;
@@ -337,13 +337,13 @@ namespace KuryeTycoon
             // Şehrin kenarı boyunca ağaç sırası (şehir kırdan yumuşakça ayrılsın)
             for (float x = -1.5f; x < Width + 1f; x += 1.1f)
             {
-                if (rng.NextDouble() < 0.6) TryEdgeTree(new Vector2(x, -1.6f), rng);
-                if (rng.NextDouble() < 0.6) TryEdgeTree(new Vector2(x, Height + 0.6f), rng);
+                if (rng.NextDouble() < 0.4) TryEdgeTree(new Vector2(x, -1.6f), rng);
+                if (rng.NextDouble() < 0.4) TryEdgeTree(new Vector2(x, Height + 0.6f), rng);
             }
             for (float y = -1.5f; y < Height + 1f; y += 1.1f)
             {
-                if (rng.NextDouble() < 0.6) TryEdgeTree(new Vector2(-1.6f, y), rng);
-                if (rng.NextDouble() < 0.6) TryEdgeTree(new Vector2(Width + 0.6f, y), rng);
+                if (rng.NextDouble() < 0.4) TryEdgeTree(new Vector2(-1.6f, y), rng);
+                if (rng.NextDouble() < 0.4) TryEdgeTree(new Vector2(Width + 0.6f, y), rng);
             }
 
             // Çiftlikler: yollara yakın
@@ -791,6 +791,7 @@ namespace KuryeTycoon
             s.contractEndDay = GameClock.I.Day + (RivalCompany.I != null ? RivalCompany.I.contractDays : 182);
             s.satisfaction = Mathf.Max(s.satisfaction, 60f);
             RefreshColors();
+            if (GoalManager.I != null) GoalManager.I.OnContract();
             EventManager.I.Notify($"{s.Name} ile sözleşme imzalandı (komisyon %{s.Commission * 100f:0.#}).");
             return true;
         }
@@ -806,6 +807,25 @@ namespace KuryeTycoon
             foreach (var t in customerTiles)
                 if (IsUnlocked(t) && t != avoid && !reserved.Contains(t)) return t;
             return HQTile;
+        }
+
+        /// <summary>
+        /// Dükkanın çevresinden müşteri binası: yarıçap içinde, yakın binalar daha olası (Wolt'taki teslimat bölgesi gibi).
+        /// Uygun bina bulunamazsa şehirdeki herhangi bir açık bina.
+        /// </summary>
+        public Vector2Int RandomCustomerTileNear(Vector2Int shopTile, int radius)
+        {
+            for (int i = 0; i < 120; i++)
+            {
+                var t = customerTiles[Random.Range(0, customerTiles.Count)];
+                if (!IsUnlocked(t) || t == shopTile || reserved.Contains(t)) continue;
+                int d = Manhattan(t, shopTile);
+                if (d > radius) continue;
+                // Uzaklık arttıkça olasılık azalır (en uzakta ~%30)
+                if (Random.value > 1f - 0.7f * d / (float)radius) continue;
+                return t;
+            }
+            return RandomCustomerTile(shopTile);
         }
 
         /// <summary>Yollar üzerinde en kısa yol (BFS). Başlangıç ve bitiş dahil. Nehri sadece köprülerden geçer.</summary>

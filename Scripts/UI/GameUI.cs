@@ -9,8 +9,8 @@ namespace KuryeTycoon
     /// </summary>
     public partial class GameUI : MonoBehaviour
     {
-        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar }
-        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar" };
+        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler }
+        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar", "Haftalık Hedefler" };
 
         public float panelWidth = 460f;     // açılan pencerenin genişliği
         const float TopBar = 60f;
@@ -49,8 +49,12 @@ namespace KuryeTycoon
 
         static string Ft(long v) => GameData.Ft(v);
 
+        void OnDestroy() { EventManager.Notified -= OnNotified; }
+
         void Start()
         {
+            EventManager.Notified -= OnNotified;
+            EventManager.Notified += OnNotified;
             primary = CompanyProfile.Primary;
             secondary = CompanyProfile.Secondary;
         }
@@ -103,9 +107,11 @@ namespace KuryeTycoon
             DrawFeed(sw, sh);
             DrawZoomButtons(sh);
             DrawLegend(sh);
+            DrawGoalTracker();
             DrawCourierPopup(sw, sh);
             DrawInfoMarker();
             DrawInfoPopup(sw, sh);
+            DrawToasts(sw, sh);
             GUI.enabled = true;
             DrawEvent(sw, sh);
             if (pauseMenuOpen) DrawPauseMenu(sw, sh);
@@ -330,40 +336,29 @@ namespace KuryeTycoon
         }
 
         // ---------------------------------------------------------------- harita etiketleri
+        struct LabelReq { public Vector2 p; public string text; public Color color; public bool landmark; public Rect r; public bool skip; }
+        readonly List<LabelReq> labelReqs = new List<LabelReq>();
+        readonly List<Rect> labelPlaced = new List<Rect>();
+
+        void QueueLabel(Camera cam, Vector3 world, string text, Color color, bool landmark = false)
+        {
+            Vector3 sp = cam.WorldToScreenPoint(world);
+            if (sp.z < 0f) return;
+            labelReqs.Add(new LabelReq { p = new Vector2(sp.x / uiScale, (Screen.height - sp.y) / uiScale), text = text, color = color, landmark = landmark });
+        }
+
+        /// <summary>
+        /// Harita etiketleri. Çakışmasınlar diye önem sırasına göre yerleştirilir: kuryeler, merkez ofis, dükkanlar, rakipler, yer adları.
+        /// Çakışan etiket biraz yukarı/aşağı kaydırılır; yer adı çakışırsa hiç gösterilmez. Önemli olan en üstte çizilir.
+        /// </summary>
         void DrawWorldLabels()
         {
             var cam = Camera.main;
             if (cam == null || CityMap.I == null) return;
+            labelReqs.Clear();
+            float zoom = MapCamera.I != null ? MapCamera.I.Zoom : 1f;
 
-            // Yer adları (park, nehir, AVM, bölge): kilitli bölgedekiler soluk
-            if (ShowLandmarks)
-                foreach (var lm in CityMap.Landmarks)
-                {
-                    bool open = CityMap.I.IsUnlocked(Vector2Int.RoundToInt(lm.pos));
-                    var c = open ? lm.color : UITheme.WithAlpha(lm.color, 0.45f);
-                    LandmarkLabel(cam, CityMap.ToWorld(lm.pos) + MapCamera.LabelOffset(0f, 0.05f), lm.name, c);
-                }
-
-            foreach (var s in CityMap.I.Shops)
-            {
-                if (!CityMap.I.IsUnlocked(s.tile)) continue;
-                WorldLabel(cam, CityMap.ToWorld(s.tile) + MapCamera.LabelOffset(0.7f, BuildingTop(s.tile) + 0.2f),
-                    s.contracted ? s.Name : s.Name + " (sözleşmesiz)",
-                    s.contracted ? Color.white : new Color(0.7f, 0.7f, 0.7f));
-            }
-
-            float hqTop = BuildingTop(CityMap.I.HQTile);
-            WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary);
-            WorldLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white);
-
-            // Rakip kuryeler: sadece yakındayken, soluk mor etiket
-            if (RivalFleet.I != null && MapCamera.I != null && MapCamera.I.ShowModels)
-                foreach (var a in RivalFleet.I.Agents)
-                    if (a != null && a.Visible)
-                        WorldLabel(cam, CityMap.ToWorld(a.Position) + MapCamera.LabelOffset(0.5f, 0.55f), a.label,
-                                   Color.Lerp(RivalFleet.RivalColor, Color.white, 0.4f));
-
-            // Aynı karedeki kuryelerin isimleri üst üste binmesin
+            // 1) Kuryeler (aynı karedekiler üst üste dizilir)
             var stack = new Dictionary<Vector2Int, int>();
             foreach (var c in CourierManager.I.Couriers)
             {
@@ -371,9 +366,91 @@ namespace KuryeTycoon
                 stack.TryGetValue(key, out int n);
                 stack[key] = n + 1;
                 bool hi = c == popupCourier || c == hoverCourier;
-                WorldLabel(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n),
+                QueueLabel(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n),
                     $"{c.ShortName} ({c.V.letter})", hi ? new Color(1f, 0.85f, 0.2f) : Color.white);
             }
+
+            // 2) Merkez ofis
+            float hqTop = BuildingTop(CityMap.I.HQTile);
+            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary);
+            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white);
+
+            // 3) Dükkanlar (uzaktayken sözleşmesizler gizlenir: harita kalabalık olmasın)
+            foreach (var s in CityMap.I.Shops)
+            {
+                if (!CityMap.I.IsUnlocked(s.tile)) continue;
+                if (!s.contracted && zoom < 0.3f && infoShop != s) continue;
+                QueueLabel(cam, CityMap.ToWorld(s.tile) + MapCamera.LabelOffset(0.7f, BuildingTop(s.tile) + 0.2f),
+                    s.contracted ? s.Name : s.Name + " (sözleşmesiz)",
+                    s.contracted ? Color.white : new Color(0.7f, 0.7f, 0.7f));
+            }
+
+            // 4) Rakip kuryeler: sadece yakındayken
+            if (RivalFleet.I != null && MapCamera.I != null && MapCamera.I.ShowModels)
+                foreach (var a in RivalFleet.I.Agents)
+                    if (a != null && a.Visible)
+                        QueueLabel(cam, CityMap.ToWorld(a.Position) + MapCamera.LabelOffset(0.5f, 0.55f), a.label,
+                                   Color.Lerp(RivalFleet.RivalColor, Color.white, 0.4f));
+
+            // 5) Yer adları: kilitli bölgedekiler soluk
+            if (ShowLandmarks)
+                foreach (var lm in CityMap.Landmarks)
+                {
+                    bool open = CityMap.I.IsUnlocked(Vector2Int.RoundToInt(lm.pos));
+                    var c = open ? lm.color : UITheme.WithAlpha(lm.color, 0.45f);
+                    QueueLabel(cam, CityMap.ToWorld(lm.pos) + MapCamera.LabelOffset(0f, 0.05f), lm.name, c, true);
+                }
+
+            // Yerleştir
+            if (landmarkStyle == null)
+                landmarkStyle = new GUIStyle(worldLabel) { fontStyle = FontStyle.BoldAndItalic, fontSize = 13, alignment = TextAnchor.MiddleCenter };
+            labelPlaced.Clear();
+            float[] shifts = { 0f, -19f, 19f, -38f, 38f };
+            for (int i = 0; i < labelReqs.Count; i++)
+            {
+                var q = labelReqs[i];
+                var style = q.landmark ? landmarkStyle : worldLabel;
+                float tw = style.CalcSize(new GUIContent(q.text)).x + 14f;
+                var baseR = new Rect(q.p.x - tw / 2f, q.p.y - 9f, tw, 18f);
+                q.r = baseR;
+                q.skip = false;
+                bool ok = false;
+                foreach (float dy in q.landmark ? new[] { 0f } : shifts)
+                {
+                    var r = new Rect(baseR.x, baseR.y + dy, baseR.width, baseR.height);
+                    bool hit = false;
+                    foreach (var o in labelPlaced) if (o.Overlaps(r)) { hit = true; break; }
+                    if (!hit) { q.r = r; ok = true; break; }
+                }
+                if (!ok && q.landmark) q.skip = true;
+                if (!q.skip) labelPlaced.Add(q.r);
+                labelReqs[i] = q;
+            }
+
+            // Önemsizden önemliye çiz: kuryeler en üstte kalsın
+            for (int i = labelReqs.Count - 1; i >= 0; i--)
+            {
+                var q = labelReqs[i];
+                if (q.skip) continue;
+                if (q.landmark) DrawLandmarkAt(q.r, q.text, q.color);
+                else DrawPillAt(q.r, q.text, q.color);
+            }
+        }
+
+        void DrawPillAt(Rect r, string text, Color color)
+        {
+            UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.72f), 9f);
+            worldLabel.normal.textColor = color;
+            GUI.Label(new Rect(r.center.x - 120f, r.y - 1f, 240f, 20f), text, worldLabel);
+        }
+
+        void DrawLandmarkAt(Rect r, string text, Color color)
+        {
+            var lr = new Rect(r.center.x - 120f, r.center.y - 11f, 240f, 22f);
+            landmarkStyle.normal.textColor = new Color(0f, 0f, 0f, color.a * 0.75f);
+            GUI.Label(new Rect(lr.x + 1, lr.y + 1, lr.width, lr.height), text, landmarkStyle);
+            landmarkStyle.normal.textColor = color;
+            GUI.Label(lr, text, landmarkStyle);
         }
 
         const string LandmarkKey = "KuryeTycoon.HaritaEtiketleri";
@@ -500,6 +577,8 @@ namespace KuryeTycoon
                            !(legendOpen && LegendRect(sh).Contains(m)) &&
                            !(popupCourier != null && PopupRect(sw, sh).Contains(m)) &&
                            !(InfoOpen && InfoRect(sw, sh).Contains(m)) &&
+                           !(TrackerVisible && GoalTrackerRect().Contains(m)) &&
+                           !ToastAt(m, sw) &&
                            !new Rect(DockW + 10f, sh - 44f, 380f, 30f).Contains(m);
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
@@ -762,6 +841,7 @@ namespace KuryeTycoon
         static readonly (Tab tab, Icons.Kind icon, string label)[] DockItems =
         {
             (Tab.Siparisler, Icons.Kind.Orders, "Siparişler"),
+            (Tab.Hedefler, Icons.Kind.Flag, "Hedefler"),
             (Tab.Kuryeler, Icons.Kind.Couriers, "Kuryeler"),
             (Tab.IseAlim, Icons.Kind.Hiring, "İşe Alım"),
             (Tab.Dukkanlar, Icons.Kind.Shops, "Dükkanlar"),
@@ -885,6 +965,7 @@ namespace KuryeTycoon
                 case Tab.Gelistirmeler: DrawUpgrades(); break;
                 case Tab.Finans: DrawFinance(); break;
                 case Tab.Ayarlar: DrawSettings(); break;
+                case Tab.Hedefler: DrawGoals(); break;
             }
 
             GUILayout.EndScrollView();
@@ -1931,6 +2012,8 @@ namespace KuryeTycoon
             GUILayout.Label("Harita", header);
             bool lm = GUILayout.Toggle(ShowLandmarks, " Yer adlarını göster (park, nehir, AVM, bölgeler)", toggle);
             if (lm != ShowLandmarks) ShowLandmarks = lm;
+            bool traffic = GUILayout.Toggle(Traffic.Enabled, " Trafik: arabalar, otobüsler, yayalar (kapatmak performansı artırır)", toggle);
+            if (traffic != Traffic.Enabled) deferred = () => { Traffic.Enabled = traffic; if (Traffic.I != null) Traffic.I.Build(); };
             bool persp = GUILayout.Toggle(MapCamera.PerspectiveSetting, " Perspektif kamera (derinlik hissi; kapalıysa düz/ortografik)", toggle);
             if (persp != MapCamera.PerspectiveSetting) MapCamera.PerspectiveSetting = persp;
             GUILayout.Space(8);

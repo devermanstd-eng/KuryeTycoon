@@ -569,7 +569,7 @@ namespace KuryeTycoon
         }
 
         /// <summary>Birim kutu: taban z=0, çatı z=−1. Görünen yüzler (yanlar, güney cephe, çatı); renk vertex renginde.</summary>
-        static Mesh BoxMesh()
+        public static Mesh BoxMesh()
         {
             var m = new Mesh();
             var v = new List<Vector3>();
@@ -595,7 +595,7 @@ namespace KuryeTycoon
             return m;
         }
 
-        static void Paint(Mesh m, Color baseColor)
+        public static void Paint(Mesh m, Color baseColor)
         {
             var side = Color.Lerp(baseColor, Color.black, 0.45f);
             var front = Color.Lerp(baseColor, Color.black, 0.28f);

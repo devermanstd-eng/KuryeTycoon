@@ -140,6 +140,7 @@ namespace KuryeTycoon
         public int supportHandledThisMonth;
         public OpsSave ops;
         public RivalSave rival;
+        public GoalSave goals;
         public LoanSave loan;
         public List<DayRecord> history = new List<DayRecord>();
         public List<string> milestoneIds = new List<string>();
@@ -297,6 +298,7 @@ namespace KuryeTycoon
                 supportHandledThisMonth = SupportManager.I.handledThisMonth,
                 ops = OperationsManager.I.CaptureSave(),
                 rival = RivalCompany.I.CaptureSave(),
+                goals = GoalManager.I != null ? GoalManager.I.CaptureSave() : null,
                 loan = FamilyLoan.I.CaptureSave()
             };
 
@@ -387,6 +389,7 @@ namespace KuryeTycoon
             SupportManager.I.handledThisMonth = d.supportHandledThisMonth;
             if (d.ops != null) OperationsManager.I.RestoreSave(d.ops);
             if (d.rival != null) RivalCompany.I.RestoreSave(d.rival);
+            if (d.goals != null && GoalManager.I != null) GoalManager.I.RestoreSave(d.goals);
             WeatherSystem.I.Restore((WeatherKind)d.weather);
             if (StatsHistory.I != null) StatsHistory.I.Restore(d.history);
             if (Milestones.I != null) Milestones.I.Restore(d.milestoneIds, d.milestoneDates);

@@ -12,7 +12,7 @@ namespace KuryeTycoon
     public static class Icons
     {
         public enum Kind { Orders, Couriers, Hiring, Support, Upgrades, Shops, Equipment, Campaigns, Finance, Settings, Close,
-                          Wallet, Coins, Star, Clock, Sun, Cloud, Rain, Snow, Storm, Bolt, Pause, Play, Warning, Heart }
+                          Wallet, Coins, Star, Clock, Sun, Cloud, Rain, Snow, Storm, Bolt, Pause, Play, Warning, Heart, Flag }
 
         const int Size = 96;
         static readonly Dictionary<Kind, Texture2D> cache = new Dictionary<Kind, Texture2D>();
@@ -292,6 +292,9 @@ namespace KuryeTycoon
                         float tri = Triangle(p, V(-0.76f, 0.08f), V(0.76f, 0.08f), V(0f, -0.82f));
                         return U(U(a, b), tri);
                     };
+                case Kind.Flag: // bayrak (hedefler)
+                    return p => U(Box(p, V(-0.55f, 0f), V(0.08f, 0.88f), 0.05f),
+                                  Triangle(p, V(-0.5f, 0.85f), V(-0.5f, 0.05f), V(0.78f, 0.45f)) - 0.04f);
                 default: // kapat (çarpı)
                     return p => U(Segment(p, V(-0.6f, -0.6f), V(0.6f, 0.6f), 0.11f), Segment(p, V(-0.6f, 0.6f), V(0.6f, -0.6f), 0.11f));
             }

@@ -62,10 +62,12 @@ namespace KuryeTycoon
             Make<WeatherSystem>("Hava");
             Make<CityMap>("Şehir Haritası");
             Make<City3D>("3D Şehir");
+            Make<Traffic>("Trafik");
             Make<MapCamera>("Harita Kamerası");
             Make<CourierManager>("Kurye Yönetimi");
             Make<OrderManager>("Siparişler");
             Make<CampaignManager>("Kampanyalar");
+            Make<GoalManager>("Haftalık Hedefler");
             Make<UpgradeManager>("Geliştirmeler");
             Make<SupportManager>("Destek Ekibi");
             Make<OperationsManager>("Operasyon Sorumlusu");
@@ -115,6 +117,7 @@ namespace KuryeTycoon
             Random.InitState(seed);
             CityMap.I.Generate();
             City3D.I.Build();
+            Traffic.I.Build();
             Random.state = old;
         }
 
@@ -146,6 +149,7 @@ namespace KuryeTycoon
                 SupportManager.I.Init();
                 OperationsManager.I.Init();
                 RivalCompany.I.Init();
+                GoalManager.I.Init();
                 FamilyLoan.I.principal = d.loan != null && d.loan.principal > 0 ? d.loan.principal : familyLoanAmount;
                 FamilyLoan.I.InitRestored(d.loan);
                 SaveSystem.ApplyAfterInit(d);
@@ -176,12 +180,13 @@ namespace KuryeTycoon
             EconomyManager.I.InitCashMarkers();
             GenerateWorld(Random.Range(1, int.MaxValue));
             CourierManager.I.Init();
-            foreach (var v in starterCouriers) CourierManager.I.HireStarter(v);
+            foreach (var v in starterCouriers) CourierManager.I.HireStarter(v).StartShift();
             OrderManager.I.Init();
             CampaignManager.I.Init();
             SupportManager.I.Init();
             OperationsManager.I.Init();
             RivalCompany.I.Init();
+            GoalManager.I.Init();
             FamilyLoan.I.principal = familyLoanAmount;
             FamilyLoan.I.Init();
             SaveSystem.I.Init();
@@ -190,7 +195,8 @@ namespace KuryeTycoon
             GameClock.I.Paused = false;
 
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
-                "Merkez ofisin haritanın sol alt köşesinde. 2 kuryen ve 2 sözleşmeli dükkanın var.\n" +
+                "Merkez ofisin Merkez Mahalle'deki Kossuth Meydanı'nda. 2 kuryen işbaşında ve 2 sözleşmeli dükkanın var.\n" +
+                "İlk gün iptal olan siparişler itibarını düşürmez: ekibini tanı, ilk siparişlerini teslim et.\n" +
                 "Aile borcunu ve taksitleri üst barda ve Finans sekmesinde görürsün.\n\n" +
                 "• Siparişler otomatik atanır; istersen Siparişler sekmesinden kendin ata.\n" +
                 "• Zararına iş yapılmaz: teslimat ücreti her zaman kurye ücretini karşılar.\n" +

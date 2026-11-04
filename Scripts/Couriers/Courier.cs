@@ -507,6 +507,12 @@ namespace KuryeTycoon
             State = CourierState.Bosta;
         }
 
+        /// <summary>Yeni oyunun ilk sabahı: başlangıç kuryeleri işbaşında olsun (oyuncu daha başlamadan iptal cezası yemesin).</summary>
+        public void StartShift()
+        {
+            if (State == CourierState.Cevrimdisi && !dayOff) GoOnline();
+        }
+
         // ================================================================== para / araç / sigorta
 
         /// <summary>Kurye kazanır; bir kısmını biriktirir.</summary>
