@@ -11,7 +11,8 @@ namespace KuryeTycoon
     /// </summary>
     public static class Icons
     {
-        public enum Kind { Orders, Couriers, Hiring, Support, Upgrades, Shops, Equipment, Campaigns, Finance, Settings, Close }
+        public enum Kind { Orders, Couriers, Hiring, Support, Upgrades, Shops, Equipment, Campaigns, Finance, Settings, Close,
+                          Wallet, Coins, Star, Clock, Sun, Cloud, Rain, Snow, Storm, Bolt, Pause, Play, Warning, Heart }
 
         const int Size = 96;
         static readonly Dictionary<Kind, Texture2D> cache = new Dictionary<Kind, Texture2D>();
@@ -92,6 +93,34 @@ namespace KuryeTycoon
             float dx = Mathf.Min(Mathf.Min(pq0.sqrMagnitude, pq1.sqrMagnitude), pq2.sqrMagnitude);
             float dy = Mathf.Min(Mathf.Min(s * Cross(v0, e0), s * Cross(v1, e1)), s * Cross(v2, e2));
             return -Mathf.Sqrt(dx) * Mathf.Sign(dy);
+        }
+
+        static float Star5(Vector2 p, float r, float rf)
+        {
+            var k1 = new Vector2(0.809016994f, -0.587785252f);
+            var k2 = new Vector2(-k1.x, k1.y);
+            p.x = Mathf.Abs(p.x);
+            p -= 2f * Mathf.Max(Vector2.Dot(k1, p), 0f) * k1;
+            p -= 2f * Mathf.Max(Vector2.Dot(k2, p), 0f) * k2;
+            p.x = Mathf.Abs(p.x);
+            p.y -= r;
+            var ba = rf * new Vector2(-k1.y, k1.x) - new Vector2(0f, 1f);
+            float h = Mathf.Clamp(Vector2.Dot(p, ba) / Vector2.Dot(ba, ba), 0f, r);
+            return (p - ba * h).magnitude * Mathf.Sign(p.y * ba.x - p.x * ba.y);
+        }
+
+        static float CloudShape(Vector2 p, Vector2 o)
+        {
+            p -= o;
+            return U(U(Circle(p, V(-0.38f, -0.08f), 0.33f), Circle(p, V(0.08f, 0.14f), 0.44f)),
+                     U(Circle(p, V(0.5f, -0.1f), 0.3f), Box(p, V(0.05f, -0.26f), V(0.74f, 0.16f), 0.16f)));
+        }
+
+        static float BoltShape(Vector2 p, float s, Vector2 o)
+        {
+            p = (p - o) / s;
+            return U(Triangle(p, V(0.2f, 0.95f), V(-0.5f, -0.08f), V(0.12f, -0.08f)),
+                     Triangle(p, V(-0.12f, 0.12f), V(0.5f, 0.12f), V(-0.2f, -0.95f))) * s;
         }
 
         static float U(float a, float b) => Mathf.Min(a, b);          // birleşim
@@ -184,6 +213,84 @@ namespace KuryeTycoon
                         float teeth = Mathf.Clamp(Mathf.Cos(ang * 8f) * 3f, -1f, 1f);
                         float outer = p.magnitude - (0.66f + 0.13f * teeth);
                         return Sub(outer, Circle(p, Vector2.zero, 0.27f));
+                    };
+                case Kind.Wallet:
+                    return p =>
+                    {
+                        float body = Box(p, V(0f, -0.08f), V(0.84f, 0.62f), 0.16f);
+                        float clasp = Box(p, V(0.62f, -0.08f), V(0.34f, 0.2f), 0.1f);
+                        float strap = Box(p, V(-0.08f, 0.62f), V(0.62f, 0.09f), 0.05f);
+                        return U(U(Sub(body, clasp), Circle(p, V(0.58f, -0.08f), 0.09f)), Sub(strap, Box(p, V(0f, 0.3f), V(1f, 0.24f))));
+                    };
+                case Kind.Coins:
+                    return p => U(Sub(Circle(p, Vector2.zero, 0.86f), Ring(p, Vector2.zero, 0.58f, 0.07f)), 1f);
+                case Kind.Star:
+                    return p => Star5(p - V(0f, -0.08f), 0.92f, 0.46f);
+                case Kind.Clock:
+                    return p => U(U(Ring(p, Vector2.zero, 0.78f, 0.11f), Segment(p, Vector2.zero, V(0f, 0.48f), 0.085f)),
+                                  Segment(p, Vector2.zero, V(0.34f, -0.14f), 0.085f));
+                case Kind.Sun:
+                    return p =>
+                    {
+                        float d = Circle(p, Vector2.zero, 0.38f);
+                        for (int i = 0; i < 8; i++)
+                        {
+                            float a = i * Mathf.PI / 4f;
+                            var dir = V(Mathf.Cos(a), Mathf.Sin(a));
+                            d = U(d, Segment(p, dir * 0.58f, dir * 0.86f, 0.075f));
+                        }
+                        return d;
+                    };
+                case Kind.Cloud:
+                    return p => CloudShape(p, V(0f, -0.05f));
+                case Kind.Rain:
+                    return p =>
+                    {
+                        float d = CloudShape(p, V(0f, 0.28f));
+                        for (int i = 0; i < 3; i++)
+                            d = U(d, Segment(p, V(-0.4f + i * 0.4f, -0.3f), V(-0.52f + i * 0.4f, -0.72f), 0.07f));
+                        return d;
+                    };
+                case Kind.Snow:
+                    return p =>
+                    {
+                        float d = Circle(p, Vector2.zero, 0.14f);
+                        for (int i = 0; i < 3; i++)
+                        {
+                            float a = i * Mathf.PI / 3f + Mathf.PI / 2f;
+                            var dir = V(Mathf.Cos(a), Mathf.Sin(a));
+                            d = U(d, Segment(p, -dir * 0.86f, dir * 0.86f, 0.075f));
+                            var side = V(-dir.y, dir.x);
+                            foreach (float sgn in new[] { 1f, -1f })
+                            {
+                                var tip = dir * 0.55f * sgn;
+                                d = U(d, Segment(p, tip, tip + (dir * sgn * 0.22f + side * 0.2f), 0.06f));
+                                d = U(d, Segment(p, tip, tip + (dir * sgn * 0.22f - side * 0.2f), 0.06f));
+                            }
+                        }
+                        return d;
+                    };
+                case Kind.Storm:
+                    return p => U(CloudShape(p, V(0f, 0.3f)), BoltShape(p, 0.5f, V(0.05f, -0.5f)));
+                case Kind.Bolt:
+                    return p => BoltShape(p, 1f, Vector2.zero);
+                case Kind.Pause:
+                    return p => U(Box(p, V(-0.32f, 0f), V(0.17f, 0.7f), 0.06f), Box(p, V(0.32f, 0f), V(0.17f, 0.7f), 0.06f));
+                case Kind.Play:
+                    return p => Triangle(p, V(-0.5f, -0.75f), V(-0.5f, 0.75f), V(0.75f, 0f)) - 0.04f;
+                case Kind.Warning:
+                    return p =>
+                    {
+                        float tri = Triangle(p, V(-0.88f, -0.75f), V(0.88f, -0.75f), V(0f, 0.85f)) - 0.06f;
+                        float mark = U(Box(p, V(0f, 0.08f), V(0.08f, 0.3f), 0.06f), Circle(p, V(0f, -0.45f), 0.1f));
+                        return Sub(tri, mark);
+                    };
+                case Kind.Heart:
+                    return p =>
+                    {
+                        float a = Circle(p, V(-0.36f, 0.25f), 0.42f), b = Circle(p, V(0.36f, 0.25f), 0.42f);
+                        float tri = Triangle(p, V(-0.76f, 0.08f), V(0.76f, 0.08f), V(0f, -0.82f));
+                        return U(U(a, b), tri);
                     };
                 default: // kapat (çarpı)
                     return p => U(Segment(p, V(-0.6f, -0.6f), V(0.6f, 0.6f), 0.11f), Segment(p, V(-0.6f, 0.6f), V(0.6f, -0.6f), 0.11f));

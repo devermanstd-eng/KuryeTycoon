@@ -13,7 +13,7 @@ namespace KuryeTycoon
         static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar" };
 
         public float panelWidth = 460f;     // açılan pencerenin genişliği
-        const float TopBar = 48f;
+        const float TopBar = 60f;
         const float DockW = 76f;            // soldaki simge çubuğu
         bool panelOpen;                     // simgeye tıklanınca açılan pencere
 
@@ -581,6 +581,62 @@ namespace KuryeTycoon
         }
 
         // ---------------------------------------------------------------- üst bar
+        GUIStyle topCaption, topValue, topName;
+
+        static Icons.Kind WeatherIcon(WeatherKind k)
+        {
+            switch (k)
+            {
+                case WeatherKind.Gunesli: case WeatherKind.Sicak: return Icons.Kind.Sun;
+                case WeatherKind.Bulutlu: return Icons.Kind.Cloud;
+                case WeatherKind.Yagmurlu: return Icons.Kind.Rain;
+                case WeatherKind.Soguk: case WeatherKind.Karli: return Icons.Kind.Snow;
+                default: return Icons.Kind.Storm;
+            }
+        }
+
+        static Color WeatherTint(WeatherKind k)
+        {
+            switch (k)
+            {
+                case WeatherKind.Gunesli: return new Color(1f, 0.80f, 0.25f);
+                case WeatherKind.Sicak: return new Color(1f, 0.55f, 0.25f);
+                case WeatherKind.Bulutlu: return new Color(0.75f, 0.80f, 0.88f);
+                case WeatherKind.Yagmurlu: return new Color(0.45f, 0.70f, 1f);
+                case WeatherKind.Soguk: case WeatherKind.Karli: return new Color(0.70f, 0.88f, 1f);
+                default: return new Color(0.70f, 0.60f, 1f);
+            }
+        }
+
+        /// <summary>Üst bardaki bilgi kartı: renkli simge dairesi, küçük başlık, kalın değer. Genişliğini döndürür.</summary>
+        float StatCard(float x, Icons.Kind icon, Color tint, string caption, string value, Color? bg = null, Color? valueColor = null)
+        {
+            float textW = Mathf.Max(topCaption.CalcSize(new GUIContent(caption)).x, topValue.CalcSize(new GUIContent(value)).x);
+            float w = 44f + textW + 14f;
+            var r = new Rect(x, 9f, w, TopBar - 18f);
+            UITheme.Box(r, bg ?? UITheme.WithAlpha(Color.white, 0.055f), 12f);
+            var ic = new Rect(r.x + 7f, r.center.y - 14f, 28f, 28f);
+            UITheme.Box(ic, UITheme.WithAlpha(tint, 0.18f), 14f);
+            Icons.Draw(new Rect(ic.x + 6f, ic.y + 6f, 16f, 16f), icon, tint);
+            topCaption.normal.textColor = UITheme.TextDim;
+            GUI.Label(new Rect(r.x + 42f, r.y + 3f, textW + 10f, 14f), caption, topCaption);
+            topValue.normal.textColor = valueColor ?? UITheme.Text;
+            GUI.Label(new Rect(r.x + 42f, r.y + 16f, textW + 10f, 20f), value, topValue);
+            return w;
+        }
+
+        /// <summary>Uyarı hapı (boost, vergi borcu, aile borcu): dolu renkli, simgeli.</summary>
+        float AlertPill(float x, Icons.Kind icon, string text, Color bg, Color fg)
+        {
+            float w = topValue.CalcSize(new GUIContent(text)).x + 44f;
+            var r = new Rect(x, 13f, w, TopBar - 26f);
+            UITheme.Box(r, bg, 17f);
+            Icons.Draw(new Rect(r.x + 11f, r.center.y - 8f, 16f, 16f), icon, fg);
+            topValue.normal.textColor = fg;
+            GUI.Label(new Rect(r.x + 32f, r.y, w - 36f, r.height), text, topValue);
+            return w;
+        }
+
         void DrawTopBar(float sw)
         {
             var clock = GameClock.I;
@@ -589,68 +645,107 @@ namespace KuryeTycoon
             var prim = CompanyProfile.Primary;
             var sec = CompanyProfile.Secondary;
 
-            // Zemin: şirket rengi, altında ince gölge
-            Fill(new Rect(0, 0, sw, TopBar), prim);
-            Fill(new Rect(0, TopBar - 3, sw, 3), Color.Lerp(prim, Color.black, 0.25f));
-            Fill(new Rect(0, TopBar, sw, 4), new Color(0f, 0f, 0f, 0.18f));
-
-            // Logo: yuvarlak kare içinde baş harf + şirket adı
-            var logo = new Rect(12, 8, 32, 32);
-            UITheme.Box(logo, sec, 9f);
-            barText.normal.textColor = prim;
-            barText.fontSize = 17;
-            GUI.Label(logo, CompanyProfile.Initial, barText);
-            barText.fontSize = 12;
-            barTitle.normal.textColor = sec;
-            GUI.Label(new Rect(52, 0, 220, TopBar), CompanyProfile.Name, barTitle);
-
-            // Bilgi çipleri
-            var chips = new List<(string text, Color bg)>();
-            Color chip = UITheme.WithAlpha(Color.black, 0.16f);
-            chips.Add(($"Kasa  {Ft(eco.money)}", chip));
-            chips.Add(($"Serbest  {Ft(eco.FreeCash)}", eco.FreeCash < 0 ? UITheme.WithAlpha(UITheme.Bad, 0.85f) : chip));
-            chips.Add(($"★ {CompanyProfile.Reputation:0.0}", chip));
-            chips.Add(($"● {CourierManager.I.OnlineCount}/{CourierManager.I.Couriers.Count} çevrimiçi", chip));
-            chips.Add((clock.TimeText, chip));
-            chips.Add(($"{clock.SeasonName} · {weather.Name}", chip));
-            var boost = CampaignManager.I.ActiveWindow;
-            float wBoost = CampaignManager.I.WeatherBoostPercent;
-            if (boost != null && boost.percent >= wBoost) chips.Add(($"BOOST %{boost.percent * 100f:0} · {boost.TimeText}", UITheme.WithAlpha(UITheme.Warn, 0.9f)));
-            else if (wBoost > 0f) chips.Add(($"HAVA BOOSTU %{wBoost * 100f:0}", UITheme.WithAlpha(UITheme.Warn, 0.9f)));
-            if (eco.taxDebt > 0) chips.Add(($"VERGİ BORCU {Ft(eco.taxDebt)}", UITheme.WithAlpha(UITheme.Bad, 0.9f)));
-            if (FamilyLoan.I != null && !FamilyLoan.I.Finished) chips.Add((FamilyLoan.I.TopBarText, chip));
-
-            float speedW = 9 * 44f + 16f;
-            float x = 280f, maxX = sw - speedW - 16f;
-            barText.normal.textColor = sec;
-            foreach (var (t, bg) in chips)
+            if (topCaption == null)
             {
-                float w = barText.CalcSize(new GUIContent(t)).x + 22f;
-                if (x + w > maxX) break;
-                var r = new Rect(x, 11, w, 26);
-                UITheme.Box(r, bg, 13f);
-                GUI.Label(r, t, barText);
-                x += w + 6f;
+                topCaption = new GUIStyle(small) { fontSize = 10, fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperLeft, wordWrap = false };
+                topValue = new GUIStyle(small) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft, wordWrap = false };
+                topName = new GUIStyle(small) { fontSize = 16, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleLeft, wordWrap = false };
             }
 
-            // Hız seçici: tek hap içinde, seçili olan açık renkte
-            float bx = sw - speedW - 8f;
-            var group = new Rect(bx, 7, speedW, 34);
-            UITheme.Box(group, UITheme.WithAlpha(Color.black, 0.2f), 17f);
-            float[] speeds = { 0f, 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
+            // Zemin: koyu, altında şirket renginde ince şerit ve yumuşak gölge
+            Fill(new Rect(0, 0, sw, TopBar), new Color(0.06f, 0.065f, 0.08f, 0.97f));
+            Fill(new Rect(0, TopBar - 2, sw, 2), prim);
+            for (int i = 0; i < 6; i++) Fill(new Rect(0, TopBar + i, sw, 1), new Color(0f, 0f, 0f, 0.22f * (1f - i / 6f)));
+
+            // Logo + şirket adı (simge çubuğunun hizasında)
+            var logo = new Rect(17, 12, 36, 36);
+            UITheme.Box(logo, prim, 11f);
+            barText.normal.textColor = sec;
+            barText.fontSize = 19;
+            GUI.Label(logo, CompanyProfile.Initial, barText);
+            barText.fontSize = 12;
+            topName.normal.textColor = UITheme.Text;
+            float nameW = Mathf.Min(220f, topName.CalcSize(new GUIContent(CompanyProfile.Name)).x);
+            GUI.Label(new Rect(66, 0, nameW + 4, TopBar), CompanyProfile.Name, topName);
+
+            // Hız seçici genişliği (sağda)
+            float[] speeds = { 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
+            float segW = 40f, speedW = 46f + 8f + speeds.Length * segW + 8f;
+            float maxX = sw - speedW - 20f;
+
+            // Bilgi kartları
+            float x = Mathf.Max(DockW + 14f, 66f + nameW + 22f);
+            void Add(System.Func<float, float> draw, float estimate)
+            {
+                if (x + estimate > maxX) return;
+                x += draw(x) + 8f;
+            }
+            float Est(string cap, string val) => 58f + Mathf.Max(topCaption.CalcSize(new GUIContent(cap)).x, topValue.CalcSize(new GUIContent(val)).x);
+
+            string money = Ft(eco.money), free = Ft(eco.FreeCash);
+            Add(px => StatCard(px, Icons.Kind.Wallet, new Color(0.40f, 0.85f, 0.55f), "KASA", money), Est("KASA", money));
+            bool freeNeg = eco.FreeCash < 0;
+            Add(px => StatCard(px, Icons.Kind.Coins, freeNeg ? UITheme.Bad : new Color(0.45f, 0.75f, 1f), "SERBEST", free,
+                               freeNeg ? UITheme.WithAlpha(UITheme.Bad, 0.18f) : (Color?)null, freeNeg ? UITheme.Bad : (Color?)null), Est("SERBEST", free));
+            string rep = $"{CompanyProfile.Reputation:0.0} / 5";
+            Add(px => StatCard(px, Icons.Kind.Star, new Color(1f, 0.80f, 0.25f), "İTİBAR", rep), Est("İTİBAR", rep));
+            string cour = $"{CourierManager.I.OnlineCount} / {CourierManager.I.Couriers.Count}";
+            Add(px => StatCard(px, Icons.Kind.Couriers, prim, "ÇEVRİMİÇİ", cour), Est("ÇEVRİMİÇİ", cour));
+            string time = $"{clock.Hour:00}:{clock.Minute:00}";
+            string date = $"{clock.DayName.ToUpperInvariant()} · {clock.DateText.ToUpperInvariant()}";
+            Add(px => StatCard(px, Icons.Kind.Clock, new Color(0.85f, 0.85f, 0.95f), date, time), Est(date, time));
+            string season = clock.SeasonName.ToUpperInvariant();
+            Add(px => StatCard(px, WeatherIcon(weather.Current), WeatherTint(weather.Current), season, weather.Name), Est(season, weather.Name));
+
+            // Uyarılar
+            var boost = CampaignManager.I.ActiveWindow;
+            float wBoost = CampaignManager.I.WeatherBoostPercent;
+            var orange = new Color(1f, 0.62f, 0.20f);
+            if (boost != null && boost.percent >= wBoost)
+            {
+                string t = $"Boost %{boost.percent * 100f:0} · {boost.TimeText}";
+                Add(px => AlertPill(px, Icons.Kind.Bolt, t, orange, new Color(0.12f, 0.08f, 0.02f)), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
+            else if (wBoost > 0f)
+            {
+                string t = $"Hava boostu %{wBoost * 100f:0}";
+                Add(px => AlertPill(px, Icons.Kind.Bolt, t, orange, new Color(0.12f, 0.08f, 0.02f)), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
+            if (eco.taxDebt > 0)
+            {
+                string t = $"Vergi borcu {Ft(eco.taxDebt)}";
+                Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.Bad, Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
+            if (FamilyLoan.I != null && !FamilyLoan.I.Finished)
+            {
+                string t = FamilyLoan.I.TopBarText;
+                Add(px => AlertPill(px, Icons.Kind.Heart, t, UITheme.WithAlpha(Color.white, 0.08f), UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
+
+            // Hız seçici: oynat/duraklat düğmesi + hız segmentleri
+            float bx = sw - speedW - 12f;
+            var group = new Rect(bx, 9f, speedW, TopBar - 18f);
+            UITheme.Box(group, UITheme.WithAlpha(Color.white, 0.055f), 12f);
+            var pp = new Rect(bx + 4f, group.y + 4f, 46f, group.height - 8f);
+            bool paused = clock.Paused;
+            bool ppHover = pp.Contains(Event.current.mousePosition);
+            UITheme.Box(pp, paused ? UITheme.Warn : (ppHover ? UITheme.CardHi : UITheme.WithAlpha(Color.white, 0.08f)), 9f);
+            Icons.Draw(new Rect(pp.center.x - 8f, pp.center.y - 8f, 16f, 16f), paused ? Icons.Kind.Play : Icons.Kind.Pause,
+                       paused ? new Color(0.12f, 0.08f, 0.02f) : UITheme.Text);
+            if (GUI.Button(pp, GUIContent.none, GUIStyle.none)) clock.Paused = !clock.Paused;
+
+            float sx = pp.xMax + 8f;
             for (int i = 0; i < speeds.Length; i++)
             {
-                float s = speeds[i];
-                var r = new Rect(bx + 8 + i * 44f, 11, 40, 26);
-                bool on = s == 0f ? clock.Paused : IsSpeed(clock, s);
-                if (on) UITheme.Box(r, sec, 13f);
-                barText.normal.textColor = on ? prim : sec;
-                GUI.Label(r, s == 0f ? "II" : s + "x", barText);
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none))
-                {
-                    if (s == 0f) clock.Paused = !clock.Paused;
-                    else SetSpeed(s);
-                }
+                float sp = speeds[i];
+                var r = new Rect(sx + i * segW, group.y + 4f, segW - 2f, group.height - 8f);
+                bool on = IsSpeed(clock, sp);
+                bool hover = r.Contains(Event.current.mousePosition);
+                if (on) UITheme.Box(r, prim, 9f);
+                else if (hover) UITheme.Box(r, UITheme.WithAlpha(Color.white, 0.07f), 9f);
+                barText.normal.textColor = on ? sec : (paused ? UITheme.WithAlpha(UITheme.TextDim, 0.6f) : UITheme.TextDim);
+                GUI.Label(r, sp + "×", barText);
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none)) SetSpeed(sp);
             }
         }
 
