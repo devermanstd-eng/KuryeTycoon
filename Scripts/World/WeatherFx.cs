@@ -75,9 +75,15 @@ namespace KuryeTycoon
         {
             float rdt = Time.unscaledDeltaTime;
             Targets(out float tr, out float ts, out float tw, out float tsun, out float tcloud, out float tcold, out float tstorm, out float theat);
-            float k = 1f - Mathf.Exp(-rdt / 2.5f);   // ~2,5 sn'de geçiş
-            rainAmt = Mathf.Lerp(rainAmt, tr, k);
-            snowAmt = Mathf.Lerp(snowAmt, ts, k);
+            // Geçiş süresi oyun hızına göre: hızlandırınca hava da çabuk değişir, efekt geride kalmasın
+            float spd = GameClock.I != null && !GameClock.I.Paused ? Mathf.Max(1f, GameClock.I.SpeedMultiplier) : 1f;
+            float tt = Mathf.Clamp(2.5f / Mathf.Sqrt(spd), 0.25f, 2.5f);
+            float k = 1f - Mathf.Exp(-rdt / tt);
+            float kOut = 1f - Mathf.Exp(-rdt / (tt * 0.5f));   // yağış dururken daha hızlı kesilsin
+            rainAmt = Mathf.Lerp(rainAmt, tr, tr < rainAmt ? kOut : k);
+            snowAmt = Mathf.Lerp(snowAmt, ts, ts < snowAmt ? kOut : k);
+            if (tr <= 0f && rainAmt < 0.03f) rainAmt = 0f;
+            if (ts <= 0f && snowAmt < 0.03f) snowAmt = 0f;
             sunAmt = Mathf.Lerp(sunAmt, tsun, k);
             cloudAmt = Mathf.Lerp(cloudAmt, tcloud, k);
             coldAmt = Mathf.Lerp(coldAmt, tcold, k);
@@ -102,10 +108,11 @@ namespace KuryeTycoon
                 }
             }
 
-            // Kar örtüsü: kar yağdıkça birikir, yağmayınca erir (sıcakta hızlı)
+            // Kar örtüsü ve ıslaklık oyun zamanıyla değişir (her hızda tutarlı): kar ~2 saatte birikir, güneşte ~3, bulutta ~10 saatte erir
+            float gm = paused || GameClock.I == null ? 0f : GameClock.I.DeltaMinutes;
             float target = snowAmt > 0.3f ? 0.55f : 0f;
-            float rate = target > snowCover ? 0.02f : (sunAmt > 0.5f ? 0.03f : 0.01f);
-            snowCover = Mathf.MoveTowards(snowCover, target, rate * dt);
+            float rate = target > snowCover ? 0.55f / 120f : (sunAmt > 0.5f ? 0.55f / 180f : 0.55f / 600f);
+            snowCover = Mathf.MoveTowards(snowCover, target, rate * gm);
             if (CityMap.I != null && Mathf.Abs(snowCover - lastCoverApplied) > 0.015f)
             {
                 lastCoverApplied = snowCover;
@@ -114,8 +121,9 @@ namespace KuryeTycoon
 
             // Islak zemin: yağmurda kararır, yağmur durunca yavaşça kurur (güneşte hızlı)
             float wetTarget = Mathf.Clamp01(rainAmt * 1.2f);
-            float wetRate = wetTarget > wetness ? 0.08f : (sunAmt > 0.5f ? 0.03f : 0.012f);
-            wetness = Mathf.MoveTowards(wetness, wetTarget, wetRate * dt);
+            // Islanma ~20 oyun dakikasında, kuruma güneşte ~1,5 saatte, bulutta ~4 saatte
+            float wetRate = wetTarget > wetness ? 1f / 20f : (sunAmt > 0.5f ? 1f / 90f : 1f / 240f);
+            wetness = Mathf.MoveTowards(wetness, wetTarget, wetRate * gm);
             if (CityMap.I != null && Mathf.Abs(wetness - lastWetApplied) > 0.02f)
             {
                 lastWetApplied = wetness;
