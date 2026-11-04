@@ -12,8 +12,10 @@ namespace KuryeTycoon
         enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar }
         static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar" };
 
-        public float panelWidth = 440f;
+        public float panelWidth = 460f;     // açılan pencerenin genişliği
         const float TopBar = 48f;
+        const float DockW = 76f;            // soldaki simge çubuğu
+        bool panelOpen;                     // simgeye tıklanınca açılan pencere
 
         static readonly Color[] Presets =
         {
@@ -67,7 +69,8 @@ namespace KuryeTycoon
         {
             // Harita kamerası sol panel ve üst bar dışındaki alana çizer (yakınlaştırma/kaydırma MapCamera'da)
             if (MapCamera.I == null) return;
-            float left = Mathf.Clamp01(panelWidth * uiScale / Screen.width);
+            // Harita simge çubuğu dışındaki her yere çizilir; açılan pencere haritanın üstünde yüzer
+            float left = Mathf.Clamp01(DockW * uiScale / Screen.width);
             float top = Mathf.Clamp01(TopBar * uiScale / Screen.height);
             MapCamera.I.SetViewport(new Rect(left, 0f, 1f - left, 1f - top));
         }
@@ -114,6 +117,8 @@ namespace KuryeTycoon
             var e = Event.current;
             if (e.type != EventType.KeyDown || e.keyCode != KeyCode.Escape) return;
             e.Use();
+            // Önce açık pencere kapanır, sonra Esc menüsü açılır
+            if (panelOpen && !pauseMenuOpen) { panelOpen = false; return; }
             SetPauseMenu(!pauseMenuOpen);
         }
 
@@ -394,6 +399,14 @@ namespace KuryeTycoon
         }
 
         bool legendOpen;
+        const int LegendItems = 14;
+
+        Rect LegendRect(float sh)
+        {
+            float w = 250f, h = LegendItems * 19f + 34f;
+            float x = panelOpen ? WindowRect(sh).xMax + 10f : DockW + 10f;
+            return new Rect(x, sh - 52f - h, w, h);
+        }
 
         /// <summary>Harita lejantı: renklerin ne anlama geldiği.</summary>
         void DrawLegend(float sh)
@@ -416,8 +429,8 @@ namespace KuryeTycoon
                 (CityMap.RailBedColor, "Tren yolu"),
                 (CompanyProfile.Primary, "Merkez ofis"),
             };
-            float rowH = 19f, w = 250f, h = items.Count * rowH + 34f;
-            var r = new Rect(panelWidth + 10f, sh - 52f - h, w, h);
+            var r = LegendRect(sh);
+            float rowH = 19f, w = r.width;
             UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.92f), 12f, 4f);
             small.normal.textColor = UITheme.Text;
             GUI.Label(new Rect(r.x + 12, r.y + 6, w - 24, 20), "Lejant", small);
@@ -479,9 +492,11 @@ namespace KuryeTycoon
         {
             var e = Event.current;
             Vector2 m = e.mousePosition;
-            bool overMap = m.x > panelWidth && m.y > TopBar &&
+            bool overMap = m.x > DockW && m.y > TopBar &&
+                           !(panelOpen && WindowRect(sh).Contains(m)) &&
+                           !(legendOpen && LegendRect(sh).Contains(m)) &&
                            !(popupCourier != null && PopupRect(sw, sh).Contains(m)) &&
-                           !new Rect(panelWidth + 10f, sh - 44f, 205f, 30f).Contains(m);
+                           !new Rect(DockW + 10f, sh - 44f, 380f, 30f).Contains(m);
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
 
@@ -536,7 +551,7 @@ namespace KuryeTycoon
         {
             var mc = MapCamera.I;
             if (mc == null) return;
-            float x = panelWidth + 10f, y = sh - 44f;
+            float x = DockW + 10f, y = sh - 44f;
             if (GUI.Button(new Rect(x, y, 34, 30), "+", button)) mc.ZoomStep(1.5f);
             if (GUI.Button(new Rect(x + 38, y, 34, 30), "−", button)) mc.ZoomStep(-1.5f);
             if (GUI.Button(new Rect(x + 76, y, 34, 30), "◄", button)) mc.Rotate(-45f);
@@ -641,21 +656,120 @@ namespace KuryeTycoon
 
         static bool IsSpeed(GameClock c, float s) => !c.Paused && Mathf.Approximately(c.SpeedMultiplier, s);
 
-        // ---------------------------------------------------------------- sol panel
+        // ---------------------------------------------------------------- simge çubuğu ve pencere
+
+        static readonly (Tab tab, Icons.Kind icon, string label)[] DockItems =
+        {
+            (Tab.Siparisler, Icons.Kind.Orders, "Siparişler"),
+            (Tab.Kuryeler, Icons.Kind.Couriers, "Kuryeler"),
+            (Tab.IseAlim, Icons.Kind.Hiring, "İşe Alım"),
+            (Tab.Dukkanlar, Icons.Kind.Shops, "Dükkanlar"),
+            (Tab.Ekipman, Icons.Kind.Equipment, "Ekipman"),
+            (Tab.Kampanyalar, Icons.Kind.Campaigns, "Kampanya"),
+            (Tab.Destek, Icons.Kind.Support, "Destek"),
+            (Tab.Gelistirmeler, Icons.Kind.Upgrades, "Gelişim"),
+            (Tab.Finans, Icons.Kind.Finance, "Finans"),
+            (Tab.Ayarlar, Icons.Kind.Settings, "Ayarlar"),
+        };
+
+        GUIStyle dockLabel, windowTitle;
+
+        static Icons.Kind IconOf(Tab t)
+        {
+            foreach (var d in DockItems) if (d.tab == t) return d.icon;
+            return Icons.Kind.Orders;
+        }
+
+        Rect WindowRect(float sh) => new Rect(DockW + 10f, TopBar + 10f, panelWidth, sh - TopBar - 66f);
+
+        void OpenTab(Tab t)
+        {
+            if (panelOpen && tab == t) { panelOpen = false; return; }   // aynı simge: kapat
+            tab = t;
+            panelOpen = true;
+            scroll = Vector2.zero;
+        }
+
+        int BadgeOf(Tab t)
+        {
+            switch (t)
+            {
+                case Tab.Siparisler: return OrderManager.I != null ? OrderManager.I.Pending.Count : 0;
+                case Tab.IseAlim: return CourierManager.I != null ? CourierManager.I.Applications.Count : 0;
+                default: return 0;
+            }
+        }
+
+        /// <summary>Soldaki simge çubuğu ve tıklanınca açılan pencere.</summary>
         void DrawPanel(float sh)
         {
-            var r = new Rect(0, TopBar, panelWidth, sh - TopBar);
-            Fill(r, UITheme.Bg);
-            Fill(new Rect(r.xMax - 1, r.y, 1, r.height), UITheme.Line);
+            if (dockLabel == null)
+            {
+                dockLabel = new GUIStyle(small) { alignment = TextAnchor.UpperCenter, fontSize = 10, wordWrap = false, clipping = TextClipping.Overflow };
+                windowTitle = new GUIStyle(header) { fontSize = 17, alignment = TextAnchor.MiddleLeft };
+            }
 
-            var names = (string[])BaseTabNames.Clone();
-            int apps = CourierManager.I.Applications.Count;
-            if (apps > 0) names[(int)Tab.IseAlim] = $"İşe Alım ({apps})";
+            // Çubuk
+            var bar = new Rect(0, TopBar, DockW, sh - TopBar);
+            Fill(bar, UITheme.Bg);
+            Fill(new Rect(bar.xMax - 1, bar.y, 1, bar.height), UITheme.Line);
 
-            GUILayout.BeginArea(new Rect(r.x + 8, r.y + 8, r.width - 16, r.height - 16));
-            int newTab = GUILayout.SelectionGrid((int)tab, names, 5, smallButton, GUILayout.Height(58));
-            if (newTab != (int)tab) { var t = (Tab)newTab; deferred = () => { tab = t; scroll = Vector2.zero; }; }
-            GUILayout.Space(6);
+            var mouse = Event.current.mousePosition;
+            float y = TopBar + 10f;
+            for (int i = 0; i < DockItems.Length; i++)
+            {
+                var item = DockItems[i];
+                // Ayarlar en altta
+                float iy = item.tab == Tab.Ayarlar ? sh - 74f : y;
+                var r = new Rect(7f, iy, DockW - 14f, 62f);
+                bool active = panelOpen && tab == item.tab;
+                bool hover = r.Contains(mouse) && modalFree;
+
+                if (active) UITheme.Box(r, UITheme.Accent, 14f);
+                else if (hover) UITheme.Box(r, UITheme.CardHi, 14f);
+
+                var iconCol = active ? UITheme.AccentText : (hover ? UITheme.Text : UITheme.TextDim);
+                Icons.Draw(new Rect(r.center.x - 15f, r.y + 8f, 30f, 30f), item.icon, iconCol);
+                dockLabel.normal.textColor = iconCol;
+                GUI.Label(new Rect(r.x - 4f, r.y + 42f, r.width + 8f, 16f), item.label, dockLabel);
+
+                int badge = BadgeOf(item.tab);
+                if (badge > 0)
+                {
+                    var br = new Rect(r.xMax - 22f, r.y + 3f, 20f, 18f);
+                    UITheme.Box(br, UITheme.Bad, 9f);
+                    dockLabel.normal.textColor = Color.white;
+                    GUI.Label(new Rect(br.x, br.y + 1f, br.width, br.height), badge > 99 ? "99+" : badge.ToString(), dockLabel);
+                }
+
+                if (GUI.Button(r, GUIContent.none, GUIStyle.none)) { var t = item.tab; deferred = () => OpenTab(t); }
+                if (item.tab != Tab.Ayarlar) y += 66f;
+            }
+
+            if (!panelOpen) return;
+
+            // Pencere
+            var w = WindowRect(sh);
+            UITheme.Shadowed(w, UITheme.Bg, 14f, 8f);
+            UITheme.Outline(w, UITheme.Line, 1f, 14f);
+
+            // Başlık: simge, ad, kapat
+            var head = new Rect(w.x, w.y, w.width, 50f);
+            UITheme.Box(new Rect(w.x + 14f, w.y + 11f, 28f, 28f), UITheme.Accent, 8f);
+            Icons.Draw(new Rect(w.x + 19f, w.y + 16f, 18f, 18f), IconOf(tab), UITheme.AccentText);
+            string titleText = BaseTabNames[(int)tab];
+            if (tab == Tab.IseAlim && CourierManager.I.Applications.Count > 0) titleText += $" ({CourierManager.I.Applications.Count})";
+            windowTitle.normal.textColor = UITheme.Text;
+            GUI.Label(new Rect(w.x + 52f, w.y, w.width - 110f, 50f), titleText, windowTitle);
+
+            var close = new Rect(w.xMax - 42f, w.y + 11f, 28f, 28f);
+            bool closeHover = close.Contains(mouse);
+            if (closeHover) UITheme.Box(close, UITheme.CardHi, 8f);
+            Icons.Draw(new Rect(close.x + 8f, close.y + 8f, 12f, 12f), Icons.Kind.Close, closeHover ? UITheme.Text : UITheme.TextDim);
+            if (GUI.Button(close, GUIContent.none, GUIStyle.none)) deferred = () => panelOpen = false;
+            Fill(new Rect(w.x + 12f, head.yMax, w.width - 24f, 1f), UITheme.Line);
+
+            GUILayout.BeginArea(new Rect(w.x + 12f, head.yMax + 8f, w.width - 24f, w.height - head.height - 16f));
             scroll = GUILayout.BeginScrollView(scroll);
 
             switch (tab)
@@ -870,7 +984,7 @@ namespace KuryeTycoon
 
                 GUILayout.BeginHorizontal();
                 var courier = c;
-                if (GUILayout.Button("Ekipman teklif et", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; scroll = Vector2.zero; };
+                if (GUILayout.Button("Ekipman teklif et", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; panelOpen = true; scroll = Vector2.zero; };
                 if (GUILayout.Button("Nakit / ödeme detayı", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; };
                 GUI.enabled = modalFree && c.OrderCount == 0;
                 if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton)) deferred = () => cm.Fire(courier);
