@@ -63,6 +63,7 @@ namespace KuryeTycoon
             Make<CityMap>("Şehir Haritası");
             Make<City3D>("3D Şehir");
             Make<Traffic>("Trafik");
+            Make<WeatherFx>("Hava Efektleri");
             Make<MapCamera>("Harita Kamerası");
             Make<CourierManager>("Kurye Yönetimi");
             Make<OrderManager>("Siparişler");

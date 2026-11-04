@@ -388,6 +388,24 @@ namespace KuryeTycoon
         SpriteRenderer[,] ground;
         Color[,] groundBase;
         readonly List<(SpriteRenderer sr, Color c, Vector2Int t)> decor = new List<(SpriteRenderer, Color, Vector2Int)>();
+        readonly List<(SpriteRenderer sr, Color c)> freeDecor = new List<(SpriteRenderer, Color)>();   // kır süsleri (kilit yok)
+        float snowCover;                         // kar örtüsü (0–1): WeatherFx kar yağdıkça artırır
+        static readonly Color SnowColor = new Color(0.93f, 0.95f, 0.98f);
+
+        /// <summary>Kar örtüsü: zemin, çatılar ve kır beyaza döner (yollar daha az, su hiç). 0 = kar yok.</summary>
+        public void SetSnowCover(float amount)
+        {
+            amount = Mathf.Clamp01(amount);
+            if (Mathf.Abs(amount - snowCover) < 0.001f) return;
+            snowCover = amount;
+            RefreshColors();
+        }
+
+        Color Snowy(Color c, float mul = 1f)
+        {
+            if (snowCover <= 0f || c == WaterColor) return c;
+            return Color.Lerp(c, SnowColor, snowCover * mul);
+        }
         readonly List<Vector2Int> waterTiles = new List<Vector2Int>();
         SpriteRenderer hq;
         Transform root, roofRoot, countryRoot;
@@ -466,6 +484,7 @@ namespace KuryeTycoon
         {
             var sr = SpriteFactory.Create(name, parent, round, c, new Vector3(pos.x, pos.y, 0f), 1f, order);
             sr.transform.localScale = new Vector3(scale.x, scale.y, 1f);
+            if (!trackLock) freeDecor.Add((sr, c));
             if (trackLock)
             {
                 var t = new Vector2Int(Mathf.Clamp(Mathf.RoundToInt(pos.x), 0, Width - 1), Mathf.Clamp(Mathf.RoundToInt(pos.y), 0, Height - 1));
@@ -738,6 +757,7 @@ namespace KuryeTycoon
                 for (int y = 0; y < Height; y++)
                 {
                     var c = groundBase[x, y];
+                    if (!WaterAt(x, y)) c = Snowy(c, RoadAt(x, y) ? 0.5f : 1f);
                     if (!IsUnlocked(x, y)) c = LockedTint(c);
                     ground[x, y].color = c;
                 }
@@ -745,8 +765,11 @@ namespace KuryeTycoon
             foreach (var d in decor)
             {
                 if (d.sr == null) continue;
-                d.sr.color = IsUnlocked(d.t) ? d.c : LockedTint(d.c);
+                var dc = Snowy(d.c, 0.8f);
+                d.sr.color = IsUnlocked(d.t) ? dc : LockedTint(dc);
             }
+            foreach (var f in freeDecor)
+                if (f.sr != null) f.sr.color = Snowy(f.c, 0.9f);
 
             foreach (var s in Shops)
             {

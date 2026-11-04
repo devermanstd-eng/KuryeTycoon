@@ -2015,6 +2015,8 @@ namespace KuryeTycoon
             GUILayout.Label("Harita", header);
             bool lm = GUILayout.Toggle(ShowLandmarks, " Yer adlarını göster (park, nehir, AVM, bölgeler)", toggle);
             if (lm != ShowLandmarks) ShowLandmarks = lm;
+            bool wfx = GUILayout.Toggle(WeatherFx.Enabled, " Hava efektleri: yağmur, kar, rüzgâr, güneş, şimşek, kar örtüsü", toggle);
+            if (wfx != WeatherFx.Enabled) WeatherFx.Enabled = wfx;
             bool traffic = GUILayout.Toggle(Traffic.Enabled, " Trafik: arabalar, otobüsler, yayalar (kapatmak performansı artırır)", toggle);
             if (traffic != Traffic.Enabled) deferred = () => { Traffic.Enabled = traffic; if (Traffic.I != null) Traffic.I.Build(); };
             if (Traffic.Enabled)
