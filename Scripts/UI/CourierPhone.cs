@@ -834,11 +834,16 @@ namespace KuryeTycoon
             GUILayout.Space(6);
             GUILayout.Label(c.insured ? "Kaza sigortan aktif" : "Kaza sigortan yok", new GUIStyle(pTitle) { alignment = TextAnchor.MiddleCenter });
             GUILayout.Label(c.insured
-                ? $"Serbest kurye olarak kaza sigortanı kendin ödüyorsun (haftalık {Ft(Courier.InsurancePremium)}). Kazada masrafları sigorta karşılar ve daha kısa sürede işe dönersin."
-                : "Serbest kurye olarak sigortanı kendin yaptırırsın. Sigortasız kazada masrafları kendin ödersin ve daha uzun süre çalışamazsın.",
+                ? (c.insuredViaCompany
+                    ? $"Sigortan {CompanyProfile.Name}'ın anlaşmalı sigortacısı {EconomyManager.I.Plan.name} üzerinden. Primini sen ödüyorsun (haftalık {Ft(c.CurrentPremium)}). Kazada masrafları sigorta karşılar ve daha kısa sürede işe dönersin."
+                    : $"Sigortanı dışarıdan kendin yaptırdın (haftalık {Ft(c.CurrentPremium)}). Kazada masrafları sigorta karşılar ve daha kısa sürede işe dönersin.")
+                : (EconomyManager.I.HasInsurancePartner
+                    ? $"Serbest kuryesin, sigorta zorunlu değil. İstersen {EconomyManager.I.Plan.name} ile haftalık {Ft(EconomyManager.I.Plan.premium)} karşılığında sigortalanabilirsin. Sigortasız kazada masrafları kendin ödersin."
+                    : "Serbest kurye olarak sigortanı kendin yaptırırsın. Sigortasız kazada masrafları kendin ödersin ve daha uzun süre çalışamazsın."),
                 new GUIStyle(pBody) { alignment = TextAnchor.MiddleCenter });
             GUILayout.Space(8);
-            PRow("Haftalık prim", Ft(Courier.InsurancePremium));
+            PRow("Sigortacı", c.insured ? (c.insuredViaCompany ? EconomyManager.I.Plan.name : "Dışarıdan") : "—");
+            PRow("Haftalık prim", Ft(c.insured ? c.CurrentPremium : (EconomyManager.I.HasInsurancePartner ? EconomyManager.I.Plan.premium : Courier.InsurancePremium)));
             PRow("Bugüne kadar ödenen", Ft(c.insurancePaid));
             PRow("Kask", c.Has(EquipmentKind.Kask) ? "Var" : "Yok", c.Has(EquipmentKind.Kask) ? (Color?)null : PRed);
         }

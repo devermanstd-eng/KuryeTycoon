@@ -659,25 +659,41 @@ namespace KuryeTycoon
         }
 
         /// <summary>Haftalık sigorta primi (kendi cebinden).</summary>
+        /// <summary>Sigortayı şirketin anlaşmalı sigortacısı üzerinden mi yaptırdı (şirket komisyon alır).</summary>
+        public bool insuredViaCompany;
+
+        public long CurrentPremium => insuredViaCompany && EconomyManager.I != null ? EconomyManager.I.Plan.premium : InsurancePremium;
+
         public bool PayInsurance()
         {
             if (!insured) return false;
-            if (savings < InsurancePremium)
+            long premium = CurrentPremium;
+            if (savings < premium)
             {
                 insured = false; // ödeyemedi, sigortası düştü
+                insuredViaCompany = false;
+                AddInbox("Sigorta primini ödeyemedin, sigortan düştü.");
                 return false;
             }
-            savings -= InsurancePremium;
-            insurancePaid += InsurancePremium;
+            savings -= premium;
+            insurancePaid += premium;
+            if (insuredViaCompany) EconomyManager.I.CollectInsuranceCommission(this, premium);
             return true;
         }
 
+        /// <summary>Sigorta yaptırır: şirketin anlaşması varsa onun üzerinden, yoksa dışarıdan.</summary>
         public bool TryBuyInsurance()
         {
-            if (insured || savings < InsurancePremium) return false;
+            var eco = EconomyManager.I;
+            bool via = eco != null && eco.HasInsurancePartner;
+            long premium = via ? eco.Plan.premium : InsurancePremium;
+            if (insured || savings < premium) return false;
             insured = true;
-            savings -= InsurancePremium;
-            insurancePaid += InsurancePremium;
+            insuredViaCompany = via;
+            savings -= premium;
+            insurancePaid += premium;
+            if (via) eco.CollectInsuranceCommission(this, premium);
+            AddInbox(via ? $"Sigortan aktif: {eco.Plan.name}, haftalık {GameData.Ft(premium)}." : $"Sigortan aktif, haftalık {GameData.Ft(premium)}.");
             return true;
         }
 

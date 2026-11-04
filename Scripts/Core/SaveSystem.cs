@@ -43,6 +43,8 @@ namespace KuryeTycoon
         public int weekBatched, weekCancelled, weekLost, weekHeavyLost, weekCancelledRejected, weekBusyLost;
         public int[] weekCancelByHour;
         public float repAtWeekStart;
+        public int insurancePlan, insurancePlanChangeDay;
+        public long insuranceIncomeTotal;
         public long cashAtWeekStart, lastWeekNet, cashAtLastReport;
         public List<string> weekDayDates = new List<string>();
         public List<int> weekDayDeliveries = new List<int>();

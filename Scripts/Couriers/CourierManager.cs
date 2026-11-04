@@ -526,8 +526,19 @@ namespace KuryeTycoon
                 // --- Kendi parası: sigorta ve araç ---
                 if (monday && c.insured && !c.PayInsurance())
                     EventManager.I.Notify($"{c.courierName} sigorta primini ödeyemedi, sigortası düştü.");
-                if (!c.insured && Random.value < 0.02f && c.TryBuyInsurance())
-                    EventManager.I.Notify($"{c.courierName} şirket platformu üzerinden kendine sigorta yaptırdı.");
+                var eco = EconomyManager.I;
+                if (!c.insured && Random.value < 0.02f * eco.Plan.buyMultiplier && c.TryBuyInsurance())
+                    EventManager.I.Notify(c.insuredViaCompany
+                        ? $"{c.courierName} anlaşmalı sigortacı üzerinden sigorta yaptırdı ({eco.Plan.name})."
+                        : $"{c.courierName} kendine sigorta yaptırdı.");
+                // Dışarıdan sigortalı kurye, şirketin anlaşması daha uygunsa Pazartesi geçiş yapabilir
+                if (monday && c.insured && !c.insuredViaCompany && eco.HasInsurancePartner &&
+                    Random.value < 0.12f * eco.Plan.buyMultiplier * (eco.Plan.premium <= Courier.InsurancePremium ? 1.5f : 0.6f))
+                {
+                    c.insuredViaCompany = true;
+                    c.AddInbox($"Sigortanı {eco.Plan.name}'ye taşıdın (haftalık {Ft(eco.Plan.premium)}).");
+                    EventManager.I.Notify($"{c.courierName} sigortasını anlaşmalı sigortacıya taşıdı.");
+                }
                 if (c.OrderCount == 0 && Random.value < 0.25f && c.TryBuyDreamVehicle())
                     VehicleUpgraded(c);
 
@@ -617,6 +628,7 @@ namespace KuryeTycoon
 
             if (c.insured)
             {
+                if (c.insuredViaCompany) days = Mathf.Max(1, days - EconomyManager.I.Plan.accidentDaysSaved);
                 c.SetOnLeave(days, "kaza");
                 c.morale = Mathf.Max(0f, c.morale - 0.05f);
                 EventManager.I.Notify($"{c.courierName} kaza geçirdi ({days} gün çalışamayacak). {helmetText}Masrafları sigortası karşıladı.");
@@ -629,7 +641,11 @@ namespace KuryeTycoon
             long cost = Mathf.RoundToInt(c.V.ownPrice * 0.06f / 1000f) * 1000 + 10000;
             c.savings = System.Math.Max(0L, c.savings - cost);
             bool buys = Random.value < 0.5f;
-            if (buys) c.insured = true; // iyileşince sigorta yaptırmaya karar verdi (prim Pazartesi kesilir)
+            if (buys)
+            {
+                c.insured = true; // iyileşince sigorta yaptırmaya karar verdi (prim Pazartesi kesilir)
+                c.insuredViaCompany = EconomyManager.I.HasInsurancePartner;
+            }
 
             EventManager.I.Notify($"{c.courierName} kaza geçirdi, {days} gün çalışamayacak. {helmetText}" +
                 $"Sigortası olmadığı için ~{Ft(cost)} masrafı kendi ödedi, morali çok düştü." +

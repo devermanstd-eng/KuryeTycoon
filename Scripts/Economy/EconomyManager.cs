@@ -509,7 +509,8 @@ namespace KuryeTycoon
                 cashAtWeekStart = cashAtWeekStart, lastWeekNet = lastWeekNet, cashAtLastReport = cashAtLastReport,
                 nextSurpriseDay = nextSurpriseDay, localTaxPaidThisYear = localTaxPaidThisYear,
                 bankLoanRemaining = bankLoanRemaining, bankLoanDaily = bankLoanDaily, emergencyLoanUsed = emergencyLoanUsed,
-                crisisWarned = crisisWarned, bankrupt = bankrupt, daysUnderLimit = daysUnderLimit
+                crisisWarned = crisisWarned, bankrupt = bankrupt, daysUnderLimit = daysUnderLimit,
+                insurancePlan = insurancePlan, insurancePlanChangeDay = insurancePlanChangeDay, insuranceIncomeTotal = insuranceIncomeTotal
             };
             foreach (var w in weekDays)
             {
@@ -560,6 +561,7 @@ namespace KuryeTycoon
             nextSurpriseDay = s.nextSurpriseDay; localTaxPaidThisYear = s.localTaxPaidThisYear;
             bankLoanRemaining = s.bankLoanRemaining; bankLoanDaily = s.bankLoanDaily; emergencyLoanUsed = s.emergencyLoanUsed;
             crisisWarned = s.crisisWarned; bankrupt = s.bankrupt; daysUnderLimit = s.daysUnderLimit;
+            insurancePlan = s.insurancePlan; insurancePlanChangeDay = s.insurancePlanChangeDay; insuranceIncomeTotal = s.insuranceIncomeTotal;
             Ledger.Clear();
             if (s.ledger != null) Ledger.AddRange(s.ledger);
         }
@@ -575,6 +577,77 @@ namespace KuryeTycoon
             Year.otherIncome += amount;
             Today.otherIncome += amount;
             Log($"+{Ft(amount)} {label} (kurye hesabından kesildi)");
+        }
+
+        // ---------- Sigorta ortaklığı ----------
+        // Kuryeler sigortayı isterlerse şirketin anlaşmalı olduğu sigortacı üzerinden yaptırır (zorunlu değil).
+        // Şirket her haftalık primden komisyon alır. Plan seçimi: düşük prim → daha çok kurye alır ama komisyon az.
+
+        public class InsurancePlan
+        {
+            public string name;
+            public long premium;          // kuryenin haftalık primi (Ft)
+            public float commission;      // şirketin primden payı
+            public float buyMultiplier;   // kuryelerin sigorta yaptırma isteği
+            public int accidentDaysSaved; // kazada daha kısa iyileşme (gün)
+            public string desc;
+        }
+
+        public static readonly InsurancePlan[] InsurancePlans =
+        {
+            new InsurancePlan { name = "Anlaşma yok", premium = 2500, commission = 0f, buyMultiplier = 1f,
+                desc = "Kuryeler isterse sigortayı kendileri dışarıdan yaptırır. Şirket bundan kazanmaz." },
+            new InsurancePlan { name = "Kalkan Sigorta · Ekonomik", premium = 1800, commission = 0.10f, buyMultiplier = 1.5f,
+                desc = "Ucuz prim: daha çok kurye yaptırır, komisyon düşük." },
+            new InsurancePlan { name = "Kalkan Sigorta · Standart", premium = 2500, commission = 0.18f, buyMultiplier = 1.1f,
+                desc = "Dengeli prim ve komisyon." },
+            new InsurancePlan { name = "Kalkan Sigorta · Plus", premium = 3400, commission = 0.28f, buyMultiplier = 0.65f, accidentDaysSaved = 1,
+                desc = "Pahalı ama kapsamlı: kazada kurye 1 gün erken döner. Daha az kurye yaptırır, komisyon yüksek." },
+        };
+
+        public int insurancePlan;
+        public int insurancePlanChangeDay = -999;
+        public long insuranceIncomeToday, insuranceIncomeTotal;
+        public InsurancePlan Plan => InsurancePlans[Mathf.Clamp(insurancePlan, 0, InsurancePlans.Length - 1)];
+        public bool HasInsurancePartner => insurancePlan > 0;
+        public const int InsurancePlanCooldownDays = 30;
+
+        public bool CanChangeInsurancePlan => GameClock.I.Day - insurancePlanChangeDay >= InsurancePlanCooldownDays || insurancePlan == 0;
+
+        public void SetInsurancePlan(int plan)
+        {
+            if (plan == insurancePlan || !CanChangeInsurancePlan) return;
+            insurancePlan = Mathf.Clamp(plan, 0, InsurancePlans.Length - 1);
+            insurancePlanChangeDay = GameClock.I.Day;
+            int moved = 0;
+            foreach (var c in CourierManager.I.Couriers)
+            {
+                if (!c.insuredViaCompany) continue;
+                if (insurancePlan == 0) c.insuredViaCompany = false; // poliçe kuryenin üstünde kalır, artık dışarıdan
+                else moved++;
+            }
+            EventManager.I.Notify(insurancePlan == 0
+                ? "Sigorta anlaşması bitti. Kuryeler sigortalarını kendi sürdürecek."
+                : $"Sigorta anlaşması: {Plan.name} (haftalık prim {Ft(Plan.premium)}, şirket payı %{Plan.commission * 100f:0})." +
+                  (moved > 0 ? $" {moved} kuryenin poliçesi yeni plana geçti." : ""));
+        }
+
+        /// <summary>Kurye haftalık primi şirket üzerinden ödedi: komisyon şirkete gelir yazılır.</summary>
+        public void CollectInsuranceCommission(Courier c, long premium)
+        {
+            long amount = GameData.Round10(premium * Plan.commission);
+            if (amount <= 0) return;
+            money += amount;
+            Year.otherIncome += amount;
+            Today.otherIncome += amount;
+            insuranceIncomeToday += amount;
+            insuranceIncomeTotal += amount;
+            Log($"+{Ft(amount)} sigorta komisyonu: {c.courierName}");
+        }
+
+        public int InsuredViaCompanyCount
+        {
+            get { int n = 0; foreach (var c in CourierManager.I.Couriers) if (c.insured && c.insuredViaCompany) n++; return n; }
         }
 
         public void AddIncome(long amount, string label)
@@ -633,6 +706,7 @@ namespace KuryeTycoon
             }
 
             BuildDailyReport(Today);
+            insuranceIncomeToday = 0;
             if (StatsHistory.I != null) StatsHistory.I.Record(Today);   // grafikler ve CSV denge kaydı
             AccumulateWeek(Today);
             if (GameClock.I.DayOfWeek == 0) BuildWeeklyReport(); // Pazar bitti, yeni hafta başlıyor
@@ -698,7 +772,8 @@ namespace KuryeTycoon
             sb.Append($"\nGELİR: {Ft(s.Income)}\n");
             sb.Append($"   Dükkan komisyonları: {Ft(s.commission)}\n");
             sb.Append($"   Müşteri teslimat ücretleri: {Ft(s.fees)}\n");
-            if (s.otherIncome > 0) sb.Append($"   Diğer (kesinti, iade edilmeyen depozito, vergi iadesi): {Ft(s.otherIncome)}\n");
+            if (s.otherIncome > 0) sb.Append($"   Diğer (kesinti, sigorta komisyonu, depozito, vergi iadesi): {Ft(s.otherIncome)}\n");
+            if (insuranceIncomeToday > 0) sb.Append($"      bunun {Ft(insuranceIncomeToday)}'ı sigorta komisyonu ({InsuredViaCompanyCount} kurye {Plan.name} ile sigortalı)\n");
 
             // Gider
             sb.Append($"\nGİDER: {Ft(s.Expenses)}\n");

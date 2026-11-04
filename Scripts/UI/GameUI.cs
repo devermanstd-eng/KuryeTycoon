@@ -752,7 +752,7 @@ namespace KuryeTycoon
                     GUILayout.Label($"Şirket ekipmanı: {GameData.StarterKitText} · " +
                                     (c.depositPaid ? $"depozito alındı ({Ft(GameData.DepositAmount)}, ayrılırken iade edilir)"
                                                    : $"depozito {Ft(GameData.DepositThreshold)} kazanınca kesilecek (şu an {Ft(c.totalEarned)})"), small);
-                GUILayout.Label(c.insured ? $"Sigorta: var (kendi öder, haftalık {Ft(Courier.InsurancePremium)}; bugüne kadar {Ft(c.insurancePaid)})"
+                GUILayout.Label(c.insured ? $"Sigorta: var ({(c.insuredViaCompany ? EconomyManager.I.Plan.name : "dışarıdan")}, kendi öder, haftalık {Ft(c.CurrentPremium)}; bugüne kadar {Ft(c.insurancePaid)})"
                                           : "Sigorta: yok (kazada masrafları kendi öder, daha uzun süre çalışamaz)",
                                 c.insured ? small : warn);
                 var camp = CampaignManager.I;
@@ -1489,6 +1489,39 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Finans: sigorta ortaklığı (kuryeler isterse anlaşmalı sigortacıdan yaptırır, şirket komisyon alır).</summary>
+        void DrawInsurancePartner(EconomyManager e)
+        {
+            GUILayout.BeginVertical(box);
+            GUILayout.Label("Sigorta ortaklığı", header);
+            GUILayout.Label("Kuryeler sigorta yaptırmak zorunda değil. Yaptırmak isteyenler şirketin anlaşmalı sigortacısı üzerinden yaptırır, " +
+                            "haftalık primden şirket komisyon alır. Dışarıdan sigortalı kuryeler zamanla anlaşmaya geçebilir.", small);
+            var p = e.Plan;
+            int insured = 0, via = 0;
+            long weekly = 0;
+            foreach (var c in CourierManager.I.Couriers)
+            {
+                if (!c.insured) continue;
+                insured++;
+                if (c.insuredViaCompany) { via++; weekly += GameData.Round10(c.CurrentPremium * p.commission); }
+            }
+            GUILayout.Label($"Şu an: {p.name} · sigortalı kurye {insured}/{CourierManager.I.Couriers.Count} (anlaşma üzerinden {via}) · " +
+                            $"haftalık komisyon ~{Ft(weekly)} · bugüne kadar {Ft(e.insuranceIncomeTotal)}", label);
+            for (int i = 0; i < EconomyManager.InsurancePlans.Length; i++)
+            {
+                var pl = EconomyManager.InsurancePlans[i];
+                int idx = i;
+                string txt = i == 0 ? $"{pl.name}" : $"{pl.name} · prim {Ft(pl.premium)}/hafta · şirket payı %{pl.commission * 100f:0}";
+                GUI.enabled = modalFree && (e.CanChangeInsurancePlan || i == e.insurancePlan);
+                if (SelectButton(e.insurancePlan == i, txt, smallButton)) deferred = () => e.SetInsurancePlan(idx);
+                GUI.enabled = modalFree;
+                GUILayout.Label(pl.desc, small);
+            }
+            if (!e.CanChangeInsurancePlan)
+                GUILayout.Label($"Anlaşma {EconomyManager.InsurancePlanCooldownDays} günde bir değiştirilebilir ({GameClock.I.DateOf(e.insurancePlanChangeDay + EconomyManager.InsurancePlanCooldownDays)}).", small);
+            GUILayout.EndVertical();
+        }
+
         void DrawFinance()
         {
             DrawFamilyLoan();
@@ -1503,6 +1536,8 @@ namespace KuryeTycoon
 
             DrawHistoryCharts();
             DrawMilestones();
+
+            DrawInsurancePartner(e);
 
             GUILayout.Label("Kasa", header);
             GUILayout.Label($"Ana kasa: {Ft(e.money)}", label);
