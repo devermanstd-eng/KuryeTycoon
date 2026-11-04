@@ -30,6 +30,8 @@ namespace KuryeTycoon
         {
             var type = Classify(msg);
             if (type == null) return;
+            if (type.Value == ToastType.Good) GameSounds.Play(Sfx.Iyi);
+            else if (type.Value == ToastType.Bad) GameSounds.Play(Sfx.Kotu);
             float now = Time.unscaledTime;
             // Aynı türden yeni bir kart zaten görünüyorsa onu güncelle (iptal yağmurunda ekran dolmasın)
             foreach (var t in toasts)
@@ -158,8 +160,8 @@ namespace KuryeTycoon
             var gm = GoalManager.I;
             if (gm == null) return;
             GUILayout.Label($"Bu haftanın hedefleri · {gm.DaysLeft} gün kaldı", header);
-            GUILayout.Label("Her pazartesi şirketinin büyüklüğüne göre 6 yeni hedef gelir. Tamamladığın hedefin ödülü hemen kasaya girer; " +
-                            "yarım kalan hedef için ceza yok.", small);
+            Intro("hedefler", "Her pazartesi 6 yeni hedef gelir. Tamamladığın hedefin ödülü hemen kasaya girer.",
+                  "Hedefler şirketinin büyüklüğüne göre seçilir. Yarım kalan hedef için ceza yok.");
             GUILayout.Space(6);
             foreach (var g in gm.Goals)
             {

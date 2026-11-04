@@ -145,7 +145,8 @@ namespace KuryeTycoon
                     demand += DemandCurve(s.def, GameClock.I.Hour, GameClock.I.IsWeekend) * RivalShare(s);
 
             float rate = baseRatePerShop * demand
-                         * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier;
+                         * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
+                         * Difficulty.OrderRate;
             spawnAcc += rate * dm;
             while (spawnAcc >= 1f)
             {
@@ -316,6 +317,7 @@ namespace KuryeTycoon
             if (excess > 0 && Random.value < Mathf.Min(0.75f, excess * 0.12f))
             {
                 busyLostToday++;
+                OrderHeat.Record(shop.tile, true);   // müşteri henüz belli değil: dükkanın yeri
                 return;
             }
 
@@ -341,6 +343,7 @@ namespace KuryeTycoon
             if (!EconomyManager.AnyoneCanCarry(kg))
             {
                 heavyLostToday++;
+                OrderHeat.Record(custTile, true);
                 if (!heavyWarnedToday)
                 {
                     heavyWarnedToday = true;
@@ -361,6 +364,7 @@ namespace KuryeTycoon
             if (Random.value > accept)
             {
                 lostToday++;
+                OrderHeat.Record(custTile, true);
                 return;
             }
 
@@ -406,6 +410,7 @@ namespace KuryeTycoon
 
             Pending.Add(o);
             shop.ordersTotal++;
+            OrderHeat.Record(custTile, false);
         }
 
         void ExpirePending()
@@ -422,6 +427,8 @@ namespace KuryeTycoon
                 Pending.RemoveAt(i);
                 cancelledToday++;
                 cancelledByHour[GameClock.I.Hour]++;
+                OrderHeat.Record(o.customerTile, true);
+                MapFx.Cancelled(o);
                 if (GoalManager.I != null) GoalManager.I.OnCancelled();
                 if (RivalCompany.I != null) RivalCompany.I.OnCancelled(o);
                 bool rejected = o.priceDeclines > 0 || o.rejectedBy.Count > 0;
@@ -641,6 +648,7 @@ namespace KuryeTycoon
             if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);
 
             EconomyManager.I.RegisterDelivery(o);
+            MapFx.Delivered(o);   // haritada "+350 Ft" ve teslimat sesi
             CompanyProfile.Reputation = Mathf.Lerp(CompanyProfile.Reputation, o.rating, 0.04f);
             c.morale = Mathf.Clamp01(c.morale + (o.rating >= 4f ? 0.01f : -0.02f));
 

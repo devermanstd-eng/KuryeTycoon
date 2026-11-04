@@ -108,7 +108,7 @@ namespace KuryeTycoon
         {
             float rep = 0.5f + 0.15f * CompanyProfile.Reputation;
             float bonus = Mathf.Lerp(0.8f, 1.3f, (EconomyManager.I.bonusMultiplier - 0.5f) / 1.5f);
-            nextApplicationAt = GameClock.I.TotalMinutes + Random.Range(120f, 360f) / (rep * bonus * UpgradeManager.I.ApplicationMultiplier);
+            nextApplicationAt = GameClock.I.TotalMinutes + Random.Range(120f, 360f) / (rep * bonus * UpgradeManager.I.ApplicationMultiplier * Difficulty.ApplicationRate);
         }
 
         static Occupation RandomOccupation()

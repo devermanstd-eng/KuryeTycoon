@@ -76,6 +76,8 @@ namespace KuryeTycoon
             Make<RivalFleet>("Rakip Kuryeler");
             Make<FamilyLoan>("Hikaye - Aile Borcu");
             Make<Milestones>("Kilometre Taşları");
+            Make<Guide>("Rehber");
+            Make<GameSounds>("Sesler");
             Make<SaveSystem>("Kayıt");
             Make<EventManager>("Olaylar");
             Make<GameUI>("Arayüz");
@@ -142,6 +144,8 @@ namespace KuryeTycoon
                 CompanyProfile.Secondary = d.secondary;
                 CompanyProfile.Reputation = Mathf.Clamp(d.reputation, 1f, 5f);
                 GameClock.I.RestoreTime(d.totalMinutes, d.startDay);
+                Difficulty.Level = (DifficultyLevel)Mathf.Clamp(d.difficulty, 0, 2);   // sistemler kurulmadan önce
+                OrderHeat.Reset();
 
                 GenerateWorld(d.mapSeed);
                 CourierManager.I.Init();
@@ -179,6 +183,7 @@ namespace KuryeTycoon
 
             EconomyManager.I.money = familyLoanAmount;
             EconomyManager.I.InitCashMarkers();
+            OrderHeat.Reset();
             GenerateWorld(Random.Range(1, int.MaxValue));
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v).StartShift();
@@ -190,28 +195,22 @@ namespace KuryeTycoon
             GoalManager.I.Init();
             FamilyLoan.I.principal = familyLoanAmount;
             FamilyLoan.I.Init();
+            Guide.I.InitNew();
             SaveSystem.I.Init();
 
             Started = true;
             GameClock.I.Paused = false;
 
+            // Kısa tutuldu: menüleri ilk gün rehberi (Tutorial.cs) tek tek gösterir, ayrıntılar pencerelerdeki "Ayrıntı"da.
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
-                "Merkez ofisin Merkez Mahalle'deki Kossuth Meydanı'nda. 2 kuryen işbaşında ve 2 sözleşmeli dükkanın var.\n" +
-                "Aile borcunu ve taksitleri üst barda ve Finans sekmesinde görürsün.\n\n" +
-                "• Siparişler otomatik atanır; istersen Siparişler sekmesinden kendin ata.\n" +
-                "• Zararına iş yapılmaz: teslimat ücreti her zaman kurye ücretini karşılar.\n" +
-                "• Kuryeler paket başı + km başı kazanır. Gelen başvuruları İşe Alım sekmesinden kabul et.\n" +
-                "• Kuryeler serbest çalışır: kendi düzenlerine ve yorgunluklarına göre çevrimiçi/çevrimdışı olurlar.\n" +
-                "• Moralsiz ve yorgun kuryeler daha az paket alır, sipariş reddedebilir.\n" +
-                "• Ekipman eksikse kuryenin kartında ne kaybettiğini görürsün (kışın mont, yazın tişört...).\n" +
-                "• Kampanyalar sekmesinde boostlar ve haftalık hedef ödülü var (kârından ödenir).\n" +
-                "• Destek sekmesinden maaşlı destek personeli al: vardiyalarında şikayetleri kendileri çözer.\n" +
-                $"• Platform paketin {UpgradeManager.I.CourierCap} kurye hesabı kaldırıyor. Geliştirmeler'den paketi yükselt ve kalıcı iyileştirmeler al.\n" +
-                "• Dükkanlarla sözleşme yap, yeni bölgeler aç.\n" +
-                "• Yıl sonunda vergi ödersin; yıl içinde de habersiz vergi ve harçlar çıkabilir, kasanda yedek tut.\n\n" +
-                "Takvim gerçek: şirket 1 Mart Pazartesi kurulur, vergi yılı 31 Aralık'ta biter.\nKısayollar: Boşluk = duraklat, 1–8 = hız (1x … 128x), Esc = menü (kaydet / çık)\n" +
-                "Oyun her gece otomatik kaydedilir; kurulum ekranından kaldığın yerden devam edebilirsin.\n" +
-                "Harita: fare tekerleği = yakınlaş (yakında şehir 3D olur), sürükle veya WASD/oklar = kaydır, sağ tuşla sürükle veya Q/E = döndür, 0 = tüm harita"));
+                "Merkez ofisin Merkez Mahalle'deki Kossuth Meydanı'nda. 2 kuryen işbaşında ve 2 sözleşmeli dükkanın var. " +
+                "Siparişler otomatik atanır.\n\n" +
+                "Amacın: kâr et, aile borcunun taksitlerini öde, şirketi büyüt.\n" +
+                "Kartı kapatınca kısa bir rehber ana menüleri gösterecek." +
+                (Guide.AllMenusSetting ? "" : " Bazı menüler ilerleyen günlerde açılır.") + "\n\n" +
+                "Kısayollar: Boşluk = duraklat · 1–8 = hız · Esc = menü (kaydet / çık)\n" +
+                "Harita: tekerlek = yakınlaş · sürükle veya WASD = kaydır · sağ tuş veya Q/E = döndür · 0 = tüm harita\n" +
+                "Oyun her gece otomatik kaydedilir."));
         }
     }
 }

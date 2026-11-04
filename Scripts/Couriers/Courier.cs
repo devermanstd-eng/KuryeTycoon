@@ -1147,6 +1147,7 @@ namespace KuryeTycoon
             if (IdleMinutes > 20f) t *= 0.8f;      // uzun süredir iş yok: daha az seçici
             if (o.secondRound) t *= 0.75f;         // sipariş uzun beklemiş: pazarlık payı
             t *= UpgradeManager.I.OfferThresholdMultiplier; // kurye uygulaması 2.0
+            t *= Difficulty.OfferThreshold;                  // zorluk seviyesi
             return t;
         }
 

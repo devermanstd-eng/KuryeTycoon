@@ -11,12 +11,25 @@ namespace KuryeTycoon
         public bool card;                     // ulaşınca kart mı (büyük hedef), bildirim mi
         public System.Func<bool> reached;
         public System.Func<string> progress;  // ilerleme metni (yoksa boş)
+        public long reward;                   // ulaşınca kasaya giren ödül (basın ilgisi, sponsorluk...)
+        public float reputation;              // ek itibar
+
+        public string RewardText
+        {
+            get
+            {
+                if (reward <= 0 && reputation <= 0f) return "";
+                if (reward <= 0) return "itibar";
+                return GameData.Ft(reward) + (reputation > 0f ? " + itibar" : "");
+            }
+        }
     }
 
     /// <summary>
     /// Kilometre taşları (GDD: 100 teslimat, 10 kurye, şehir lideri...). Oyun sırasında saniyede bir kontrol edilir;
     /// ulaşılınca kart ya da bildirim çıkar ve Finans sekmesindeki listede tarihiyle görünür.
-    /// Şimdilik sadece tanınma amaçlı, oyuna etkisi yok; ileride Steam başarımlarına bağlanabilir.
+    /// Her taşın bir ödülü var (para ve/veya itibar): ulaşıldığı an bir kez ödenir, yüklenen kayıtta tekrar ödenmez.
+    /// İleride Steam başarımlarına bağlanabilir.
     /// </summary>
     public class Milestones : MonoBehaviour
     {
@@ -49,11 +62,11 @@ namespace KuryeTycoon
 
         static int CourierCount => CourierManager.I != null ? CourierManager.I.Couriers.Count : 0;
 
-        void Deliveries(string id, long target, bool card)
+        void Deliveries(string id, long target, bool card, long reward, float reputation = 0f)
         {
             Defs.Add(new MilestoneDef
             {
-                id = id, card = card,
+                id = id, card = card, reward = reward, reputation = reputation,
                 title = target == 1 ? "İlk teslimat" : $"{N(target)} teslimat",
                 text = target == 1
                     ? "Şirketin ilk siparişini teslim etti. Her büyük şirket bir paketle başlar."
@@ -63,11 +76,11 @@ namespace KuryeTycoon
             });
         }
 
-        void Couriers(string id, int target)
+        void Couriers(string id, int target, long reward)
         {
             Defs.Add(new MilestoneDef
             {
-                id = id, card = true,
+                id = id, card = true, reward = reward,
                 title = $"{target} kurye",
                 text = $"Ekibinde aynı anda {target} kurye çalışıyor.",
                 reached = () => CourierCount >= target,
@@ -78,42 +91,43 @@ namespace KuryeTycoon
         void BuildDefs()
         {
             Defs.Clear();
-            Deliveries("teslimat_1", 1, false);
-            Deliveries("teslimat_100", 100, true);
-            Deliveries("teslimat_1000", 1000, true);
-            Deliveries("teslimat_10000", 10000, true);
-            Couriers("kurye_5", 5);
-            Couriers("kurye_10", 10);
-            Couriers("kurye_20", 20);
+            // Ödüller: erken taşlar küçük bir itme, büyükler bir sonraki büyüme adımına katkı (bölge açmak 150 000 – 1 200 000 Ft)
+            Deliveries("teslimat_1", 1, false, 2000);
+            Deliveries("teslimat_100", 100, true, 10000);
+            Deliveries("teslimat_1000", 1000, true, 50000, 0.05f);
+            Deliveries("teslimat_10000", 10000, true, 250000, 0.1f);
+            Couriers("kurye_5", 5, 10000);
+            Couriers("kurye_10", 10, 30000);
+            Couriers("kurye_20", 20, 80000);
             Defs.Add(new MilestoneDef
             {
-                id = "bolge_2", card = true, title = "Yeni ilçe",
+                id = "bolge_2", card = true, title = "Yeni ilçe", reward = 40000,
                 text = $"{CityMap.DistrictNames[2]} açıldı. Şirket mahalleden çıkıp ilçeye yayıldı.",
                 reached = () => CityMap.I != null && CityMap.I.UnlockLevel >= 2
             });
             Defs.Add(new MilestoneDef
             {
-                id = "bolge_3", card = true, title = "Bütün şehir",
+                id = "bolge_3", card = true, title = "Bütün şehir", reward = 200000, reputation = 0.05f,
                 text = "Haritanın tamamında teslimat yapıyorsun.",
                 reached = () => CityMap.I != null && CityMap.I.UnlockLevel >= CityMap.I.MaxLevel
             });
             Defs.Add(new MilestoneDef
             {
-                id = "itibar_4", card = true, title = "İtibar 4,0",
+                id = "itibar_4", card = true, title = "İtibar 4,0", reward = 25000,
                 text = "Müşteriler şirketini seviyor: itibarın 4,0'a ulaştı.",
                 reached = () => CompanyProfile.Reputation >= 4f,
                 progress = () => $"{CompanyProfile.Reputation:0.00} / 4,00"
             });
             Defs.Add(new MilestoneDef
             {
-                id = "itibar_45", card = true, title = "İtibar 4,5",
+                id = "itibar_45", card = true, title = "İtibar 4,5", reward = 75000,
                 text = "Şehrin en sevilen kurye şirketlerinden birisin: itibarın 4,5'e ulaştı.",
                 reached = () => CompanyProfile.Reputation >= 4.5f,
                 progress = () => $"{CompanyProfile.Reputation:0.00} / 4,50"
             });
             Defs.Add(new MilestoneDef
             {
-                id = "gunluk_kar", card = true, title = "Büyük gün",
+                id = "gunluk_kar", card = true, title = "Büyük gün", reward = 30000,
                 text = $"Bir günde {Ft(100000)} net kâr ettin.",
                 reached = () =>
                 {
@@ -125,21 +139,21 @@ namespace KuryeTycoon
             });
             Defs.Add(new MilestoneDef
             {
-                id = "sehir_lideri", card = true, title = "Şehrin lideri",
+                id = "sehir_lideri", card = true, title = "Şehrin lideri", reward = 100000, reputation = 0.05f,
                 text = "Geçen hafta rakibinden daha çok teslimat yaptın: pazarın lideri sensin.",
                 reached = () => RivalCompany.I != null && RivalCompany.I.myDeliveriesLastWeek > 0 && RivalCompany.I.MarketShare > 0.5f,
                 progress = () => RivalCompany.I != null ? $"pazar payı %{RivalCompany.I.MarketShare * 100f:0}" : ""
             });
             Defs.Add(new MilestoneDef
             {
-                id = "kurumsal", card = true, title = "Kurumsal",
+                id = "kurumsal", card = true, title = "Kurumsal", reward = 150000,
                 text = "Kurye platformunun en büyük paketine geçtin.",
                 reached = () => UpgradeManager.I != null &&
                                 UpgradeManager.I.Level(UpgradeKind.Platform) >= UpgradeManager.Def(UpgradeKind.Platform).MaxLevel
             });
             Defs.Add(new MilestoneDef
             {
-                id = "aile_borcu", card = true, title = "Söz tutuldu",
+                id = "aile_borcu", card = true, title = "Söz tutuldu", reputation = 0.1f,
                 text = "Annenle babanın birikimini kuruşu kuruşuna geri ödedin.",
                 reached = () => FamilyLoan.I != null && FamilyLoan.I.Finished
             });
@@ -160,9 +174,27 @@ namespace KuryeTycoon
             {
                 if (reachedOn.ContainsKey(m.id) || !m.reached()) continue;
                 reachedOn[m.id] = GameClock.I.DateOf(GameClock.I.Day);
-                if (m.card) EventManager.I.Push(new GameEvent($"Kilometre taşı: {m.title}", m.text));
-                else EventManager.I.Notify($"Kilometre taşı: {m.title}. {m.text}");
+                string reward = PayReward(m);
+                if (m.card)
+                {
+                    EventManager.I.Push(new GameEvent($"Kilometre taşı: {m.title}", m.text + reward));
+                    GameSounds.Play(Sfx.Buyuk);
+                }
+                else EventManager.I.Notify($"Kilometre taşı: {m.title}. {m.text}{reward}");
             }
+        }
+
+        /// <summary>Ödülü öder; kart/bildirim için açıklama döner.</summary>
+        static string PayReward(MilestoneDef m)
+        {
+            if (m.reward > 0 && EconomyManager.I != null) EconomyManager.I.AddIncome(m.reward, $"Kilometre taşı ödülü: {m.title}");
+            if (m.reputation > 0f) CompanyProfile.AddReputation(m.reputation);
+            if (m.reward <= 0 && m.reputation <= 0f) return "";
+            if (m.reward <= 0) return m.card ? "\n\nÖdül: itibarın arttı." : " Ödül: itibar.";
+            string rep = m.reputation > 0f ? " ve itibar" : "";
+            return m.card
+                ? $"\n\nÖdül: {Ft(m.reward)}{rep} (basın ilgisi ve sponsorluk). Kasana eklendi."
+                : $" Ödül: {Ft(m.reward)}{rep}.";
         }
 
         // ---------- Kayıt ----------

@@ -12,6 +12,7 @@ namespace KuryeTycoon
         public int monthlySalary;      // Ft / ay
         public string note;
         public int daysEmployedThisMonth;
+        public float expiresAt;        // aday olarak başvurunun geçerliliğinin bittiği an
     }
 
     /// <summary>
@@ -117,8 +118,15 @@ namespace KuryeTycoon
                 name = GameData.RandomName(),
                 skill = skill,
                 monthlySalary = SalaryFor(skill),
-                note = Notes[Random.Range(0, Notes.Length)]
+                note = Notes[Random.Range(0, Notes.Length)],
+                expiresAt = SupportManager.ExpiryFromNow()
             });
+        }
+
+        /// <summary>Başvuruyu reddet; yerine ertesi gün yenisi gelir.</summary>
+        public void Reject(OpsPerson c)
+        {
+            if (Candidates.Remove(c)) EventManager.I.Notify($"{c.name} adlı adayın operasyon sorumluluğu başvurusu reddedildi.");
         }
 
         public void Hire(OpsPerson c)
@@ -150,6 +158,8 @@ namespace KuryeTycoon
         void OnNewDay()
         {
             if (HasManager) Manager.daysEmployedThisMonth++;
+            float now = GameClock.I.TotalMinutes;
+            Candidates.RemoveAll(c => c.expiresAt > 0f && now >= c.expiresAt); // süresi dolanlar
             if (GameClock.I.DayOfWeek == 0) RefreshCandidates();
             else if (Candidates.Count < 2) AddCandidate();
         }
