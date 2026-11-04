@@ -3,9 +3,10 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// Stratejik yakınlaştırma (Taksimetre / Crusader Kings tarzı):
-    ///  • Uzakta: düz, kuş bakışı 2D harita; kuryeler daire.
-    ///  • Yakınlaştıkça kamera eğilir, binalar yerden yükselir, kuryeler 3D karakter olur.
+    /// Harita kamerası. İki mod:
+    ///  • Açılı görünüm (varsayılan): harita her zaman yukarıdan eğik görülür (kuzey yukarıda, sadece eğik),
+    ///    binalar hep ayakta; yakınlaştıkça eğim biraz artar, kuryeler 3D karakter olur.
+    ///  • Harita modu (M tuşu): eski düz, kuş bakışı 2D harita; yakınlaştıkça eğilir ve binalar yükselir.
     /// Fare tekerleği = yakınlaştır (imlecin olduğu yere), sağ/orta tuş veya sol tuşla sürükle = kaydır,
     /// ok tuşları / WASD = kaydır, + / − = yakınlaştır, 0 veya Home = tüm harita.
     /// </summary>
@@ -16,6 +17,7 @@ namespace KuryeTycoon
         [Header("Yakınlaştırma")]
         public float minOrthoSize = 3.2f;       // en yakın
         public float maxTilt = 50f;             // en yakında kameranın eğimi (derece)
+        public float baseTilt = 38f;            // açılı görünümde en uzaktaki eğim (derece)
         public float tiltStart = 0.45f;         // bu yakınlıktan sonra eğilmeye başlar
         public float tiltFull = 0.8f;           // bu yakınlıkta tam eğik
         public float smooth = 10f;
@@ -31,22 +33,54 @@ namespace KuryeTycoon
         Vector2 targetFocus;
         bool initialized;
 
-        /// <summary>0 = düz kuş bakışı, 1 = tam eğik 3D görünüm. Binalar ve karakterler buna göre çıkar.</summary>
-        public float Tilt01 => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(tiltStart, tiltFull, Zoom));
+        // ---------- Harita modu (düz 2D) ----------
+        const string FlatKey = "KuryeTycoon.HaritaModu";
+        bool flatMode;
+        float angled = 1f;      // 1 = açılı görünüm, 0 = düz harita modu (geçiş yumuşak)
 
-        /// <summary>3D karakterler gösterilsin mi (yakındayken)?</summary>
-        public bool ShowModels => Tilt01 > 0.25f;
+        /// <summary>Düz 2D harita modu açık mı (M tuşu)?</summary>
+        public bool FlatMode => flatMode;
+
+        public void ToggleFlatMode()
+        {
+            flatMode = !flatMode;
+            PlayerPrefs.SetInt(FlatKey, flatMode ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+
+        float FlatTilt01(float zoom) => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(tiltStart, tiltFull, zoom));
+
+        /// <summary>0 = düz kuş bakışı, 1 = binalar tam ayakta. Açılı görünümde hep 1.</summary>
+        public float Tilt01 => Mathf.Lerp(FlatTilt01(Zoom), 1f, angled);
+
+        float TiltDegrees(float zoom)
+        {
+            float t01 = FlatTilt01(zoom);
+            float flat = maxTilt * t01;
+            float ang = Mathf.Lerp(baseTilt, maxTilt, t01);
+            return Mathf.Lerp(flat, ang, angled);
+        }
+
+        /// <summary>3D karakterler gösterilsin mi? Uzakta daireler daha okunaklı, yakınlaşınca karakter.</summary>
+        public bool ShowModels => angled > 0.5f ? Zoom > tiltStart * 0.85f : FlatTilt01(Zoom) > 0.25f;
 
         Rect viewportRect = new Rect(0, 0, 1, 1);
 
-        void Awake() { I = this; }
+        void Awake()
+        {
+            I = this;
+            flatMode = PlayerPrefs.GetInt(FlatKey, 0) == 1;
+            angled = flatMode ? 0f : 1f;
+        }
 
         static Vector2 MapCenter => new Vector2((CityMap.Width - 1) / 2f, (CityMap.Height - 1) / 2f);
 
         float FitSize(Camera cam)
         {
-            // En uzakta harita her zaman düz (kuzey yukarıda) durduğu için döndürmesiz sığdırılır
-            float w = CityMap.Width + 1f, h = CityMap.Height + 1f;
+            // En uzakta harita kuzey yukarıda durduğu için döndürmesiz sığdırılır.
+            // Eğik bakınca harita ekranda dikeyde kısalır (cos eğim); binaların boyu için biraz pay bırakılır.
+            float tilt = TiltDegrees(0f) * Mathf.Deg2Rad;
+            float w = CityMap.Width + 1f, h = (CityMap.Height + 1f) * Mathf.Cos(tilt) + 2.2f * Mathf.Sin(tilt);
             return Mathf.Max(h / 2f, w / 2f / Mathf.Max(0.1f, cam.aspect));
         }
 
@@ -82,6 +116,7 @@ namespace KuryeTycoon
             targetFocus = ClampFocus(cam, targetFocus, targetZoom);
             focus = Vector2.Lerp(focus, targetFocus, k);
             yaw = Mathf.LerpAngle(yaw, targetYaw, k);
+            angled = Mathf.MoveTowards(angled, flatMode ? 0f : 1f, Time.unscaledDeltaTime * 2.5f);
             Apply(cam, Zoom, focus);
         }
 
@@ -91,10 +126,9 @@ namespace KuryeTycoon
             cam.orthographicSize = SizeFor(cam, zoom);
             cam.nearClipPlane = 0.1f;
             cam.farClipPlane = 300f;
-            float t01 = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(tiltStart, tiltFull, zoom));
-            float tilt = maxTilt * t01;
+            float tilt = TiltDegrees(zoom);
             // Kamera +Z'ye bakar (harita XY düzleminde, binalar −Z yönünde yükselir).
-            // Önce dikey eksen (Z) etrafında döner, sonra eğilir. Uzakta açı 0: harita düz ve kuzey yukarıda.
+            // Önce dikey eksen (Z) etrafında döner, sonra eğilir. Kuzey yukarıda: sadece eğik.
             var rot = Quaternion.Euler(0f, 0f, -EffectiveYaw(zoom)) * Quaternion.Euler(-tilt, 0f, 0f);
             cam.transform.rotation = rot;
             var ground = new Vector3(f.x, f.y, 0f);
@@ -111,7 +145,7 @@ namespace KuryeTycoon
         Vector2 ClampFocus(Camera cam, Vector2 f, float zoom)
         {
             if (zoom < 0.02f) return MapCenter;
-            if (zoom > tiltStart || Mathf.Abs(Mathf.DeltaAngle(EffectiveYaw(zoom), 0f)) > 1f)
+            if (angled > 0.01f || zoom > tiltStart || Mathf.Abs(Mathf.DeltaAngle(EffectiveYaw(zoom), 0f)) > 1f)
             {
                 // Dönük/eğik görünümde harita sınırları içinde serbest
                 return new Vector2(Mathf.Clamp(f.x, 0f, CityMap.Width - 1), Mathf.Clamp(f.y, 0f, CityMap.Height - 1));

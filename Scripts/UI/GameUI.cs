@@ -310,6 +310,7 @@ namespace KuryeTycoon
                 case KeyCode.Q: mc.Rotate(-45f); e.Use(); break;
                 case KeyCode.E: mc.Rotate(45f); e.Use(); break;
                 case KeyCode.N: mc.ResetRotation(); e.Use(); break;
+                case KeyCode.M: mc.ToggleFlatMode(); e.Use(); break;
                 case KeyCode.Alpha0: case KeyCode.Keypad0: case KeyCode.Home: mc.ResetView(); e.Use(); break;
             }
         }
@@ -542,10 +543,11 @@ namespace KuryeTycoon
             if (GUI.Button(new Rect(x + 114, y, 34, 30), "►", button)) mc.Rotate(45f);
             if (GUI.Button(new Rect(x + 152, y, 60, 30), "Tümü", smallButton)) mc.ResetView();
             if (GUI.Button(new Rect(x + 216, y, 66, 30), legendOpen ? "Lejant ✓" : "Lejant", smallButton)) legendOpen = !legendOpen;
-            var r = new Rect(x + 288, y + 3, 440, 24);
+            if (GUI.Button(new Rect(x + 286, y, 88, 30), mc.FlatMode ? "3D görünüm" : "Düz harita", smallButton)) mc.ToggleFlatMode();
+            var r = new Rect(x + 380, y + 3, 470, 24);
             UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.75f), 12f);
             GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height),
-                "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · N: kuzey · 0: tüm harita", small);
+                "Tekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle / Q-E: döndür · N: kuzey · M: düz harita · 0: tüm harita", small);
         }
 
         /// <summary>Kurye panelindeki sipariş kutusu: içerik, adres, kat, nakit, kalan süre.</summary>
