@@ -91,7 +91,7 @@ namespace KuryeTycoon
         public void RollDeliveryIncident(Order o, Courier c)
         {
             // Dükkan kaynaklı eksik ürün: market ~%1,5, restoran/kafe ~%0,7
-            float shopMissing = o.shop.def.isMarket ? 0.015f : 0.007f;
+            float shopMissing = (o.shop.def.isMarket ? 0.015f : 0.007f) * UpgradeManager.I.ShopMissingMultiplier;
             // Kurye kaynaklı: dikkatli kuryede ~%0,5, dikkatsizde ~%1,5
             float careRisk = 1f - c.care;
             float courierFault = 0.003f + careRisk * 0.025f;

@@ -194,8 +194,10 @@ namespace KuryeTycoon
         AddressIssue RandomAddressIssue()
         {
             float r = Random.value;
-            if (r < wrongAddressChance) return AddressIssue.YanlisAdres;
-            if (r < wrongAddressChance + notHomeChance) return AddressIssue.EvdeYok;
+            float wrong = wrongAddressChance * UpgradeManager.I.WrongAddressMultiplier;
+            float notHome = notHomeChance * UpgradeManager.I.NotHomeMultiplier;
+            if (r < wrong) return AddressIssue.YanlisAdres;
+            if (r < wrong + notHome) return AddressIssue.EvdeYok;
             return AddressIssue.Yok;
         }
 

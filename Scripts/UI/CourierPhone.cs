@@ -859,8 +859,9 @@ namespace KuryeTycoon
 
             PHeader("Ekipman");
             var clock = GameClock.I;
-            if (c.depositPaid) ProfField($"Depozito {Ft(GameData.DepositAmount)}", c.depositDay > 0 ? $"{clock.DateOf(c.depositDay)} tarihinde kesildi" : "Kesildi");
-            else if (c.hasCompanyKit) ProfField("Depozito", $"{Ft(GameData.DepositThreshold)} kazanınca kesilecek");
+            if (c.depositPaidTotal > 0 || c.depositOwed > 0)
+                ProfField("Depozito", $"{Ft(c.depositPaidTotal)} kesildi" + (c.depositOwed > 0 ? $", {Ft(c.depositOwed)} kesilecek" : "") +
+                                      (c.depositDay > 0 ? $" (ilk kesinti {clock.DateOf(c.depositDay)})" : ""));
             foreach (var k in c.equipment)
             {
                 string n = GameData.Equip(k).name;
