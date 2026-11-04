@@ -140,12 +140,60 @@ namespace KuryeTycoon.EditorTools
             Kur(folders.ToArray(), null);
         }
 
+        [MenuItem("Kurye Tycoon/Seçili Klasörü Araç Olarak Ekle")]
+        static void AracEkle() => ElleEkle("Araclar", "araç");
+
+        [MenuItem("Kurye Tycoon/Seçili Klasörü İnsan (Yaya) Olarak Ekle")]
+        static void InsanEkle() => ElleEkle("Insanlar", "insan");
+
+        /// <summary>Project penceresinde seçili klasör(ler)deki ya da seçili prefablardaki modelleri trafiğe ekler.</summary>
+        static void ElleEkle(string sub, string what)
+        {
+            var paths = new List<string>();
+            foreach (var o in Selection.objects)
+            {
+                string path = AssetDatabase.GetAssetPath(o);
+                if (AssetDatabase.IsValidFolder(path))
+                {
+                    foreach (var g in AssetDatabase.FindAssets("t:Prefab", new[] { path })) paths.Add(AssetDatabase.GUIDToAssetPath(g));
+                    foreach (var g in AssetDatabase.FindAssets("t:Model", new[] { path })) paths.Add(AssetDatabase.GUIDToAssetPath(g));
+                }
+                else if (path.EndsWith(".prefab") || path.EndsWith(".fbx") || path.EndsWith(".FBX") || path.EndsWith(".obj")) paths.Add(path);
+            }
+            paths.RemoveAll(p => p.StartsWith(Root));
+            if (paths.Count == 0)
+            {
+                EditorUtility.DisplayDialog("Kurye Tycoon", $"Önce Project penceresinde {what} modellerinin olduğu klasörü (ya da prefabları) seç.", "Tamam");
+                return;
+            }
+            if (!AssetDatabase.IsValidFolder("Assets/Resources")) AssetDatabase.CreateFolder("Assets", "Resources");
+            Ensure("Assets/Resources", "SehirPaketi");
+            Ensure(Root, sub);
+            var prefabs = paths.FindAll(p => p.EndsWith(".prefab"));
+            MalzemeCevirici.CevirPrefablar(prefabs);
+            int n = CopyAll(paths, Root + "/" + sub);
+            AssetDatabase.Refresh();
+            EditorUtility.DisplayDialog("Kurye Tycoon", $"{n} {what} modeli eklendi (Assets/Resources/SehirPaketi/{sub}).\nYeni oyun başlatınca trafikte görünür.", "Tamam");
+        }
+
         [MenuItem("Kurye Tycoon/Şehir Paketini Kaldır")]
         static void Kaldir()
         {
             if (!AssetDatabase.IsValidFolder(Root)) return;
             if (!EditorUtility.DisplayDialog("Kurye Tycoon", "Resources/SehirPaketi silinsin mi? (Orijinal paket silinmez.)", "Sil", "Vazgeç")) return;
             AssetDatabase.DeleteAsset(Root);
+        }
+
+        static readonly string[] VehicleFolders = { "vehicle", "vehicles", "cars", "car", "transport", "traffic" };
+        static readonly string[] PeopleFolders = { "people", "characters", "character", "humans", "human", "pedestrians", "citizens", "npc" };
+
+        /// <summary>Yoldaki klasörlerden biri tam olarak bu adlardan biri mi (ör. ".../Prefabs/Vehicles/Car_01.prefab")?</summary>
+        static bool FolderHas(string dir, string[] names)
+        {
+            foreach (var part in dir.Split('/'))
+                foreach (var nm in names)
+                    if (part == nm || part.Replace(" ", "").Replace("_", "") == nm) return true;
+            return false;
         }
 
         static bool Has(string name, string[] keys)
@@ -168,6 +216,7 @@ namespace KuryeTycoon.EditorTools
             var vehicles = new List<string>();
             var people = new List<string>();
             var unknown = new List<string>();
+            var skipped = new List<string>();
 
             foreach (var guid in guids)
             {
@@ -178,8 +227,14 @@ namespace KuryeTycoon.EditorTools
                 if (go == null || go.GetComponentInChildren<Renderer>(true) == null) continue;
 
                 string n = Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
-                if (Has(n, Trees)) trees.Add(path);
-                else if (Has(n, Skip)) continue;
+                // Paketlerin çoğu modelleri klasörlere ayırır (ör. Prefabs/Vehicles, Prefabs/Characters): klasör adına da bak
+                string dir = (Path.GetDirectoryName(path) ?? "").Replace('\\', '/').ToLowerInvariant();
+                bool inVehicleFolder = FolderHas(dir, VehicleFolders);
+                bool inPeopleFolder = FolderHas(dir, PeopleFolders);
+                if (inPeopleFolder) people.Add(path);
+                else if (inVehicleFolder) vehicles.Add(path);
+                else if (Has(n, Trees)) trees.Add(path);
+                else if (Has(n, Skip)) { skipped.Add(n); continue; }
                 // "Bus_Station", "Police_Station", "Car_Parking" gibi binalar / yollar araç sayılmasın
                 else if (Has(n, People) && !Has(n, Buildings)) people.Add(path);
                 else if (Has(n, Vehicles) && !Has(n, Buildings) && !Has(n, Roads) && !n.Contains("wash")) vehicles.Add(path);
@@ -221,12 +276,23 @@ namespace KuryeTycoon.EditorTools
             int nb = CopyAll(buildings, Root + "/Binalar");
             int nt = CopyAll(trees, Root + "/Agaclar");
             int nr = CopyAll(roads, Root + "/Yollar");
+            // Konsola rapor: hangi model nereye gitti (araç / insan bulunamazsa adlardan anlaşılır)
+            var sb = new System.Text.StringBuilder("Kurye Tycoon şehir paketi raporu\n");
+            sb.AppendLine($"ARAÇLAR ({vehicles.Count}): " + string.Join(", ", vehicles.ConvertAll(Path.GetFileNameWithoutExtension)));
+            sb.AppendLine($"İNSANLAR ({people.Count}): " + string.Join(", ", people.ConvertAll(Path.GetFileNameWithoutExtension)));
+            sb.AppendLine($"ATLANANLAR ({skipped.Count}): " + string.Join(", ", skipped));
+            var unk = new List<string>();
+            foreach (var u in unknown) if (!buildings.Contains(u)) unk.Add(Path.GetFileNameWithoutExtension(u));
+            sb.AppendLine($"TANINMAYANLAR ({unk.Count}): " + string.Join(", ", unk));
+            Debug.Log(sb.ToString());
             int nv = CopyAll(vehicles, Root + "/Araclar");
             int np = CopyAll(people, Root + "/Insanlar");
             AssetDatabase.Refresh();
 
             EditorUtility.DisplayDialog("Kurye Tycoon",
                 $"Şehir paketi kuruldu:\n• {conv} malzeme URP'ye çevrildi\n• {nb} bina\n• {nt} ağaç\n• {nr} yol parçası\n• {nv} araç (trafik)\n• {np} insan (yayalar)\n\n" +
+                (nv + np == 0 ? "Araç / insan bulunamadı: Console'daki 'şehir paketi raporu'na bak ya da paketin araç klasörünü seçip " +
+                                "Kurye Tycoon > Seçili Klasörü Araç Olarak Ekle'yi kullan.\n\n" : "") +
                 "Yanlış klasöre düşen olursa Assets/Resources/SehirPaketi altında sürükleyerek taşı (araba, insan vb. Binalar'dan silinebilir).\n\n" +
                 "Hâlâ pembe görünen olursa: paketin klasörünü seç > Kurye Tycoon > Seçili Klasördeki Malzemeleri URP'ye Çevir.\n" +
                 "Yeni oyun başlatınca yakınlaştırdığında paketin binaları görünür.", "Tamam");
