@@ -106,6 +106,10 @@ namespace KuryeTycoon
         /// </summary>
         public static readonly bool ShowCourierChatter = false;
 
+        /// <summary>Kuryelerin karar isteyen mesajları (mola, yağmurda eve gitme, şarj, lastik) da kapalı: oyuncu istemedi.
+        /// Pencerede sadece müşteri yorumları var. Geri açmak için true.</summary>
+        public static readonly bool ShowCourierDecisions = false;
+
         void Info(Courier c, string text, bool toast = false)
         {
             if (!ShowCourierChatter) return;
@@ -158,7 +162,7 @@ namespace KuryeTycoon
             // Kurye sayısı arttıkça biraz daha sık, ama ekran mesaja boğulmasın
             if (Random.value > Mathf.Min(0.6f, 0.22f + online.Count * 0.03f)) return;
             var who = online[Random.Range(0, online.Count)];
-            Generate(who);
+            if (ShowCourierDecisions || ShowCourierChatter) Generate(who);
         }
 
         void Generate(Courier c)
@@ -331,6 +335,7 @@ namespace KuryeTycoon
                 foreach (var m in s.messages)
                 {
                     if (m.kind == PhoneKind.Bilgi && !ShowCourierChatter) continue;   // eski kayıtlardaki kurye bilgi mesajları
+                    if (m.kind == PhoneKind.Karar && !ShowCourierDecisions) continue;   // eski kayıtlardaki kurye karar mesajları
                     if (m.kind == PhoneKind.Karar && !m.answered) { m.answered = true; m.answer = "Oyun kaydedildi, cevap verilmedi."; }
                     Messages.Add(m);
                 }

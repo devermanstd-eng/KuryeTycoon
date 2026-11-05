@@ -11,7 +11,7 @@ namespace KuryeTycoon
     {
         enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler, Mesajlar, Market, Istatistik }
         static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar", "Haftalık Hedefler",
-                                                  "Mesajlar ve Yorumlar", "Kendi Marketin", "İstatistikler" };
+                                                  "Müşteri Yorumları", "Kendi Marketin", "İstatistikler" };
 
         public float panelWidth = 460f;     // açılan pencerenin genişliği
         const float TopBar = 60f;
@@ -941,7 +941,7 @@ namespace KuryeTycoon
         {
             // Gruplar (aralarında ince çizgi): günlük takip · ekip · satış · şirket
             (Tab.Siparisler, Icons.Kind.Orders, "Siparişler"),
-            (Tab.Mesajlar, Icons.Kind.Phone, "Mesajlar"),
+            (Tab.Mesajlar, Icons.Kind.Star, "Yorumlar"),
             (Tab.Hedefler, Icons.Kind.Flag, "Hedefler"),
             (Tab.Kuryeler, Icons.Kind.Couriers, "Kuryeler"),
             (Tab.IseAlim, Icons.Kind.Hiring, "İşe Alım"),

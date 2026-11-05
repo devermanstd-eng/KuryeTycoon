@@ -123,7 +123,7 @@ namespace KuryeTycoon
         {
             Section("Arayüz",
                 $"Kilitli menüler: Gelişim {Guide.GelisimDay}. günde, Kampanya {Guide.KampanyaDay}., Grafik {Guide.GrafikDay}., Destek {Guide.DestekDay}., " +
-                $"Market {Guide.MarketDay}. günde (ya da şartı gelince), Mesajlar ilk mesajla açılır. \"Bütün menüleri baştan aç\" hepsini hemen açar.");
+                $"Market {Guide.MarketDay}. günde (ya da şartı gelince), Yorumlar ilk müşteri yorumuyla açılır. \"Bütün menüleri baştan aç\" hepsini hemen açar.");
             bool push = GUILayout.Toggle(PushMapSetting, " Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", toggle);
             if (push != PushMapSetting) PushMapSetting = push;
             DrawFeedbackSettings();

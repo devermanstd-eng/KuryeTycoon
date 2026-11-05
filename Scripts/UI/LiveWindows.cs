@@ -20,8 +20,8 @@ namespace KuryeTycoon
         {
             var cmsg = CourierMessages.I;
             if (cmsg == null) return;
-            Intro("mesajlar", "Kuryelerin karar isteyen mesajları ve müşteri yorumları. Cevap bekleyenler en üstte.",
-                  "Bazı mesajlar senden karar ister: 30 dakika içinde cevap vermezsen kurye kendi karar verir. " +
+            bool courierMsgs = CourierMessages.ShowCourierDecisions || CourierMessages.ShowCourierChatter;
+            Intro("mesajlar", "Teslimattan sonra müşterilerin bıraktığı yorumlar ve yıldızlar.",
                   "Kötü yorumların küçük bir kısmı sosyal medyada yayılabilir: itibar düşer, 2 gün siparişler azalır. " +
                   "Çok iyi yorumlar da yayılabilir. Yorumları iyileştirmenin yolu: zamanında, sıcak ve temiz çantayla teslimat.");
 
@@ -33,17 +33,21 @@ namespace KuryeTycoon
             if (cmsg.reviewsTotal > 0)
                 Section($"Müşteri yorumları: {cmsg.reviewsTotal} yorum · ortalama {cmsg.AverageStars:0.0}★");
 
-            GUILayout.BeginHorizontal();
-            // Filtre bir sonraki karede değişir: aynı karede değişirse IMGUI düzeni bozulur (alttaki kartlar değişiyor)
-            if (SelectButton(msgFilter == 0, "Tümü", smallButton)) deferred += () => msgFilter = 0;
-            if (SelectButton(msgFilter == 1, "Kurye kararları", smallButton)) deferred += () => msgFilter = 1;
-            if (SelectButton(msgFilter == 2, "Yorumlar", smallButton)) deferred += () => msgFilter = 2;
-            GUILayout.EndHorizontal();
+            if (courierMsgs)
+            {
+                GUILayout.BeginHorizontal();
+                // Filtre bir sonraki karede değişir: aynı karede değişirse IMGUI düzeni bozulur (alttaki kartlar değişiyor)
+                if (SelectButton(msgFilter == 0, "Tümü", smallButton)) deferred += () => msgFilter = 0;
+                if (SelectButton(msgFilter == 1, "Kurye kararları", smallButton)) deferred += () => msgFilter = 1;
+                if (SelectButton(msgFilter == 2, "Yorumlar", smallButton)) deferred += () => msgFilter = 2;
+                GUILayout.EndHorizontal();
+            }
+            else msgFilter = 2;   // sadece müşteri yorumları
             GUILayout.Space(6);
 
             if (cmsg.Messages.Count == 0)
             {
-                GUILayout.Label("Henüz mesaj yok. Kuryeler çalıştıkça mesaj atar.", small);
+                GUILayout.Label("Henüz yorum yok. Müşteriler teslimattan sonra yorum bırakır.", small);
                 return;
             }
 

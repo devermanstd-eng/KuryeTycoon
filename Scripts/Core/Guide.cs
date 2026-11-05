@@ -38,7 +38,7 @@ namespace KuryeTycoon
         public const int MarketDay = 7;
 
         const int FeatureCount = 6;
-        public static readonly string[] FeatureNames = { "Gelişim", "Kampanya", "Destek", "Market", "Grafik", "Mesajlar" };
+        public static readonly string[] FeatureNames = { "Gelişim", "Kampanya", "Destek", "Market", "Grafik", "Yorumlar" };
 
         public int TutorialStep { get; private set; }
         /// <summary>Kurulum ekranında ve eski kayıtlarda rehber yok; yeni oyunda InitNew açar.</summary>
@@ -135,7 +135,7 @@ namespace KuryeTycoon
                 case Feature.Destek: return $"{DestekDay}. günde ya da {DestekCouriers} kuryen olunca açılır.";
                 case Feature.Market: return $"{MarketDay}. günde ya da {CityMap.DistrictNames[DarkStore.RequiredDistrict]} bölgesini açınca açılır.";
                 case Feature.Grafik: return $"{GrafikDay}. günde açılır (önce biraz veri birikmeli).";
-                case Feature.Mesajlar: return "İlk kurye mesajı ya da müşteri yorumu gelince açılır.";
+                case Feature.Mesajlar: return "İlk müşteri yorumu gelince açılır.";
             }
             return "";
         }
@@ -149,7 +149,7 @@ namespace KuryeTycoon
                 case Feature.Destek: return "maaşlı destek ekibi müşteri sorunlarını senin yerine çözer.";
                 case Feature.Market: return "kendi deponu aç, komisyon ödemeden sat.";
                 case Feature.Grafik: return "günlük, haftalık ve aylık grafikler.";
-                case Feature.Mesajlar: return "kurye mesajları ve müşteri yorumları burada.";
+                case Feature.Mesajlar: return "müşterilerin yorumları ve yıldızları burada.";
             }
             return "";
         }

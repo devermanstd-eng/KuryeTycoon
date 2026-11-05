@@ -24,7 +24,7 @@ namespace KuryeTycoon
         static readonly MenuGroupDef[] MenuGroups =
         {
             new MenuGroupDef { label = "Siparişler", title = "Siparişler", icon = Icons.Kind.Orders, tabs = new[] { Tab.Siparisler }, tabLabels = new[] { "Siparişler" } },
-            new MenuGroupDef { label = "Mesajlar", title = "Mesajlar ve Yorumlar", icon = Icons.Kind.Phone, tabs = new[] { Tab.Mesajlar }, tabLabels = new[] { "Mesajlar" } },
+            new MenuGroupDef { label = "Yorumlar", title = "Müşteri Yorumları", icon = Icons.Kind.Star, tabs = new[] { Tab.Mesajlar }, tabLabels = new[] { "Yorumlar" } },
             new MenuGroupDef { label = "Hedefler", title = "Haftalık Hedefler", icon = Icons.Kind.Flag, tabs = new[] { Tab.Hedefler }, tabLabels = new[] { "Hedefler" } },
             new MenuGroupDef
             {
