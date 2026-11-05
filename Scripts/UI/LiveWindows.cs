@@ -20,7 +20,7 @@ namespace KuryeTycoon
         {
             var cmsg = CourierMessages.I;
             if (cmsg == null) return;
-            Intro("mesajlar", "Kurye mesajları ve müşteri yorumları. Cevap bekleyenler en üstte.",
+            Intro("mesajlar", "Kuryelerin karar isteyen mesajları ve müşteri yorumları. Cevap bekleyenler en üstte.",
                   "Bazı mesajlar senden karar ister: 30 dakika içinde cevap vermezsen kurye kendi karar verir. " +
                   "Kötü yorumların küçük bir kısmı sosyal medyada yayılabilir: itibar düşer, 2 gün siparişler azalır. " +
                   "Çok iyi yorumlar da yayılabilir. Yorumları iyileştirmenin yolu: zamanında, sıcak ve temiz çantayla teslimat.");
@@ -36,7 +36,7 @@ namespace KuryeTycoon
             GUILayout.BeginHorizontal();
             // Filtre bir sonraki karede değişir: aynı karede değişirse IMGUI düzeni bozulur (alttaki kartlar değişiyor)
             if (SelectButton(msgFilter == 0, "Tümü", smallButton)) deferred += () => msgFilter = 0;
-            if (SelectButton(msgFilter == 1, "Kurye mesajları", smallButton)) deferred += () => msgFilter = 1;
+            if (SelectButton(msgFilter == 1, "Kurye kararları", smallButton)) deferred += () => msgFilter = 1;
             if (SelectButton(msgFilter == 2, "Yorumlar", smallButton)) deferred += () => msgFilter = 2;
             GUILayout.EndHorizontal();
             GUILayout.Space(6);
@@ -52,6 +52,7 @@ namespace KuryeTycoon
             foreach (var m in cmsg.Messages)
             {
                 if (m.Pending) continue;
+                if (m.kind == PhoneKind.Bilgi && !CourierMessages.ShowCourierChatter) continue;   // kurye bilgi mesajları gösterilmez
                 if (msgFilter == 1 && m.kind == PhoneKind.Yorum) continue;
                 if (msgFilter == 2 && m.kind != PhoneKind.Yorum) continue;
                 DrawMessageCard(m);

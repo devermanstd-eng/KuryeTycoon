@@ -100,8 +100,15 @@ namespace KuryeTycoon
             return m;
         }
 
+        /// <summary>
+        /// Kuryelerin bilgi mesajları (trafik, dükkanda sıra, bahşiş sevinci…) artık gösterilmiyor: oyuncu istemedi.
+        /// Sadece karar isteyen mesajlar ve müşteri yorumları listeye düşer. Geri açmak için ShowCourierChatter = true.
+        /// </summary>
+        public static readonly bool ShowCourierChatter = false;
+
         void Info(Courier c, string text, bool toast = false)
         {
+            if (!ShowCourierChatter) return;
             Add(PhoneKind.Bilgi, c.courierName, text);
             if (toast) EventManager.I.Notify($"Mesaj — {c.ShortName}: {text}");
         }
@@ -323,6 +330,7 @@ namespace KuryeTycoon
             if (s.messages != null)
                 foreach (var m in s.messages)
                 {
+                    if (m.kind == PhoneKind.Bilgi && !ShowCourierChatter) continue;   // eski kayıtlardaki kurye bilgi mesajları
                     if (m.kind == PhoneKind.Karar && !m.answered) { m.answered = true; m.answer = "Oyun kaydedildi, cevap verilmedi."; }
                     Messages.Add(m);
                 }
