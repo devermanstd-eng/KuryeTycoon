@@ -110,6 +110,26 @@ namespace KuryeTycoon
         public bool elevator;
         public bool elevatorBroken;
 
+        // ---------- Kurye uygulamasındaki teslimat bilgileri (Wolt gibi) ----------
+        public string doorCode;        // bina kapı kodu (müstakil evde yok: null)
+        public bool codeMissing;       // binada kod var ama müşteri yazmamış: kurye kapıda arar (+1,5 dk)
+        public string intercom = "";   // zil / interkom
+        public bool noContact;         // temassız teslimat: kapıya bırakılır (müşteri evde olmasa da teslim edilir)
+        public string noteTranslation = ""; // not Macarca ise Türkçesi ("Çevir")
+        public bool markedLate;        // kurye "gecikme bildir"e bastı: müşteriye haber verildi, söz verilen süre +10 dk
+        public bool shopPinged;        // destek dükkanı hızlandırması için aradı
+
+        public string ShortCustomerName
+        {
+            get
+            {
+                // "Tímea Nagy" → "N. Tímea" (uygulamada soyadının baş harfi + ad)
+                var parts = customerName.Split(' ');
+                if (parts.Length < 2 || parts[1].Length == 0) return customerName;
+                return $"{parts[1][0]}. {parts[0]}";
+            }
+        }
+
         public string ItemsText => Menus.Text(items);
         public int ItemCount { get { int n = 0; foreach (var i in items) n += i.qty; return n; } }
 
@@ -135,6 +155,9 @@ namespace KuryeTycoon
             int perFloor = Addresses.FlatsPerFloor(tile);
             flat = floors > 1 ? floor * perFloor + Random.Range(1, perFloor + 1) : 0;
             elevatorBroken = elevator && Random.value < 0.08f;
+            doorCode = Addresses.DoorCode(tile);
+            codeMissing = doorCode != null && Random.value < 0.12f;
+            intercom = flat > 0 ? flat.ToString() : "Kapı zili";
         }
 
         /// <summary>
@@ -145,6 +168,8 @@ namespace KuryeTycoon
         {
             float t = 1f;                                   // kapıda teslim, zil, para üstü
             if (cashPay) t += 0.5f;
+            if (codeMissing) t += 1.5f;                     // kapı kodu yazılmamış: müşteriyi arar
+            if (noContact) t -= 0.4f;                       // kapıya bırakıp çıkar, müşteriyi beklemez
             if (blocks > 1) t += 0.5f;                      // doğru bloğu bulma
             if (floor == 0) return t;
             if (elevator && !elevatorBroken)

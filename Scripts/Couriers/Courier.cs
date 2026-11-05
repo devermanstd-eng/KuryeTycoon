@@ -513,6 +513,34 @@ namespace KuryeTycoon
             return true;
         }
 
+        // ---------- Kurye uygulamasından yapılanlar ----------
+
+        /// <summary>Son teslim ettiği sipariş (uygulamada "Önceki görev").</summary>
+        [System.NonSerialized] public Order lastDelivered;
+        /// <summary>Uygulamadan ayarlanan çevrimdışı olma saati (GameClock.TotalMinutes; yoksa −1).</summary>
+        public float plannedOfflineAt = -1f;
+
+        /// <summary>"Bu teslimatı iptal et": henüz dükkandan alınmamış siparişi bırakır, sipariş başka kuryeye gider.</summary>
+        public bool CancelTask(Order o)
+        {
+            if (o == null || !toPick.Contains(o)) return false;
+            bool wasCurrent = current == o;
+            toPick.Remove(o);
+            if (wasCurrent) current = null;
+            OrderManager.I.ReturnToPending(o, this);
+            EventManager.I.Notify($"{ShortName} #{o.id} teslimatını iptal etti, sipariş başka kuryeye gidecek.");
+            if (wasCurrent) PlanNext();
+            return true;
+        }
+
+        /// <summary>Adres sorununda "Destek": 10 dakika beklemeden destek / müşteri hemen aranır.</summary>
+        public bool ContactSupportNow()
+        {
+            if (State != CourierState.AdresSorunu) return false;
+            issueWaitUntil = GameClock.I.TotalMinutes;
+            return true;
+        }
+
         /// <summary>Kurye mesajlarından: bugünlük işi bırakır (elindeki paketleri bitirince).</summary>
         public void EndShiftEarly(string reason) => RequestOffline(reason);
 
@@ -944,6 +972,12 @@ namespace KuryeTycoon
 
             if (dm > 0f)
             {
+                // Uygulamadan ayarlanan çevrimdışı saati
+                if (plannedOfflineAt > 0f && clock.TotalMinutes >= plannedOfflineAt)
+                {
+                    plannedOfflineAt = -1f;
+                    if (IsOnline) RequestOffline("Planladığı çevrimdışı saati geldi");
+                }
                 if (clock.Hour != lastDecisionHour)
                 {
                     lastDecisionHour = clock.Hour;
@@ -1072,6 +1106,8 @@ namespace KuryeTycoon
             }
             else if (State == CourierState.MusteriyeGidiyor)
             {
+                // Temassız teslimatta müşteri evde olmasa da paket kapıya bırakılır
+                if (current.noContact && current.addressIssue == AddressIssue.EvdeYok) current.issueResolved = true;
                 // Adreste sorun var mı? (yanlış işaretlenmiş adres / müşteri evde yok)
                 if (current.addressIssue != AddressIssue.Yok && !current.issueResolved)
                 {
@@ -1212,6 +1248,7 @@ namespace KuryeTycoon
             lastBusyAt = GameClock.I.TotalMinutes;
             {
                 var done = current;
+                lastDelivered = done;
                 current = null;
                 carrying.Remove(done);
                 deliveries++;

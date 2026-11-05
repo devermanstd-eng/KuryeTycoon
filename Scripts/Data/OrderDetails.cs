@@ -76,6 +76,49 @@ namespace KuryeTycoon
         };
 
         public static string RandomNote() => CustomerNotes[Random.Range(0, CustomerNotes.Length)];
+
+        // Macar müşterilerin notları (kurye uygulamasında "Çevir" ile Türkçesi görünür)
+        static readonly string[,] HungarianNotes =
+        {
+            { "A kaputelefon nem működik, kérem hívjon fel!", "Kapı zili çalışmıyor, lütfen beni arayın!" },
+            { "Kérem, hagyja az ajtó előtt.", "Lütfen kapının önüne bırakın." },
+            { "Csengessen kétszer!", "İki kez zile basın!" },
+            { "A lift nem működik, bocsánat!", "Asansör çalışmıyor, kusura bakmayın!" },
+            { "Az udvarban a második lépcsőház.", "Avludaki ikinci merdiven girişi." },
+            { "Kutya van, de nem harap.", "Köpek var ama ısırmaz." },
+            { "Hívjon, ha ideért, lemegyek.", "Gelince arayın, aşağı inerim." },
+            { "A kapukód a kaputelefon mellett van.", "Kapı kodu interkomun yanında yazıyor." },
+            { "Köszönöm szépen, jó munkát!", "Çok teşekkürler, iyi çalışmalar!" },
+        };
+
+        /// <summary>Müşteri notu: çoğu Türkçe, bazıları Macarca (çevirisiyle).</summary>
+        public static void RandomNote(out string note, out string translation)
+        {
+            translation = "";
+            if (Random.value < 0.3f)
+            {
+                int i = Random.Range(0, HungarianNotes.GetLength(0));
+                note = HungarianNotes[i, 0];
+                translation = HungarianNotes[i, 1];
+                return;
+            }
+            note = RandomNote();
+        }
+
+        /// <summary>Bina kapı kodu: binaya göre hep aynı. Müstakil evde ve küçük binalarda kod yok (null).</summary>
+        public static string DoorCode(Vector2Int t)
+        {
+            if (Floors(t) <= 2) return null;
+            var r = TileRng(new Vector2Int(t.x + 101, t.y + 37));
+            int n = 1000 + r.Next(9000);
+            switch (r.Next(4))
+            {
+                case 0: return $"{n}";
+                case 1: return $"{n % 1000:000}#";
+                case 2: return $"K{n}";
+                default: return $"*{n}";
+            }
+        }
     }
 
 }

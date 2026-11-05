@@ -11,7 +11,7 @@ namespace KuryeTycoon
     /// </summary>
     public partial class GameUI
     {
-        enum PhoneScreen { Home, Menu, Stats, Earn, Insights, Finance, Insurance, Profile, Inbox, Support }
+        enum PhoneScreen { Home, Menu, Stats, Earn, Insights, Finance, Insurance, Profile, Inbox, Support, PrevTask }
 
         PhoneScreen phoneScreen = PhoneScreen.Home;
         int statsTab;               // 0 bugün, 1 hafta, 2 ay
@@ -83,6 +83,9 @@ namespace KuryeTycoon
                 phoneAnimFor = c;
                 phoneScreen = PhoneScreen.Home;
                 popupScroll = Vector2.zero;
+                phoneTaskTab = 0;
+                phoneOfflineEdit = false;
+                phoneConfirmCancel = -1;
                 if (phoneAnim > 0.5f) phoneAnim = 0.85f;
             }
             if (Event.current.type == EventType.Repaint) phoneAnim = Mathf.MoveTowards(phoneAnim, 1f, Time.unscaledDeltaTime * 4f);
@@ -193,17 +196,22 @@ namespace KuryeTycoon
             UITheme.Box(sheet, PSheet, 24f);
             UITheme.Box(new Rect(sheet.center.x - 24, sheet.y + 8, 48, 4), UITheme.WithAlpha(Color.white, 0.22f), 2f);
 
-            var area = new Rect(sheet.x + 18, sheet.y + 20, sheet.width - 36, sheet.height - 40);
+            bool showOffer = c.lastOffer != null && Time.unscaledTime - c.lastOfferRealTime < 4f;
+            bool task = !showOffer && c.CarryingList.Count + c.ToPickList.Count > 0;
+            var area = new Rect(sheet.x + 18, sheet.y + 20, sheet.width - 36, sheet.height - 40 - (task ? 64f : 0f));
+            phoneContentWidth = area.width;
             GUILayout.BeginArea(area);
             popupScroll = GUILayout.BeginScrollView(popupScroll, GUIStyle.none, GUIStyle.none);
 
-            bool showOffer = c.lastOffer != null && Time.unscaledTime - c.lastOfferRealTime < 4f;
             if (showOffer) HomeOffer(c);
-            else if (c.CarryingList.Count + c.ToPickList.Count > 0) HomeTask(c);
+            else if (task) HomeTaskApp(c);
             else HomeIdle(c);
 
+            GUILayout.Space(8);
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+            // Gerçek uygulamadaki gibi altta sabit büyük düğme (kurye durumu)
+            if (task) TaskStatusPill(c, new Rect(sheet.x + 14, sheet.yMax - 22 - 54, sheet.width - 28, 54));
         }
 
         // ---------- Harita ----------
@@ -580,7 +588,7 @@ namespace KuryeTycoon
             GUILayout.BeginArea(area);
             GUILayout.BeginHorizontal();
             var back = GUILayoutUtility.GetRect(36, 36, GUILayout.Width(36));
-            if (RoundIcon(back, IconBack)) GoPhone(PhoneScreen.Menu);
+            if (RoundIcon(back, IconBack)) GoPhone(phoneScreen == PhoneScreen.PrevTask ? PhoneScreen.Home : PhoneScreen.Menu);
             GUILayout.FlexibleSpace();
             var cl = GUILayoutUtility.GetRect(36, 36, GUILayout.Width(36));
             if (RoundIcon(cl, IconClose)) deferred = () => popupCourier = null;
@@ -597,6 +605,7 @@ namespace KuryeTycoon
                 case PhoneScreen.Insurance: title = "Sigorta ve haklar"; break;
                 case PhoneScreen.Profile: title = "Profil"; break;
                 case PhoneScreen.Inbox: title = "Gelen kutusu"; break;
+                case PhoneScreen.PrevTask: title = "Önceki görev"; break;
                 default: title = "Nasıl yardımcı olabiliriz?"; break;
             }
             GUILayout.Label(title, pHuge);
@@ -611,6 +620,7 @@ namespace KuryeTycoon
                 case PhoneScreen.Insurance: PageInsurance(c); break;
                 case PhoneScreen.Profile: PageProfile(c); break;
                 case PhoneScreen.Inbox: PageInbox(c); break;
+                case PhoneScreen.PrevTask: PagePrevTask(c); break;
                 default: PageSupport(c); break;
             }
             GUILayout.Space(10);

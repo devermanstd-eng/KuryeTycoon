@@ -403,6 +403,9 @@ namespace KuryeTycoon
                 stockCost = stockCost
             };
             o.SetAddress(custTile, custDoor);
+            Addresses.RandomNote(out var note, out var noteTr);
+            o.customerNote = note;
+            o.noteTranslation = noteTr;
             // Nakit ödeme: marketlerde daha sık. Müşteri yuvarlak banknot verir, para üstü hazırlanır.
             if (Random.value < (shop.def.isMarket ? cashChanceMarket : cashChanceFood))
             {
@@ -413,6 +416,8 @@ namespace KuryeTycoon
                 o.cashGiven = (amt + step - 1) / step * step;
                 if (o.cashGiven == amt && Random.value < 0.5f) o.cashGiven += 1000;
             }
+            // Temassız teslimat: kartla ödenen siparişlerin ~%22'si (not "kapıya bırakın" diyorsa her zaman)
+            o.noContact = !o.cashPay && (Random.value < 0.22f || o.customerNote.Contains("bırakın") || o.noteTranslation.Contains("bırakın"));
             o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);
             o.deadlineAt = o.readyAt + dist / 0.45f + (o.customerType == CustomerType.Aceleci ? 7f : 15f)
                            + o.DoorMinutes(1f, true); // müşteri katını da hesaba katan tahmini süre
