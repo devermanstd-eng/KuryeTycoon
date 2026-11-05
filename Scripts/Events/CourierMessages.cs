@@ -247,9 +247,12 @@ namespace KuryeTycoon
 
         // ---------------------------------------------------------------- teslimat sonrası: bahşiş mesajı ve müşteri yorumu
 
+        /// <summary>Müşteri yorumları kapalı (oyuncu istemedi): yorum yazılmaz, viral etki olmaz. Geri açmak için true.</summary>
+        public static readonly bool ReviewsEnabled = false;
+
         public void OnDelivered(Order o, Courier c, float late)
         {
-            if (o == null || c == null) return;
+            if (o == null || c == null || !ReviewsEnabled) return;
             if (o.tip >= 1000 && Random.value < 0.35f)
                 Info(c, $"Müşteri {GameData.Ft(o.tip)} bahşiş verdi, çok mutlu oldum!");
 

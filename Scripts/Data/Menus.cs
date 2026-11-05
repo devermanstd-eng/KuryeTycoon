@@ -505,6 +505,10 @@ namespace KuryeTycoon
                 { "Villa Gourmet", Parse(VillaGourmet) },
                 { "BioSzpar", Parse(BioSzpar) },
             };
+            // 24 saat açık yerler: gece fiyatı biraz yüksek
+            Register("Non-Stop Gyros", "Döner Kral", 1.08f);
+            foreach (var b in new[] { "ABC Non-Stop", "Sarok Kisbolt", "Éjjel-Nappali", "Mini ABC", "Kikötő Non-Stop", "Falu ABC" })
+                Register(b, "Market 24", 1.02f);
         }
 
         /// <summary>Yeni bir dükkana (ör. kendi marketin) başka bir dükkanın ürün listesini fiyat çarpanıyla verir.</summary>

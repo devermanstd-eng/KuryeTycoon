@@ -81,6 +81,14 @@ namespace KuryeTycoon
             // Bölge 5 — Yeşil Tepe
             new ShopDef { name = "Villa Gourmet", color = new Color(0.55f, 0.25f, 0.45f), prepMinutes = 25, basketMin = 6000, basketMax = 20000, commission = 0.25f, weight = 0.6f, contractCost = 160000, unlockLevel = 5, hotFood = true, kgMin = 0.8f, kgMax = 4f },
             new ShopDef { name = "BioSzpar",      color = new Color(0.45f, 0.70f, 0.25f), prepMinutes = 12, basketMin = 4000, basketMax = 20000, commission = 0.14f, weight = 0.6f, contractCost = 140000, unlockLevel = 5, hotFood = false, isMarket = true, kgMin = 2f, kgMax = 20f },
+            // 24 saat açık yerler (gece de sipariş gelir). Listenin sonuna eklendi: eski kayıtlarda diğer dükkanların yeri değişmesin.
+            new ShopDef { name = "Non-Stop Gyros",  color = new Color(0.90f, 0.35f, 0.25f), prepMinutes = 6, basketMin = 1800, basketMax = 4500,  commission = 0.24f, weight = 0.7f,  contractCost = 35000, unlockLevel = 1, hotFood = true, kgMin = 0.4f, kgMax = 2f },
+            new ShopDef { name = "ABC Non-Stop",    color = new Color(0.30f, 0.55f, 0.85f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 15000, unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
+            new ShopDef { name = "Sarok Kisbolt",   color = new Color(0.55f, 0.45f, 0.80f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 15000, unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
+            new ShopDef { name = "Éjjel-Nappali",   color = new Color(0.25f, 0.65f, 0.70f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 25000, unlockLevel = 2, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
+            new ShopDef { name = "Mini ABC",        color = new Color(0.65f, 0.55f, 0.30f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 30000, unlockLevel = 3, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
+            new ShopDef { name = "Kikötő Non-Stop", color = new Color(0.20f, 0.45f, 0.65f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 35000, unlockLevel = 4, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
+            new ShopDef { name = "Falu ABC",        color = new Color(0.50f, 0.65f, 0.35f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 40000, unlockLevel = 5, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
         };
 
         public static readonly EquipmentDef[] Equipment =

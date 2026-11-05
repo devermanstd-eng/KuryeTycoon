@@ -141,9 +141,23 @@ namespace KuryeTycoon
             lastYear = Year;
         }
 
+        // ---------- Gece hızlı geçsin: 00:00–05:00 arası zaman kendiliğinden daha hızlı akar ----------
+        public const float NightSpeed = 4f;
+        const string NightKey = "KuryeTycoon.GeceHizli";
+        static int nightCache = -1;
+        public static bool NightFast
+        {
+            get { if (nightCache < 0) nightCache = PlayerPrefs.GetInt(NightKey, 1); return nightCache == 1; }
+            set { nightCache = value ? 1 : 0; PlayerPrefs.SetInt(NightKey, nightCache); PlayerPrefs.Save(); }
+        }
+        public bool NightFastActive => NightFast && Hour < 5;
+
+        /// <summary>Gerçekte uygulanan hız: gece 4 katı (en fazla 64×; zaten 64× ve üstündeyse aynı kalır).</summary>
+        public float EffectiveSpeed => NightFastActive ? Mathf.Max(SpeedMultiplier, Mathf.Min(SpeedMultiplier * NightSpeed, 64f)) : SpeedMultiplier;
+
         void Update()
         {
-            DeltaMinutes = (Paused || EventPause) ? 0f : Time.deltaTime * minutesPerSecond * SpeedMultiplier;
+            DeltaMinutes = (Paused || EventPause) ? 0f : Time.deltaTime * minutesPerSecond * EffectiveSpeed;
             TotalMinutes += DeltaMinutes;
 
             if (Day != lastDay)

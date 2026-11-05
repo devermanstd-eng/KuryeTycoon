@@ -206,6 +206,7 @@ namespace KuryeTycoon
             if (ds == null || !ds.IsOpen) return;
             if (withTitle) GUILayout.Label($"{DarkStore.StoreName}  [Senin]", header);
             GUILayout.Label($"Kendi deponun marketi · {DarkStore.SizeNames[ds.size]} · komisyon yok, brüt marj ~%{DarkStore.Margin * 100f:0}", small);
+            GUILayout.Label($"{ShopHours.StatusText(ds.shop.def)} · {ShopHours.HoursText(ds.shop.def)}", small);
             GUILayout.Label($"Stok {Ft(ds.TotalStock)} / {Ft(ds.Capacity)} · bugün {ds.ordersToday} sipariş, brüt kâr {Ft(ds.profitToday)}", small);
             if (GUILayout.Button("Market penceresini aç", smallButton)) deferred += () => { CloseInfo(); OpenTab(Tab.Market); };
         }

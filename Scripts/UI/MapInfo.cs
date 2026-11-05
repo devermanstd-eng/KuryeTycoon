@@ -154,7 +154,8 @@ namespace KuryeTycoon
                 var s = infoShop;
                 string kind = s.def.isMarket ? "Market" : s.def.hotFood ? "Restoran" : "Kafe";
                 string status = !map.IsUnlocked(s.tile) ? "Kilitli bölge" : s.exclusive ? "Münhasır" : s.contracted ? "Sözleşmeli" : "Sözleşmesiz";
-                InfoHeader(r, s.def.color, s.def.isMarket ? Icons.Kind.Orders : Icons.Kind.Shops, s.Name, $"{kind} · {status}");
+                InfoHeader(r, s.def.color, s.def.isMarket ? Icons.Kind.Orders : Icons.Kind.Shops, s.Name,
+                           $"{kind} · {status} · {(ShopHours.IsOpen(s.def) ? "Açık" : "Kapalı")}");
             }
             else
             {
