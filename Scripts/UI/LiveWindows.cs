@@ -20,8 +20,8 @@ namespace KuryeTycoon
         {
             var cmsg = CourierMessages.I;
             if (cmsg == null) return;
-            Intro("mesajlar", "Kuryelerin çalışırken mesaj atar; bazıları senden karar ister (30 dakika cevap vermezsen kendi karar verirler). " +
-                              "Müşteri yorumları da buraya düşer.",
+            Intro("mesajlar", "Kurye mesajları ve müşteri yorumları. Cevap bekleyenler en üstte.",
+                  "Bazı mesajlar senden karar ister: 30 dakika içinde cevap vermezsen kurye kendi karar verir. " +
                   "Kötü yorumların küçük bir kısmı sosyal medyada yayılabilir: itibar düşer, 2 gün siparişler azalır. " +
                   "Çok iyi yorumlar da yayılabilir. Yorumları iyileştirmenin yolu: zamanında, sıcak ve temiz çantayla teslimat.");
 
@@ -31,12 +31,13 @@ namespace KuryeTycoon
                 GUILayout.Label(good ? "Viral övgü etkisi sürüyor: siparişler ~%10 fazla." : "Viral kötü yorum etkisi sürüyor: siparişler ~%10 az.", good ? note : warn);
             }
             if (cmsg.reviewsTotal > 0)
-                GUILayout.Label($"Müşteri yorumları: {cmsg.reviewsTotal} yorum · ortalama {cmsg.AverageStars:0.0}★", header);
+                Section($"Müşteri yorumları: {cmsg.reviewsTotal} yorum · ortalama {cmsg.AverageStars:0.0}★");
 
             GUILayout.BeginHorizontal();
-            if (SelectButton(msgFilter == 0, "Tümü", smallButton)) msgFilter = 0;
-            if (SelectButton(msgFilter == 1, "Kurye mesajları", smallButton)) msgFilter = 1;
-            if (SelectButton(msgFilter == 2, "Yorumlar", smallButton)) msgFilter = 2;
+            // Filtre bir sonraki karede değişir: aynı karede değişirse IMGUI düzeni bozulur (alttaki kartlar değişiyor)
+            if (SelectButton(msgFilter == 0, "Tümü", smallButton)) deferred += () => msgFilter = 0;
+            if (SelectButton(msgFilter == 1, "Kurye mesajları", smallButton)) deferred += () => msgFilter = 1;
+            if (SelectButton(msgFilter == 2, "Yorumlar", smallButton)) deferred += () => msgFilter = 2;
             GUILayout.EndHorizontal();
             GUILayout.Space(6);
 
@@ -103,8 +104,7 @@ namespace KuryeTycoon
         {
             var ds = DarkStore.I;
             if (ds == null) return;
-            Intro("market", "Kendi deponu açıp market siparişlerini kendin sat (Wolt Market gibi). Komisyon yok: satışın tamamı senin, " +
-                            $"ama ürünleri sen alırsın. Brüt marj ~%{DarkStore.Margin * 100f:0}.",
+            Intro("market", $"Kendi deponu aç, market siparişlerini komisyonsuz sat. Ürünleri sen alırsın; brüt marj ~%{DarkStore.Margin * 100f:0}.",
                   "Stok alış fiyatıyla tutulur. Stokta olmayan ürünler siparişten çıkar; sepetin çoğu yoksa sipariş kaçar. " +
                   "Boş raflı markete müşteri az gelir. Taze ürün her gün ~%12 bozulur. Çeşit arttıkça daha çok sipariş gelir ama raf ve soğutma gideri artar. " +
                   "Depo büyüdükçe kira ve toplayıcı sayısı artar, stok kapasitesi ve talep de artar.");
@@ -150,7 +150,7 @@ namespace KuryeTycoon
             GUILayout.EndVertical();
 
             // Stok
-            GUILayout.Label($"Stok: {Ft(ds.TotalStock)} / {Ft(ds.Capacity)} (alış fiyatıyla)", header);
+            Section($"Stok: {Ft(ds.TotalStock)} / {Ft(ds.Capacity)}", "Stok alış fiyatıyla tutulur. Taze ürün her gece ~%12 bozulur: fazla stok tutma.");
             for (int a = 0; a < DarkStore.Aisles; a++)
             {
                 int aisle = a;
@@ -172,7 +172,6 @@ namespace KuryeTycoon
                 if (GUILayout.Button($"Doldur ({Ft(need / 100 * 100)})", smallButton)) deferred += () => ds.Restock(aisle, 1f, true);
                 GUI.enabled = modalFree;
                 GUILayout.EndHorizontal();
-                if (a == 1) GUILayout.Label("Taze ürün her gece ~%12 bozulur: fazla stok tutma.", small);
                 GUILayout.EndVertical();
             }
 
@@ -276,9 +275,9 @@ namespace KuryeTycoon
                   "Veriler her gece gün sonunda kaydedilir. Haftalık ve aylık görünümde değerler toplanır (itibar, kurye ve kasa dönem sonundaki değerdir). " +
                   "Çubukların üstüne gelince değeri görürsün.");
             GUILayout.BeginHorizontal();
-            if (SelectButton(statPeriod == 0, "Günlük", button)) statPeriod = 0;
-            if (SelectButton(statPeriod == 1, "Haftalık", button)) statPeriod = 1;
-            if (SelectButton(statPeriod == 2, "Aylık", button)) statPeriod = 2;
+            if (SelectButton(statPeriod == 0, "Günlük", button)) deferred += () => statPeriod = 0;
+            if (SelectButton(statPeriod == 1, "Haftalık", button)) deferred += () => statPeriod = 1;
+            if (SelectButton(statPeriod == 2, "Aylık", button)) deferred += () => statPeriod = 2;
             GUILayout.EndHorizontal();
             GUILayout.Space(6);
 

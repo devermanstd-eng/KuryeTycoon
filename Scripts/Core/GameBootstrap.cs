@@ -212,14 +212,10 @@ namespace KuryeTycoon
 
             // Kısa tutuldu: menüleri ilk gün rehberi (Tutorial.cs) tek tek gösterir, ayrıntılar pencerelerdeki "Ayrıntı"da.
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
-                "Merkez ofisin Merkez Mahalle'deki Kossuth Meydanı'nda. 2 kuryen işbaşında ve 2 sözleşmeli dükkanın var. " +
-                "Siparişler otomatik atanır.\n\n" +
-                "Amacın: kâr et, aile borcunun taksitlerini öde, şirketi büyüt.\n" +
-                "Kartı kapatınca kısa bir rehber ana menüleri gösterecek." +
-                (Guide.AllMenusSetting ? "" : " Bazı menüler ilerleyen günlerde açılır.") + "\n\n" +
-                "Kısayollar: Boşluk = duraklat · 1–8 = hız · Esc = menü (kaydet / çık)\n" +
-                "Harita: tekerlek = yakınlaş · sürükle veya WASD = kaydır · sağ tuş veya Q/E = döndür · 0 = tüm harita\n" +
-                "Oyun her gece otomatik kaydedilir."));
+                "2 kuryen ve 2 sözleşmeli dükkanın var; siparişler otomatik atanır.\n" +
+                "Amacın: kâr et, aile borcunu öde, şirketi büyüt.\n\n" +
+                "Kartı kapatınca kısa bir rehber başlayacak.\n\n" +
+                "Boşluk = duraklat · 1–8 = hız · Esc = menü. Oyun her gece kendini kaydeder."));
         }
     }
 }

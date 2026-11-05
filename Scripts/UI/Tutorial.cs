@@ -59,7 +59,7 @@ namespace KuryeTycoon
             {
                 title = "Hazırsın!",
                 text = "Kasanı ve aile borcunu Finans'ta izle; yıl sonunda vergi var, kasanda yedek tut. " +
-                       "Gelişim, Kampanya ve Destek menüleri ilerleyen günlerde açılacak. Esc = menü (kaydet / çık)."
+                       "Soluk menüler ilerleyen günlerde açılacak. Esc = menü (kaydet / çık)."
             },
         };
 
@@ -114,6 +114,7 @@ namespace KuryeTycoon
         void DrawGuideOverlays(float sw, float sh)
         {
             DrawDockTooltip();
+            DrawHelpTip(sw, sh);   // pencerelerdeki "?" balonu
             if (!TutorialVisible) return;
             InitTutorialStyles();
             var g = Guide.I;

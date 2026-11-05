@@ -175,7 +175,7 @@ namespace KuryeTycoon
         {
             var gm = GoalManager.I;
             if (gm == null) return;
-            GUILayout.Label($"Bu haftanın hedefleri · {gm.DaysLeft} gün kaldı", header);
+            Section($"Bu haftanın hedefleri · {gm.DaysLeft} gün kaldı");
             Intro("hedefler", "Her pazartesi 6 yeni hedef gelir. Tamamladığın hedefin ödülü hemen kasaya girer.",
                   "Hedefler şirketinin büyüklüğüne göre seçilir. Yarım kalan hedef için ceza yok.");
             GUILayout.Space(6);

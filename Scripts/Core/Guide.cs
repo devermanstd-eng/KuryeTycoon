@@ -3,7 +3,8 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>Başta kilitli olan, sonradan açılan menüler.</summary>
-    public enum Feature { Gelisim, Kampanya, Destek }
+    /// <summary>Sıra kayıttaki bit sırasıdır: sadece sona eklenir.</summary>
+    public enum Feature { Gelisim, Kampanya, Destek, Market, Grafik, Mesajlar }
 
     [System.Serializable]
     public class GuideSave
@@ -18,7 +19,8 @@ namespace KuryeTycoon
     /// Yeni oyuncu için sadeleştirme:
     ///  • İlk gün kısa bir rehber (adım kartları) sol çubuktaki ana menüleri tek tek gösterir. Atla / kapat ile geçilir,
     ///    Ayarlar'dan yeniden başlatılır. Kartları GameUI çizer (Tutorial.cs); burada sadece hangi adımda olunduğu tutulur.
-    ///  • Gelişim, Kampanya ve Destek menüleri başta kilitli. Günü ya da şartı gelince kalıcı olarak açılır ve bildirim gelir.
+    ///  • Gelişim, Kampanya, Destek, Market, Grafik ve Mesajlar menüleri başta kilitli. Günü ya da şartı gelince kalıcı olarak
+    ///    açılır ve bildirim gelir.
     ///    Ayarlar'daki "Bütün menüleri baştan aç" hepsini açar (bu bilgisayarda kalıcı).
     /// Kilit sadece menüyü gizler; arkadaki sistemler (boost saatleri, platform ücreti...) her zamanki gibi çalışır.
     /// Rehber adımı ve açılan menüler kayda yazılır.
@@ -32,9 +34,11 @@ namespace KuryeTycoon
         public const int KampanyaDay = 3;
         public const int DestekDay = 5;
         public const int DestekCouriers = 6;
+        public const int GrafikDay = 3;
+        public const int MarketDay = 7;
 
-        const int FeatureCount = 3;
-        public static readonly string[] FeatureNames = { "Gelişim", "Kampanya", "Destek" };
+        const int FeatureCount = 6;
+        public static readonly string[] FeatureNames = { "Gelişim", "Kampanya", "Destek", "Market", "Grafik", "Mesajlar" };
 
         public int TutorialStep { get; private set; }
         /// <summary>Kurulum ekranında ve eski kayıtlarda rehber yok; yeni oyunda InitNew açar.</summary>
@@ -129,6 +133,9 @@ namespace KuryeTycoon
                 case Feature.Gelisim: return $"{GelisimDay}. günde ya da kurye hesapların dolunca açılır.";
                 case Feature.Kampanya: return $"{KampanyaDay}. günde açılır.";
                 case Feature.Destek: return $"{DestekDay}. günde ya da {DestekCouriers} kuryen olunca açılır.";
+                case Feature.Market: return $"{MarketDay}. günde ya da {CityMap.DistrictNames[DarkStore.RequiredDistrict]} bölgesini açınca açılır.";
+                case Feature.Grafik: return $"{GrafikDay}. günde açılır (önce biraz veri birikmeli).";
+                case Feature.Mesajlar: return "İlk kurye mesajı ya da müşteri yorumu gelince açılır.";
             }
             return "";
         }
@@ -140,6 +147,9 @@ namespace KuryeTycoon
                 case Feature.Gelisim: return "platform paketini yükselt, kalıcı iyileştirmeler al.";
                 case Feature.Kampanya: return "boost saatleri koy, kuryeler daha çok çevrimiçi olsun.";
                 case Feature.Destek: return "maaşlı destek ekibi müşteri sorunlarını senin yerine çözer.";
+                case Feature.Market: return "kendi deponu aç, komisyon ödemeden sat.";
+                case Feature.Grafik: return "günlük, haftalık ve aylık grafikler.";
+                case Feature.Mesajlar: return "kurye mesajları ve müşteri yorumları burada.";
             }
             return "";
         }
@@ -157,6 +167,13 @@ namespace KuryeTycoon
                     return day >= DestekDay ||
                            (CourierManager.I != null && CourierManager.I.Couriers.Count >= DestekCouriers) ||
                            (SupportManager.I != null && SupportManager.I.Agents.Count > 0);
+                case Feature.Market:
+                    return day >= MarketDay || (CityMap.I != null && CityMap.I.UnlockLevel >= DarkStore.RequiredDistrict) ||
+                           (DarkStore.I != null && DarkStore.I.IsOpen);
+                case Feature.Grafik:
+                    return day >= GrafikDay;
+                case Feature.Mesajlar:
+                    return CourierMessages.I != null && CourierMessages.I.Messages.Count > 0;
             }
             return true;
         }

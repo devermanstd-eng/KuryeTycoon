@@ -20,6 +20,9 @@ namespace KuryeTycoon
                 case Tab.Gelistirmeler: return Feature.Gelisim;
                 case Tab.Kampanyalar: return Feature.Kampanya;
                 case Tab.Destek: return Feature.Destek;
+                case Tab.Market: return Feature.Market;
+                case Tab.Istatistik: return Feature.Grafik;
+                case Tab.Mesajlar: return Feature.Mesajlar;
                 default: return null;
             }
         }
@@ -60,6 +63,7 @@ namespace KuryeTycoon
             var r = new Rect(DockW + 6f, dockTipRect.center.y - h / 2f, w, h);
             UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.97f), 10f, 4f);
             GUI.Label(new Rect(r.x + 10f, r.y + 7f, w - 20f, h - 14f), content, small);
+            small.normal.textColor = UITheme.TextDim;   // paylaşılan stil: rengi geri al
         }
 
         /// <summary>Soldaki çubukta bir sekmenin simge kutusu (DrawPanel'deki dizilişle aynı).</summary>
@@ -136,16 +140,16 @@ namespace KuryeTycoon
 
         void DrawInterfaceSettings()
         {
-            GUILayout.Label("Arayüz", header);
+            Section("Arayüz",
+                $"Kilitli menüler: Gelişim {Guide.GelisimDay}. günde, Kampanya {Guide.KampanyaDay}., Grafik {Guide.GrafikDay}., Destek {Guide.DestekDay}., " +
+                $"Market {Guide.MarketDay}. günde (ya da şartı gelince), Mesajlar ilk mesajla açılır. \"Bütün menüleri baştan aç\" hepsini hemen açar.");
             bool push = GUILayout.Toggle(PushMapSetting, " Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", toggle);
             if (push != PushMapSetting) PushMapSetting = push;
             DrawFeedbackSettings();
-            bool det = GUILayout.Toggle(ShowAllDetails, " Pencerelerdeki açıklamaların ayrıntısını hep göster", toggle);
+            bool det = GUILayout.Toggle(ShowAllDetails, " Açıklamaları \"?\" balonu yerine hep açık göster", toggle);
             if (det != ShowAllDetails) ShowAllDetails = det;
             bool all = GUILayout.Toggle(Guide.AllMenusSetting, " Bütün menüleri baştan aç (deneyimli oyuncular için)", toggle);
-            if (all != Guide.AllMenusSetting) deferred = () => Guide.AllMenusSetting = all;   // alttaki satır değişir: sonraki karede
-            if (!Guide.AllMenusSetting)
-                GUILayout.Label($"Kapalıyken Gelişim {Guide.GelisimDay}., Kampanya {Guide.KampanyaDay}., Destek {Guide.DestekDay}. günde açılır.", small);
+            if (all != Guide.AllMenusSetting) deferred = () => Guide.AllMenusSetting = all;
             var g = Guide.I;
             if (g != null)
             {
