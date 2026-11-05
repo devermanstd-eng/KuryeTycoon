@@ -130,10 +130,28 @@ namespace KuryeTycoon
 
         // ---------------------------------------------------------------- haftalık hedefler
 
+        const int TrackerMax = 3;   // haritanın üstünde en fazla bu kadar hedef (gerisi Hedefler penceresinde)
+        readonly List<Goal> trackerGoals = new List<Goal>();
+
+        /// <summary>Takip kutusundaki hedefler: bitmemişler, en çok ilerleyen önce; yer kalırsa bitenler.</summary>
+        List<Goal> TrackerGoals()
+        {
+            trackerGoals.Clear();
+            var gm = GoalManager.I;
+            if (gm == null) return trackerGoals;
+            foreach (var g in gm.Goals) if (!g.done) trackerGoals.Add(g);
+            trackerGoals.Sort((a, b) => b.Progress01.CompareTo(a.Progress01));
+            foreach (var g in gm.Goals) if (g.done) trackerGoals.Add(g);
+            if (trackerGoals.Count > TrackerMax) trackerGoals.RemoveRange(TrackerMax, trackerGoals.Count - TrackerMax);
+            return trackerGoals;
+        }
+
+        int TrackerExtra => GoalManager.I != null ? Mathf.Max(0, GoalManager.I.Goals.Count - TrackerMax) : 0;
+
         Rect GoalTrackerRect()
         {
-            int n = GoalManager.I != null ? GoalManager.I.Goals.Count : 0;
-            return new Rect(DockW + 10f, TopBar + 10f, 330f, 34f + n * 34f);
+            int n = GoalManager.I != null ? Mathf.Min(TrackerMax, GoalManager.I.Goals.Count) : 0;
+            return new Rect(DockW + 10f, TopBar + 10f, 330f, 34f + n * 34f + (TrackerExtra > 0 ? 18f : 0f));
         }
 
         bool TrackerVisible => !panelOpen && GoalManager.I != null && GoalManager.I.Goals.Count > 0;
@@ -152,9 +170,10 @@ namespace KuryeTycoon
             small.normal.textColor = UITheme.TextDim;
             GUI.Label(new Rect(r.xMax - 92f, r.y + 6f, 82f, 20f), $"{gm.DaysLeft} gün kaldı", small);
 
-            for (int i = 0; i < gm.Goals.Count; i++)
+            var shownGoals = TrackerGoals();
+            for (int i = 0; i < shownGoals.Count; i++)
             {
-                var g = gm.Goals[i];
+                var g = shownGoals[i];
                 float yy = r.y + 30f + i * 34f;
                 var dot = new Rect(r.x + 12f, yy + 4f, 14f, 14f);
                 if (g.done) { UITheme.Box(dot, UITheme.Good, 7f); }
@@ -168,6 +187,12 @@ namespace KuryeTycoon
                 UITheme.Box(new Rect(bar.x, bar.y, bar.width * g.Progress01, bar.height), g.done ? UITheme.Good : UITheme.Accent, 2f);
             }
             small.normal.textColor = UITheme.TextDim;
+            if (TrackerExtra > 0)
+            {
+                int done = 0;
+                foreach (var g in gm.Goals) if (g.done) done++;
+                GUI.Label(new Rect(r.x + 32f, r.yMax - 22f, r.width - 44f, 18f), $"+{TrackerExtra} hedef daha · {done}/{gm.Goals.Count} bitti · tıkla", small);
+            }
             if (GUI.Button(r, GUIContent.none, GUIStyle.none)) deferred = () => OpenTab(Tab.Hedefler);
         }
 

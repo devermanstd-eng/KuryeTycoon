@@ -78,13 +78,13 @@ namespace KuryeTycoon
         {
             Fill(new Rect(0, 0, sw, sh), new Color(0f, 0f, 0f, 0.5f));
             float w = 440f;
-            float h = 150f + small.CalcHeight(new GUIContent(confirmText), w - 40f);
+            float h = 114f + body.CalcHeight(new GUIContent(confirmText), w - 40f);   // metne göre: boşluk kalmasın
             var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
             Fill(r, new Color(0.14f, 0.15f, 0.18f));
             GUILayout.BeginArea(new Rect(r.x + 20f, r.y + 16f, w - 40f, h - 32f));
             GUILayout.Label(confirmTitle, header);
             GUILayout.Space(4);
-            GUILayout.Label(confirmText, small);
+            GUILayout.Label(confirmText, body);
             GUILayout.FlexibleSpace();
             GUILayout.BeginHorizontal();
             if (GUILayout.Button(confirmYes, button, GUILayout.Height(34))) AcceptConfirm();

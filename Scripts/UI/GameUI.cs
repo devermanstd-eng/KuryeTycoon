@@ -72,6 +72,7 @@ namespace KuryeTycoon
 
         void LateUpdate()
         {
+            UpdateMenuGroups();   // yeni açılan sekmeler, son bakılan sekme
             UpdateTutorial();
             // Harita kamerası sol panel ve üst bar dışındaki alana çizer (yakınlaştırma/kaydırma MapCamera'da).
             // Pencere açıkken harita pencerenin sağına kayar (Ayarlar'dan kapatılırsa pencere haritanın üstünde yüzer).
@@ -720,13 +721,18 @@ namespace KuryeTycoon
             if (GUI.Button(new Rect(x + 216, y, 66, 30), legendOpen ? "Lejant ✓" : "Lejant", smallButton)) legendOpen = !legendOpen;
             if (GUI.Button(new Rect(x + 286, y, 88, 30), mc.FlatMode ? "3D görünüm" : "Düz harita", smallButton)) mc.ToggleFlatMode();
             if (GUI.Button(new Rect(x + 378, y, 118, 30), HeatButtonText, smallButton)) CycleHeat();
-            string hint = heatMode != HeatMode.Kapali
-                ? HeatCaption
-                : "Tekerlek: yakınlaş · sürükle: kaydır · Q-E: döndür · H: yoğunluk";
-            float hw = small.CalcSize(new GUIContent(hint)).x + 16f;
-            var r = new Rect(x + 502, y + 3, hw, 24);
-            UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.75f), 12f);
-            GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height), hint, small);
+            // Kısayollar ekranda yazı olarak durmasın: "?" üstüne gelince görünür. Yoğunluk açıkken onun açıklaması yazar.
+            HelpBadgeAt(new Rect(x + 504, y + 5, 20, 20),
+                "Harita kısayolları\nTekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle ya da Q/E: döndür\n" +
+                "N: kuzey · M: düz harita · 0: tüm harita · H: sipariş yoğunluğu\nBoşluk: duraklat · 1–8: hız · Esc: menü");
+            if (heatMode != HeatMode.Kapali)
+            {
+                string hint = HeatCaption;
+                float hw = small.CalcSize(new GUIContent(hint)).x + 16f;
+                var r = new Rect(x + 532, y + 3, hw, 24);
+                UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.75f), 12f);
+                GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height), hint, small);
+            }
         }
 
         /// <summary>Kurye panelindeki sipariş kutusu: içerik, adres, kat, nakit, kalan süre.</summary>
@@ -997,43 +1003,9 @@ namespace KuryeTycoon
             Fill(new Rect(bar.xMax - 1, bar.y, 1, bar.height), UITheme.Line);
             DrawMapGap(sh);   // harita pencerenin sağına kaydıysa aradaki şerit
 
-            var mouse = Event.current.mousePosition;
+            // Sol çubuk: 6 ana menü + Ayarlar (bkz. MenuGroups.cs)
             dockTip = null;
-            float y = TopBar + 10f;
-            float step = DockStep(sh), ih = step - 4f;
-            for (int i = 0; i < DockItems.Length; i++)
-            {
-                var item = DockItems[i];
-                // Ayarlar en altta
-                float iy = item.tab == Tab.Ayarlar ? sh - 74f : y;
-                var r = new Rect(7f, iy, DockW - 14f, item.tab == Tab.Ayarlar ? 62f : ih);
-                if (StartsDockGroup(item.tab)) Fill(new Rect(18f, iy - 2.5f, DockW - 36f, 1f), new Color(1f, 1f, 1f, 0.14f));
-                bool locked = !TabOpen(item.tab);   // ilk günlerde kilitli menüler (bkz. Guide)
-                bool active = panelOpen && tab == item.tab;
-                bool hover = r.Contains(mouse) && modalFree;
-                if (locked && hover) { dockTip = item.tab; dockTipRect = r; }
-
-                if (active) UITheme.Box(r, UITheme.Accent, 14f);
-                else if (hover) UITheme.Box(r, locked ? UITheme.Card : UITheme.CardHi, 14f);
-
-                var iconCol = locked ? LockedIcon : (active ? UITheme.AccentText : (hover ? UITheme.Text : UITheme.TextDim));
-                float isz = Mathf.Clamp(r.height - 32f, 18f, 30f);   // dar ekranda simgeler küçülür
-                Icons.Draw(new Rect(r.center.x - isz / 2f, r.y + (r.height - isz - 18f) / 2f, isz, isz), item.icon, iconCol);
-                dockLabel.normal.textColor = iconCol;
-                GUI.Label(new Rect(r.x - 4f, r.yMax - 19f, r.width + 8f, 16f), locked ? "Kilitli" : item.label, dockLabel);
-
-                int badge = locked ? 0 : BadgeOf(item.tab);
-                if (badge > 0)
-                {
-                    var br = new Rect(r.xMax - 22f, r.y + 3f, 20f, 18f);
-                    UITheme.Box(br, UITheme.Bad, 9f);
-                    dockLabel.normal.textColor = Color.white;
-                    GUI.Label(new Rect(br.x, br.y + 1f, br.width, br.height), badge > 99 ? "99+" : badge.ToString(), dockLabel);
-                }
-
-                if (GUI.Button(r, GUIContent.none, GUIStyle.none)) { var t = item.tab; deferred = () => TryOpenTab(t); }
-                if (item.tab != Tab.Ayarlar) y += step;
-            }
+            DrawGroupDock(sh);
 
             if (!panelOpen) return;
 
@@ -1042,23 +1014,11 @@ namespace KuryeTycoon
             UITheme.Shadowed(w, UITheme.Bg, 14f, 8f);
             UITheme.Outline(w, UITheme.Line, 1f, 14f);
 
-            // Başlık: simge, ad, kapat
-            var head = new Rect(w.x, w.y, w.width, 50f);
-            UITheme.Box(new Rect(w.x + 14f, w.y + 11f, 28f, 28f), UITheme.Accent, 8f);
-            Icons.Draw(new Rect(w.x + 19f, w.y + 16f, 18f, 18f), IconOf(tab), UITheme.AccentText);
-            string titleText = BaseTabNames[(int)tab];
-            if (tab == Tab.IseAlim && CourierManager.I.Applications.Count > 0) titleText += $" ({CourierManager.I.Applications.Count})";
-            windowTitle.normal.textColor = UITheme.Text;
-            GUI.Label(new Rect(w.x + 52f, w.y, w.width - 110f, 50f), titleText, windowTitle);
+            // Başlık: menü adı, kapat ve sekme şeridi (bkz. MenuGroups.cs)
+            DrawWindowHeader(w);
+            float headH = WindowHeaderHeight();
 
-            var close = new Rect(w.xMax - 42f, w.y + 11f, 28f, 28f);
-            bool closeHover = close.Contains(mouse);
-            if (closeHover) UITheme.Box(close, UITheme.CardHi, 8f);
-            Icons.Draw(new Rect(close.x + 8f, close.y + 8f, 12f, 12f), Icons.Kind.Close, closeHover ? UITheme.Text : UITheme.TextDim);
-            if (GUI.Button(close, GUIContent.none, GUIStyle.none)) deferred = () => panelOpen = false;
-            Fill(new Rect(w.x + 12f, head.yMax, w.width - 24f, 1f), UITheme.Line);
-
-            GUILayout.BeginArea(new Rect(w.x + 12f, head.yMax + 8f, w.width - 24f, w.height - head.height - 16f));
+            GUILayout.BeginArea(new Rect(w.x + 12f, w.y + headH + 8f, w.width - 24f, w.height - headH - 16f));
             scroll = GUILayout.BeginScrollView(scroll);
             ResetTextColors();
             drawingWindow = true;
@@ -1216,7 +1176,9 @@ namespace KuryeTycoon
                   "çevrimiçi/çevrimdışı olurlar; onları zorlayamazsın. Kendi araçlarını ve sigortalarını kendi kazançlarından öderler; " +
                   "para biriktirince daha iyi araç alırlar. Kartlar kısa görünür: her şeyi görmek için \"Detay\".");
 
-            VehicleFilterBar(courierFilter, CourierCountByVehicle, cm.Couriers.Count, f => courierFilter = f);
+            // Araç filtresi sadece kalabalık listede (az kuryede gereksiz kalabalık)
+            if (cm.Couriers.Count >= 5) VehicleFilterBar(courierFilter, CourierCountByVehicle, cm.Couriers.Count, f => courierFilter = f);
+            else courierFilter = -1;
             if (courierFilter >= 0 && CourierCountByVehicle((VehicleKind)courierFilter) == 0)
                 GUILayout.Label($"{GameData.Vehicle((VehicleKind)courierFilter).name} ile çalışan kurye yok.", bodyDim);
 
@@ -1236,33 +1198,26 @@ namespace KuryeTycoon
                 if (c.hygiene < Courier.HygieneLimit) Chip("Çanta kirli", UITheme.Warn);
                 if (c.BagWorn) Chip("Çanta yıpranmış", UITheme.Warn);
                 if (!c.insured) Chip("Sigortasız", NeutralTone);
+                var pens = c.ActivePenalties();
+                if (pens.Count > 0) Chip(pens.Count == 1 ? "1 eksik" : $"{pens.Count} eksik", UITheme.Warn);   // ayrıntısı Detay'da
+                if (c.RejectChance > 0f) Chip($"Teklif reddedebilir (%{c.RejectChance * 100f:0})", UITheme.Warn);
                 ChipRow();
 
-                GUILayout.Label($"Bugün {c.deliveriesToday} teslimat · toplam {c.deliveries} · kazancı {Ft(c.totalEarned)} · aynı anda {c.EffectiveCapacity} paket", body);
-                Bar("Moral", c.morale, Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), c.morale));
-                Bar("Yorgunluk", c.fatigue, new Color(1f, 0.6f, 0.2f));
-                if (c.RejectChance > 0f)
-                    GUILayout.Label($"Siparişlerin yaklaşık %{c.RejectChance * 100f:0}'ini reddedebilir.", warn);
+                GUILayout.Label($"Bugün {c.deliveriesToday} teslimat · kazancı {Ft(c.totalEarned)} · aynı anda {c.EffectiveCapacity} paket", body);
+                MiniBars("Moral", c.morale, Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), c.morale),
+                         "Yorgunluk", c.fatigue, new Color(1f, 0.6f, 0.2f));
 
-                // Eksikler: kısa görünümde en fazla 2 satır
-                var pens = c.ActivePenalties();
-                for (int pi = 0; pi < pens.Count && (open || pi < 2); pi++) GUILayout.Label(pens[pi], warn);
-                if (!open && pens.Count > 2) GUILayout.Label($"+{pens.Count - 2} eksik daha (Detay)", bodyDim);
-
-                if (open) DrawCourierDetails(c);
+                if (open)
+                {
+                    foreach (var pen in pens) GUILayout.Label(pen, warn);
+                    DrawCourierDetails(c);
+                }
 
                 GUILayout.BeginHorizontal();
                 var courier = c;
                 DetailButton(c);
-                if (GUILayout.Button("Ekipman", smallButton)) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; panelOpen = true; scroll = Vector2.zero; };
-                if (GUILayout.Button("Nakit / ödeme", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; CloseInfo(); };
-                GUI.enabled = modalFree && c.OrderCount == 0;
-                if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton))
-                    deferred = () => AskConfirm("Kuryeyle yolları ayır",
-                        $"{courier.courierName} ({courier.V.name}, {courier.deliveries} teslimat) işten çıkarılsın mı? " +
-                        $"Hesabında bekleyen {Ft(courier.balance)} ve varsa depozitosu ödenir. Bu geri alınamaz.",
-                        "Evet, işten çıkar", () => cm.Fire(courier));
-                GUI.enabled = modalFree;
+                if (GUILayout.Button("Ekipman", smallButton, GUILayout.Width(90))) deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; panelOpen = true; scroll = Vector2.zero; };
+                GUILayout.FlexibleSpace();
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }
@@ -1348,6 +1303,18 @@ namespace KuryeTycoon
             if (GUILayout.Button($"Yeni çanta (−{Ft(GameData.Equip(EquipmentKind.TermalCanta).price)})", smallButton)) deferred = () => cm.ReplaceBag(hcour);
             GUI.enabled = modalFree;
             GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            var courier = c;
+            if (GUILayout.Button("Nakit / ödeme", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; CloseInfo(); };
+            GUI.enabled = modalFree && c.OrderCount == 0;
+            if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton))
+                deferred = () => AskConfirm("Kuryeyle yolları ayır",
+                    $"{courier.courierName} ({courier.V.name}, {courier.deliveries} teslimat) işten çıkarılsın mı? " +
+                    $"Hesabında bekleyen {Ft(courier.balance)} ve varsa depozitosu ödenir. Bu geri alınamaz.",
+                    "Evet, işten çıkar", () => cm.Fire(courier));
+            GUI.enabled = modalFree;
+            GUILayout.EndHorizontal();
         }
 
         static string EquipmentText(Courier c)
@@ -1366,7 +1333,7 @@ namespace KuryeTycoon
             if (up.CourierCapFull)
                 GUILayout.Label($"Kurye hesapları dolu ({cm.Couriers.Count}/{up.CourierCap}): Gelişim'den paketi yükselt ya da bir kuryeyle yollarını ayır.", warn);
             else
-                KV($"Kurye hesapları ({up.PlatformName})", $"{cm.Couriers.Count}/{up.CourierCap}");
+                KV("Kurye hesapları", $"{cm.Couriers.Count}/{up.CourierCap}");
             Section($"Gelen başvurular ({cm.Applications.Count}/{cm.maxApplications})");
             Intro("isealim", "Başvurular zamanla gelir ve 1 gün geçerlidir. İşe almak ve çıkarmak ücretsizdir.",
                   "İtibarın ve bonus çarpanın yüksekse başvuru daha sık gelir. Kuryeler paket ve km başı kazandığı için maaş yoktur; " +
@@ -1376,7 +1343,8 @@ namespace KuryeTycoon
                 GUILayout.Label("Şu an bekleyen başvuru yok. Yeni başvurular haber akışında duyurulur.", body);
             else
             {
-                VehicleFilterBar(applicationFilter, ApplicationCountByVehicle, cm.Applications.Count, f => applicationFilter = f);
+                if (cm.Applications.Count >= 5) VehicleFilterBar(applicationFilter, ApplicationCountByVehicle, cm.Applications.Count, f => applicationFilter = f);
+                else applicationFilter = -1;
                 if (applicationFilter >= 0 && ApplicationCountByVehicle((VehicleKind)applicationFilter) == 0)
                     GUILayout.Label($"{GameData.Vehicle((VehicleKind)applicationFilter).name} ile başvuran yok.", small);
             }
@@ -1390,7 +1358,7 @@ namespace KuryeTycoon
                 float hoursLeft = Mathf.Max(0f, (cand.expiresAt - now) / 60f);
                 GUILayout.Label($"{cand.name} · {v.name} · Tecrübe {cand.level}", header);
                 GUILayout.Label($"\"{cand.note}\"", note);
-                Chip(Courier.OccupationLabel(cand.occupation), NeutralTone);
+                Chip(ShortLabel(Courier.OccupationLabel(cand.occupation)), NeutralTone);
                 Chip(cand.pickiness >= 0.75f ? "Çok seçici" : cand.pickiness >= 0.45f ? "Normal seçici" : "Pek seçici değil",
                      cand.pickiness >= 0.75f ? UITheme.Warn : cand.pickiness >= 0.45f ? NeutralTone : UITheme.Good);
                 Chip(cand.insured ? "Sigortalı" : "Sigortasız", cand.insured ? UITheme.Good : NeutralTone);
@@ -1398,6 +1366,7 @@ namespace KuryeTycoon
                 ChipRow();
                 if (open)
                 {
+                    GUILayout.Label($"Meslek: {Courier.OccupationLabel(cand.occupation)}", small);
                     if (cand.occupation == Occupation.Ogrenci)
                         GUILayout.Label($"Bu dönem ders programı: {Courier.ScheduleText(cand.scheduleSeed, GameClock.I)}", small);
                     if (cand.alsoOwnsBike) GUILayout.Label("Yedekte bisikleti de var.", small);

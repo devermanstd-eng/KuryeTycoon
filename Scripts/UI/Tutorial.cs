@@ -32,17 +32,17 @@ namespace KuryeTycoon
             new TutorialStepDef
             {
                 title = "Kuryeler", target = Tab.Kuryeler,
-                text = "Kuryeler serbest çalışır, istedikleri saatte çevrimiçi olurlar. Yorgunluk, moral ve eksik ekipmanı burada görürsün."
+                text = "Ekip menüsünü aç. Kuryeler serbest çalışır, istedikleri saatte çevrimiçi olurlar; durumlarını burada görürsün."
             },
             new TutorialStepDef
             {
                 title = "İşe Alım", target = Tab.IseAlim,
-                text = "Başvurular zamanla gelir ve 1 gün geçerlidir. Kurye almak ücretsiz; ama platform paketin kaç kurye hesabı açabileceğini sınırlar."
+                text = "Ekip menüsünün İşe Alım sekmesine geç. Başvurular zamanla gelir ve 1 gün geçerlidir; kurye almak ücretsiz."
             },
             new TutorialStepDef
             {
                 title = "Dükkanlar", target = Tab.Dukkanlar,
-                text = "Daha çok dükkanla sözleşme = daha çok sipariş. Yeni bölgeleri de buradan açarsın."
+                text = "İşletme menüsünü aç. Daha çok dükkanla sözleşme = daha çok sipariş; yeni bölgeleri de buradan açarsın."
             },
             new TutorialStepDef
             {
@@ -122,12 +122,13 @@ namespace KuryeTycoon
             var st = TutorialSteps[index];
             float pulse = 0.55f + 0.45f * Mathf.Sin(Time.unscaledTime * 5f);
 
-            // Hedef simge yanıp söner
+            // Hedef yanıp söner: doğru menü açıksa pencere içindeki sekme, değilse sol çubuktaki menü
             if (st.target != null && !(panelOpen && tab == st.target.Value))
             {
-                var dr = DockRect(st.target.Value, sh);
+                bool inWindow = panelOpen && GroupIndexOf(tab) == GroupIndexOf(st.target.Value) && subTabRects.ContainsKey(st.target.Value);
+                var dr = inWindow ? subTabRects[st.target.Value] : DockRect(st.target.Value, sh);
                 UITheme.Outline(new Rect(dr.x - 2f, dr.y - 2f, dr.width + 4f, dr.height + 4f), UITheme.WithAlpha(TutorialColor, pulse), 2.5f, 15f);
-                if (!panelOpen)
+                if (!panelOpen && !inWindow)
                 {
                     var pill = new Rect(dr.xMax + 10f, dr.center.y - 13f, 64f, 26f);
                     UITheme.Box(pill, UITheme.WithAlpha(TutorialColor, 0.85f + 0.15f * pulse), 13f);

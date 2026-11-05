@@ -137,7 +137,8 @@ namespace KuryeTycoon
         Rect WindowContentRect(float sh)
         {
             var w = WindowRect(sh);
-            return new Rect(w.x + 12f, w.y + 58f, w.width - 24f, w.height - 66f);
+            float hh = WindowHeaderHeight();
+            return new Rect(w.x + 12f, w.y + hh + 8f, w.width - 24f, w.height - hh - 16f);
         }
 
         // ---------------------------------------------------------------- durum etiketleri
@@ -195,6 +196,36 @@ namespace KuryeTycoon
         }
 
         static Color MoneyColor(long v) => v > 0 ? UITheme.Good : v < 0 ? UITheme.Bad : UITheme.Text;
+
+        /// <summary>İki ince çubuk yan yana (ör. Moral ve Yorgunluk): iki satır yerine bir satır.</summary>
+        void MiniBars(string n1, float v1, Color c1, string n2, float v2, Color c2)
+        {
+            GUILayout.BeginHorizontal();
+            MiniBar(n1, v1, c1);
+            GUILayout.Space(12);
+            MiniBar(n2, v2, c2);
+            GUILayout.EndHorizontal();
+        }
+
+        void MiniBar(string name, float v, Color c)
+        {
+            GUILayout.Label(name, kitKey, GUILayout.Width(70));
+            Rect r = GUILayoutUtility.GetRect(30, 18, GUILayout.ExpandWidth(true));
+            r.y += 6f;
+            r.height = 6f;
+            UITheme.Box(r, new Color(0f, 0f, 0f, 0.45f), 3f);
+            float fw = r.width * Mathf.Clamp01(v);
+            if (fw > 1f) UITheme.Box(new Rect(r.x, r.y, Mathf.Max(6f, fw), r.height), c, 3f);
+            GUILayout.Label($"%{v * 100f:0}", kitKey, GUILayout.Width(36));
+        }
+
+        /// <summary>"Ebeveyn (çocuklar okuldayken...)" → "Ebeveyn": etiketlerde parantez açıklaması yer kaplamasın.</summary>
+        static string ShortLabel(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return s;
+            int i = s.IndexOf(" (", System.StringComparison.Ordinal);
+            return i > 0 ? s.Substring(0, i) : s;
+        }
 
         // ---------------------------------------------------------------- kart ayrıntısı
 
