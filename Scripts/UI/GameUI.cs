@@ -2478,6 +2478,17 @@ namespace KuryeTycoon
                     }
                     GUILayout.Space(8);
 
+                    Section("Hata ayıklama raporu",
+                        "Oyunun o anki bütün durumunu (kasa, gider dökümü, günlük geçmiş, kuryeler, dükkanlar, siparişler, geliştirmeler, " +
+                        "iptal ve kaçan sipariş sebepleri, son bildirimler ve kaydın tamamı) tek bir metin dosyasına yazar. " +
+                        "Sorunları bulmak için bu dosyayı gönder. Kısayol: F9.");
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Hata ayıklama raporu oluştur", button)) deferred = () => { if (DebugReport.I != null) DebugReport.I.Write(true); };
+                    if (GUILayout.Button("Klasörü aç", smallButton, GUILayout.Width(100))) deferred = DebugReport.OpenFolder;
+                    GUILayout.EndHorizontal();
+                    GUILayout.Label(DebugReport.I != null && DebugReport.I.lastPath != "" ? $"Son rapor: {DebugReport.I.lastPath}" : $"Klasör: {DebugReport.Folder}", small);
+                    GUILayout.Space(8);
+
                     var stats = StatsHistory.I;
                     if (stats != null)
                     {

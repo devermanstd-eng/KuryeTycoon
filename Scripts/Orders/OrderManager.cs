@@ -350,6 +350,7 @@ namespace KuryeTycoon
             if (shop.own && (DarkStore.I == null || !DarkStore.I.TakeOrder(items, ref basket, out stockCost)))
             {
                 lostToday++;
+                Telemetry.Add("Kaçan sipariş: kendi marketinde stok yok");
                 return;
             }
 
@@ -382,6 +383,8 @@ namespace KuryeTycoon
             if (Random.value > accept)
             {
                 lostToday++;
+                Telemetry.Add("Kaçan sipariş: teslimat ücreti pahalı");
+                Telemetry.Add($"Kaçan sipariş ücreti: {(fee / 500) * 500}+ Ft");
                 OrderHeat.Record(custTile, true);
                 return;
             }
@@ -451,6 +454,10 @@ namespace KuryeTycoon
                 Pending.RemoveAt(i);
                 cancelledToday++;
                 cancelledByHour[GameClock.I.Hour]++;
+                Telemetry.Add(o.priceDeclines > 0 || o.rejectedBy.Count > 0 ? "İptal: kuryeler kazancı beğenmedi / reddetti" : "İptal: zamanında kurye bulunamadı");
+                Telemetry.Add($"İptal dükkan: {o.shop.Name}");
+                Telemetry.Add($"İptal saat: {GameClock.I.Hour:00}");
+                Telemetry.Line($"İPTAL #{o.id} {o.shop.Name} {GameData.KmText(o.distance)} · red {o.priceDeclines}/{o.rejectedBy.Count} · bekleyen {Pending.Count} · çevrimiçi kurye {CourierManager.I.OnlineCount}");
                 OrderHeat.Record(o.customerTile, true);
                 MapFx.Cancelled(o);
                 if (GoalManager.I != null) GoalManager.I.OnCancelled();
@@ -648,6 +655,10 @@ namespace KuryeTycoon
             o.deliveredAt = now;
 
             float late = o.customerFault ? 0f : now - o.deadlineAt; // müşterinin adres hatası gecikmesi sayılmaz
+            Telemetry.Add("Teslim edildi");
+            if (late > 0f) Telemetry.Add("Teslim: geç");
+            if (late > 15f) Telemetry.Add("Teslim: 15 dk'dan fazla geç");
+            Telemetry.Add($"Teslim süresi (dk): {Mathf.Min(120, Mathf.FloorToInt((now - o.createdAt) / 10f) * 10):000}–{Mathf.Min(130, Mathf.FloorToInt((now - o.createdAt) / 10f) * 10 + 10):000}");
             float rating = 5f;
             if (late > 0f) rating -= Mathf.Min(3f, late / 10f);
             rating += (c.politeness - 0.75f) * 2f;

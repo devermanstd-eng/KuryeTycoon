@@ -328,6 +328,8 @@ namespace KuryeTycoon
         /// </summary>
         void HandleLeaving(Courier c)
         {
+            Telemetry.Add("Kurye ayrıldı");
+            Telemetry.Line($"KURYE AYRILDI {c.courierName} · moral {c.morale:0.00} · yorgunluk {c.fatigue:0.00}");
             EconomyManager.I.FinalSettlement(c);   // nakit ve hakedişler kapatılır
             c.MigrateGear();
             if (c.depositGear == null || c.depositGear.Count == 0) return;

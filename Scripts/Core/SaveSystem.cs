@@ -152,6 +152,7 @@ namespace KuryeTycoon
         public DarkStoreSave darkStore;        // kendi marketin (eski kayıtlarda yok)
         public CityEventsSave cityEvents;
         public MessagesSave messages;
+        public TelemetrySave telemetry;        // hata ayıklama sayaçları (eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -324,6 +325,9 @@ namespace KuryeTycoon
             return s;
         }
 
+        /// <summary>Hata ayıklama raporu için kaydın o anki hali (dosyaya yazmaz).</summary>
+        public SaveData CaptureForDebug() => Capture();
+
         SaveData Capture()
         {
             var clock = GameClock.I;
@@ -359,7 +363,8 @@ namespace KuryeTycoon
                 difficulty = (int)Difficulty.Level,
                 darkStore = DarkStore.I != null ? DarkStore.I.CaptureSave() : null,
                 cityEvents = CityEvents.I != null ? CityEvents.I.CaptureSave() : null,
-                messages = CourierMessages.I != null ? CourierMessages.I.CaptureSave() : null
+                messages = CourierMessages.I != null ? CourierMessages.I.CaptureSave() : null,
+                telemetry = Telemetry.Capture()
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -463,7 +468,8 @@ namespace KuryeTycoon
             if (d.feed != null) EventManager.I.Feed.AddRange(d.feed);
             if (Guide.I != null) Guide.I.RestoreSave(d.guide);
             if (CityEvents.I != null) CityEvents.I.RestoreSave(d.cityEvents);
-            if (CourierMessages.I != null) CourierMessages.I.RestoreSave(d.messages);   // null / eski kayıt: rehber yok, menüler şarta göre açılır
+            if (CourierMessages.I != null) CourierMessages.I.RestoreSave(d.messages);
+            Telemetry.Restore(d.telemetry);   // null / eski kayıt: rehber yok, menüler şarta göre açılır
         }
     }
 }

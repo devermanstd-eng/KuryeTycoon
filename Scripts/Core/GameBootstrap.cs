@@ -72,6 +72,7 @@ namespace KuryeTycoon
             Make<DarkStore>("Kendi Marketin");
             Make<CityEvents>("Şehir Etkinlikleri");
             Make<CourierMessages>("Kurye Mesajları");
+            Make<DebugReport>("Hata Ayıklama");
             Make<UpgradeManager>("Geliştirmeler");
             Make<SupportManager>("Destek Ekibi");
             Make<OperationsManager>("Operasyon Sorumlusu");
@@ -190,6 +191,7 @@ namespace KuryeTycoon
             EconomyManager.I.money = familyLoanAmount;
             EconomyManager.I.InitCashMarkers();
             OrderHeat.Reset();
+            Telemetry.Reset();
             GenerateWorld(Random.Range(1, int.MaxValue));
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v).StartShift();

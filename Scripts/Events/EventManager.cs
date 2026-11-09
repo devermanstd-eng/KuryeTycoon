@@ -55,6 +55,7 @@ namespace KuryeTycoon
 
         public void Push(GameEvent e)
         {
+            Telemetry.Add("Karar kartı: " + e.title);
             if (e.choices.Count == 0) e.Add("Tamam", null);
             queue.Enqueue(e);
         }
@@ -107,6 +108,7 @@ namespace KuryeTycoon
         /// <summary>Dükkanda eksik ürün: dükkan müşteriye bildirir ve ürünün ücretini iade eder. Kimse bir şey ödemez.</summary>
         void ShopMissingItem(Order o)
         {
+            Telemetry.Add("Olay: dükkan ürün eksik verdi");
             string item = o.items != null && o.items.Count > 0 ? o.items[Random.Range(0, o.items.Count)].name : "bir ürün";
             int value = o.items != null && o.items.Count > 0 ? GameData.Round10(o.items.Find(i => i.name == item).unitPrice) : GameData.Round10(o.basket * 0.2f);
             Notify($"#{o.id}: {o.shop.Name}'da \"{item}\" kalmamış. {o.shop.Name} müşteriye bildirdi ve ücretini ({Ft(value)}) kendisi iade etti; " +
@@ -116,6 +118,7 @@ namespace KuryeTycoon
         /// <summary>Kurye kaynaklı sorun: müşteri desteğe ulaşırsa tutar kuryenin hesabından düşülür.</summary>
         void CourierFault(Order o, Courier c)
         {
+            Telemetry.Add("Olay: kurye hatası (dökülme / ezilme / unutma)");
             bool forgot = Random.value < 0.3f;
             bool wet = WeatherSystem.I.IsRainy && c.V.exposed && !c.Has(EquipmentKind.Yagmurluk);
             bool spill = !forgot && !wet && Random.value < 0.55f;
