@@ -433,7 +433,9 @@ namespace KuryeTycoon
             // Temassız teslimat: kartla ödenen siparişlerin ~%22'si (not "kapıya bırakın" diyorsa her zaman)
             o.noContact = !o.cashPay && (Random.value < 0.22f || o.customerNote.Contains("bırakın") || o.noteTranslation.Contains("bırakın"));
             o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);
-            o.deadlineAt = o.readyAt + dist / 0.45f + (o.customerType == CustomerType.Aceleci ? 7f : 15f)
+            // Söz verilen süre (uygulamadaki gibi): kurye dükkana giderken yemek hazırlanır (en az ~8 dk yol payı),
+            // sonra ortalama ~11 km/saat ile müşteriye, kapıda geçen süre ve pay (aceleci müşteride daha az)
+            o.deadlineAt = Mathf.Max(o.readyAt, now + 8f) + dist / 0.9f + (o.customerType == CustomerType.Aceleci ? 6f : 12f)
                            + o.DoorMinutes(1f, true); // müşteri katını da hesaba katan tahmini süre
             o.marker = SpriteFactory.Create($"Müşteri #{o.id}", markerRoot, true,
                 o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f),
@@ -480,9 +482,10 @@ namespace KuryeTycoon
         float EstimateEta(Courier c, Order o)
         {
             // Toplu siparişe uygun kuryeler öne alınır (aynı/yakın dükkan, yakın müşteri)
+            // Toplu sipariş avantajı küçük: boşta kurye varken çantası dolu kuryeye yığılmasın (diğer paketler gecikir, yemek soğur)
             float eta = c.EstimateMinutes(o);
-            if (c.CanBatch(o)) eta -= 8f;
-            if (c.CanBatch(o) && c.CustomerNearRoute(o)) eta -= 4f;
+            if (c.CanBatch(o)) eta -= 3f;
+            if (c.CanBatch(o) && c.CustomerNearRoute(o)) eta -= 3f;
             return eta;
         }
 
