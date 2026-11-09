@@ -157,9 +157,20 @@ namespace KuryeTycoon
 
         public int CurrentBonus => Mathf.RoundToInt((WeatherSystem.I.WeatherBonus + TimeBonus()) * bonusMultiplier);
 
-        /// <summary>Kurye ücreti: sabit + km; krizlerdeki zam/yakıt desteği çarpanı uygulanır, üstüne bonus.</summary>
+        /// <summary>Kurye ücret tarifesi: sabit + km + bonus. Müşteri ücreti ve atama kârlılık kontrolü buna göre yapılır.</summary>
         public int PayFor(VehicleDef v, int tiles) =>
-            Mathf.RoundToInt((v.basePay + v.payPerKm * GameData.Km(tiles)) * CrisisManager.PayMultiplier(v)) + CurrentBonus;
+            v.basePay + Mathf.RoundToInt(v.payPerKm * GameData.Km(tiles)) + CurrentBonus;
+
+        /// <summary>
+        /// Kuryeye gerçekten ödenen: tarife × kriz kararlarındaki zam (grev anlaşması, yakıt desteği, rakibe karşı zam).
+        /// Zam şirketin kârından çıkar; müşteri ücretine ve atama kararına yansımaz (yoksa siparişler pahalanıp kaçıyor, atanamıyordu).
+        /// </summary>
+        public int CourierPayActual(Courier c, int tiles)
+        {
+            var v = c.V;
+            int bonus = CurrentBonus;
+            return Mathf.RoundToInt((PayFor(v, tiles) - bonus) * CrisisManager.PayMultiplier(v)) + bonus;
+        }
 
         /// <summary>Bu kuryeye bu mesafe için şu an ödenecek tutar (boost hariç).</summary>
         public int CourierPay(Courier c, int tiles) => PayFor(c.V, tiles);

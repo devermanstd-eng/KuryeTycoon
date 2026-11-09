@@ -698,6 +698,7 @@ namespace KuryeTycoon
                     : $"#{o.id} {c.ShortName}'a atanamadı: kâr {Ft(o.CompanyIncome - pay)}, en az {Ft(need)} olmalı.");
                 return false;
             }
+            pay = EconomyManager.I.CourierPayActual(c, o.distance);   // kriz zamları dahil gerçek ödeme (kârdan çıkar)
 
             // Kurye tahmini kazancı görür; beğenmezse reddeder, sipariş başka kuryeyi bekler
             int boost = CampaignManager.I.BoostAmount(pay);
