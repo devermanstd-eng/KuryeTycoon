@@ -774,12 +774,27 @@ namespace KuryeTycoon
         {
             get
             {
+                // Araç kapasitesi üst sınır (gerçekte kurye aynı anda en fazla 2–4 paket taşır); moral/boost sınırı aşmaz
                 int cap = V.capacity;
-                if (morale >= 0.8f) cap += 1;
                 if (morale < 0.35f) cap -= 1;
                 if (fatigue >= 0.6f) cap -= 1;
-                if (CampaignManager.I != null && CampaignManager.I.BoostActive) cap += 1;
                 return Mathf.Max(1, cap);
+            }
+        }
+
+        /// <summary>
+        /// Otomatik atamada çantasına yeni paket eklenebilir mi: boşsa evet; doluysa sadece elindeki siparişler
+        /// yeniyse (12 dk'dan eski sipariş yoksa). Böylece eski paketler yeni eklenenler yüzünden saatlerce beklemez.
+        /// </summary>
+        public bool BagYoung
+        {
+            get
+            {
+                if (OrderCount == 0) return true;
+                float now = GameClock.I.TotalMinutes;
+                foreach (var o in carrying) if (now - o.createdAt > 12f) return false;
+                foreach (var o in toPick) if (now - o.createdAt > 12f) return false;
+                return true;
             }
         }
 
@@ -846,10 +861,15 @@ namespace KuryeTycoon
             var here = Vector2Int.RoundToInt(Position);
             float now = GameClock.I.TotalMinutes;
 
+            // Yol üstünde başka dükkana uğramak sadece çantadaki paketler tazeyse: en fazla 1 paket, 8 dk'dan kısa süredir çantada
+            bool bagFresh = carrying.Count == 0;
+            if (carrying.Count == 1 && carrying[0].pickedAt > 0f && now - carrying[0].pickedAt < 8f) bagFresh = true;
+
             Order pick = null;
             int best = int.MaxValue;
             foreach (var o in toPick)
             {
+                if (!bagFresh) break;
                 int d = CityMap.Manhattan(here, o.shop.door);
                 if (d > BatchRadius) continue;
                 if (carrying.Count > 0 && o.readyAt - now > 6f) continue;

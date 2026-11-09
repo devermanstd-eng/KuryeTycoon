@@ -508,6 +508,7 @@ namespace KuryeTycoon
                 foreach (var c in CourierManager.I.Couriers)
                 {
                     if (!c.CanTakeMore || !c.CanCarry(o) || o.rejectedBy.Contains(c)) continue;
+                    if (!c.BagYoung) continue;   // çantasında eski paket varsa önce onları bitirsin
                     if (o.cashPay && !c.CanTakeCash(o.CashAmount)) continue; // nakit limiti
                     int profit = EconomyManager.I.ProfitIf(o, c);
                     if (profit < EconomyManager.I.RequiredAssignProfit(o)) continue; // zararına / çok az kârlı iş yok
