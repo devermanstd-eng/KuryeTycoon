@@ -25,6 +25,13 @@ namespace KuryeTycoon
         public int couriers;
         public int contractedShops;
         public int district;
+        // Teslimat kalitesi (hata ayıklama raporu için; eski kayıtlarda 0)
+        public int late;               // söz verilen süreden geç
+        public int late15;             // 15 dk'dan fazla geç
+        public int cold;               // sıcak yemek soğuk teslim
+        public float avgMinutes;       // siparişten teslime ortalama süre
+        public float avgAssignWait;    // siparişin kuryeye atanana kadar beklediği ortalama süre
+        public float avgPickupWait;    // atanmadan dükkandan alınana kadar ortalama süre
     }
 
     /// <summary>
@@ -75,8 +82,15 @@ namespace KuryeTycoon
                 reputation = CompanyProfile.Reputation,
                 couriers = CourierManager.I != null ? CourierManager.I.Couriers.Count : 0,
                 contractedShops = contracted,
-                district = CityMap.I != null ? CityMap.I.UnlockLevel : 1
+                district = CityMap.I != null ? CityMap.I.UnlockLevel : 1,
+                late = Telemetry.DayLate,
+                late15 = Telemetry.DayLate15,
+                cold = Telemetry.DayCold,
+                avgMinutes = Telemetry.DayDelivered > 0 ? Telemetry.DayMinutes / Telemetry.DayDelivered : 0f,
+                avgAssignWait = Telemetry.DayDelivered > 0 ? Telemetry.DayAssignWait / Telemetry.DayDelivered : 0f,
+                avgPickupWait = Telemetry.DayDelivered > 0 ? Telemetry.DayPickupWait / Telemetry.DayDelivered : 0f
             };
+            Telemetry.ResetDay();
             Days.Add(d);
             if (writeCsv) AppendCsv(d);
         }

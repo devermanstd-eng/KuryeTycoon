@@ -39,7 +39,17 @@ namespace KuryeTycoon
             if (Log.Count > MaxLog) Log.RemoveRange(0, Log.Count - MaxLog);
         }
 
-        public static void Reset() { Counts.Clear(); Log.Clear(); }
+        // Günlük teslimat kalitesi (gün sonunda StatsHistory'ye yazılır, sonra sıfırlanır)
+        public static int DayLate, DayLate15, DayCold, DayDelivered;
+        public static float DayMinutes, DayAssignWait, DayPickupWait;
+
+        public static void ResetDay()
+        {
+            DayLate = DayLate15 = DayCold = DayDelivered = 0;
+            DayMinutes = DayAssignWait = DayPickupWait = 0f;
+        }
+
+        public static void Reset() { Counts.Clear(); Log.Clear(); ResetDay(); }
 
         public static TelemetrySave Capture()
         {
@@ -67,6 +77,8 @@ namespace KuryeTycoon
     public class DebugReport : MonoBehaviour
     {
         public static DebugReport I { get; private set; }
+        /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
+        public const string CodeVersion = "2026-11-09 d (hızlar + atama + teslim kalitesi)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
@@ -152,6 +164,7 @@ namespace KuryeTycoon
             var clock = GameClock.I;
             var eco = EconomyManager.I;
             sb.AppendLine("KURYE TYCOON — HATA AYIKLAMA RAPORU");
+            sb.AppendLine($"Kod sürümü: {CodeVersion}");
             sb.AppendLine($"Rapor zamanı (gerçek): {System.DateTime.Now:yyyy-MM-dd HH:mm:ss}");
             sb.AppendLine($"Unity {Application.unityVersion} · {SystemInfo.operatingSystem} · {Screen.width}x{Screen.height}");
             sb.AppendLine($"Kayıt yuvası: {SaveSystem.Slot + 1} · kayıt dosyası: {SaveSystem.SavePath}");

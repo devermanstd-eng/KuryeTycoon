@@ -118,6 +118,7 @@ namespace KuryeTycoon
         public string noteTranslation = ""; // not Macarca ise Türkçesi ("Çevir")
         public bool markedLate;        // kurye "gecikme bildir"e bastı: müşteriye haber verildi, söz verilen süre +10 dk
         public bool shopPinged;        // destek dükkanı hızlandırması için aradı
+        public float assignedAt = -1f; // kuryeye atandığı an (hata ayıklama: atama bekleme süresi)
 
         public string ShortCustomerName
         {

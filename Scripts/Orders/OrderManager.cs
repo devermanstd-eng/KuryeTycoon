@@ -586,6 +586,7 @@ namespace KuryeTycoon
             o.courierPay = pay;
             o.boostPay = CampaignManager.I.BoostAmount(pay); // müşteriye yansımaz, kârdan ödenir
             o.courier = c;
+            if (o.assignedAt < 0f) o.assignedAt = GameClock.I.TotalMinutes;
             o.status = OrderStatus.Atandi;
             Pending.Remove(o);
             Active.Add(o);
@@ -665,6 +666,12 @@ namespace KuryeTycoon
 
             float late = o.customerFault ? 0f : now - o.deadlineAt; // müşterinin adres hatası gecikmesi sayılmaz
             Telemetry.Add("Teslim edildi");
+            Telemetry.DayDelivered++;
+            Telemetry.DayMinutes += now - o.createdAt;
+            if (o.assignedAt >= 0f) Telemetry.DayAssignWait += o.assignedAt - o.createdAt;
+            if (o.assignedAt >= 0f && o.pickedAt > 0f) Telemetry.DayPickupWait += o.pickedAt - o.assignedAt;
+            if (late > 0f) Telemetry.DayLate++;
+            if (late > 15f) Telemetry.DayLate15++;
             if (late > 0f) Telemetry.Add("Teslim: geç");
             if (late > 15f) Telemetry.Add("Teslim: 15 dk'dan fazla geç");
             Telemetry.Add($"Teslim süresi (dk): {Mathf.Min(120, Mathf.FloorToInt((now - o.createdAt) / 10f) * 10):000}–{Mathf.Min(130, Mathf.FloorToInt((now - o.createdAt) / 10f) * 10 + 10):000}");
@@ -681,6 +688,7 @@ namespace KuryeTycoon
                 {
                     rating -= 0.8f;
                     o.deliveredCold = true;
+                    Telemetry.DayCold++;
                 }
             }
             if (o.customerType == CustomerType.Zor) rating -= 0.7f;
