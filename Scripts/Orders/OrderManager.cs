@@ -435,7 +435,8 @@ namespace KuryeTycoon
             o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);
             // Söz verilen süre (uygulamadaki gibi): kurye dükkana giderken yemek hazırlanır (en az ~8 dk yol payı),
             // sonra ortalama ~11 km/saat ile müşteriye, kapıda geçen süre ve pay (aceleci müşteride daha az)
-            o.deadlineAt = Mathf.Max(o.readyAt, now + 8f) + dist / 0.9f + (o.customerType == CustomerType.Aceleci ? 6f : 12f)
+            // Pay: uygulamalar söz verdikleri süreyi siparişlerin ~%80'i zamanında gelecek şekilde verir
+            o.deadlineAt = Mathf.Max(o.readyAt, now + 8f) + dist / 0.9f + (o.customerType == CustomerType.Aceleci ? 10f : 18f)
                            + o.DoorMinutes(1f, true); // müşteri katını da hesaba katan tahmini süre
             o.marker = SpriteFactory.Create($"Müşteri #{o.id}", markerRoot, true,
                 o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f),
