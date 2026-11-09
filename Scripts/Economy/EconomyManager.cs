@@ -784,12 +784,15 @@ namespace KuryeTycoon
                 if (om.batchedToday > 0) extra.Add($"{om.batchedToday} toplu");
                 if (om.cancelledToday > 0)
                 {
-                    int none = om.cancelledToday - om.cancelledRejectedToday;
+                    int none = om.cancelledToday - om.cancelledRejectedToday - om.cancelledDelayToday;
                     var parts = new List<string>();
                     if (none > 0) parts.Add($"{none} kurye yok/hepsi meşgul");
+                    if (om.cancelledDelayToday > 0) parts.Add($"{om.cancelledDelayToday} müşteri gecikme yüzünden vazgeçti");
                     if (om.cancelledRejectedToday > 0) parts.Add($"{om.cancelledRejectedToday} kuryeler reddetti");
                     extra.Add($"{om.cancelledToday} iptal ({string.Join(", ", parts)})");
                 }
+                if (om.cancelledShopToday > 0) extra.Add($"{om.cancelledShopToday} sipariş dükkan iptal etti (ürün kalmadı / mutfak kapandı; senin suçun değil)");
+                if (om.cancelledCustomerToday > 0) extra.Add($"{om.cancelledCustomerToday} müşteri siparişten vazgeçti");
                 if (om.lostToday > 0) extra.Add($"{om.lostToday} müşteri ücret pahalı diye vazgeçti");
                 if (om.busyLostToday > 0) extra.Add($"{om.busyLostToday} müşteri yoğunluk uyarısını görüp sipariş vermedi");
                 if (om.heavyLostToday > 0) extra.Add($"{om.heavyLostToday} taşıyacak kurye yoktu");

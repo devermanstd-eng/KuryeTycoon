@@ -32,6 +32,9 @@ namespace KuryeTycoon
         public float avgMinutes;       // siparişten teslime ortalama süre
         public float avgAssignWait;    // siparişin kuryeye atanana kadar beklediği ortalama süre
         public float avgPickupWait;    // atanmadan dükkandan alınana kadar ortalama süre
+        public int cancelShop;         // dükkanın iptal ettiği
+        public int cancelCustomer;     // müşterinin vazgeçtiği (fikir değiştirdi)
+        public int cancelDelay;        // müşterinin gecikme yüzünden vazgeçtiği (cancelled içinde)
     }
 
     /// <summary>
@@ -88,7 +91,10 @@ namespace KuryeTycoon
                 cold = Telemetry.DayCold,
                 avgMinutes = Telemetry.DayDelivered > 0 ? Telemetry.DayMinutes / Telemetry.DayDelivered : 0f,
                 avgAssignWait = Telemetry.DayDelivered > 0 ? Telemetry.DayAssignWait / Telemetry.DayDelivered : 0f,
-                avgPickupWait = Telemetry.DayDelivered > 0 ? Telemetry.DayPickupWait / Telemetry.DayDelivered : 0f
+                avgPickupWait = Telemetry.DayDelivered > 0 ? Telemetry.DayPickupWait / Telemetry.DayDelivered : 0f,
+                cancelShop = om != null ? om.cancelledShopToday : 0,
+                cancelCustomer = om != null ? om.cancelledCustomerToday : 0,
+                cancelDelay = om != null ? om.cancelledDelayToday : 0
             };
             Telemetry.ResetDay();
             Days.Add(d);

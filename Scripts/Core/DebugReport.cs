@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-09 f (gerçekçi söz verilen süre)";
+        public const string CodeVersion = "2026-11-09 g (gerçekçi iptaller)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
@@ -327,7 +327,7 @@ namespace KuryeTycoon
             H(sb, "SİPARİŞLER (şu an)");
             var om = OrderManager.I;
             float now = GameClock.I.TotalMinutes;
-            sb.AppendLine($"Bekleyen {om.Pending.Count} · yolda {om.Active.Count} · bugün iptal {om.cancelledToday}, kaçan {om.lostToday} · otomatik atama {om.autoAssign}");
+            sb.AppendLine($"Bekleyen {om.Pending.Count} · yolda {om.Active.Count} · bugün iptal {om.cancelledToday} (gecikme {om.cancelledDelayToday}), dükkan iptali {om.cancelledShopToday}, müşteri vazgeçti {om.cancelledCustomerToday}, kaçan {om.lostToday} · otomatik atama {om.autoAssign}");
             var hours = new List<string>();
             for (int h = 0; h < 24; h++) if (om.cancelledByHour[h] > 0) hours.Add($"{h:00}:00={om.cancelledByHour[h]}");
             if (hours.Count > 0) sb.AppendLine("Bugünkü iptaller saat saat: " + string.Join(", ", hours));

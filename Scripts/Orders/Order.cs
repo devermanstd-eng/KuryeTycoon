@@ -119,6 +119,10 @@ namespace KuryeTycoon
         public bool markedLate;        // kurye "gecikme bildir"e bastı: müşteriye haber verildi, söz verilen süre +10 dk
         public bool shopPinged;        // destek dükkanı hızlandırması için aradı
         public float assignedAt = -1f; // kuryeye atandığı an (hata ayıklama: atama bekleme süresi)
+        // Gerçekçi iptaller: sipariş oluşurken bazılarına dükkan/müşteri iptali planlanır (0 yok, 1 dükkan, 2 müşteri vazgeçti)
+        public int cancelPlan;
+        public float cancelAt;
+        public string cancelReason = "";
 
         public string ShortCustomerName
         {

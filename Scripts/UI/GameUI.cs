@@ -1071,7 +1071,8 @@ namespace KuryeTycoon
             int lostTotal = om.busyLostToday + om.lostToday + om.cancelledToday + om.heavyLostToday;
             Intro("siparisler", $"Bugün kaybedilen sipariş: {lostTotal} · toplu teslimat: {om.batchedToday}",
                   $"Yoğunluk yüzünden sipariş vermeyen {om.busyLostToday} · vazgeçen müşteri (ücret pahalı) {om.lostToday} · " +
-                  $"iptal {om.cancelledToday} (kuryeler reddetti {om.cancelledRejectedToday}) · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday} · " +
+                  $"iptal {om.cancelledToday} (kuryeler reddetti {om.cancelledRejectedToday}, müşteri gecikmeden vazgeçti {om.cancelledDelayToday}) · " +
+                  $"dükkan iptal etti {om.cancelledShopToday} · müşteri fikrini değiştirdi {om.cancelledCustomerToday} · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday} · " +
                   $"kuryelerin reddettiği teklif {om.rejectedToday}.\n" +
                   "Yoğunlukta uygulama müşterilere uzun teslimat uyarısı gösterir; itibar düşmez ama sipariş kaybolur.\n" +
                   $"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; {GameData.HeavyKg:0} kg ve üstü sadece araba.");

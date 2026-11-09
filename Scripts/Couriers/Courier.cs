@@ -533,6 +533,20 @@ namespace KuryeTycoon
             return true;
         }
 
+        /// <summary>
+        /// Sipariş dükkan ya da müşteri tarafından iptal edildi: henüz alınmamış paketi bırakır (başka kuryeye gitmez).
+        /// Dönen: kurye dükkana varmış mıydı (boşa gidiş ücreti için).
+        /// </summary>
+        public bool AbortTask(Order o)
+        {
+            if (o == null || !toPick.Contains(o)) return false;
+            bool wasCurrent = current == o;
+            bool atShop = wasCurrent && State == CourierState.Bekliyor;
+            toPick.Remove(o);
+            if (wasCurrent) { current = null; PlanNext(); }
+            return atShop;
+        }
+
         /// <summary>Adres sorununda "Destek": 10 dakika beklemeden destek / müşteri hemen aranır.</summary>
         public bool ContactSupportNow()
         {

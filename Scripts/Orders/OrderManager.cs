@@ -25,6 +25,9 @@ namespace KuryeTycoon
         public int lostToday;       // ücret pahalı geldiği için vazgeçen müşteri
         public int cancelledToday;  // kurye bulunamadığı için iptal (toplam)
         public int busyLostToday;   // platform "yoğun" gösterdiği için sipariş vermeyen müşteri (itibar düşmez)
+        public int cancelledShopToday;      // dükkan iptal etti (ürün kalmadı, mutfak kapandı, çok yoğun)
+        public int cancelledCustomerToday;  // müşteri vazgeçti (fikrini değiştirdi) — şirketin suçu değil
+        public int cancelledDelayToday;     // müşteri beklemekten vazgeçti (kurye gecikti) — cancelledToday'e de dahil
         public int cancelledRejectedToday; // bunlardan: kuryeler gördü ama teklifi reddetti
         public readonly int[] cancelledByHour = new int[24];
         public float reputationAtDayStart = -1f;
@@ -51,7 +54,7 @@ namespace KuryeTycoon
             reputationAtDayStart = CompanyProfile.Reputation;
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { busyLostToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
+            GameClock.I.OnNewDay += () => { busyLostToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; cancelledShopToday = 0; cancelledCustomerToday = 0; cancelledDelayToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
         }
 
         /// <summary>
@@ -163,6 +166,7 @@ namespace KuryeTycoon
             }
 
             ExpirePending();
+            RollCancellations(dm);
 
             // Otomatik atama OYUN zamanıyla çalışır: her yarım oyun dakikasında bir (yüksek hızda her karede).
             // Eskiden gerçek zamanla 0,25 sn'de bir çalışıyordu: 128× hızda bu ~64 oyun dakikası ediyordu,
@@ -442,6 +446,7 @@ namespace KuryeTycoon
                 o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f),
                 CityMap.ToWorld(custTile), o.IsHeavy ? 0.6f : 0.45f, 15); // 3D binaların üstünde görünsün
 
+            PlanCancellation(o, now);
             Pending.Add(o);
             shop.ordersTotal++;
             OrderHeat.Record(custTile, false);
@@ -478,6 +483,123 @@ namespace KuryeTycoon
                     ? $"#{o.id} ({o.shop.Name}) iptal oldu: kuryeler teklifi gördü ama kabul etmedi. İtibar düştü."
                     : $"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu. İtibar düştü.");
             }
+        }
+
+        // ------------------------------------------------------------------ gerçekçi iptaller
+        //
+        // Gerçekte siparişlerin ~%1,5–3'ü iptal olur (Otter 2024 verisi):
+        //  • Dükkan iptali: ürün kalmamış, mutfak kapandı / çok yoğun. Markette daha sık (stok). Kapanıştan önceki son saatte,
+        //    gece geç saatte ve bayram/yılbaşı gibi günlerde belirgin artar.
+        //  • Müşteri vazgeçer: siparişi verdikten hemen sonra fikrini değiştirir (az; gece daha sık).
+        //  • Müşteri beklemekten vazgeçer: sipariş dükkandan alınmadan beklenenden çok gecikirse (kurye yok / geç geldi).
+        // Dükkandan alınmış sipariş iptal edilemez. Dükkana varmış kuryeye boşa gidiş ücreti ödenir.
+
+        void PlanCancellation(Order o, float now)
+        {
+            if (o.shop.own) return; // kendi marketinde stok sistemi zaten eksikleri yönetiyor
+            int hour = GameClock.I.Hour;
+            bool night = hour >= 22 || hour < 4;
+            bool lastHour = !ShopHours.Is24h(o.shop.def) && !ShopHours.IsOpenAt(o.shop.def, now + 60f);
+            float holiday = 1f;
+            if (CityEvents.I != null)
+            {
+                var e = CityEvents.I.ActiveNow;
+                if (e != null && (e.title.Contains("Noel") || e.title.Contains("Szenteste") || e.title.Contains("Yılbaşı"))) holiday = 3f;
+            }
+
+            float pShop = (o.shop.def.isMarket ? 0.020f : 0.008f) * (lastHour ? 2.5f : 1f) * (night ? 1.5f : 1f) * holiday;
+            float pMind = 0.004f * (night ? 2f : 1f);
+            float r = Random.value;
+            if (r < pShop)
+            {
+                o.cancelPlan = 1;
+                o.cancelAt = now + Random.Range(2f, 10f);
+                o.cancelReason = o.shop.def.isMarket
+                    ? (Random.value < 0.75f ? "ürünlerin çoğu stokta kalmamış" : "market çok yoğun, siparişi hazırlayamıyor")
+                    : lastHour ? "mutfak kapanmak üzere" : (Random.value < 0.5f ? "bir ürün kalmamış" : "mutfak çok yoğun");
+            }
+            else if (r < pShop + pMind)
+            {
+                o.cancelPlan = 2;
+                o.cancelAt = now + Random.Range(0.5f, 3f);
+                o.cancelReason = "müşteri fikrini değiştirdi";
+            }
+        }
+
+        void RollCancellations(float dm)
+        {
+            float now = GameClock.I.TotalMinutes;
+            for (int i = Pending.Count - 1; i >= 0; i--) CheckCancel(Pending[i], now, dm);
+            for (int i = Active.Count - 1; i >= 0; i--)
+                if (i < Active.Count && Active[i].status == OrderStatus.Atandi) CheckCancel(Active[i], now, dm);
+        }
+
+        void CheckCancel(Order o, float now, float dm)
+        {
+            if (o.cancelPlan > 0 && now >= o.cancelAt) { CancelOrder(o, o.cancelPlan); return; }
+            // Beklemekten vazgeçme: beklenen alma zamanını 5 dk'dan fazla geçtiyse her dakika artan ihtimal
+            float expectedPickup = Mathf.Max(o.readyAt, o.createdAt + 8f) + 5f;
+            float over = now - expectedPickup;
+            if (over <= 5f) return;
+            float hazard = Mathf.Min(0.02f, 0.0015f * over);          // dakikada (ör. 10 dk geçince %1,5)
+            if (o.customerType == CustomerType.Aceleci) hazard *= 2f;
+            if (Random.value < 1f - Mathf.Exp(-hazard * dm))
+            {
+                o.cancelReason = $"{over + 5f:0} dk gecikme yüzünden vazgeçti";
+                CancelOrder(o, 3);
+            }
+        }
+
+        /// <summary>1 dükkan, 2 müşteri vazgeçti, 3 müşteri gecikme yüzünden vazgeçti.</summary>
+        void CancelOrder(Order o, int reason)
+        {
+            float now = GameClock.I.TotalMinutes;
+            var c = o.courier;
+            bool atShop = false;
+            if (c != null) atShop = c.AbortTask(o);
+            Pending.Remove(o);
+            Active.Remove(o);
+            o.status = OrderStatus.Iptal;
+            if (o.marker != null) Destroy(o.marker.gameObject);
+            if (o.shop.own && DarkStore.I != null) DarkStore.I.ReturnStock(o.stockCost);
+            OrderHeat.Record(o.customerTile, true);
+            MapFx.Cancelled(o);
+
+            // Dükkana varıp bekleyen kurye boşa gitmesin: küçük ücret (gerçek uygulamalardaki gibi)
+            if (atShop && c != null)
+            {
+                int comp = Mathf.RoundToInt(c.V.basePay * 0.6f / 10f) * 10;
+                EconomyManager.I.SpendCampaign(comp, $"Boşa gidiş ücreti #{o.id}: {c.courierName}");
+                c.Earn(comp);
+            }
+
+            string who = c != null ? $" ({c.ShortName} {(atShop ? "dükkanda bekliyordu, boşa gidiş ücreti aldı" : "yoldaydı, yeni işe geçti")})" : "";
+            switch (reason)
+            {
+                case 1:
+                    cancelledShopToday++;
+                    Telemetry.Add("İptal: dükkan iptal etti");
+                    CompanyProfile.AddReputation(-cancelReputationPenalty * 0.3f);   // müşteri biraz da uygulamaya kızar
+                    EventManager.I.Notify($"#{o.id} {o.shop.Name} siparişi iptal etti: {o.cancelReason}.{who}");
+                    break;
+                case 2:
+                    cancelledCustomerToday++;
+                    Telemetry.Add("İptal: müşteri vazgeçti");
+                    EventManager.I.Notify($"#{o.id} ({o.shop.Name}) müşteri siparişten vazgeçti.{who}");
+                    break;
+                default:
+                    cancelledToday++;
+                    cancelledDelayToday++;
+                    cancelledByHour[GameClock.I.Hour]++;
+                    Telemetry.Add("İptal: müşteri gecikme yüzünden vazgeçti");
+                    if (GoalManager.I != null) GoalManager.I.OnCancelled();
+                    if (RivalCompany.I != null) RivalCompany.I.OnCancelled(o);
+                    CompanyProfile.AddReputation(-cancelReputationPenalty);
+                    EventManager.I.Notify($"#{o.id} ({o.shop.Name}) müşteri iptal etti: {o.cancelReason}. İtibar düştü.{who}");
+                    break;
+            }
+            Telemetry.Add($"İptal dükkan: {o.shop.Name}");
+            Telemetry.Line($"İPTAL ({(reason == 1 ? "dükkan" : reason == 2 ? "müşteri" : "gecikme")}) #{o.id} {o.shop.Name} · {o.cancelReason} · {now - o.createdAt:0} dk");
         }
 
         float EstimateEta(Courier c, Order o)
