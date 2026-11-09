@@ -265,6 +265,15 @@ namespace KuryeTycoon
             return true;
         }
 
+        /// <summary>İptal olan siparişin malı rafa geri döner (reyonlara paylarına göre).</summary>
+        public void ReturnStock(int cost)
+        {
+            if (!IsOpen || cost <= 0) return;
+            for (int a = 0; a < Aisles; a++)
+                stock[a] = System.Math.Min(AisleCapacity(a), stock[a] + (long)(cost * AisleShare[a]));
+            UpdateWeight();
+        }
+
         public void OnDelivered(Order o)
         {
             if (o == null || o.shop == null || !o.shop.own) return;

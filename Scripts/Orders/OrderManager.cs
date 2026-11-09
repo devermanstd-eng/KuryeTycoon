@@ -164,12 +164,15 @@ namespace KuryeTycoon
 
             ExpirePending();
 
+            // Otomatik atama OYUN zamanıyla çalışır: her yarım oyun dakikasında bir (yüksek hızda her karede).
+            // Eskiden gerçek zamanla 0,25 sn'de bir çalışıyordu: 128× hızda bu ~64 oyun dakikası ediyordu,
+            // siparişler hiç atanmadan iptal oluyor, dükkan memnuniyeti çöküyordu.
             if (autoAssign)
             {
-                assignTimer -= Time.deltaTime;
-                if (assignTimer <= 0f)
+                assignTimer += dm;
+                if (assignTimer >= 0.5f)
                 {
-                    assignTimer = 0.25f;
+                    assignTimer = 0f;
                     AutoAssign();
                 }
             }
@@ -378,7 +381,8 @@ namespace KuryeTycoon
             int fee = quote.Total;
 
             // Pahalı teslimat ücreti = müşteri vazgeçebilir (kötü hava ücretini çoğu müşteri anlayışla karşılar)
-            float accept = Mathf.Clamp(1.35f - (fee - quote.weather * 0.7f) / 2200f, 0.15f, 1f);
+            // Ücret ~3,75 € (1500 Ft) iken müşterilerin ~%90'ı sipariş verir, 5 €'da ~%73, 6,25 €'da ~%57
+            float accept = Mathf.Clamp(1.4f - (fee - quote.weather * 0.7f) / 3000f, 0.15f, 1f);
             if (RivalCompany.I != null) accept *= RivalCompany.I.PriceSensitivity; // rakip fiyat kırıyorsa
             if (Random.value > accept)
             {
@@ -452,6 +456,8 @@ namespace KuryeTycoon
                 o.status = OrderStatus.Iptal;
                 if (o.marker != null) Destroy(o.marker.gameObject);
                 Pending.RemoveAt(i);
+                // Kendi marketin: iptal olan siparişin ürünleri rafa geri döner (eskiden stok boşa gidiyordu)
+                if (o.shop.own && DarkStore.I != null) DarkStore.I.ReturnStock(o.stockCost);
                 cancelledToday++;
                 cancelledByHour[GameClock.I.Hour]++;
                 Telemetry.Add(o.priceDeclines > 0 || o.rejectedBy.Count > 0 ? "İptal: kuryeler kazancı beğenmedi / reddetti" : "İptal: zamanında kurye bulunamadı");

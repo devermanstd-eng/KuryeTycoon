@@ -129,7 +129,7 @@ namespace KuryeTycoon
                 new Goal { kind = GoalKind.TopluTeslimat, target = Round5(Mathf.Max(5, bd * 0.15f)), reward = Round5(Mathf.Max(5, bd * 0.15f)) * 450L },
             };
             if (WeatherSystem.I != null && (GameClock.I.Season == Season.Sonbahar || GameClock.I.Season == Season.Kis || GameClock.I.Season == Season.Ilkbahar))
-                pool.Add(new Goal { kind = GoalKind.YagmurTeslimat, target = Round5(Mathf.Max(5, bd * 0.2f)), reward = Round5(Mathf.Max(5, bd * 0.2f)) * 450L });
+                pool.Add(new Goal { kind = GoalKind.YagmurTeslimat, target = Round5(Mathf.Max(5, bd * 0.08f)), reward = Round5(Mathf.Max(5, bd * 0.08f)) * 450L });
             // Açık bölgede sözleşmesiz dükkan varsa
             foreach (var s in CityMap.I.Shops)
                 if (!s.contracted && CityMap.I.IsUnlocked(s.tile))
@@ -140,7 +140,7 @@ namespace KuryeTycoon
             if (!UpgradeManager.I.CourierCapFull)
                 pool.Add(new Goal { kind = GoalKind.YeniKurye, target = 1, reward = 2500 });
 
-            // Teslimat hedefi her hafta var; diğer ikisi rastgele
+            // Teslimat hedefi her hafta var; diğerleri rastgele
             Goals.Add(pool[0]);
             pool.RemoveAt(0);
             for (int i = 0; i < GoalsPerWeek - 1 && pool.Count > 0; i++)
@@ -148,6 +148,22 @@ namespace KuryeTycoon
                 int k = Random.Range(0, pool.Count);
                 Goals.Add(pool[k]);
                 pool.RemoveAt(k);
+            }
+
+            // Ödüller şirket büyüdükçe anlamsız kalmasın: en az son 7 günün ortalama günlük gelirinin bir payı
+            // (ana teslimat hedefi %35, diğerleri %12)
+            long avgIncome = 0;
+            var hist = StatsHistory.I != null ? StatsHistory.I.Days : null;
+            if (hist != null && hist.Count > 0)
+            {
+                int n = Mathf.Min(7, hist.Count);
+                for (int i = hist.Count - n; i < hist.Count; i++) avgIncome += hist[i].income;
+                avgIncome /= n;
+            }
+            for (int i = 0; i < Goals.Count; i++)
+            {
+                long floor = (long)(avgIncome * (i == 0 ? 0.35f : 0.12f)) / 100 * 100;
+                if (Goals[i].reward < floor) Goals[i].reward = floor;
             }
         }
 
