@@ -79,9 +79,14 @@ namespace KuryeTycoon
         void OnDestroy() { EventManager.Notified -= OnNotified; }
         static void OnNotified(string m) => Telemetry.Line(m);
 
-        void Update()
+        // F9: IMGUI klavye olayı (proje yeni Input System kullanıyor; eski UnityEngine.Input hata verir)
+        void OnGUI()
         {
-            if (Input.GetKeyDown(KeyCode.F9) && GameBootstrap.I != null && GameBootstrap.I.Started) Write(true);
+            var e = Event.current;
+            if (e == null || e.type != EventType.KeyDown || e.keyCode != KeyCode.F9) return;
+            if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
+            e.Use();
+            Write(true);
         }
 
         // ------------------------------------------------------------------ rapor
