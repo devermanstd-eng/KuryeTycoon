@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-09 g (gerçekçi iptaller)";
+        public const string CodeVersion = "2026-11-09 h (iptal ayarı)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
@@ -205,7 +205,7 @@ namespace KuryeTycoon
                 for (int i = hist.Count - n; i < hist.Count; i++) { net += hist[i].net; del += hist[i].deliveries; can += hist[i].cancelled; lost += hist[i].lost; }
                 float cancelRate = del + can > 0 ? can / (float)(del + can) : 0f;
                 sb.AppendLine($"Son {n} gün: {del} teslimat, {can} iptal (%{cancelRate * 100f:0.0}), {lost} kaçan, net {Ft(net)} (günlük ort. {Ft(net / n)})");
-                if (cancelRate > 0.08f) warn.Add($"İptal oranı yüksek: son {n} günde %{cancelRate * 100f:0.0} (hedef < %5)");
+                if (cancelRate > 0.05f) warn.Add($"İptal oranı yüksek: son {n} günde %{cancelRate * 100f:0.0} (gerçekte %1,5–3)");
                 if (net < 0) warn.Add($"Son {n} gün toplam zarar: {Ft(net)}");
                 if (lost > del * 0.3f) warn.Add($"Kaçan sipariş çok: {lost} (teslimatın %{lost * 100f / Mathf.Max(1, del):0}'i) — ücret pahalı ya da stok yok");
                 // Gelir/gider sıçraması

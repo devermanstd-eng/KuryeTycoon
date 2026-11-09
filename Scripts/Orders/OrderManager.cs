@@ -537,15 +537,30 @@ namespace KuryeTycoon
         void CheckCancel(Order o, float now, float dm)
         {
             if (o.cancelPlan > 0 && now >= o.cancelAt) { CancelOrder(o, o.cancelPlan); return; }
-            // Beklemekten vazgeçme: beklenen alma zamanını 5 dk'dan fazla geçtiyse her dakika artan ihtimal
-            float expectedPickup = Mathf.Max(o.readyAt, o.createdAt + 8f) + 5f;
-            float over = now - expectedPickup;
-            if (over <= 5f) return;
-            float hazard = Mathf.Min(0.02f, 0.0015f * over);          // dakikada (ör. 10 dk geçince %1,5)
-            if (o.customerType == CustomerType.Aceleci) hazard *= 2f;
+            // Beklemekten vazgeçme (gerçekte müşteri, uygulamada gördüğü tahmini varış saatine göre sabreder):
+            //  - kurye hâlâ atanmadıysa: 12 dk sonra yavaşça artan ihtimal ("kurye aranıyor" ekranında bekleme)
+            //  - kurye atandı ama sipariş henüz alınmadıysa: ancak söz verilen saat GEÇİNCE, daha düşük ihtimal
+            //  - sipariş dükkandan alındıysa hiç iptal yok (RollCancellations zaten bakmıyor)
+            float over, hazard;
+            if (o.courier == null)
+            {
+                over = now - (o.createdAt + 12f);
+                if (over <= 0f) return;
+                hazard = Mathf.Min(0.012f, 0.0008f * over);
+            }
+            else
+            {
+                over = now - o.deadlineAt;
+                if (over <= 0f) return;
+                hazard = Mathf.Min(0.008f, 0.0005f * over);
+            }
+            if (o.customerType == CustomerType.Aceleci) hazard *= 1.5f;
             if (Random.value < 1f - Mathf.Exp(-hazard * dm))
             {
-                o.cancelReason = $"{over + 5f:0} dk gecikme yüzünden vazgeçti";
+                float waited = now - o.createdAt;
+                o.cancelReason = o.courier == null
+                    ? $"{waited:0} dk kurye bulunamadı, vazgeçti"
+                    : $"söz verilen saati {over:0} dk geçti, vazgeçti";
                 CancelOrder(o, 3);
             }
         }
