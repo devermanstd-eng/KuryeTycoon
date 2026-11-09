@@ -157,8 +157,9 @@ namespace KuryeTycoon
 
         public int CurrentBonus => Mathf.RoundToInt((WeatherSystem.I.WeatherBonus + TimeBonus()) * bonusMultiplier);
 
+        /// <summary>Kurye ücreti: sabit + km; krizlerdeki zam/yakıt desteği çarpanı uygulanır, üstüne bonus.</summary>
         public int PayFor(VehicleDef v, int tiles) =>
-            v.basePay + Mathf.RoundToInt(v.payPerKm * GameData.Km(tiles)) + CurrentBonus;
+            Mathf.RoundToInt((v.basePay + v.payPerKm * GameData.Km(tiles)) * CrisisManager.PayMultiplier(v)) + CurrentBonus;
 
         /// <summary>Bu kuryeye bu mesafe için şu an ödenecek tutar (boost hariç).</summary>
         public int CourierPay(Courier c, int tiles) => PayFor(c.V, tiles);
@@ -1134,12 +1135,53 @@ namespace KuryeTycoon
 
         void PayFee(long amount, string label) => Spend(amount, label, ExpenseCategory.Vergi);
 
+        // ---------- Kademeli yıl sonu vergisi ----------
+        /// <summary>Dilim üst sınırları (Ft; 1 € = 400 Ft): 50 000 €, 200 000 €, 500 000 €.</summary>
+        public static readonly long[] TaxBrackets = { 20000000L, 80000000L, 200000000L };
+        /// <summary>Dilim oranları: şirket büyüdükçe kârın üst kısmı daha yüksek oranla vergilenir.</summary>
+        public static readonly float[] TaxRates = { 0.09f, 0.15f, 0.19f, 0.24f };
+
+        /// <summary>Kârın her dilimi kendi oranıyla vergilenir (sadece dilimi aşan kısım üst oranla).</summary>
+        public static long ProgressiveTax(long taxable)
+        {
+            if (taxable <= 0) return 0;
+            double tax = 0; long prev = 0;
+            for (int i = 0; i < TaxRates.Length; i++)
+            {
+                long top = i < TaxBrackets.Length ? TaxBrackets[i] : long.MaxValue;
+                if (taxable <= prev) break;
+                long part = System.Math.Min(taxable, top) - prev;
+                tax += part * (double)TaxRates[i];
+                prev = top;
+            }
+            return (long)System.Math.Round(tax);
+        }
+
+        public static float EffectiveTaxRate(long taxable) => taxable <= 0 ? TaxRates[0] : ProgressiveTax(taxable) / (float)taxable;
+
+        /// <summary>Dilim tablosu metni (Finans penceresi).</summary>
+        public static string TaxBracketText
+        {
+            get
+            {
+                var sb = new System.Text.StringBuilder();
+                long prev = 0;
+                for (int i = 0; i < TaxRates.Length; i++)
+                {
+                    if (i < TaxBrackets.Length) sb.Append($"{Ft(prev)} – {Ft(TaxBrackets[i])}: %{TaxRates[i] * 100f:0}\n");
+                    else sb.Append($"{Ft(prev)} üstü: %{TaxRates[i] * 100f:0}");
+                    if (i < TaxBrackets.Length) prev = TaxBrackets[i];
+                }
+                return sb.ToString();
+            }
+        }
+
         void OnNewYear(int endedYear)
         {
             long taxable = System.Math.Max(0L, Year.Profit);
-            long tax = (long)Mathf.Round(taxable * taxRate);
+            long tax = ProgressiveTax(taxable);
             LastTaxSummary = $"{endedYear}. yıl → Gelir {Ft(Year.Income)}, Gider {Ft(Year.Expenses)}, " +
-                             $"Vergilendirilebilir kâr {Ft(taxable)}, Vergi (%{taxRate * 100f:0}) {Ft(tax)}";
+                             $"Vergilendirilebilir kâr {Ft(taxable)}, Kademeli vergi (ortalama %{EffectiveTaxRate(taxable) * 100f:0.0}) {Ft(tax)}";
             Year = new PeriodStats();
             localTaxPaidThisYear = 0;
 

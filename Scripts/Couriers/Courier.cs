@@ -464,9 +464,15 @@ namespace KuryeTycoon
             }
 
             float pref = Preference();
+            float crisis = CrisisManager.OnlineFactor(this);   // grev, akaryakıt zammı, sıcak primi
 
             if (IsOnline)
             {
+                if (crisis < 1f && OrderCount == 0 && Random.value < (1f - crisis) * 0.6f)
+                {
+                    RequestOffline(CrisisManager.OfflineReason(this));
+                    return;
+                }
                 float pOff = (1f - pref) * 0.7f
                              + (fatigue >= 0.8f ? 0.6f : 0f)
                              + (morale < 0.3f ? 0.15f : 0f)
@@ -480,6 +486,7 @@ namespace KuryeTycoon
                 // Boost, sadece zaten müsait olabilecek kuryeleri çeker (sınavdaki öğrenciyi değil)
                 float pOn = pref * (0.4f + morale * 0.6f) * WeatherWillingness() + (boost && pref >= 0.2f ? 0.35f : 0f);
                 if (UpgradeManager.I != null) pOn *= UpgradeManager.I.PeakAvailabilityMultiplier(GameClock.I.Hour);
+                pOn *= crisis;
                 if (Random.value < pOn)
                 {
                     GoOnline();
@@ -1083,6 +1090,7 @@ namespace KuryeTycoon
             float rate = 0.0011f / Mathf.Max(0.3f, stamina);
             if (V.exposed && WeatherSystem.I.IsHot && !Has(EquipmentKind.YazTisort)) rate *= 1.5f;
             if (Has(EquipmentKind.Powerbank)) rate *= 0.8f;
+            rate *= CrisisManager.FatigueFactor;   // sıcak dalgası vb.
             fatigue = Mathf.Min(1f, fatigue + rate * dm);
         }
 

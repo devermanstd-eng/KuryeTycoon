@@ -86,6 +86,11 @@ namespace KuryeTycoon
         public int couriers, deliveriesLastWeek, priceWarDays;
         public int deliveriesThisWeek, myDeliveriesThisWeek, myDeliveriesLastWeek;
         public long money;
+        // Aktif rakip (eski kayıtlarda activeVersion = 0)
+        public int activeVersion;
+        public float aggression, quality, warFactor;
+        public int warDistrict, marketingDays, fundingCooldownUntil, fundingRounds;
+        public List<float> shareHistory = new List<float>();
     }
 
     [System.Serializable]
@@ -153,6 +158,7 @@ namespace KuryeTycoon
         public CityEventsSave cityEvents;
         public MessagesSave messages;
         public TelemetrySave telemetry;        // hata ayıklama sayaçları (eski kayıtlarda yok)
+        public CrisisSave crisis;              // krizler ve kalıcı kararlar (eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -363,6 +369,7 @@ namespace KuryeTycoon
                 difficulty = (int)Difficulty.Level,
                 darkStore = DarkStore.I != null ? DarkStore.I.CaptureSave() : null,
                 cityEvents = CityEvents.I != null ? CityEvents.I.CaptureSave() : null,
+                crisis = CrisisManager.I != null ? CrisisManager.I.CaptureSave() : null,
                 messages = CourierMessages.I != null ? CourierMessages.I.CaptureSave() : null,
                 telemetry = Telemetry.Capture()
             };
@@ -468,6 +475,7 @@ namespace KuryeTycoon
             if (d.feed != null) EventManager.I.Feed.AddRange(d.feed);
             if (Guide.I != null) Guide.I.RestoreSave(d.guide);
             if (CityEvents.I != null) CityEvents.I.RestoreSave(d.cityEvents);
+            if (CrisisManager.I != null) CrisisManager.I.RestoreSave(d.crisis);
             if (CourierMessages.I != null) CourierMessages.I.RestoreSave(d.messages);
             Telemetry.Restore(d.telemetry);   // null / eski kayıt: rehber yok, menüler şarta göre açılır
         }

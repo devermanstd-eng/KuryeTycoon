@@ -71,6 +71,7 @@ namespace KuryeTycoon
             Make<GoalManager>("Haftalık Hedefler");
             Make<DarkStore>("Kendi Marketin");
             Make<CityEvents>("Şehir Etkinlikleri");
+            Make<CrisisManager>("Krizler");
             Make<CourierMessages>("Kurye Mesajları");
             Make<DebugReport>("Hata Ayıklama");
             Make<UpgradeManager>("Geliştirmeler");
@@ -161,6 +162,7 @@ namespace KuryeTycoon
                 GoalManager.I.Init();
                 DarkStore.I.Init();
                 CityEvents.I.Init();
+                CrisisManager.I.Init();
                 CourierMessages.I.Init();
                 FamilyLoan.I.principal = d.loan != null && d.loan.principal > 0 ? d.loan.principal : familyLoanAmount;
                 FamilyLoan.I.InitRestored(d.loan);
@@ -203,6 +205,7 @@ namespace KuryeTycoon
             GoalManager.I.Init();
             DarkStore.I.Init();
             CityEvents.I.Init();
+            CrisisManager.I.Init();
             CourierMessages.I.Init();
             FamilyLoan.I.principal = familyLoanAmount;
             FamilyLoan.I.Init();

@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-09 h (iptal ayarı)";
+        public const string CodeVersion = "2026-11-09 i (aktif rakip, krizler, kademeli vergi)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
@@ -364,6 +364,21 @@ namespace KuryeTycoon
                 foreach (var e in CityEvents.I.Events) sb.AppendLine($"  {e.day}. gün {e.TimeText} {e.title} (talep ×{e.demand:0.00}, yemek ×{e.food:0.00}, market ×{e.market:0.00})");
             }
             if (RivalCompany.I != null) sb.AppendLine("Rakip: " + Fields(RivalCompany.I, false, true));
+            if (RivalCompany.I != null)
+            {
+                var rv = RivalCompany.I;
+                sb.AppendLine("Rakip özeti: " + rv.ReportLine);
+                sb.AppendLine($"  saldırganlık {rv.aggression:0.00} · kalite {rv.quality:0.00} · yatırım turu {rv.fundingRounds} · kasa {GameData.Ft(rv.money)} · " +
+                              $"fiyat savaşı {rv.priceWarDays} gün (bölge {rv.warDistrict}, ×{rv.warFactor:0.00}) · reklam {rv.marketingDays} gün");
+                if (rv.shareHistory.Count > 0)
+                {
+                    var hs = new System.Text.StringBuilder("  haftalık pazar payın:");
+                    foreach (var v in rv.shareHistory) hs.Append($" %{v * 100f:0}");
+                    sb.AppendLine(hs.ToString());
+                }
+            }
+            if (CrisisManager.I != null) sb.AppendLine("Krizler:\n  " + CrisisManager.I.StatusText.Replace("\n", "\n  "));
+            sb.AppendLine($"Yıl sonu vergisi (tahmini, kademeli): {GameData.Ft(EconomyManager.ProgressiveTax(System.Math.Max(0L, EconomyManager.I.Year.Profit)))}");
             if (SupportManager.I != null) sb.AppendLine("Destek: " + Fields(SupportManager.I, false, true));
             if (CampaignManager.I != null) sb.AppendLine("Kampanya: " + Fields(CampaignManager.I, false, true));
         }

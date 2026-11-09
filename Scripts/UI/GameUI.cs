@@ -901,6 +901,33 @@ namespace KuryeTycoon
                 string t = $"Gece hızlı · {GameClock.I.EffectiveSpeed:0}×";
                 Add(px => AlertPill(px, Icons.Kind.Moon, t, new Color(0.22f, 0.26f, 0.45f), Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
             }
+            // Pazar payı (rakibe karşı) ve süren krizler
+            if (RivalCompany.I != null && GameClock.I.CompanyDay > 7)
+            {
+                var rvc = RivalCompany.I;
+                float sh = rvc.MarketShare, tr = rvc.ShareTrend;
+                string arrow = tr > 0.005f ? " ▲" : tr < -0.005f ? " ▼" : "";
+                string t = $"Pazar payı %{sh * 100f:0}{arrow} · {rvc.companyName} %{(1f - sh) * 100f:0}";
+                Color bg = sh >= 0.55f ? UITheme.WithAlpha(new Color(0.40f, 0.85f, 0.55f), 0.22f)
+                         : sh >= 0.42f ? UITheme.WithAlpha(orange, 0.30f) : UITheme.Bad;
+                Add(px => AlertPill(px, Icons.Kind.Chart, t, bg, UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
+            if (CrisisManager.OrdersBlocked)
+            {
+                string t = $"Uygulama çöktü · {CrisisManager.OutageMinutesLeft:0} dk";
+                Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.Bad, Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
+            if (CrisisManager.I != null)
+                foreach (var ce in CrisisManager.I.Effects)
+                {
+                    string t = $"{ce.title} · {CrisisManager.I.DaysLeft(ce)} g";
+                    Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.WithAlpha(orange, 0.35f), UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
+                }
+            if (RivalCompany.I != null && RivalCompany.I.priceWarDays > 0 && RivalCompany.I.warDistrict > 0)
+            {
+                string t = $"Fiyat savaşı: {CityMap.DistrictNames[RivalCompany.I.warDistrict]} · {RivalCompany.I.priceWarDays} g";
+                Add(px => AlertPill(px, Icons.Kind.Flag, t, UITheme.WithAlpha(UITheme.Bad, 0.6f), Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
             if (eco.taxDebt > 0)
             {
                 string t = $"Vergi borcu {Ft(eco.taxDebt)}";
@@ -1461,9 +1488,34 @@ namespace KuryeTycoon
                 GUILayout.Label($"Rakip: {rv.companyName} (yapay zekâ)", header);
                 HelpOnLast("Rakip de çalıştığı dükkanlarda siparişler itibar ve kurye sayısına göre paylaşılır. Münhasır dükkanlarda rakip yok. " +
                            "Sözleşmeler 6 ayda bir yenilenir; memnuniyet düşükse rakip araya girer. Moralsiz kuryelerini de ayartabilir.");
-                GUILayout.Label($"İtibar {rv.reputation:0.0}/5 · {rv.couriers} kurye · {rv.RivalShopCount} dükkanla çalışıyor · " +
-                                $"geçen hafta ~{rv.deliveriesLastWeek} teslimat · pazar payın ~%{rv.MarketShare * 100f:0}", small);
-                if (rv.priceWarDays > 0) GUILayout.Label($"Fiyat savaşı: {rv.companyName} {rv.priceWarDays} gün daha ücret kırıyor, müşteriler fiyata duyarlı.", warn);
+                GUILayout.Label($"İtibar {rv.reputation:0.0}/5{(rv.marketingDays > 0 ? $" (reklamla {rv.EffectiveReputation:0.0})" : "")} · " +
+                                $"{rv.couriers} kurye · {rv.RivalShopCount} dükkanla çalışıyor · geçen hafta ~{rv.deliveriesLastWeek} teslimat", small);
+                GUILayout.Label($"Pazar payın: %{rv.MarketShare * 100f:0} (geçen hafta {(rv.ShareTrend >= 0f ? "+" : "−")}{Mathf.Abs(rv.ShareTrend) * 100f:0.0} puan) · " +
+                                $"rakibin tavrı: {rv.MoodText} · yatırım turu: {rv.fundingRounds}", small);
+                HelpOnLast("Pazar payın %45'in üstüne çıktıkça rakip saldırganlaşır: yatırım bulur, kurye alır, hizmetini iyileştirir; " +
+                           "en iyi dükkanlarına ve kuryelerine teklif yapar, bir bölgede fiyat savaşı ya da reklam atağı başlatır. " +
+                           "İtibarını yüksek tut, iyi dükkanlarla münhasırlık yap, kuryelerinin moralini koru.");
+                if (rv.shareHistory.Count > 1)
+                {
+                    var hs = new System.Text.StringBuilder("Son haftalar: ");
+                    foreach (var v in rv.shareHistory) hs.Append($"%{v * 100f:0} ");
+                    GUILayout.Label(hs.ToString(), small);
+                }
+                if (rv.priceWarDays > 0 && rv.warDistrict > 0)
+                    GUILayout.Label($"Fiyat savaşı: {rv.companyName} {CityMap.DistrictNames[rv.warDistrict]} bölgesinde {rv.priceWarDays} gün daha ücret kırıyor " +
+                                    $"(oradaki siparişlerin −%{(1f - rv.warFactor) * 100f:0}).", warn);
+                if (rv.marketingDays > 0) GUILayout.Label($"Reklam atağı: {rv.marketingDays} gün daha müşterilere daha iyi görünüyor.", warn);
+                GUILayout.EndVertical();
+            }
+
+            // Krizler ve kalıcı kararlar
+            if (CrisisManager.I != null)
+            {
+                GUILayout.BeginVertical(box);
+                GUILayout.Label("Krizler ve kalıcı kararlar", header);
+                HelpOnLast("Ara sıra kriz çıkar: kurye grevi, uygulama çökmesi, akaryakıt zammı, yazın sıcak dalgası, platform çalışanları yasası. " +
+                           "Her birinde bir seçim yaparsın; sonucu günlerce ya da haftalarca sürer.");
+                GUILayout.Label(CrisisManager.I.StatusText, small);
                 GUILayout.EndVertical();
             }
 
@@ -2235,8 +2287,9 @@ namespace KuryeTycoon
                 {
                     Section($"Bu vergi yılı · {clock.Year}", $"1 Ocak – 31 Aralık. Şirketin {clock.CompanyDay}. günü. Yıl sonunda kâr üzerinden vergi ödenir.");
                     Stats(e.Year);
-                    long est = (long)Mathf.Round(Mathf.Max(0f, e.Year.Profit) * e.taxRate);
-                    KV($"Tahmini yıl sonu vergisi (%{e.taxRate * 100f:0})", Ft(est));
+                    long taxable = System.Math.Max(0L, e.Year.Profit);
+                    long est = EconomyManager.ProgressiveTax(taxable);
+                    KV($"Tahmini yıl sonu vergisi (kademeli, ortalama %{EconomyManager.EffectiveTaxRate(taxable) * 100f:0.0})", Ft(est));
                     if (e.Yesterday != null)
                     {
                         Section("Dün");
@@ -2346,7 +2399,9 @@ namespace KuryeTycoon
                     GUILayout.Space(8);
                     Section("Vergi", "31 Aralık'ta (gelir − giderler) üzerinden ödenir; giderler vergiden düşülür. Yıl içinde de habersiz vergi ve harçlar çıkar: " +
                         "yerel işletme vergisi, KDV farkı, vergi denetimi, belediye harcı, iş güvenliği fonu. Bazen de vergi iadesi gelir. Kasanda her zaman biraz yedek para tut.");
-                    KV("Yıl sonu vergisi (kâr üzerinden)", $"%{e.taxRate * 100f:0}");
+                    KV("Yıl sonu vergisi (kâr üzerinden)", "kademeli");
+                    GUILayout.Label(EconomyManager.TaxBracketText, small);
+                    HelpOnLast("Kârın her dilimi kendi oranıyla vergilenir: şirket büyüdükçe kârın üst kısmından daha yüksek oranda vergi ödenir.");
 
                     GUILayout.Space(8);
                     Section("Örnek hesap (şu anki ayarlarla)");

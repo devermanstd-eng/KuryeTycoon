@@ -157,8 +157,9 @@ namespace KuryeTycoon
 
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
-                         * Difficulty.OrderRate * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor;
-            spawnAcc += rate * dm;
+                         * Difficulty.OrderRate * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
+                         * CrisisManager.DemandFactor;
+            if (!CrisisManager.OrdersBlocked) spawnAcc += rate * dm;   // uygulama çöktüyse yeni sipariş gelmez
             while (spawnAcc >= 1f)
             {
                 spawnAcc -= 1f;
