@@ -147,7 +147,13 @@ namespace KuryeTycoon
             Defs.Add(new MilestoneDef
             {
                 id = "kurumsal", card = true, title = "Kurumsal", reward = 150000,
-                text = "Kurye platformunun en büyük paketine geçtin.",
+                text = "Kurye platformunun Kurumsal paketine geçtin.",
+                reached = () => UpgradeManager.I != null && UpgradeManager.I.Level(UpgradeKind.Platform) >= 7
+            });
+            Defs.Add(new MilestoneDef
+            {
+                id = "pazar_lideri", card = true, title = "Pazar lideri", reward = 400000,
+                text = "Kurye platformunun en büyük paketine geçtin: 180 kurye hesabı.",
                 reached = () => UpgradeManager.I != null &&
                                 UpgradeManager.I.Level(UpgradeKind.Platform) >= UpgradeManager.Def(UpgradeKind.Platform).MaxLevel
             });

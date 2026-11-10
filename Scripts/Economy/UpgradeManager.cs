@@ -4,7 +4,7 @@ namespace KuryeTycoon
 {
     // Sıra kayıt uyumluluğu için sabit: yeni türler sona eklenir
     // Dinlenme = kurye avantaj programı, Bakim = anlaşmalı servisler, Hijyen = çanta kontrolü ve ekipman partneri (eski adlar kayıt uyumu için)
-    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres }
+    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo }
 
     public class UpgradeDef
     {
@@ -17,6 +17,7 @@ namespace KuryeTycoon
         public System.Func<int, string> effect;   // seviyenin etkisi (metin)
         public int[] reqDistrict;     // i+1. seviye için gereken bölge (boşsa yok)
         public int[] reqOffice;       // i+1. seviye için gereken merkez ofis seviyesi (boşsa yok)
+        public System.Func<int, string> extraLock;   // hedef seviye için ek koşul (boş metin = yok)
         public ExpenseCategory category = ExpenseCategory.Gelistirme;
         public bool canDowngrade = true;
 
@@ -41,8 +42,23 @@ namespace KuryeTycoon
     {
         public static UpgradeManager I { get; private set; }
 
-        // Hesap sınırları açık bölgelerin talebine göre: 4 = başlangıç, 14 = Merkez dolu, 22 = Doğu, 32 = Sanayi, 45 = Batı Liman, 60–80 = bütün şehir
-        static readonly int[] AccountCap = { 4, 8, 14, 22, 32, 45, 60, 80 };
+        // Hesap sınırları açık bölgelerin talebine göre: 4 = başlangıç, 14 = Merkez dolu, 22 = Doğu, 32 = Sanayi, 45 = Batı Liman, 60–80 = bütün şehir;
+        // 100–180 = büyük şehir operasyonu (kurye merkezleri, yapay zekâ dispatch ve bölge ofisleri gerekir)
+        static readonly int[] AccountCap = { 4, 8, 14, 22, 32, 45, 60, 80, 100, 125, 150, 180 };
+
+        /// <summary>Başka bir geliştirmenin seviyesi yetmiyorsa kilit metni.</summary>
+        static string Need(UpgradeKind k, int lv)
+        {
+            if (I == null || I.Level(k) >= lv) return "";
+            var d = Def(k);
+            return $"önce {d.name}: {d.levelNames[lv]}";
+        }
+
+        static string FirstLock(params string[] reasons)
+        {
+            foreach (var r in reasons) if (!string.IsNullOrEmpty(r)) return r;
+            return "";
+        }
 
         static string Ft(long v) => GameData.Ft(v);
         static string Pct(float m) => $"%{Mathf.Abs(m - 1f) * 100f:0}";
@@ -54,22 +70,27 @@ namespace KuryeTycoon
                 kind = UpgradeKind.Platform, name = "Kurye platformu paketi",
                 summary = "Kuryeler kendi işinin patronu ama her biri uygulamanda bir hesapla çalışır. Paket kaç aktif kurye hesabını " +
                           "kaldırabileceğini belirler; büyük paketin sunucu ve lisans ücreti de yüksek. Büyük paketler şehir büyüdükçe açılır.",
-                costs = new[] { 80000, 200000, 450000, 900000, 1600000, 2800000, 4500000 },
-                daily = new[] { 0, 1500, 3000, 5000, 8000, 12000, 17000, 24000 },
-                levelNames = new[] { "Başlangıç", "Büyüme", "Profesyonel", "Bölgesel", "Şehir", "Metropol", "Kurumsal", "Kurumsal+" },
+                costs = new[] { 80000, 200000, 450000, 900000, 1600000, 2800000, 4500000, 20000000, 40000000, 70000000, 120000000 },
+                daily = new[] { 0, 1500, 3000, 5000, 8000, 12000, 17000, 24000, 34000, 46000, 62000, 85000 },
+                levelNames = new[] { "Başlangıç", "Büyüme", "Profesyonel", "Bölgesel", "Şehir", "Metropol", "Kurumsal", "Kurumsal+",
+                                     "Büyük şehir", "Büyük şehir+", "Bölge lideri", "Pazar lideri" },
                 effect = lv => $"{AccountCap[lv]} kurye hesabı",
-                reqDistrict = new[] { 0, 0, 2, 3, 4, 5, 5 },
+                reqDistrict = new[] { 0, 0, 2, 3, 4, 5, 5, 5, 5, 5, 5 },
+                extraLock = lv => lv == 8 ? Need(UpgradeKind.Ofis, 2)
+                                : lv == 9 ? FirstLock(Need(UpgradeKind.Ofis, 3), Need(UpgradeKind.Hub, 1))
+                                : lv == 10 ? FirstLock(Need(UpgradeKind.Hub, 2), Need(UpgradeKind.Dispatcher, 3))
+                                : lv == 11 ? FirstLock(Need(UpgradeKind.Hub, 3), Need(UpgradeKind.Ofis, 4)) : "",
             },
             new UpgradeDef
             {
                 kind = UpgradeKind.Ofis, name = "Merkez ofis",
                 summary = "Operasyon ve destek ekibinin çalıştığı yer; yeni kuryelerin kaydının yapıldığı ve ekipman aldığı nokta. " +
                           "Kuryeler ofise gelmez, sahada kendi başına çalışır. Büyük ofis daha çok destek personeli alır ve daha görünürdür (daha çok başvuru).",
-                costs = new[] { 250000, 700000, 1800000 },
-                daily = new[] { 4000, 7000, 12000, 20000 },
-                levelNames = new[] { "Kiralık küçük ofis", "Sokak katında ofis", "Kat ofisi", "Şirket binası" },
-                effect = lv => $"en fazla {SupportCapAt(lv)} destek personeli" + (lv > 0 ? $", kurye başvurusu +%{lv * 5}" : ""),
-                reqDistrict = new[] { 0, 2, 3 },
+                costs = new[] { 250000, 700000, 1800000, 12000000 },
+                daily = new[] { 4000, 7000, 12000, 20000, 32000 },
+                levelNames = new[] { "Kiralık küçük ofis", "Sokak katında ofis", "Kat ofisi", "Şirket binası", "Şirket binası + bölge ofisleri" },
+                effect = lv => $"en fazla {SupportCapAt(lv)} destek personeli" + (lv > 0 ? $", kurye başvurusu +{Pct(OfficeAppsAt(lv))}" : ""),
+                reqDistrict = new[] { 0, 2, 3, 5 },
                 category = ExpenseCategory.Kira,
             },
             new UpgradeDef
@@ -77,34 +98,39 @@ namespace KuryeTycoon
                 kind = UpgradeKind.Dispatcher, name = "Dispatcher yazılımı",
                 summary = "Siparişlerin kuryelere nasıl dağıtılacağı. Akıllı atama siparişi önce kabul etmesi muhtemel kuryelere verir; " +
                           "talep tahmini yoğun saatten önce kuryelere haber verir.",
-                costs = new[] { 90000, 350000 },
-                daily = new[] { 0, 800, 2000 },
-                levelNames = new[] { "Basit atama", "Akıllı atama", "Akıllı atama + talep tahmini" },
+                costs = new[] { 90000, 350000, 15000000 },
+                daily = new[] { 0, 800, 2000, 7000 },
+                levelNames = new[] { "Basit atama", "Akıllı atama", "Akıllı atama + talep tahmini", "Yapay zekâ dispatch + hava tahmini" },
                 effect = lv => lv == 0 ? "en yakın kuryeye teklif" : lv == 1 ? "daha az red, kâr öncelikli atama seçeneği"
-                             : "daha az red, yoğun saatlerde +%15 çevrimiçi kurye",
-                reqDistrict = new[] { 0, 2 },
+                             : lv == 2 ? "daha az red, yoğun saatlerde +%15 çevrimiçi kurye"
+                             : "daha az red, yoğun saatlerde +%20, yağmur ve karda +%20 çevrimiçi kurye (kuryelere önceden haber verilir)",
+                reqDistrict = new[] { 0, 2, 5 },
+                extraLock = lv => lv == 3 ? Need(UpgradeKind.Ofis, 3) : "",
             },
             new UpgradeDef
             {
                 kind = UpgradeKind.Uygulama, name = "Kurye uygulaması",
                 summary = "Rota, navigasyon ve kazanç tahmini. İyi uygulamada kuryeler daha hızlı gider ve teklifleri daha kolay kabul eder.",
-                costs = new[] { 110000, 400000 },
-                daily = new[] { 0, 600, 1500 },
-                levelNames = new[] { "Eski uygulama", "Uygulama 2.0", "Uygulama 3.0 (canlı trafik)" },
+                costs = new[] { 110000, 400000, 12000000 },
+                daily = new[] { 0, 600, 1500, 5000 },
+                levelNames = new[] { "Eski uygulama", "Uygulama 2.0", "Uygulama 3.0 (canlı trafik)", "Uygulama 4.0 (çok duraklı rota)" },
                 effect = lv => lv == 0 ? "standart" : lv == 1 ? "kuryeler %5 hızlı, teklif beklentisi %10 düşük"
-                             : "kuryeler %8 hızlı, teklif beklentisi %15 düşük",
-                reqDistrict = new[] { 0, 3 },
+                             : lv == 2 ? "kuryeler %8 hızlı, teklif beklentisi %15 düşük"
+                             : "kuryeler %12 hızlı, teklif beklentisi %20 düşük",
+                reqDistrict = new[] { 0, 3, 5 },
             },
             new UpgradeDef
             {
                 kind = UpgradeKind.Dinlenme, name = "Kurye avantaj programı",
                 summary = "Kuryeler serbest çalışır; molasını, yemeğini kendisi ayarlar. Platform ise anlaşmalı firmalarla kuryelere indirim " +
                           "sağlayabilir. Kurye kendini değerli hisseder: morali yükselir, rakibe kaçmaz.",
-                costs = new[] { 30000, 120000, 300000 },
-                daily = new[] { 0, 400, 1200, 2500 },
-                levelNames = new[] { "Yok", "Akaryakıt ve telefon hattı indirimi", "+ Anlaşmalı restoranlarda yemek indirimi", "+ Sadakat programı (kıdem primi)" },
-                effect = lv => lv == 0 ? "kurye her şeyi kendi karşılar" : $"her gün moral +{MoraleAt(lv) * 100f:0.#}" + (lv >= 3 ? ", kıdemli kuryeler rakibe kaçmaz" : ""),
-                reqDistrict = new[] { 0, 2, 3 },
+                costs = new[] { 30000, 120000, 300000, 6000000 },
+                daily = new[] { 0, 400, 1200, 2500, 8000 },
+                levelNames = new[] { "Yok", "Akaryakıt ve telefon hattı indirimi", "+ Anlaşmalı restoranlarda yemek indirimi", "+ Sadakat programı (kıdem primi)",
+                                     "+ Kaza ve sağlık sigortası katkısı" },
+                effect = lv => lv == 0 ? "kurye her şeyi kendi karşılar" : $"her gün moral +{MoraleAt(lv) * 100f:0.#}" + (lv >= 3 ? ", kıdemli kuryeler rakibe kaçmaz" : "")
+                             + (lv >= 4 ? ", grev ihtimali yarıya iner" : ""),
+                reqDistrict = new[] { 0, 2, 3, 5 },
                 category = ExpenseCategory.Diger,
             },
             new UpgradeDef
@@ -112,12 +138,13 @@ namespace KuryeTycoon
                 kind = UpgradeKind.Bakim, name = "Anlaşmalı servisler",
                 summary = "Araç bakımı ve telefon kuryenin kendi işi. Platform anlaşmalı servislerle indirim ve öncelik sağlarsa kuryeler " +
                           "bakımı ertelemez: daha az arıza, daha az kapanan telefon.",
-                costs = new[] { 40000, 150000, 350000 },
-                daily = new[] { 0, 300, 900, 1800 },
-                levelNames = new[] { "Yok", "İndirimli powerbank ve telefon tamiri", "+ Anlaşmalı bisiklet, scooter ve motor servisi", "+ Öncelikli servis ve yedek araç kiralama" },
+                costs = new[] { 40000, 150000, 350000, 9000000 },
+                daily = new[] { 0, 300, 900, 1800, 7000 },
+                levelNames = new[] { "Yok", "İndirimli powerbank ve telefon tamiri", "+ Anlaşmalı bisiklet, scooter ve motor servisi", "+ Öncelikli servis ve yedek araç kiralama",
+                                     "+ Kendi servis atölyen" },
                 effect = lv => lv == 0 ? "standart arıza ve telefon riski"
                              : $"telefon kapanması −{Pct(PhoneAt(lv))}" + (lv >= 2 ? $", araç arızası −{Pct(BreakAt(lv))}" : ""),
-                reqDistrict = new[] { 0, 0, 3 },
+                reqDistrict = new[] { 0, 0, 3, 5 },
                 category = ExpenseCategory.Diger,
             },
             new UpgradeDef
@@ -137,51 +164,88 @@ namespace KuryeTycoon
                 kind = UpgradeKind.Restoran, name = "Restoran entegrasyonu",
                 summary = "Dükkanlara sipariş tableti ve kasa (POS) entegrasyonu: sipariş hazır olunca doğru zamanda haber verilir, " +
                           "kurye dükkanda daha az bekler; paketleme kontrol listesiyle eksik ürün azalır.",
-                costs = new[] { 120000, 450000 },
-                daily = new[] { 0, 1000, 2500 },
-                levelNames = new[] { "Telefonla bildirim", "Dükkan tableti", "Kasa (POS) entegrasyonu + paketleme listesi" },
+                costs = new[] { 120000, 450000, 10000000 },
+                daily = new[] { 0, 1000, 2500, 6000 },
+                levelNames = new[] { "Telefonla bildirim", "Dükkan tableti", "Kasa (POS) entegrasyonu + paketleme listesi",
+                                     "+ Yapay zekâ hazırlık süresi tahmini" },
                 effect = lv => lv == 0 ? "dükkanda sıra ve bekleme sık"
                              : $"dükkanda sıra −{Pct(QueueAt(lv))}" + (lv >= 2 ? $", dükkandaki eksik ürün −{Pct(MissingAt(lv))}" : ""),
-                reqDistrict = new[] { 0, 2 },
+                reqDistrict = new[] { 0, 2, 5 },
             },
             new UpgradeDef
             {
                 kind = UpgradeKind.Adres, name = "Müşteri uygulaması ve adres doğrulama",
                 summary = "Müşteri adresini haritada işaretler, bina girişinin fotoğrafını ve notunu ekler; kurye yaklaşınca müşteriye bildirim gider.",
-                costs = new[] { 80000, 250000 },
-                daily = new[] { 0, 500, 1200 },
-                levelNames = new[] { "Sadece yazılı adres", "Harita pini + giriş fotoğrafı", "+ \"Kurye yaklaştı\" bildirimi" },
+                costs = new[] { 80000, 250000, 7000000 },
+                daily = new[] { 0, 500, 1200, 4000 },
+                levelNames = new[] { "Sadece yazılı adres", "Harita pini + giriş fotoğrafı", "+ \"Kurye yaklaştı\" bildirimi",
+                                     "+ Teslimat dolapları (paketomat) ağı" },
                 effect = lv => lv == 0 ? "yanlış adres ve evde olmayan müşteri sık"
                              : $"yanlış adres −{Pct(WrongAddrAt(lv))}" + (lv >= 2 ? $", müşteri evde yok −{Pct(NotHomeAt(lv))}" : ""),
-                reqDistrict = new[] { 0, 2 },
+                reqDistrict = new[] { 0, 2, 5 },
             },
             new UpgradeDef
             {
                 kind = UpgradeKind.Reklam, name = "Reklam ve marka bilinirliği",
                 summary = "Reklam kalıcı değildir: her gün bütçe harcar. Daha çok sipariş ve kurye başvurusu getirir. İstediğin zaman küçültebilirsin.",
-                costs = new[] { 50000, 150000, 300000 },
-                daily = new[] { 0, 2000, 6000, 12000 },
-                levelNames = new[] { "Reklam yok", "Sosyal medya", "Şehir panoları", "Radyo + influencer" },
+                costs = new[] { 50000, 150000, 300000, 8000000 },
+                daily = new[] { 0, 2000, 6000, 12000, 30000 },
+                levelNames = new[] { "Reklam yok", "Sosyal medya", "Şehir panoları", "Radyo + influencer", "TV + spor kulübü sponsorluğu" },
                 effect = lv => lv == 0 ? "ağızdan ağıza" : $"sipariş +{Pct(OrdersAt(lv))}, kurye başvurusu +{Pct(AdAppsAt(lv))}",
-                reqDistrict = new[] { 0, 2, 3 },
+                reqDistrict = new[] { 0, 2, 3, 5 },
                 category = ExpenseCategory.Reklam,
+            },
+            new UpgradeDef
+            {
+                kind = UpgradeKind.Hub, name = "Kurye merkezleri (mikro hub)",
+                summary = "Şehrin yoğun noktalarında kuryelerin mola verdiği, telefonunu ve aracını şarj ettiği, tuvalete ve sıcak/soğuk " +
+                          "havadan kaçabildiği küçük noktalar. Kuryeler daha az yorulur, molayı bitirip daha çabuk yeniden çevrimiçi olur. " +
+                          "Büyük platform paketleri için gerekir.",
+                costs = new[] { 6000000, 16000000, 36000000 },
+                daily = new[] { 0, 6000, 14000, 26000 },
+                levelNames = new[] { "Yok", "Merkez'de bir hub", "Üç bölgede hub", "Her bölgede hub + şarj istasyonları" },
+                effect = lv => lv == 0 ? "kuryeler molayı sokakta ya da evde verir"
+                             : $"yorulma −{Pct(HubFatigueAt(lv))}, çevrimiçi kurye +{Pct(HubOnlineAt(lv))}",
+                reqDistrict = new[] { 4, 5, 5 },
+                extraLock = lv => lv == 1 ? Need(UpgradeKind.Ofis, 2) : lv == 3 ? Need(UpgradeKind.Ofis, 3) : "",
+                category = ExpenseCategory.Kira,
+            },
+            new UpgradeDef
+            {
+                kind = UpgradeKind.EFilo, name = "E-bisiklet ve scooter filosu",
+                summary = "Şirket elektrikli bisiklet ve scooter kiralar, kuryelere düşük ücretle verir (Wolt ve Foodora'nın kiralık araç " +
+                          "anlaşmaları gibi). Bisikletli kuryeler hızlanır; aracı olmayanlar da başvurabildiği için başvuru artar.",
+                costs = new[] { 8000000, 24000000 },
+                daily = new[] { 0, 8000, 20000 },
+                levelNames = new[] { "Yok", "E-bisiklet kiralama", "+ E-scooter ve batarya değişim istasyonları" },
+                effect = lv => lv == 0 ? "her kurye kendi aracıyla"
+                             : $"bisiklet kuryeleri +{Pct(EBikeAt(lv))} hızlı" + (lv >= 2 ? $", e-scooter kuryeleri +{Pct(EScooterAt(lv))} hızlı" : "")
+                               + $", kurye başvurusu +{Pct(FleetAppsAt(lv))}",
+                reqDistrict = new[] { 3, 5 },
+                extraLock = lv => lv == 2 ? Need(UpgradeKind.Hub, 1) : "",
+                category = ExpenseCategory.Ekipman,
             },
         };
 
         // ---------- Seviye etkileri ----------
-        static float MoraleAt(int lv) => new[] { 0f, 0.005f, 0.01f, 0.015f }[lv];
-        static float PhoneAt(int lv) => new[] { 1f, 0.6f, 0.5f, 0.4f }[lv];
-        static float BreakAt(int lv) => new[] { 1f, 1f, 0.7f, 0.55f }[lv];
+        static float MoraleAt(int lv) => new[] { 0f, 0.005f, 0.01f, 0.015f, 0.02f }[lv];
+        static float PhoneAt(int lv) => new[] { 1f, 0.6f, 0.5f, 0.4f, 0.3f }[lv];
+        static float BreakAt(int lv) => new[] { 1f, 1f, 0.7f, 0.55f, 0.4f }[lv];
         static float DirtAt(int lv) => new[] { 1f, 1f, 0.8f }[lv];
         static float CleanAt(int lv) => new[] { 0f, 0.25f, 0.3f }[lv];
-        static float QueueAt(int lv) => new[] { 1f, 0.6f, 0.4f }[lv];
-        static float MissingAt(int lv) => new[] { 1f, 1f, 0.5f }[lv];
-        static float WrongAddrAt(int lv) => new[] { 1f, 0.5f, 0.4f }[lv];
-        static float NotHomeAt(int lv) => new[] { 1f, 1f, 0.5f }[lv];
-        static int SupportCapAt(int lv) => new[] { 2, 4, 7, 12 }[lv];
-        static float OrdersAt(int lv) => new[] { 1f, 1.05f, 1.10f, 1.15f }[lv];
-        static float AdAppsAt(int lv) => new[] { 1f, 1.15f, 1.3f, 1.45f }[lv];
-        static float OfficeAppsAt(int lv) => new[] { 1f, 1.05f, 1.10f, 1.15f }[lv];
+        static float QueueAt(int lv) => new[] { 1f, 0.6f, 0.4f, 0.25f }[lv];
+        static float MissingAt(int lv) => new[] { 1f, 1f, 0.5f, 0.35f }[lv];
+        static float WrongAddrAt(int lv) => new[] { 1f, 0.5f, 0.4f, 0.3f }[lv];
+        static float NotHomeAt(int lv) => new[] { 1f, 1f, 0.5f, 0.3f }[lv];
+        static int SupportCapAt(int lv) => new[] { 2, 4, 7, 12, 18 }[lv];
+        static float OrdersAt(int lv) => new[] { 1f, 1.05f, 1.10f, 1.15f, 1.22f }[lv];
+        static float AdAppsAt(int lv) => new[] { 1f, 1.15f, 1.3f, 1.45f, 1.6f }[lv];
+        static float OfficeAppsAt(int lv) => new[] { 1f, 1.05f, 1.10f, 1.15f, 1.25f }[lv];
+        static float HubFatigueAt(int lv) => new[] { 1f, 0.9f, 0.8f, 0.7f }[lv];
+        static float HubOnlineAt(int lv) => new[] { 1f, 1.05f, 1.10f, 1.15f }[lv];
+        static float EBikeAt(int lv) => new[] { 1f, 1.15f, 1.25f }[lv];
+        static float EScooterAt(int lv) => new[] { 1f, 1f, 1.1f }[lv];
+        static float FleetAppsAt(int lv) => new[] { 1f, 1.15f, 1.3f }[lv];
 
         readonly int[] levels = new int[System.Enum.GetValues(typeof(UpgradeKind)).Length];
 
@@ -229,6 +293,7 @@ namespace KuryeTycoon
             if (dist > 0 && CityMap.I.UnlockLevel < dist) return $"önce \"{CityMap.DistrictNames[dist]}\" bölgesini aç";
             int off = d.ReqOffice(next);
             if (off > 0 && Level(UpgradeKind.Ofis) < off) return $"önce merkez ofisi büyüt ({Def(UpgradeKind.Ofis).levelNames[off]})";
+            if (d.extraLock != null) return d.extraLock(next) ?? "";
             return "";
         }
 
@@ -267,6 +332,14 @@ namespace KuryeTycoon
                 foreach (var o in Defs)
                     if (o.kind != UpgradeKind.Ofis && Level(o.kind) > 0 && o.ReqOffice(Level(o.kind)) >= lv)
                         return $"{o.name} bu ofiste duruyor";
+            // Başka bir geliştirmenin mevcut seviyesi buna dayanıyorsa küçültülemez (ör. büyük platform paketi hub'a dayanır)
+            levels[(int)k] = lv - 1;
+            string dep = "";
+            foreach (var o in Defs)
+                if (o.kind != k && o.extraLock != null && Level(o.kind) > 0 && !string.IsNullOrEmpty(o.extraLock(Level(o.kind))))
+                { dep = $"{o.name} ({o.levelNames[Level(o.kind)]}) buna dayanıyor"; break; }
+            levels[(int)k] = lv;
+            if (dep.Length > 0) return dep;
             return "";
         }
 
@@ -335,16 +408,36 @@ namespace KuryeTycoon
         public float DirtMultiplier => DirtAt(Level(UpgradeKind.Hijyen));
         public float HygieneCleanBonus => CleanAt(Level(UpgradeKind.Hijyen));
         public float OrderRateMultiplier => OrdersAt(Level(UpgradeKind.Reklam));
-        public float ApplicationMultiplier => AdAppsAt(Level(UpgradeKind.Reklam)) * OfficeAppsAt(Level(UpgradeKind.Ofis));
-        public float SpeedMultiplier => new[] { 1f, 1.05f, 1.08f }[Level(UpgradeKind.Uygulama)];
-        public float OfferThresholdMultiplier => new[] { 1f, 0.9f, 0.85f }[Level(UpgradeKind.Uygulama)];
+        public float ApplicationMultiplier => AdAppsAt(Level(UpgradeKind.Reklam)) * OfficeAppsAt(Level(UpgradeKind.Ofis)) * FleetAppsAt(Level(UpgradeKind.EFilo));
+        public float SpeedMultiplier => new[] { 1f, 1.05f, 1.08f, 1.12f }[Level(UpgradeKind.Uygulama)];
+        public float OfferThresholdMultiplier => new[] { 1f, 0.9f, 0.85f, 0.8f }[Level(UpgradeKind.Uygulama)];
         public bool SmartDispatch => Level(UpgradeKind.Dispatcher) >= 1;
+        public float ApplicationFleetMultiplier => FleetAppsAt(Level(UpgradeKind.EFilo));
+        public float HubFatigueMultiplier => HubFatigueAt(Level(UpgradeKind.Hub));
+        public float HubOnlineMultiplier => HubOnlineAt(Level(UpgradeKind.Hub));
+        public bool InsuranceProgram => Level(UpgradeKind.Dinlenme) >= 4;
 
-        /// <summary>Talep tahmini (dispatcher 2): yoğun saatlerde (11–14, 17–21) kuryeler daha çok çevrimiçi olur.</summary>
+        /// <summary>E-filo: bisiklet (ve 2. seviyede e-scooter) kuryeleri hızlanır.</summary>
+        public float VehicleSpeedMultiplier(VehicleKind v)
+        {
+            int lv = Level(UpgradeKind.EFilo);
+            if (v == VehicleKind.Bisiklet) return EBikeAt(lv);
+            if (v == VehicleKind.EScooter) return EScooterAt(lv);
+            return 1f;
+        }
+
+        /// <summary>
+        /// Talep tahmini (dispatcher 2): yoğun saatlerde (11–14, 17–21) kuryeler daha çok çevrimiçi olur.
+        /// Dispatcher 3: yoğun saatlerde +%20, ayrıca yağmur/kar/fırtınada her saatte +%20.
+        /// </summary>
         public float PeakAvailabilityMultiplier(int hour)
         {
-            if (Level(UpgradeKind.Dispatcher) < 2) return 1f;
-            return (hour >= 11 && hour < 14) || (hour >= 17 && hour < 21) ? 1.15f : 1f;
+            int lv = Level(UpgradeKind.Dispatcher);
+            if (lv < 2) return 1f;
+            bool peak = (hour >= 11 && hour < 14) || (hour >= 17 && hour < 21);
+            float m = peak ? (lv >= 3 ? 1.2f : 1.15f) : 1f;
+            if (lv >= 3 && WeatherSystem.I != null && (WeatherSystem.I.IsRainy || WeatherSystem.I.Current == WeatherKind.Karli)) m *= 1.2f;
+            return m;
         }
     }
 }

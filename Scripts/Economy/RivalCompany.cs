@@ -116,7 +116,7 @@ namespace KuryeTycoon
 
         /// <summary>Müşterinin gözündeki çekicilik: itibarın karesi × filonun yeterliliği (40 kuryede doyar).</summary>
         static float Score(float rep, int courierCount) =>
-            rep * rep * (0.4f + 0.6f * Mathf.Min(1f, courierCount / 40f));
+            rep * rep * (0.4f + 0.6f * Mathf.Min(1f, courierCount / 40f) + 0.15f * Mathf.Clamp01((courierCount - 40) / 120f));
 
         /// <summary>Reklam atağı sırasında rakip müşteriye daha iyi görünür.</summary>
         public float EffectiveReputation => Mathf.Min(5f, reputation + (marketingDays > 0 ? 0.4f : 0f));

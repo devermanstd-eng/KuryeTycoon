@@ -487,6 +487,7 @@ namespace KuryeTycoon
                 float pOn = pref * (0.4f + morale * 0.6f) * WeatherWillingness() + (boost && pref >= 0.2f ? 0.35f : 0f);
                 if (UpgradeManager.I != null) pOn *= UpgradeManager.I.PeakAvailabilityMultiplier(GameClock.I.Hour);
                 pOn *= crisis;
+                if (UpgradeManager.I != null) pOn *= UpgradeManager.I.HubOnlineMultiplier;
                 if (Random.value < pOn)
                 {
                     GoOnline();
@@ -850,7 +851,8 @@ namespace KuryeTycoon
 
         public float Speed =>
             V.tilesPerMinute * speedSkill * (1f + 0.04f * (level - 1)) *
-            WeatherSystem.I.SpeedFactor(this) * (1f - 0.3f * fatigue) * TrafficFactor * UpgradeManager.I.SpeedMultiplier;
+            WeatherSystem.I.SpeedFactor(this) * (1f - 0.3f * fatigue) * TrafficFactor * UpgradeManager.I.SpeedMultiplier *
+            UpgradeManager.I.VehicleSpeedMultiplier(vehicle);
 
         // ================================================================== teslimat akışı
 
@@ -1091,6 +1093,7 @@ namespace KuryeTycoon
             if (V.exposed && WeatherSystem.I.IsHot && !Has(EquipmentKind.YazTisort)) rate *= 1.5f;
             if (Has(EquipmentKind.Powerbank)) rate *= 0.8f;
             rate *= CrisisManager.FatigueFactor;   // sıcak dalgası vb.
+            if (UpgradeManager.I != null) rate *= UpgradeManager.I.HubFatigueMultiplier;   // kurye merkezlerinde mola
             fatigue = Mathf.Min(1f, fatigue + rate * dm);
         }
 
