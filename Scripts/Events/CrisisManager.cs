@@ -53,8 +53,21 @@ namespace KuryeTycoon
         int lawStage, lawDecisionDay;
         public long lawMonthlyFee;
 
-        /// <summary>Çalışan statüsündeki kurye başına günlük işveren maliyeti (Ft, ~15 €).</summary>
-        public const long EmployeeDailyCost = 6000;
+        /// <summary>
+        /// Çalışan statüsünün işveren maliyeti: kuryelere ödenen hakedişin %28'i (Macaristan'da işveren sosyal katkısı %13
+        /// + ücretli izin, hastalık ve sigorta) + kurye başına günde 800 Ft (~2 €; bordro, iş güvenliği eğitimi, ekipman).
+        /// Az çalışan kurye az maliyet çıkarır; boşta bekleyen çok kurye yine de pahalıdır.
+        /// </summary>
+        public const float EmployeeCostShare = 0.28f;
+        public const long EmployeeDailyFixed = 800;
+
+        /// <summary>Son günün kurye ödemesine göre çalışan statüsünün günlük maliyeti.</summary>
+        public static long EmployeeDailyCost(int courierCount)
+        {
+            var hist = StatsHistory.I != null ? StatsHistory.I.Days : null;
+            long pay = hist != null && hist.Count > 0 ? hist[hist.Count - 1].courierPay : 0;
+            return (long)Mathf.Round(pay * EmployeeCostShare) + EmployeeDailyFixed * courierCount;
+        }
 
         static int Day => GameClock.I.Day;
         static string Ft(long v) => GameData.Ft(v);
@@ -234,7 +247,7 @@ namespace KuryeTycoon
             // Çalışan statüsü: işveren maliyeti ve biraz daha yüksek bağlılık
             if (employees && Couriers.Count > 0)
             {
-                EconomyManager.I.Spend(EmployeeDailyCost * Couriers.Count, $"Kurye çalışan maliyeti ({Couriers.Count} kişi)", ExpenseCategory.Maas);
+                EconomyManager.I.Spend(EmployeeDailyCost(Couriers.Count), $"Kurye çalışan maliyeti ({Couriers.Count} kişi: hakedişin %28'i + kişi başı {Ft(EmployeeDailyFixed)})", ExpenseCategory.Maas);
                 foreach (var c in Couriers) if (c.morale < 0.75f) c.morale = Mathf.Min(0.75f, c.morale + 0.01f);
             }
 
@@ -391,13 +404,14 @@ namespace KuryeTycoon
         {
             Telemetry.Add("Kriz: platform yasası");
             int n = Couriers.Count;
-            long daily = EmployeeDailyCost * n;
+            long daily = EmployeeDailyCost(n);
             long monthly = Round1000(Mathf.Max(2000000f, n * 30000f));
             long lawyer = Round1000(Mathf.Max(1500000f, AvgDailyIncome() * 0.5f));
             var ev = new GameEvent("Platform Çalışanları Yasası",
                 "AB'nin platform çalışması direktifi Macaristan'da yürürlüğe giriyor: uygulama ve algoritmayla yönetilen kuryeler " +
                 "artık çalışan sayılabilir. Şirketin kurye modelini seçmesi gerekiyor. Bu karar kalıcıdır.\n\n" +
-                $"• Çalışan statüsü: kurye başına günde {Ft(EmployeeDailyCost)} (şu an {n} kurye → günde {Ft(daily)}). " +
+                $"• Çalışan statüsü: kurye hakedişlerinin %28'i kadar işveren maliyeti + kurye başına günde {Ft(EmployeeDailyFixed)} " +
+                $"(şu an {n} kurye → günde ~{Ft(daily)}). " +
                 "Moral artar, rakip kuryelerini ayartamaz, grev ihtimali düşer.\n" +
                 $"• Serbest çalışan kalsın: her ay {Ft(monthly)} hukuki uyum gideri ve arada denetim cezası riski.");
             ev.Add("Kuryeleri çalışan statüsüne al", () =>
