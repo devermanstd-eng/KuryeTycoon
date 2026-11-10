@@ -39,6 +39,7 @@ namespace KuryeTycoon
         public int marketingDays;           // reklam atağı: rakibin itibarı geçici olarak yüksek görünür
         public int fundingCooldownUntil;
         public int fundingRounds;
+        public int lastCourierRaidDay = -999;   // kurye ayartma en fazla 6 haftada bir
         public readonly List<float> shareHistory = new List<float>();   // haftalık pazar payın (son 12 hafta)
 
         /// <summary>Bugün dükkan başına senin teslimatların (rakibin teslimatını tahmin etmek için).</summary>
@@ -85,6 +86,7 @@ namespace KuryeTycoon
             myDeliveriesThisWeek = myDeliveriesThisWeek, myDeliveriesLastWeek = myDeliveriesLastWeek,
             aggression = aggression, quality = quality, warDistrict = warDistrict, warFactor = warFactor,
             marketingDays = marketingDays, fundingCooldownUntil = fundingCooldownUntil, fundingRounds = fundingRounds,
+            lastCourierRaidDay = lastCourierRaidDay,
             shareHistory = new List<float>(shareHistory), activeVersion = 1
         };
 
@@ -99,6 +101,7 @@ namespace KuryeTycoon
             {
                 aggression = s.aggression; quality = s.quality; warDistrict = s.warDistrict; warFactor = s.warFactor > 0f ? s.warFactor : 0.75f;
                 marketingDays = s.marketingDays; fundingCooldownUntil = s.fundingCooldownUntil; fundingRounds = s.fundingRounds;
+                lastCourierRaidDay = s.lastCourierRaidDay;
                 if (s.shareHistory != null) shareHistory.AddRange(s.shareHistory);
             }
             else
@@ -456,6 +459,9 @@ namespace KuryeTycoon
         {
             var list = new List<Courier>(CourierManager.I.Couriers);
             if (list.Count < 8) return false;
+            // Karşı zam sürerken ya da son 6 hafta içinde denediyse tekrar denemez (başka hamle seçer)
+            if (CrisisManager.I.HasEffect("rakip_zam") || Day - lastCourierRaidDay < 42) return false;
+            lastCourierRaidDay = Day;
             if (CrisisManager.Employees)
             {
                 EventManager.I.Notify($"{companyName} kuryelerine daha yüksek ücret teklif etti ama çalışan statüsündeki kuryelerin hiçbiri gitmedi.");

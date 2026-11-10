@@ -90,6 +90,7 @@ namespace KuryeTycoon
         public int activeVersion;
         public float aggression, quality, warFactor;
         public int warDistrict, marketingDays, fundingCooldownUntil, fundingRounds;
+        public int lastCourierRaidDay = -999;
         public List<float> shareHistory = new List<float>();
     }
 

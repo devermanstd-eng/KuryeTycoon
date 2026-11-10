@@ -148,11 +148,15 @@ namespace KuryeTycoon
 
         public static float OutageMinutesLeft => I == null ? 0f : Mathf.Max(0f, I.outageUntil - GameClock.I.TotalMinutes);
 
+        /// <summary>Aynı türden etki varsa üst üste binmez: yenisi eskisinin yerine geçer.</summary>
         public void AddEffect(CrisisEffect e, int days)
         {
             e.endDay = Day + Mathf.Max(1, days);
+            Effects.RemoveAll(x => x.id == e.id);
             Effects.Add(e);
         }
+
+        public bool HasEffect(string id) => Effects.Exists(x => x.id == id);
 
         public int DaysLeft(CrisisEffect e) => Mathf.Max(0, e.endDay - Day);
 
@@ -263,7 +267,8 @@ namespace KuryeTycoon
             nextCrisisDay = Day + Random.Range(10, 22);
             int month = GameClock.I.Month;
             var pool = new List<(System.Action run, float w)>();
-            if (Couriers.Count >= 12 && Day - lastStrikeDay >= 45)
+            // Grev: en az 90 günde bir ve önceki grev anlaşmasının zammı sürerken değil
+            if (Couriers.Count >= 12 && Day - lastStrikeDay >= 90 && !HasEffect("grev_zam") && !HasEffect("grev_uzlasma"))
                 pool.Add((new System.Action(Strike), (AvgMorale() < 0.6f ? 2.5f : 1f) * (employees ? 0.3f : 1f)));
             if (Day - lastOutageDay >= 40)
                 pool.Add((new System.Action(Outage), serverUpgraded ? 0.3f : 1f));
