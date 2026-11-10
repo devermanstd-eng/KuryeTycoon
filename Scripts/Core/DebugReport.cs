@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-10 m (pazar payı hep görünür)";
+        public const string CodeVersion = "2026-11-10 n (hız pazar payı getirir)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
@@ -370,6 +370,8 @@ namespace KuryeTycoon
                 sb.AppendLine("Rakip özeti: " + rv.ReportLine);
                 sb.AppendLine($"  saldırganlık {rv.aggression:0.00} · kalite {rv.quality:0.00} · yatırım turu {rv.fundingRounds} · kasa {GameData.Ft(rv.money)} · " +
                               $"fiyat savaşı {rv.priceWarDays} gün (bölge {rv.warDistrict}, ×{rv.warFactor:0.00}) · reklam {rv.marketingDays} gün");
+                sb.AppendLine($"  hizmet: sen {rv.myAvgMinutes:0.0} dk / %{rv.myLateRate * 100f:0} geç → ×{rv.MyService:0.00} · rakip {rv.rivalAvgMinutes:0.0} dk / " +
+                              $"%{rv.rivalLateRate * 100f:0} geç → ×{rv.RivalService:0.00} · talep ×{rv.ServiceDemandFactor:0.00}");
                 if (rv.shareHistory.Count > 0)
                 {
                     var hs = new System.Text.StringBuilder("  haftalık pazar payın:");

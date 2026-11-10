@@ -1454,6 +1454,12 @@ namespace KuryeTycoon
                                 $"{rv.couriers} kurye · {rv.RivalShopCount} dükkanla çalışıyor · geçen hafta ~{rv.deliveriesLastWeek} teslimat", small);
                 GUILayout.Label($"Pazar payın: %{rv.MarketShare * 100f:0} (geçen hafta {(rv.ShareTrend >= 0f ? "+" : "−")}{Mathf.Abs(rv.ShareTrend) * 100f:0.0} puan) · " +
                                 $"rakibin tavrı: {rv.MoodText} · yatırım turu: {rv.fundingRounds}", small);
+                GUILayout.Label($"Hizmet (son 7 gün): sen ort. {rv.myAvgMinutes:0} dk, %{rv.myLateRate * 100f:0} geç → müşteri gözünde ×{rv.MyService:0.00} · " +
+                                $"{rv.companyName} ~{rv.rivalAvgMinutes:0} dk, %{rv.rivalLateRate * 100f:0} geç → ×{rv.RivalService:0.00} · " +
+                                $"toplam talep ×{rv.ServiceDemandFactor:0.00}", small);
+                HelpOnLast("Daha hızlı ve dakik teslimat yaptıkça paylaşılan dükkanlarda müşteriler rakipten sana geçer ve şehirde sipariş " +
+                           "vermek isteyen insan sayısı artar. 40 dk ortalama nötr; her dakika hızlı ≈ +%2, geç kalan siparişler düşürür. " +
+                           "Kurye fazlan varken siparişler toplu taşınmaz, boştaki kuryeye gider.");
                 HelpOnLast("Pazar payın %45'in üstüne çıktıkça rakip saldırganlaşır: yatırım bulur, kurye alır, hizmetini iyileştirir; " +
                            "en iyi dükkanlarına ve kuryelerine teklif yapar, bir bölgede fiyat savaşı ya da reklam atağı başlatır. " +
                            "İtibarını yüksek tut, iyi dükkanlarla münhasırlık yap, kuryelerinin moralini koru.");

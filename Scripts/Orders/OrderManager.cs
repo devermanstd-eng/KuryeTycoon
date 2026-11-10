@@ -158,7 +158,8 @@ namespace KuryeTycoon
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
                          * Difficulty.OrderRate * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
-                         * CrisisManager.DemandFactor;
+                         * CrisisManager.DemandFactor
+                         * (RivalCompany.I != null ? RivalCompany.I.ServiceDemandFactor : 1f);   // hızlı teslimat pazarı büyütür
             if (!CrisisManager.OrdersBlocked) spawnAcc += rate * dm;   // uygulama çöktüyse yeni sipariş gelmez
             while (spawnAcc >= 1f)
             {
@@ -618,19 +619,39 @@ namespace KuryeTycoon
             Telemetry.Line($"İPTAL ({(reason == 1 ? "dükkan" : reason == 2 ? "müşteri" : "gecikme")}) #{o.id} {o.shop.Name} · {o.cancelReason} · {now - o.createdAt:0} dk");
         }
 
-        float EstimateEta(Courier c, Order o)
+        /// <param name="idleSurplus">Bekleyen siparişten fazla boşta kurye varsa true: toplu taşıma yerine boş kurye tercih edilir.</param>
+        float EstimateEta(Courier c, Order o, bool idleSurplus)
         {
-            // Toplu siparişe uygun kuryeler öne alınır (aynı/yakın dükkan, yakın müşteri)
-            // Toplu sipariş avantajı küçük: boşta kurye varken çantası dolu kuryeye yığılmasın (diğer paketler gecikir, yemek soğur)
             float eta = c.EstimateMinutes(o);
-            if (c.CanBatch(o)) eta -= 3f;
-            if (c.CanBatch(o) && c.CustomerNearRoute(o)) eta -= 3f;
+            bool batch = c.CanBatch(o);
+            if (idleSurplus)
+            {
+                // Boşta kurye bolken çantası dolu kuryeye ek paket verme: ilk paket gecikir, yemek soğur.
+                // Sadece aynı dükkandan ve müşterisi rotası üstündeyse küçük bir ceza ile hâlâ mümkün.
+                if (c.OrderCount > 0) eta += batch && c.CustomerNearRoute(o) ? 2f : 8f;
+            }
+            else
+            {
+                // Kurye kıtken toplu sipariş avantajlı (aynı/yakın dükkan, yakın müşteri)
+                if (batch) eta -= 3f;
+                if (batch && c.CustomerNearRoute(o)) eta -= 3f;
+            }
             return eta;
+        }
+
+        /// <summary>Şu an yeni iş alabilecek boştaki (elinde paket olmayan) çevrimiçi kurye sayısı.</summary>
+        int IdleCourierCount()
+        {
+            int n = 0;
+            foreach (var c in CourierManager.I.Couriers)
+                if (c.IsOnline && c.OrderCount == 0 && c.CanTakeMore && c.State == CourierState.Bosta) n++;
+            return n;
         }
 
         void AutoAssign()
         {
             float now = GameClock.I.TotalMinutes;
+            bool idleSurplus = IdleCourierCount() > Pending.Count;
             for (int i = 0; i < Pending.Count; i++)
             {
                 var o = Pending[i];
@@ -651,7 +672,7 @@ namespace KuryeTycoon
                     if (o.cashPay && !c.CanTakeCash(o.CashAmount)) continue; // nakit limiti
                     int profit = EconomyManager.I.ProfitIf(o, c);
                     if (profit < EconomyManager.I.RequiredAssignProfit(o)) continue; // zararına / çok az kârlı iş yok
-                    float score = EstimateEta(c, o);
+                    float score = EstimateEta(c, o, idleSurplus);
                     if (UpgradeManager.I.SmartDispatch)
                     {
                         // Akıllı dispatcher: teklifi beğenmesi muhtemel kuryeyi öne alır

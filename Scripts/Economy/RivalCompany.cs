@@ -40,6 +40,12 @@ namespace KuryeTycoon
         public int fundingCooldownUntil;
         public int fundingRounds;
         public int lastCourierRaidDay = -999;   // kurye ayartma en fazla 6 haftada bir
+
+        // Hizmet kalitesi (her gece güncellenir; kayda yazılmaz, yüklemede yeniden hesaplanır)
+        [System.NonSerialized] public float myAvgMinutes = 40f, myLateRate = 0.25f;
+        [System.NonSerialized] public float rivalAvgMinutes = 38f, rivalLateRate = 0.2f;
+        [System.NonSerialized] bool serviceReady;
+        [System.NonSerialized] float rivalLoad = 1f;
         public readonly List<float> shareHistory = new List<float>();   // haftalık pazar payın (son 12 hafta)
 
         /// <summary>Bugün dükkan başına senin teslimatların (rakibin teslimatını tahmin etmek için).</summary>
@@ -118,6 +124,45 @@ namespace KuryeTycoon
         static float Score(float rep, int courierCount) =>
             rep * rep * (0.4f + 0.6f * Mathf.Min(1f, courierCount / 40f) + 0.15f * Mathf.Clamp01((courierCount - 40) / 120f));
 
+        /// <summary>
+        /// Müşterinin gözünde teslimat hızı ve dakikliği: 40 dk ortalama = 1. Her dakika hızlı +%2, yavaş −%2;
+        /// geç kalan siparişler (oranın yarısı kadar) düşürür. Hızlı ve dakik olan rakipten müşteri kapar.
+        /// </summary>
+        public static float ServiceFactor(float avgMinutes, float lateRate) =>
+            Mathf.Clamp(1f + (40f - avgMinutes) * 0.02f, 0.7f, 1.35f) * (1f - 0.5f * Mathf.Clamp01(lateRate));
+
+        public float MyService { get { EnsureService(); return ServiceFactor(myAvgMinutes, myLateRate); } }
+        public float RivalService { get { EnsureService(); return ServiceFactor(rivalAvgMinutes, rivalLateRate); } }
+
+        /// <summary>Son 7 günün ortalama teslimat süresi ve geç kalma oranı; rakibin süresi iş yüküne göre tahmin.</summary>
+        void UpdateService()
+        {
+            serviceReady = true;
+            var hist = StatsHistory.I != null ? StatsHistory.I.Days : null;
+            if (hist != null && hist.Count > 0)
+            {
+                int n = Mathf.Min(7, hist.Count), del = 0, late = 0; float mins = 0f;
+                for (int i = hist.Count - n; i < hist.Count; i++)
+                {
+                    var r = hist[i];
+                    if (r.deliveries <= 0) continue;
+                    del += r.deliveries; late += r.late; mins += r.avgMinutes * r.deliveries;
+                }
+                if (del > 0) { myAvgMinutes = mins / del; myLateRate = late / (float)del; }
+            }
+            // Rakip: kurye başına iş yükü arttıkça yavaşlar, kalite yatırımı hızlandırır
+            rivalAvgMinutes = 37f + Mathf.Max(0f, rivalLoad - 0.8f) * 25f - quality * 4f;
+            rivalLateRate = Mathf.Clamp(0.15f + Mathf.Max(0f, rivalLoad - 0.8f) * 0.3f - quality * 0.05f, 0.08f, 0.6f);
+        }
+
+        void EnsureService() { if (!serviceReady) UpdateService(); }
+
+        /// <summary>Hızlı teslimat pazarı da büyütür: insanlar hızlı gelen yemeği daha sık sipariş eder (−%10 … +%15).</summary>
+        public float ServiceDemandFactor
+        {
+            get { EnsureService(); return Mathf.Clamp(1f + (40f - myAvgMinutes) * 0.01f - (myLateRate - 0.25f) * 0.2f, 0.9f, 1.15f); }
+        }
+
         /// <summary>Reklam atağı sırasında rakip müşteriye daha iyi görünür.</summary>
         public float EffectiveReputation => Mathf.Min(5f, reputation + (marketingDays > 0 ? 0.4f : 0f));
 
@@ -125,9 +170,9 @@ namespace KuryeTycoon
         public float MyFraction(Shop s)
         {
             if (!s.rivalContracted || s.exclusive) return 1f;
-            float mine = Score(CompanyProfile.Reputation, CourierManager.I.Couriers.Count);
-            float theirs = Score(EffectiveReputation, couriers);
-            return Mathf.Clamp(mine / Mathf.Max(0.01f, mine + theirs), 0.25f, 0.85f);
+            float mine = Score(CompanyProfile.Reputation, CourierManager.I.Couriers.Count) * MyService;
+            float theirs = Score(EffectiveReputation, couriers) * RivalService;
+            return Mathf.Clamp(mine / Mathf.Max(0.01f, mine + theirs), 0.2f, 0.9f);
         }
 
         /// <summary>Fiyat savaşı bölgesindeyse senin talep çarpanın.</summary>
@@ -139,7 +184,7 @@ namespace KuryeTycoon
         {
             if (s.exclusive) return 1.15f * WarFactor(s);   // dükkan sadece seni tanıtıyor
             if (!s.rivalContracted) return WarFactor(s);
-            return Mathf.Min(1f, MyFraction(s) * 1.25f) * WarFactor(s);   // iki uygulamada da görünen dükkanın toplam müşterisi biraz daha fazla
+            return Mathf.Min(1.1f, MyFraction(s) * 1.25f) * WarFactor(s);   // iki uygulamada da görünen dükkanın toplam müşterisi biraz daha fazla
         }
 
         public float PriceSensitivity => priceWarDays > 0 ? 0.95f : 1f;
@@ -292,6 +337,8 @@ namespace KuryeTycoon
             deliveriesThisWeek += d;
             money += d * 280L - couriers * 1500L - 4000;
             float load = d / Mathf.Max(1f, couriers * 15f);           // kurye başına iş yükü
+            rivalLoad = load;
+            UpdateService();
             float target = Mathf.Clamp(3.6f + 0.9f * quality - Mathf.Max(0f, load - 1f) * 0.8f, 2.4f, 4.8f);
             reputation = Mathf.Clamp(reputation + (target - reputation) * 0.05f + Random.Range(-0.04f, 0.04f), 1.5f, 5f);
             if (priceWarDays > 0 && --priceWarDays == 0)
