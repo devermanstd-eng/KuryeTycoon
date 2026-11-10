@@ -919,12 +919,14 @@ namespace KuryeTycoon
                 Add(px => AlertPill(px, Icons.Kind.Moon, t, new Color(0.22f, 0.26f, 0.45f), Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
             }
             // Pazar payı (rakibe karşı) ve süren krizler
-            if (RivalCompany.I != null && GameClock.I.CompanyDay > 7)
+            if (RivalCompany.I != null)
             {
                 var rvc = RivalCompany.I;
+                bool noData = rvc.myDeliveriesLastWeek + rvc.deliveriesLastWeek == 0;   // ilk hafta: henüz ölçülmedi
                 float sh = rvc.MarketShare, tr = rvc.ShareTrend;
                 string arrow = tr > 0.005f ? " ▲" : tr < -0.005f ? " ▼" : "";
-                string t = $"Pazar payı %{sh * 100f:0}{arrow} · {rvc.companyName} %{(1f - sh) * 100f:0}";
+                string t = noData ? $"Pazar payı: ilk hafta sonunda · rakip {rvc.companyName}"
+                                  : $"Pazar payı %{sh * 100f:0}{arrow} · {rvc.companyName} %{(1f - sh) * 100f:0}";
                 Color bg = sh >= 0.55f ? UITheme.WithAlpha(new Color(0.40f, 0.85f, 0.55f), 0.22f)
                          : sh >= 0.42f ? UITheme.WithAlpha(orange, 0.30f) : UITheme.Bad;
                 Add(px => AlertPill(px, Icons.Kind.Chart, t, bg, UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
