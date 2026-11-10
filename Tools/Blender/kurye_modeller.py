@@ -38,6 +38,7 @@ MODEL = "kurye"            # "sira_ev" · "ofis_kulesi" · "kurye" · "yaya"
 STIL = "kirmizi_tugla"     # sıra ev için: "kirmizi_tugla" · "pembe_siva" · "kahve_siva" · "karisik"
 OFIS_STIL = "beton"        # ofis kulesi için: "beton" · "gri" · "beyaz" · "karisik"
 OFIS_KAT = (5, 7)          # ofis kulesinin kat sayısı (zemindeki lobi hariç)
+KARAKTER_STIL = "yuvarlak" # kurye / yaya için: "yuvarlak" (kapsül ve elipsler) · "blok" (köşeli bloklar)
 VARYANT = 3                # kaç farklı bina üretilsin (yan yana dizilir, her biri ayrı FBX)
 TOHUM = 1                  # aynı sayı = aynı binalar; değiştirince yeni varyantlar çıkar
 EV_SAYISI = 2              # bir binada yan yana kaç ev (1–3)
@@ -113,6 +114,7 @@ class Govde:
         self.v, self.f, self.fm, self.kabuksuz, self.mats = [], [], [], [], []
         self._mi = {}
         self.vb, self.kemik = [], None      # köşe başına kemik (karakterler için)
+        self.yum = []                       # yüz başına yumuşak gölge (yuvarlak parçalar)
 
     def mat(self, ad):
         if ad not in self._mi:
@@ -120,12 +122,13 @@ class Govde:
             self.mats.append(ad)
         return self._mi[ad]
 
-    def yuz(self, idx, mat, kabuk=True):
+    def yuz(self, idx, mat, kabuk=True, yumusak=False):
         if len(self.vb) < len(self.v):
             self.vb += [self.kemik] * (len(self.v) - len(self.vb))
         self.f.append(list(idx))
         self.fm.append(self.mat(mat))
         self.kabuksuz.append(not kabuk)
+        self.yum.append(yumusak)
 
     def ucgen_sayisi(self):
         return sum(len(f) - 2 for f in self.f)
@@ -150,7 +153,7 @@ def kutu(g, x0, x1, y0, y1, z0, z1, mat, atla=(), yuzler=None):
         g.yuz([b + i for i in idx], (yuzler or {}).get(k, mat))
 
 
-def dis_bukey(g, pts, yuzler, mat, kabuk=True):
+def dis_bukey(g, pts, yuzler, mat, kabuk=True, yumusak=False):
     """Dışbükey parça: yüzlerin yönü merkeze göre düzeltilir."""
     b = len(g.v)
     g.v += list(pts)
@@ -166,7 +169,7 @@ def dis_bukey(g, pts, yuzler, mat, kabuk=True):
         fc = mul(fc, 1.0 / len(fp))
         if dot(newell(fp), sub(fc, c)) < 0:
             face = face[::-1]
-        g.yuz([b + i for i in face], mat, kabuk)
+        g.yuz([b + i for i in face], mat, kabuk, yumusak)
 
 
 OBOX_YUZ = [[0, 2, 6, 4], [1, 3, 7, 5], [0, 1, 5, 4], [2, 3, 7, 6], [0, 1, 3, 2], [4, 5, 7, 6]]
@@ -895,7 +898,7 @@ def on_dortgen(g, x0, x1, y, z0, z1, mat, arkaya=False):
     g.yuz([b, b + 1, b + 2, b + 3], mat, kabuk=False)
 
 
-def karakter(rnd, kurye):
+def karakter_blok(rnd, kurye):
     g = Govde()
     ten = M("Ten", rnd.choice(TENLER))
     sac = M("Sac", rnd.choice(SACLAR))
@@ -992,6 +995,193 @@ def karakter(rnd, kurye):
     if CIZGI:
         kabuk(g, CIZGI_KALINLIK * 0.5)     # karakterler oyunda binalara göre büyük çizildiği için yarı kalınlık
     return g, 0.6
+
+
+# ---------- yuvarlak karakter (kapsül ve elipslerden, yumuşak gölgeli)
+
+def _taban_eksen(d):
+    """Eksene dik iki yön: u mümkünse X'e yakın (gövdede genişlik), v = d × u."""
+    u0 = (1.0, 0.0, 0.0) if abs(d[0]) < 0.9 else (0.0, 1.0, 0.0)
+    u = norm(sub(u0, mul(d, dot(u0, d))))
+    return u, cross(d, u)
+
+
+def kapsul(g, p0, p1, r0, r1, mat, seg=8, nr=2, kesit=(1.0, 1.0), uc=1.0, kabuk=True):
+    """
+    Uçları yuvarlak, kalınlığı p0'dan p1'e değişen kapsül (kol, bacak, gövde). kesit: enine kesitin (u, v) ölçeği
+    (gövde için yassı elips), uc: yuvarlak uçların eksen boyunca basıklığı.
+    """
+    d = sub(p1, p0)
+    L = math.sqrt(dot(d, d))
+    d = norm(d) if L > 1e-6 else (0.0, 0.0, 1.0)
+    u, v = _taban_eksen(d)
+    a = math.asin(max(-0.9, min(0.9, (r0 - r1) / L))) if L > 1e-6 else 0.0
+    halkalar = []
+    for k in range(1, nr + 1):                                  # alt yarım küre: kutuptan teğet çizgisine
+        f = -math.pi / 2 + (a + math.pi / 2) * k / nr
+        halkalar.append((p0, r0, f))
+    for k in range(nr):                                         # üst yarım küre: teğet çizgisinden kutba
+        f = a + (math.pi / 2 - a) * k / nr
+        halkalar.append((p1, r1, f))
+    pts = [add(p0, mul(d, -r0 * uc))]
+    for c, r, f in halkalar:
+        m = add(c, mul(d, r * math.sin(f) * uc))
+        rho = r * math.cos(f)
+        for j in range(seg):
+            t = 2 * math.pi * j / seg
+            pts.append(add(m, add(mul(u, rho * kesit[0] * math.cos(t)), mul(v, rho * kesit[1] * math.sin(t)))))
+    pts.append(add(p1, mul(d, r1 * uc)))
+    n = len(halkalar)
+    son = len(pts) - 1
+    yuzler = [[0, 1 + (j + 1) % seg, 1 + j] for j in range(seg)]
+    for h in range(n - 1):
+        a0, a1 = 1 + h * seg, 1 + (h + 1) * seg
+        for j in range(seg):
+            jj = (j + 1) % seg
+            yuzler.append([a0 + j, a0 + jj, a1 + jj, a1 + j])
+    a0 = 1 + (n - 1) * seg
+    yuzler += [[a0 + j, a0 + (j + 1) % seg, son] for j in range(seg)]
+    dis_bukey(g, pts, yuzler, mat, kabuk, yumusak=True)
+
+
+def elips(g, c, rx, ry, rz, mat, seg=10, nr=5, kabuk=True):
+    """Elipsoit (baş, el, göz, saç topu): nr enlem bandı."""
+    pts = [(c[0], c[1], c[2] - rz)]
+    for k in range(1, nr):
+        f = -math.pi / 2 + math.pi * k / nr
+        for j in range(seg):
+            t = 2 * math.pi * j / seg
+            pts.append((c[0] + rx * math.cos(f) * math.cos(t), c[1] + ry * math.cos(f) * math.sin(t), c[2] + rz * math.sin(f)))
+    pts.append((c[0], c[1], c[2] + rz))
+    son = len(pts) - 1
+    yuzler = [[0, 1 + (j + 1) % seg, 1 + j] for j in range(seg)]
+    for h in range(nr - 2):
+        a0, a1 = 1 + h * seg, 1 + (h + 1) * seg
+        for j in range(seg):
+            jj = (j + 1) % seg
+            yuzler.append([a0 + j, a0 + jj, a1 + jj, a1 + j])
+    a0 = 1 + (nr - 2) * seg
+    yuzler += [[a0 + j, a0 + (j + 1) % seg, son] for j in range(seg)]
+    dis_bukey(g, pts, yuzler, mat, kabuk, yumusak=True)
+
+
+def karakter_yuvarlak(rnd, kurye):
+    g = Govde()
+    ten_hex = rnd.choice(TENLER)
+    ten = M("Ten", ten_hex)
+    koyu_ten = M("TenKoyu", "#%02x%02x%02x" % tuple(int(int(ten_hex[i:i + 2], 16) * 0.88) for i in (1, 3, 5)))
+    sac = M("Sac", rnd.choice(SACLAR))
+    goz = M("Goz", "#1d1a1a")
+    ayak = M("Ayakkabi", rnd.choice(AYAKKABI))
+    if kurye:
+        ust = M("SirketRengi", SIRKET_RENGI)
+        alt = M("Pantolon", rnd.choice(["#2b2f36", "#3a3f47", "#26303d"]))
+        kisa_kol, sort = False, False
+    else:
+        ust = M("Ust", rnd.choice(USTLER))
+        alt = M("Alt", rnd.choice(ALTLAR))
+        kisa_kol = rnd.random() < 0.4
+        sort = rnd.random() < 0.15
+    w = rnd.uniform(0.95, 1.08)
+
+    # Bacaklar: uyluk, baldır, yuvarlak ayakkabı
+    for s, yan in ((1, "Left"), (-1, "Right")):
+        x = 0.1 * s
+        g.kemik = yan + "Leg"
+        kapsul(g, (x, 0.035, 0.042), (x, -0.105, 0.04), 0.052, 0.05, ayak, seg=8, nr=2, kesit=(1.0, 0.8))
+        kapsul(g, (x, 0.0, 0.46), (x, 0.0, 0.11), 0.06, 0.045, ten if sort else alt)
+        g.kemik = yan + "UpLeg"
+        kapsul(g, (x, 0.0, 0.83), (x, 0.0, 0.48), 0.082, 0.063, alt)
+    g.kemik = "Hips"
+    elips(g, (0.0, 0.0, 0.9), 0.165 * w, 0.105, 0.1, alt, seg=10, nr=4)
+    if not kurye and rnd.random() < 0.25:
+        pahli_kutu(g, (-0.215, 0.0, 0.93), (0.035, 0.1, 0.08), 0.02, M("Canta", rnd.choice(["#6b4a33", "#2f2f33", "#a33f3f"])))
+
+    # Gövde (yassı, omuzlara doğru genişleyen) ve kollar
+    g.kemik = "Spine"
+    kapsul(g, (0.0, 0.0, 1.03), (0.0, 0.0, 1.28), 0.155 * w, 0.185 * w, ust, seg=12, nr=3, kesit=(1.0, 0.62), uc=0.65)
+    for s, yan in ((1, "Left"), (-1, "Right")):
+        x = 0.245 * s
+        g.kemik = yan + "Arm"
+        kapsul(g, (x, 0.0, 1.345), (x, 0.0, 1.12), 0.058, 0.048, ust)
+        g.kemik = yan + "ForeArm"
+        kapsul(g, (x, 0.0, 1.1), (x, 0.0, 0.9), 0.046, 0.038, ten if kisa_kol else ust)
+        elips(g, (x, -0.005, 0.835), 0.036, 0.042, 0.055, ten, seg=8, nr=4)
+
+    if kurye:
+        g.kemik = "Spine"
+        ikinci = M("SirketRengi2", SIRKET_RENGI2)
+        pahli_kutu(g, (0.0, 0.24, 1.22), (0.18, 0.12, 0.2), 0.05, ust)
+        pahli_kutu(g, (0.0, 0.24, 1.37), (0.19, 0.13, 0.035), 0.02, ikinci)
+        on_dortgen(g, -0.08, 0.08, 0.3615, 1.14, 1.28, ikinci, arkaya=True)
+        koyu = M("Aski", "#26262a")
+        for s in (1, -1):
+            kapsul(g, (0.095 * s, -0.1, 1.37), (0.1 * s, -0.113, 1.06), 0.017, 0.017, koyu, seg=6, nr=1, kabuk=False)
+
+    # Boyun, baş, yüz
+    g.kemik = "Head"
+    kapsul(g, (0.0, 0.0, 1.37), (0.0, 0.0, 1.47), 0.046, 0.046, ten, seg=8, nr=1)
+    elips(g, (0.0, 0.0, 1.6), 0.115, 0.125, 0.14, ten, seg=12, nr=6)
+    for s in (1, -1):
+        elips(g, (0.115 * s, 0.005, 1.595), 0.018, 0.03, 0.04, koyu_ten, seg=6, nr=3)                 # kulak
+        elips(g, (0.042 * s, -0.111, 1.602), 0.017, 0.011, 0.023, goz, seg=6, nr=3, kabuk=False)    # göz
+    elips(g, (0.0, -0.126, 1.57), 0.018, 0.02, 0.026, koyu_ten, seg=6, nr=3, kabuk=False)          # burun
+
+    def kas():
+        for s in (1, -1):
+            kapsul(g, (0.022 * s, -0.112, 1.64), (0.062 * s, -0.104, 1.637), 0.008, 0.008, sac, seg=5, nr=1, kabuk=False)
+
+    kisa_sac = lambda: elips(g, (0.0, 0.02, 1.665), 0.123, 0.133, 0.115, sac, seg=12, nr=6)
+    if kurye:
+        kas()
+        if rnd.random() < 0.7:                                          # kask + vizör
+            elips(g, (0.0, 0.005, 1.69), 0.138, 0.147, 0.11, ikinci, seg=12, nr=6)
+            elips(g, (0.0, -0.128, 1.7), 0.09, 0.05, 0.013, M("Vizor", "#3a4450"), seg=10, nr=3)      # kısa siperlik
+            for s in (1, -1):                                                                          # havalandırma çizgileri
+                kapsul(g, (0.045 * s, -0.06, 1.79), (0.05 * s, 0.09, 1.785), 0.012, 0.012, ust, seg=5, nr=1, kabuk=False)
+        else:                                                           # şirket şapkası
+            elips(g, (0.0, 0.012, 1.68), 0.126, 0.136, 0.09, ust, seg=12, nr=5)
+            elips(g, (0.0, -0.13, 1.65), 0.1, 0.075, 0.014, ust, seg=10, nr=3)
+    else:
+        model = rnd.randrange(7)
+        if model != 6:
+            kas()
+        if model == 0:
+            kisa_sac()
+        elif model == 1:                                                # uzun
+            kisa_sac()
+            kapsul(g, (0.0, 0.075, 1.63), (0.0, 0.085, 1.42), 0.11, 0.095, sac, seg=10, nr=2, kesit=(1.0, 0.55))
+        elif model == 2:                                                # topuz
+            kisa_sac()
+            elips(g, (0.0, 0.085, 1.79), 0.055, 0.055, 0.05, sac, seg=8, nr=4)
+        elif model == 3:                                                # çok kısa
+            elips(g, (0.0, 0.006, 1.648), 0.119, 0.13, 0.107, sac, seg=12, nr=6)
+        elif model == 4:                                                # şapka
+            kisa_sac()
+            sapka = M("Sapka", rnd.choice(USTLER))
+            elips(g, (0.0, 0.012, 1.685), 0.127, 0.137, 0.09, sapka, seg=12, nr=5)
+            elips(g, (0.0, -0.13, 1.655), 0.1, 0.075, 0.014, sapka, seg=10, nr=3)
+        elif model == 5:                                                # kıvırcık
+            elips(g, (0.0, 0.02, 1.665), 0.122, 0.132, 0.11, sac, seg=12, nr=6)
+            for k in range(9):
+                t = 2 * math.pi * k / 9
+                elips(g, (0.11 * math.cos(t), 0.03 + 0.11 * math.sin(t), 1.69 + 0.03 * math.sin(t)), 0.06, 0.06, 0.06, sac, seg=7, nr=4)
+            elips(g, (0.0, 0.02, 1.76), 0.07, 0.07, 0.05, sac, seg=8, nr=4)
+        else:                                                           # at kuyruğu
+            kas()
+            kisa_sac()
+            elips(g, (0.0, 0.13, 1.66), 0.045, 0.045, 0.045, sac, seg=8, nr=4)
+            kapsul(g, (0.0, 0.15, 1.64), (0.0, 0.17, 1.47), 0.04, 0.025, sac, seg=7, nr=2)
+        if model in (0, 3, 4, 5) and rnd.random() < 0.18:               # sakal
+            elips(g, (0.0, -0.06, 1.515), 0.1, 0.075, 0.065, sac, seg=10, nr=4)
+
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * 0.5)
+    return g, 0.6
+
+
+def karakter(rnd, kurye):
+    return karakter_blok(rnd, kurye) if KARAKTER_STIL == "blok" else karakter_yuvarlak(rnd, kurye)
 
 
 # ---------- animasyon (Blender'sız da hesaplanır: önizleme aynı pozları çizer)
@@ -1134,6 +1324,7 @@ def blender_obje(g, ad, k):
     for m in g.mats:
         me.materials.append(malzeme(m))
     me.polygons.foreach_set("material_index", g.fm)
+    me.polygons.foreach_set("use_smooth", g.yum)
     me.update()
     ob = bpy.data.objects.new(ad, me)
     k.objects.link(ob)
