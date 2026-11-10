@@ -42,7 +42,7 @@ namespace KuryeTycoon
                 var st = new GUIStyle(GUI.skin.label) { fontSize = size, fontStyle = fs, wordWrap = wrap, richText = true, padding = new RectOffset(0, 0, 1, 1) };
                 if (f != null) st.font = f;
                 st.normal.textColor = c;
-                return st;
+                return UITheme.Semi(st);
             }
             pHuge = Mk(26, FontStyle.Bold, new Color(0.93f, 0.92f, 0.90f));
             pTitle = Mk(18, FontStyle.Bold, Color.white);

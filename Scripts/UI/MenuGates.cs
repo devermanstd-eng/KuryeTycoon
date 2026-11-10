@@ -117,6 +117,31 @@ namespace KuryeTycoon
             Fill(new Rect(ml - 1f, TopBar, 1f, sh - TopBar), UITheme.Line);
         }
 
+        // ---------------------------------------------------------------- arayüz boyutu
+
+        const string UiSizeKey = "KuryeTycoon.ArayuzBoyutu";
+        static readonly string[] UiSizeNames = { "Küçük", "Normal", "Büyük", "Çok büyük" };
+        static readonly float[] UiSizeFactors = { 0.9f, 1f, 1.15f, 1.3f };
+        static int uiSizeCache = -1;
+
+        /// <summary>Oyuncunun seçtiği arayüz boyutu (0–3, varsayılan Normal). Bu bilgisayarda kalıcı.</summary>
+        static int UiSizeSetting
+        {
+            get
+            {
+                if (uiSizeCache < 0) uiSizeCache = Mathf.Clamp(PlayerPrefs.GetInt(UiSizeKey, 1), 0, UiSizeFactors.Length - 1);
+                return uiSizeCache;
+            }
+            set
+            {
+                uiSizeCache = Mathf.Clamp(value, 0, UiSizeFactors.Length - 1);
+                PlayerPrefs.SetInt(UiSizeKey, uiSizeCache);
+                PlayerPrefs.Save();
+            }
+        }
+
+        static float UiSizeFactor => UiSizeFactors[UiSizeSetting];
+
         // ---------------------------------------------------------------- Ayarlar > Arayüz
 
         void DrawInterfaceSettings()
@@ -124,6 +149,15 @@ namespace KuryeTycoon
             Section("Arayüz",
                 $"Kilitli menüler: Gelişim {Guide.GelisimDay}. günde, Kampanya {Guide.KampanyaDay}., Grafik {Guide.GrafikDay}., Destek {Guide.DestekDay}., " +
                 $"Market {Guide.MarketDay}. günde (ya da şartı gelince), Yorumlar ilk müşteri yorumuyla açılır. \"Bütün menüleri baştan aç\" hepsini hemen açar.");
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Arayüz boyutu", body, GUILayout.Width(130));
+            for (int i = 0; i < UiSizeNames.Length; i++)
+            {
+                int k = i;
+                if (SelectButton(UiSizeSetting == i, UiSizeNames[i], smallButton)) deferred = () => UiSizeSetting = k;
+            }
+            GUILayout.EndHorizontal();
+            GUILayout.Space(4);
             bool push = GUILayout.Toggle(PushMapSetting, " Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", toggle);
             if (push != PushMapSetting) PushMapSetting = push;
             DrawFeedbackSettings();

@@ -13,7 +13,7 @@ namespace KuryeTycoon
     ///  • KV                       "Anahtar ........ değer" satırı
     ///  • DetailButton / CardOpen  kartın ayrıntılarını aç/kapa (kart varsayılan kısa)
     ///  • PageTabs                 uzun pencereyi sayfalara böler (Ayarlar, Finans)
-    /// Yazı boyutları: başlık 17 · bölüm 14 kalın · gövde 12 · ikincil 11 soluk.
+    /// Yazı boyutları (Inter): pencere başlığı 19 · bölüm 16 kalın · gövde 14 · ikincil 12 soluk · etiket 12.
     /// </summary>
     public partial class GameUI
     {
@@ -27,25 +27,25 @@ namespace KuryeTycoon
         /// <summary>InitStyles'ın sonunda çağrılır (şirket rengi değişince stiller yeniden kurulur).</summary>
         void InitKit()
         {
-            body = new GUIStyle(label) { fontSize = 12 };
+            body = new GUIStyle(label) { fontSize = 14 };
             body.normal.textColor = new Color(0.86f, 0.88f, 0.92f);
-            bodyDim = new GUIStyle(body) { fontSize = 11 };
+            bodyDim = new GUIStyle(body) { fontSize = 12 };
             bodyDim.normal.textColor = UITheme.TextDim;
 
-            kitSection = new GUIStyle(header) { fontSize = 14, margin = new RectOffset(4, 4, 14, 5) };
+            kitSection = new GUIStyle(header) { fontSize = 16, margin = new RectOffset(4, 4, 16, 6) };
             kitSection.normal.textColor = UITheme.Text;
 
             kitIntro = new GUIStyle(body) { padding = new RectOffset(0, 26, 1, 3) };
             kitIntro.normal.textColor = new Color(0.78f, 0.80f, 0.86f);
 
-            kitHelp = new GUIStyle(label) { fontSize = 11, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, padding = new RectOffset(0, 0, 0, 1) };
-            kitTip = new GUIStyle(body) { fontSize = 12 };
+            kitHelp = new GUIStyle(label) { fontSize = 12, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, padding = new RectOffset(0, 0, 0, 1) };
+            kitTip = new GUIStyle(body) { fontSize = 13 };
             kitTip.normal.textColor = UITheme.Text;
 
             kitChip = new GUIStyle(label)
             {
-                fontSize = 11, fontStyle = FontStyle.Bold, wordWrap = false, stretchWidth = false,
-                padding = new RectOffset(8, 8, 2, 3), margin = new RectOffset(0, 5, 2, 3), border = new RectOffset(8, 8, 8, 8),
+                fontSize = 12, fontStyle = FontStyle.Bold, wordWrap = false, stretchWidth = false,
+                padding = new RectOffset(9, 9, 3, 4), margin = new RectOffset(0, 5, 2, 3), border = new RectOffset(8, 8, 8, 8),
                 alignment = TextAnchor.MiddleCenter
             };
             UITheme.SetBg(kitChip.normal, Color.white, 8);
@@ -58,8 +58,8 @@ namespace KuryeTycoon
             // Uyarılar: düz turuncu yazı yerine zeminli kutu (göz hemen bulur)
             warn = new GUIStyle(small)
             {
-                fontSize = 12,
-                padding = new RectOffset(9, 9, 4, 5),
+                fontSize = 13,
+                padding = new RectOffset(10, 10, 5, 6),
                 margin = new RectOffset(4, 4, 3, 3),
                 border = new RectOffset(6, 6, 6, 6)
             };
@@ -145,12 +145,13 @@ namespace KuryeTycoon
 
         readonly List<(string text, Color color)> chips = new List<(string, Color)>();
 
-        /// <summary>chips listesindeki etiketleri tek satırda çizer ve listeyi boşaltır.</summary>
-        void ChipRow()
+        /// <summary>chips listesindeki etiketleri çizer ve listeyi boşaltır. maxW: satır genişliği (verilmezse pencere kartı).</summary>
+        void ChipRow(float maxW = 0f)
         {
             if (chips.Count == 0) return;
             // Pencere kartındaki kullanılabilir genişlik (kenar boşlukları ve kaydırma çubuğu düşülünce); taşarsa alt satıra geçer
-            float maxW = panelWidth - 80f, used = 0f;
+            if (maxW <= 0f) maxW = panelWidth - 80f;
+            float used = 0f;
             GUILayout.BeginHorizontal();
             var oldBg = GUI.backgroundColor;
             foreach (var (text, color) in chips)
@@ -207,16 +208,16 @@ namespace KuryeTycoon
             GUILayout.EndHorizontal();
         }
 
-        void MiniBar(string name, float v, Color c)
+        void MiniBar(string name, float v, Color c, float labelWidth = 84f)
         {
-            GUILayout.Label(name, kitKey, GUILayout.Width(70));
-            Rect r = GUILayoutUtility.GetRect(30, 18, GUILayout.ExpandWidth(true));
-            r.y += 6f;
-            r.height = 6f;
+            GUILayout.Label(name, kitKey, GUILayout.Width(labelWidth));
+            Rect r = GUILayoutUtility.GetRect(30, 20, GUILayout.ExpandWidth(true));
+            r.y += 7f;
+            r.height = 7f;
             UITheme.Box(r, new Color(0f, 0f, 0f, 0.45f), 3f);
             float fw = r.width * Mathf.Clamp01(v);
             if (fw > 1f) UITheme.Box(new Rect(r.x, r.y, Mathf.Max(6f, fw), r.height), c, 3f);
-            GUILayout.Label($"%{v * 100f:0}", kitKey, GUILayout.Width(36));
+            GUILayout.Label($"%{v * 100f:0}", kitKey, GUILayout.Width(42));
         }
 
         /// <summary>"Ebeveyn (çocuklar okuldayken...)" → "Ebeveyn": etiketlerde parantez açıklaması yer kaplamasın.</summary>
@@ -236,7 +237,7 @@ namespace KuryeTycoon
         void DetailButton(object key)
         {
             bool open = CardOpen(key);
-            if (GUILayout.Button(open ? "Daha az" : "Detay", smallButton, GUILayout.Width(74)))
+            if (GUILayout.Button(open ? "Daha az" : "Detay", smallButton, GUILayout.Width(82)))
             {
                 var k = key;
                 deferred = () =>
