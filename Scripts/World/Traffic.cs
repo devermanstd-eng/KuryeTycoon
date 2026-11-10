@@ -216,7 +216,17 @@ namespace KuryeTycoon
 
             a.prefab = true;
             a.anim = inst.GetComponentInChildren<Animator>();
-            if (a.anim != null) a.anim.applyRootMotion = false;
+            if (a.anim != null)
+            {
+                a.anim.applyRootMotion = false;
+                // Kendi controller'ı olmayan yaya (ör. Blender scriptiyle üretilen): kuryelerin yürüme animasyonunu kullan
+                if (byHeight && a.anim.runtimeAnimatorController == null && CharacterVisuals.WalkController != null)
+                {
+                    a.anim.runtimeAnimatorController = CharacterVisuals.WalkController;
+                    foreach (var p in a.anim.parameters)
+                        if (p.type == AnimatorControllerParameterType.Bool && p.name == "walking") a.anim.SetBool(p.nameHash, true);
+                }
+            }
         }
 
         static Bounds Bounds(Renderer[] rs)

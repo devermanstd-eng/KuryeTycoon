@@ -56,6 +56,22 @@ Ayarlar:
 - Binaların arkası yola bakıyorsa oyunda **Ayarlar > 3D şehir > Bina cephesi düzeltme**.
 - Yollar ve arabalar şimdilik paketten değil; yollar düz harita olarak kalır.
 
+## 7. (İsteğe bağlı) Kendi modellerimiz: Blender scripti
+
+`Tools/Blender/kurye_modeller.py` oyunun tarzında binalar ve karakterler üretir (dosya gerekmez, her şey koddan).
+Bu modeller bizim; Asset Store paketleri gibi lisans sorunu yok, istersek repoya da konabilir.
+
+1. Blender'ı aç (3.6 / 4.x), **Scripting** sekmesinde Text > Open ile dosyayı aç.
+2. En üstteki `MODEL` ayarını seç: `"sira_ev"`, `"ofis_kulesi"`, `"kurye"` ya da `"yaya"`. `VARYANT` kaç tane, `TOHUM` hangi varyantlar.
+3. **Run Script**. Modeller sahnede yan yana çıkar, FBX'ler Masaüstü'nde `KuryeBinalar` klasörüne kaydedilir.
+4. Unity'de:
+   - Binalar → `Assets/Resources/SehirPaketi/Binalar`
+   - Kuryeler → `Assets/Resources/KuryeKarakterleri`; sonra Project penceresinde o klasörü seç ve **Kurye Tycoon > Karakter Animasyonlarını Kur**
+     (seçili klasördeki "basic walk" ve "idle" animasyonları kullanılır). City People karakterleri aynı klasördeyse çıkar: iskeletleri farklı.
+   - Yayalar → `Assets/Resources/SehirPaketi/Insanlar` (kendi controller'ı olmayan yayalar kuryelerin yürüme animasyonunu kullanır)
+   - **Cizgi** malzemesini `Universal Render Pipeline/Unlit` yap, rengi siyah kalsın (karikatür dış çizgisi).
+5. Kuryelerin montu, çantası ve kaskı (`SirketRengi`, `SirketRengi2` malzemeleri) oyunda oyuncunun seçtiği şirket renklerine boyanır.
+
 ## Oyunda neler var
 | Sistem | Ne yapar |
 |---|---|

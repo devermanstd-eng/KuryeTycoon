@@ -38,6 +38,30 @@ namespace KuryeTycoon
         /// <summary>Yürüme animasyonu kurulu mu (Kurye Tycoon > Karakter Animasyonlarını Kur)?</summary>
         public static bool HasWalkAnimation => LoadController() != null;
 
+        /// <summary>Karakter Animasyonlarını Kur'un oluşturduğu yürüme/bekleme controller'ı (yoksa null). Yayalar da kullanır.</summary>
+        public static RuntimeAnimatorController WalkController => LoadController();
+
+        /// <summary>
+        /// Blender scriptiyle üretilen kuryelerde "SirketRengi" ve "SirketRengi2" adlı malzemeler (mont, çanta, kask)
+        /// oyuncunun seçtiği şirket renklerine boyanır. Başka paketlerin modellerinde bu adlar yok, onlara dokunulmaz.
+        /// </summary>
+        public static void TintCompanyColors(Renderer r)
+        {
+            var shared = r.sharedMaterials;
+            bool any = false;
+            foreach (var m in shared)
+                if (m != null && m.name.StartsWith("SirketRengi")) { any = true; break; }
+            if (!any) return;
+            var mats = r.materials;   // kopya: her kurye kendi malzemesini alır
+            for (int i = 0; i < mats.Length; i++)
+            {
+                var m = mats[i];
+                if (m == null || !m.name.StartsWith("SirketRengi")) continue;
+                m.color = m.name.StartsWith("SirketRengi2") ? CompanyProfile.Secondary : CompanyProfile.Primary;
+            }
+            r.materials = mats;
+        }
+
         static RuntimeAnimatorController LoadController()
         {
             if (walkController == null) walkController = Resources.Load<RuntimeAnimatorController>(ResourceFolder + "/KuryeAnimator");
@@ -90,6 +114,7 @@ namespace KuryeTycoon
                 // 2D Renderer çizim sırasını sortingOrder'a göre yapar: haritanın ve dairelerin üstünde çizilsin
                 r.sortingOrder = 20;
                 if (r is SkinnedMeshRenderer smr) smr.updateWhenOffscreen = true;
+                TintCompanyColors(r);              // MakeUnlit rengi kopyaladığı için önce boya
                 if (Mode == 1) MakeUnlit(r);
             }
 
