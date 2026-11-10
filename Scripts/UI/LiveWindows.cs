@@ -452,7 +452,7 @@ namespace KuryeTycoon
             var e = ce.ActiveNow;
             if (e == null) return;
             var cam = Camera.main;
-            if (eventPill == null) eventPill = new GUIStyle(small) { alignment = TextAnchor.MiddleLeft, wordWrap = false, fontStyle = FontStyle.Bold };
+            if (eventPill == null) eventPill = UITheme.Semi(new GUIStyle(small) { alignment = TextAnchor.MiddleLeft, wordWrap = false, fontStyle = FontStyle.Bold });
             float pulse = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 3f);
             var col = new Color(0.40f, 0.70f, 1f);
 

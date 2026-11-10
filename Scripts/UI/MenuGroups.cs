@@ -227,7 +227,7 @@ namespace KuryeTycoon
             if (open.Count > 1)
             {
                 if (subTabStyle == null)
-                    subTabStyle = new GUIStyle(label) { fontSize = 12, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+                    subTabStyle = UITheme.Semi(new GUIStyle(label) { fontSize = 13, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false });
                 // Sekme şeridi: koyu zemin üstünde eşit parçalar
                 var strip = new Rect(w.x + 12f, w.y + 50f, w.width - 24f, 34f);
                 UITheme.Box(strip, new Color(0f, 0f, 0f, 0.28f), 10f);

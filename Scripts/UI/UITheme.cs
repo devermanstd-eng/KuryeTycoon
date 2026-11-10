@@ -85,13 +85,18 @@ namespace KuryeTycoon
         static Font font;
         static bool fontTried;
 
-        /// <summary>Sistemin modern yazı tipi (Windows: Segoe UI, Mac: Helvetica Neue / SF); yoksa Unity'nin varsayılanı.</summary>
+        /// <summary>
+        /// Arayüz yazı tipi: oyunla gelen Inter (Resources/Fonts, SIL OFL lisanslı; Türkçe ve Macarca harflerin hepsi var),
+        /// böylece Mac'te ve Windows'ta aynı görünür. Bulunamazsa sistemin modern yazı tipi (Segoe UI, Helvetica Neue / SF).
+        /// </summary>
         public static Font UIFont
         {
             get
             {
                 if (fontTried) return font;
                 fontTried = true;
+                font = Resources.Load<Font>("Fonts/Inter-Regular");
+                if (font != null) return font;
                 try
                 {
                     var installed = new HashSet<string>(Font.GetOSInstalledFontNames());
@@ -101,6 +106,34 @@ namespace KuryeTycoon
                 catch { font = null; }
                 return font;
             }
+        }
+
+        static Font boldFont;
+        static bool boldTried;
+
+        /// <summary>Kalın yazılar için Inter SemiBold (yoksa null: kalınlığı Unity taklit eder).</summary>
+        public static Font UIFontBold
+        {
+            get
+            {
+                if (boldTried) return boldFont;
+                boldTried = true;
+                boldFont = Resources.Load<Font>("Fonts/Inter-SemiBold");
+                return boldFont;
+            }
+        }
+
+        /// <summary>
+        /// Kalın stili gerçek kalın harfe (Inter SemiBold) çevirir; Unity'nin taklit kalınlığı küçük yazıda bulanık görünür.
+        /// Aynı stile iki kez uygulamak zararsız.
+        /// </summary>
+        public static GUIStyle Semi(GUIStyle s)
+        {
+            var b = UIFontBold;
+            if (s == null || b == null) return s;
+            if (s.fontStyle == FontStyle.Bold) { s.font = b; s.fontStyle = FontStyle.Normal; }
+            else if (s.fontStyle == FontStyle.BoldAndItalic) { s.font = b; s.fontStyle = FontStyle.Italic; }
+            return s;
         }
 
         public static Color WithAlpha(Color c, float a) { c.a = a; return c; }

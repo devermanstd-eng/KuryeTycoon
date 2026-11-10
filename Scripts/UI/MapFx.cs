@@ -79,7 +79,7 @@ namespace KuryeTycoon
             var cam = Camera.main;
             if (cam == null) return;
             if (popStyle == null)
-                popStyle = new GUIStyle(label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false };
+                popStyle = UITheme.Semi(new GUIStyle(label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false });
 
             float left = MapLeftGui;
             foreach (var p in pops)

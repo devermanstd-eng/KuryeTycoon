@@ -13,7 +13,26 @@ namespace KuryeTycoon
     {
         public enum Kind { Orders, Couriers, Hiring, Support, Upgrades, Shops, Equipment, Campaigns, Finance, Settings, Close,
                           Wallet, Coins, Star, Clock, Sun, Cloud, Rain, Snow, Storm, Bolt, Pause, Play, Warning, Heart, Flag,
-                          Phone, Basket, Chart, Moon, Calendar, Save }
+                          Phone, Basket, Chart, Moon, Calendar, Save,
+                          Bike, Scooter, Moto, Car, Smile, Meh, Frown }   // yeni simgeler sona eklenir
+
+        /// <summary>Aracın simgesi (harita etiketi, kartlar, tablo).</summary>
+        public static Kind Of(VehicleKind v)
+        {
+            switch (v)
+            {
+                case VehicleKind.EScooter: return Kind.Scooter;
+                case VehicleKind.Motosiklet: return Kind.Moto;
+                case VehicleKind.Araba: return Kind.Car;
+                default: return Kind.Bike;
+            }
+        }
+
+        /// <summary>Moral (0–1) → yüz: üzgün / düz / gülen.</summary>
+        public static Kind Mood(float morale) => morale < 0.35f ? Kind.Frown : morale < 0.7f ? Kind.Meh : Kind.Smile;
+
+        /// <summary>Moralin rengi: kırmızıdan yeşile.</summary>
+        public static Color MoodColor(float morale) => Color.Lerp(new Color(0.95f, 0.38f, 0.35f), new Color(0.35f, 0.85f, 0.45f), Mathf.Clamp01(morale));
 
         const int Size = 96;
         static readonly Dictionary<Kind, Texture2D> cache = new Dictionary<Kind, Texture2D>();
@@ -340,6 +359,63 @@ namespace KuryeTycoon
                         float label = Box(p, V(0f, -0.38f), V(0.5f, 0.3f), 0.05f);
                         float shutter = Box(p, V(-0.05f, 0.52f), V(0.38f, 0.22f), 0.03f);
                         return Sub(Sub(body, label), shutter);
+                    };
+                case Kind.Bike: // bisiklet (yandan)
+                    return p =>
+                    {
+                        Vector2 rear = V(-0.52f, -0.3f), front = V(0.52f, -0.3f), seat = V(-0.14f, 0.2f), crank = V(0f, -0.3f), head = V(0.36f, 0.22f);
+                        float wheels = U(Ring(p, rear, 0.33f, 0.075f), Ring(p, front, 0.33f, 0.075f));
+                        const float t = 0.06f;
+                        float frame = U(U(Segment(p, rear, seat, t), Segment(p, seat, crank, t)), U(Segment(p, crank, rear, t), Segment(p, seat, head, t)));
+                        frame = U(U(frame, Segment(p, head, crank, t)), Segment(p, head, front, t));
+                        float bars = U(Segment(p, head, V(0.3f, 0.46f), t), Segment(p, V(0.2f, 0.47f), V(0.46f, 0.47f), t));
+                        float saddle = Segment(p, V(-0.27f, 0.31f), V(-0.02f, 0.31f), 0.065f);
+                        return U(U(wheels, frame), U(bars, saddle));
+                    };
+                case Kind.Scooter: // elektrikli scooter
+                    return p =>
+                    {
+                        float deck = Box(p, V(-0.08f, -0.47f), V(0.52f, 0.07f), 0.06f);
+                        float stem = Segment(p, V(0.46f, -0.45f), V(0.3f, 0.66f), 0.07f);
+                        float bar = Segment(p, V(0.14f, 0.68f), V(0.48f, 0.68f), 0.07f);
+                        float wheels = U(Circle(p, V(-0.56f, -0.62f), 0.2f), Circle(p, V(0.5f, -0.62f), 0.2f));
+                        return U(U(deck, stem), U(bar, wheels));
+                    };
+                case Kind.Moto: // motosiklet
+                    return p =>
+                    {
+                        Vector2 rear = V(-0.56f, -0.4f), front = V(0.58f, -0.4f);
+                        float wheels = U(Ring(p, rear, 0.3f, 0.085f), Ring(p, front, 0.3f, 0.085f));
+                        float body = Box(p, V(-0.02f, -0.06f), V(0.4f, 0.15f), 0.14f);
+                        float engine = Box(p, V(0.02f, -0.3f), V(0.22f, 0.15f), 0.06f);
+                        float seat = Box(p, V(-0.32f, 0.12f), V(0.3f, 0.07f), 0.07f);
+                        float fork = Segment(p, front, V(0.4f, 0.24f), 0.075f);
+                        float bar = Segment(p, V(0.3f, 0.34f), V(0.52f, 0.4f), 0.065f);
+                        float swing = Segment(p, rear, V(-0.14f, -0.12f), 0.075f);
+                        return U(U(U(wheels, body), U(engine, seat)), U(U(fork, bar), swing));
+                    };
+                case Kind.Car: // araba (yandan)
+                    return p =>
+                    {
+                        Vector2 w1 = V(-0.5f, -0.42f), w2 = V(0.5f, -0.42f);
+                        float lower = Box(p, V(0f, -0.18f), V(0.9f, 0.25f), 0.14f);
+                        float cabin = Box(p, V(-0.06f, 0.2f), V(0.5f, 0.25f), 0.2f);
+                        float windows = U(Box(p, V(-0.25f, 0.2f), V(0.19f, 0.13f), 0.05f), Box(p, V(0.18f, 0.2f), V(0.17f, 0.13f), 0.05f));
+                        float body = Sub(U(lower, cabin), windows);
+                        body = Sub(Sub(body, Circle(p, w1, 0.29f)), Circle(p, w2, 0.29f));
+                        return U(body, U(Circle(p, w1, 0.21f), Circle(p, w2, 0.21f)));
+                    };
+                case Kind.Smile:
+                case Kind.Meh:
+                case Kind.Frown: // dolu yüz: gözler ve ağız oyuk
+                    return p =>
+                    {
+                        float face = Circle(p, Vector2.zero, 0.86f);
+                        float eyes = U(Circle(p, V(-0.29f, 0.22f), 0.11f), Circle(p, V(0.29f, 0.22f), 0.11f));
+                        float mouth = k == Kind.Smile ? Mathf.Max(Ring(p, V(0f, 0.02f), 0.46f, 0.085f), p.y + 0.12f)
+                                    : k == Kind.Meh ? Segment(p, V(-0.3f, -0.32f), V(0.3f, -0.32f), 0.085f)
+                                    : Mathf.Max(Ring(p, V(0f, -0.72f), 0.44f, 0.085f), -(p.y + 0.42f));
+                        return Sub(face, U(eyes, mouth));
                     };
                 default: // kapat (çarpı)
                     return p => U(Segment(p, V(-0.6f, -0.6f), V(0.6f, 0.6f), 0.11f), Segment(p, V(-0.6f, 0.6f), V(0.6f, -0.6f), 0.11f));
