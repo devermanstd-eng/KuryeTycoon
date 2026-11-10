@@ -268,7 +268,7 @@ namespace KuryeTycoon
             int month = GameClock.I.Month;
             var pool = new List<(System.Action run, float w)>();
             // Grev: en az 90 günde bir ve önceki grev anlaşmasının zammı sürerken değil
-            if (Couriers.Count >= 12 && Day - lastStrikeDay >= 90 && !HasEffect("grev_zam") && !HasEffect("grev_uzlasma"))
+            if (Couriers.Count >= 12 && Day - lastStrikeDay >= 90 && !HasEffect("grev_zam") && !HasEffect("grev_uzlasma") && !HasEffect("paket_ucret"))
                 pool.Add((new System.Action(Strike), (AvgMorale() < 0.6f ? 2.5f : 1f) * (employees ? 0.3f : 1f)
                                                   * (UpgradeManager.I != null && UpgradeManager.I.InsuranceProgram ? 0.5f : 1f)));
             if (Day - lastOutageDay >= 40)
