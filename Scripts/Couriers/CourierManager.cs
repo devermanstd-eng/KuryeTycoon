@@ -695,6 +695,25 @@ namespace KuryeTycoon
             Destroy(c.gameObject);
         }
 
+        /// <summary>
+        /// Kurye kendi isteğiyle ayrılır (zor karar olayları). Elinde paket varsa önce onları bitirir:
+        /// morali sıfırlanır ve gece büyük ihtimalle ayrılır.
+        /// </summary>
+        public void Resign(Courier c, string reason)
+        {
+            if (c == null || !Couriers.Contains(c)) return;
+            if (c.OrderCount > 0)
+            {
+                c.morale = 0f;
+                EventManager.I.Notify($"{c.courierName} ayrılmaya karar verdi ({reason}); elindeki paketleri bitirince bırakacak.");
+                return;
+            }
+            EventManager.I.Notify($"{c.courierName} ayrıldı: {reason}.");
+            HandleLeaving(c);
+            Couriers.Remove(c);
+            Destroy(c.gameObject);
+        }
+
         void Quit(Courier c)
         {
             EventManager.I.Push(new GameEvent("Kurye ayrıldı",

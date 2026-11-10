@@ -220,11 +220,20 @@ namespace KuryeTycoon
             Push(ev);
         }
 
+        /// <summary>Test: Play sırasında Inspector'da bu bileşenin ⋮ menüsünden hemen bir zor karar kartı çıkarır.</summary>
+        [ContextMenu("Zor karar olayı dene")]
+        void TestDilemma()
+        {
+            if (!DilemmaEvents.RollNow()) Notify("Şu an uygun zor karar olayı yok (kurye ya da anlaşmalı dükkan az).");
+        }
+
         // ---------- Günlük rastgele olaylar ----------
 
         void OnNewDay()
         {
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
+
+            DilemmaEvents.TryRoll();   // iki seçeneği de olumsuz zor kararlar (DilemmaEvents.cs)
 
             var map = CityMap.I;
             foreach (var s in map.Shops) s.prepMultiplier = 1f;
