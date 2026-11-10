@@ -353,9 +353,9 @@ namespace KuryeTycoon
             {
                 case CourierState.Cevrimdisi: return "Çevrimdışı";
                 case CourierState.Bosta: return "Boşta";
-                case CourierState.DukkanaGidiyor: return "Dükkana gidiyor";
+                case CourierState.DukkanaGidiyor: return "Dükkana";
                 case CourierState.Bekliyor: return "Dükkanda";
-                case CourierState.MusteriyeGidiyor: return "Müşteriye gidiyor";
+                case CourierState.MusteriyeGidiyor: return "Müşteriye";
                 case CourierState.AdresSorunu: return "Adres sorunu";
                 case CourierState.KataCikiyor: return "Teslim ediyor";
                 case CourierState.Mola: return "Molada";
