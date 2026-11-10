@@ -415,15 +415,9 @@ namespace KuryeTycoon.EditorTools
 
         public static string Kur(bool fromMenu)
         {
+            // Önce seçili klasör(ler) taranır: kendi karakterlerin (ör. Blender scriptiyle üretilenler) seçiliyse onların
+            // animasyonu kullanılır. Sonra City People paketi.
             var clips = new List<ClipRef>();
-            foreach (var guid in AssetDatabase.FindAssets("t:AnimationClip"))
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guid);
-                if (!path.ToLowerInvariant().Replace(" ", "").Contains("citypeople")) continue;
-                foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path))
-                    if (o is AnimationClip c && !c.name.StartsWith("__preview__")) clips.Add(new ClipRef { clip = c, path = path });
-            }
-            // Seçili klasör de taranır (paket farklı isimdeyse)
             foreach (var sel in Selection.objects)
             {
                 string sp = AssetDatabase.GetAssetPath(sel);
@@ -435,6 +429,15 @@ namespace KuryeTycoon.EditorTools
                         if (o is AnimationClip c && !c.name.StartsWith("__preview__")) clips.Add(new ClipRef { clip = c, path = path });
                 }
             }
+            bool fromSelection = clips.Count > 0;
+            if (!fromSelection)
+                foreach (var guid in AssetDatabase.FindAssets("t:AnimationClip"))
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (!path.ToLowerInvariant().Replace(" ", "").Contains("citypeople")) continue;
+                    foreach (var o in AssetDatabase.LoadAllAssetsAtPath(path))
+                        if (o is AnimationClip c && !c.name.StartsWith("__preview__")) clips.Add(new ClipRef { clip = c, path = path });
+                }
 
             var walk = Best(clips, new[] { "basic walk", "basic_walk", "basicwalk", "walk_basic", "walking", "walk" }, new[] { "run", "back", "left", "right", "strafe", "jog" });
             var idle = Best(clips, new[] { "idle", "stand", "breath" }, new[] { "walk", "run" });
