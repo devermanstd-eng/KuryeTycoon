@@ -58,6 +58,27 @@ def gp_malzeme(dolgu, cizgi=MUREKKEP):
     return m
 
 
+_dolgu_cache = {}
+
+
+def dolgu_malzeme(renk):
+    """Dolgu için ışıksız (emisyon) malzeme: renk PNG'de birebir çıkar."""
+    if renk in _dolgu_cache and _dolgu_cache[renk].name in bpy.data.materials:
+        return _dolgu_cache[renk]
+    m = bpy.data.materials.new("Dolgu_" + renk.strip("#"))
+    m.use_nodes = True
+    nt = m.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = hex2rgba(renk)
+    em.inputs["Strength"].default_value = 1.0
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    nt.links.new(em.outputs["Emission"], out.inputs["Surface"])
+    _dolgu_cache[renk] = m
+    return m
+
+
 class Cizim:
     """Bir simgenin çizimi: çokgenler ve çizgiler sırayla eklenir (sonraki üstte)."""
 
@@ -135,6 +156,20 @@ class Cizim:
                 getattr(dr, fn)()
             except Exception:
                 pass
+        # Dolgular: Python'dan eklenen Grease Pencil çizgilerinin dolgusu Blender 5'te render'da çıkmıyor.
+        # Her kapalı şeklin altına aynı biçimde ışıksız düz bir yüzey konur (çizgi Grease Pencil'den, dolgu bu yüzeyden).
+        self.dolgular = []
+        for i, (pts, kapali, dolgu, cizgi, k) in enumerate(self.parca):
+            if not (kapali and dolgu) or len(pts) < 3:
+                continue
+            me = bpy.data.meshes.new(f"GP_D_{self.ad}_{i}")
+            zz = z + i * 0.0005 - 0.0002
+            me.from_pydata([(x, y, zz) for x, y in pts], [], [list(range(len(pts)))])
+            me.materials.append(dolgu_malzeme(dolgu))
+            me.update()
+            od = bpy.data.objects.new(f"GP_D_{self.ad}_{i}", me)
+            bpy.context.scene.collection.objects.link(od)
+            self.dolgular.append(od)
         return ob
 
 
@@ -529,8 +564,9 @@ def ciz_ve_kaydet(sc, ad, fn, klasor, px, tohum):
     sc.render.resolution_percentage = 100
     sc.render.filepath = os.path.join(klasor, ad + ".png")
     bpy.ops.render.render(write_still=True)
-    ob.hide_render = True
-    ob.hide_viewport = True
+    for o in [ob] + getattr(c, "dolgular", []):
+        o.hide_render = True
+        o.hide_viewport = True
     return ob
 
 
