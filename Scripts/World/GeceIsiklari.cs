@@ -391,7 +391,7 @@ namespace KuryeTycoon
             for (int i = 0; i < lights.Count; i++)
             {
                 var l = lights[i];
-                bool use = i < nearest.Count;
+                bool use = i < nearest.Count && i < GrafikKalitesi.LambaIsigi;   // grafik kalitesi düşükse daha az gerçek ışık
                 if (l.gameObject.activeSelf != use) l.gameObject.SetActive(use);
                 if (!use) continue;
                 l.transform.position = lampPoints[nearest[i]];

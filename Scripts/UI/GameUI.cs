@@ -2388,6 +2388,7 @@ namespace KuryeTycoon
                     KV("Kâr", Ft(commission + fee - pay), MoneyColor(commission + fee - pay));
                     break;
                 case 2:
+                    DrawGraphicsSettings();
                     Section("Harita");
                     bool lm = GUILayout.Toggle(ShowLandmarks, " Yer adlarını göster (park, nehir, AVM, bölgeler)", toggle);
                     if (lm != ShowLandmarks) ShowLandmarks = lm;

@@ -329,7 +329,7 @@ namespace KuryeTycoon
 
         void UpdatePrecip(WeatherFx fx, Vector2 center, float radius, float windX, bool paused)
         {
-            float area = (radius * radius) / (15f * 15f);   // görülen alan büyüdükçe daha çok damla (yoğunluk aynı kalsın)
+            float area = (radius * radius) / (15f * 15f) * GrafikKalitesi.HavaCarpani;   // görülen alan büyüdükçe daha çok damla; grafik kalitesi düşükse daha az
             float sim = paused ? 0f : 1f;
 
             if (rainPs != null)
