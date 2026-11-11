@@ -56,8 +56,20 @@ namespace KuryeTycoon
         void Awake()
         {
             I = this;
+            TryInit();
+        }
+
+        bool initDone;
+        float retryTimer;
+        string lastReason;
+
+        /// <summary>Modeller yüklenince parçacık sistemlerini kurar. Modeller oyun açıldıktan sonra eklenirse (prefab aracı) tekrar dener.</summary>
+        void TryInit()
+        {
+            if (initDone) return;
             Load();
             if (!loaded) return;
+            initDone = true;
             root = new GameObject("Hava parçaları").transform;
             root.SetParent(transform, false);
             if (dropMesh != null)
@@ -237,9 +249,25 @@ namespace KuryeTycoon
             var fx = WeatherFx.I;
             var mc = MapCamera.I;
             var cam = Camera.main;
-            bool on = loaded && fx != null && mc != null && cam != null && CityMap.I != null &&
-                      WeatherFx.Enabled && Gorsel3D.Active && mc.ShowModels &&
-                      GameBootstrap.I != null && GameBootstrap.I.Started;
+            if (!initDone)
+            {
+                retryTimer -= Time.unscaledDeltaTime;
+                if (retryTimer <= 0f) { retryTimer = 3f; TryInit(); }
+            }
+            // Neden çizilmiyor: Console'a bir kez yazılır (sorun ararken işe yarar)
+            string reason = !initDone ? "Resources/" + Folder + " içinde Hava_ prefabı yok (prefab aracını çalıştırın)"
+                : !Gorsel3D.Active ? "3D ışık kapalı (Kurye Tycoon > 3D Işık ve Gölge Kurulumu)"
+                : !WeatherFx.Enabled ? "hava efektleri ayarlardan kapalı"
+                : fx == null || mc == null || cam == null || CityMap.I == null ? "oyun henüz hazır değil"
+                : GameBootstrap.I == null || !GameBootstrap.I.Started ? "oyun başlamadı"
+                : !mc.ShowModels ? "harita uzak/düz görünümde (yakınlaşınca 3D hava başlar)"
+                : null;
+            if (reason != lastReason)
+            {
+                lastReason = reason;
+                Debug.Log("Kurye Tycoon · 3D hava: " + (reason == null ? "açık (bulut, yağmur, kar 3D çiziliyor)" : "kapalı, " + reason));
+            }
+            bool on = reason == null;
             if (on != showing)
             {
                 showing = on;

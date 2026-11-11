@@ -177,7 +177,8 @@ namespace KuryeTycoon
             bool lit3D = Gorsel3D.Active;
             Tint(full, new Color(1f, 0.48f, 0.18f), dusk * (lit3D ? 0.08f : 0.20f));
             Tint(full, new Color(1f, 0.62f, 0.72f), dawn * (lit3D ? 0.05f : 0.13f));
-            Tint(full, new Color(0.02f, 0.035f, 0.11f), night * (lit3D ? 0.40f : 0.56f));
+            // 3D ışıkta zemin ve kır kendisi kararır (CityMap.SetNight): ekran tonu sadece hafif bir gece havası katar
+            Tint(full, new Color(0.02f, 0.035f, 0.11f), night * (lit3D ? 0.16f : 0.56f));
 
             if (night < 0.15f) return;
             var cam = Camera.main;
@@ -190,6 +191,8 @@ namespace KuryeTycoon
             float tilePx = Mathf.Max(2f, Vector2.Distance(a0, a1));
             var vp = cam.pixelRect;
 
+            // 3D görünümde lambalar ve pencereler modellerin kendisinde yanar (GeceIsiklari): ekrana ayrıca çizilmez
+            if (GeceIsiklari.Showing) return;
             DrawStreetLamps(cam, vp, tilePx, lights);
             DrawWindows(cam, vp, tilePx, lights);
         }

@@ -214,6 +214,12 @@ namespace KuryeTycoon
         readonly List<Piece> pieces = new List<Piece>();
         readonly Dictionary<Vector2Int, float> heightByTile = new Dictionary<Vector2Int, float>();
         Transform root;
+        /// <summary>3D şehrin kökü (GeceIsiklari pencere ve lambaları buradan bulur).</summary>
+        public Transform Root => root;
+        /// <summary>Renkler (kilit, bina tonu) her yeniden boyandığında artar: üstüne yazılan gece ışıkları yeniden uygulansın.</summary>
+        public static int TintVersion { get; private set; }
+        /// <summary>Şehir kurulunca çağrılır (gece ışıkları pencere ve lambaları kaydeder).</summary>
+        public static event System.Action Built;
         Material mat;
         float lastGrow = -1f;
         int lastUnlock = -1;
@@ -482,6 +488,7 @@ namespace KuryeTycoon
             BuildCountryside(map, pack, packTreesOk, rng);
             Refresh(true);
             foreach (var p in pieces) p.t.gameObject.SetActive(false);
+            Built?.Invoke();
         }
 
         /// <summary>
@@ -917,6 +924,7 @@ namespace KuryeTycoon
             }
             lastUnlock = map.UnlockLevel;
             lastContracts = ContractCount();
+            TintVersion++;
         }
 
         void LateUpdate()

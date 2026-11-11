@@ -195,6 +195,17 @@ namespace KuryeTycoon
             sun.intensity = Mathf.Lerp(dayI, 0.28f, night);
             sun.shadowStrength = Mathf.Lerp(0.72f, 0.45f, night);
 
+            // Bulutlu ve yağmurlu havada güneş zayıflar, gölgeler silikleşir
+            var fx = WeatherFx.I;
+            if (fx != null && WeatherFx.Enabled)
+            {
+                float overcast = Mathf.Clamp01(fx.CloudAmt * 0.45f + fx.RainAmt * 0.35f + fx.StormAmt * 0.25f + fx.SnowAmt * 0.2f);
+                sun.intensity *= 1f - overcast * 0.55f;
+                sun.shadowStrength *= 1f - overcast * 0.6f;
+            }
+            // 2D zemin ve kır da geceye uysun (ışıktan etkilenmiyorlar)
+            if (CityMap.I != null) CityMap.I.SetNight(night);
+
             RenderSettings.ambientSkyColor = Color.Lerp(SkyDay, SkyNight, night);
             RenderSettings.ambientEquatorColor = Color.Lerp(Color.Lerp(EquatorDay, new Color(0.75f, 0.55f, 0.45f), dusk * 0.6f), EquatorNight, night);
             RenderSettings.ambientGroundColor = Color.Lerp(GroundDay, GroundNight, night);

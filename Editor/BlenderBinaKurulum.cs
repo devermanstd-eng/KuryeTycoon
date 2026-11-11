@@ -163,7 +163,12 @@ namespace KuryeTycoon.EditorTools
             if (onbellek.TryGetValue(ad, out var m)) return m;
 
             // Çizgi siyah ve ışıksız; şimşek de ışıksız (gölgede kalmasın, hep parlak görünsün)
-            bool cizgi = ad.StartsWith("Cizgi") || ad.StartsWith("Simsek");
+            bool havuz = ad.StartsWith("IsikHavuz");      // lamba altındaki ışık halkası: saydam, ışıksız
+            bool cizgi = ad.StartsWith("Cizgi") || ad.StartsWith("Simsek") || havuz;
+            // Gece ışık verenler (GeceIsiklari): pencere camları, ofis camları, lamba başları
+            bool isikVeren = ad.StartsWith("Cam_") || ad.StartsWith("Cam2_") || ad.StartsWith("Cam3_") || ad.StartsWith("CamKoyu") ||
+                             ad.StartsWith("OfisCam") || ad.StartsWith("YIsik") || ad.StartsWith("PIsik") || ad.StartsWith("Isik_") ||
+                             ad.StartsWith("TSari_isik");
             Color renk = AddanRenk(ad, out bool bulundu);
             if (!bulundu) renk = kaynak.HasProperty("_BaseColor") ? kaynak.GetColor("_BaseColor") : kaynak.color;
 
@@ -180,9 +185,35 @@ namespace KuryeTycoon.EditorTools
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", renk);
             m.color = renk;
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", ad.StartsWith("Cam") ? 0.6f : 0.1f);
+            if (isikVeren && m.HasProperty("_EmissionColor"))
+            {
+                // Gündüz siyah (ışık yok); gece GeceIsiklari property block ile yakar
+                m.EnableKeyword("_EMISSION");
+                m.SetColor("_EmissionColor", Color.black);
+                m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            }
+            if (havuz) Saydam(m, renk);
             EditorUtility.SetDirty(m);
             onbellek[ad] = m;
             return m;
+        }
+
+        /// <summary>URP Unlit saydam: gündüz tamamen görünmez (alfa 0), gece GeceIsiklari alfa verir.</summary>
+        static void Saydam(Material m, Color renk)
+        {
+            if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 1f);
+            if (m.HasProperty("_Blend")) m.SetFloat("_Blend", 0f);
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            if (m.HasProperty("_SrcBlend")) m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            if (m.HasProperty("_DstBlend")) m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            if (m.HasProperty("_SrcBlendAlpha")) m.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            if (m.HasProperty("_DstBlendAlpha")) m.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            if (m.HasProperty("_ZWrite")) m.SetFloat("_ZWrite", 0f);
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            var c = renk; c.a = 0f;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+            m.color = c;
         }
 
         static Color AddanRenk(string ad, out bool bulundu)

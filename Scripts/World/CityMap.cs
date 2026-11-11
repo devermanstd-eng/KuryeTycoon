@@ -537,6 +537,27 @@ namespace KuryeTycoon
         }
 
         float wetness;                           // ıslak zemin (0–1): yağmurda kararır
+        float nightAmt;                          // gece (0–1): 2D zemin, kır ve süsler de kararır (3D ışıkla uyumlu)
+
+        /// <summary>
+        /// Gece kararması: 3D şehir güneşle kararır ama 2D çizilen zemin, tarlalar, nehir ve kır ışıktan etkilenmez.
+        /// Gorsel3D her an gecenin oranını verir; renkler lacivert gece tonuna kayar.
+        /// </summary>
+        public void SetNight(float amount)
+        {
+            amount = Mathf.Clamp01(amount);
+            if (Mathf.Abs(amount - nightAmt) < 0.02f && !(amount == 0f && nightAmt > 0f)) return;
+            nightAmt = amount;
+            RefreshColors();
+        }
+
+        static readonly Color NightMul = new Color(0.20f, 0.25f, 0.42f);
+        Color Night(Color c)
+        {
+            if (nightAmt <= 0f) return c;
+            var n = new Color(c.r * NightMul.r, c.g * NightMul.g, c.b * NightMul.b, c.a);
+            return Color.Lerp(c, n, nightAmt * 0.9f);
+        }
 
         /// <summary>Islak zemin: yağmurda yollar ve zemin koyulaşıp maviye kayar (su birikintisi parlaklığı). 0 = kuru.</summary>
         public void SetWetness(float amount)
@@ -862,7 +883,7 @@ namespace KuryeTycoon
                     float k = 0.5f + 0.5f * Mathf.Sin(tm * 0.9f + w.x * 0.7f + w.y * 1.3f);
                     var c = Color.Lerp(WaterColor, Color.Lerp(WaterColor, Color.white, 0.12f), k * 0.6f);
                     if (!IsUnlocked(w)) c = LockedTint(c);
-                    ground[w.x, w.y].color = c;
+                    ground[w.x, w.y].color = Night(c);
                 }
             }
         }
@@ -967,17 +988,17 @@ namespace KuryeTycoon
                     var c = groundBase[x, y];
                     if (!WaterAt(x, y)) c = Snowy(c, RoadAt(x, y) ? 0.5f : 1f);
                     if (!IsUnlocked(x, y)) c = LockedTint(c);
-                    ground[x, y].color = c;
+                    ground[x, y].color = Night(c);
                 }
 
             foreach (var d in decor)
             {
                 if (d.sr == null) continue;
                 var dc = Snowy(d.c, 0.8f);
-                d.sr.color = IsUnlocked(d.t) ? dc : LockedTint(dc);
+                d.sr.color = Night(IsUnlocked(d.t) ? dc : LockedTint(dc));
             }
             foreach (var f in freeDecor)
-                if (f.sr != null) f.sr.color = Snowy(f.c, 0.9f);
+                if (f.sr != null) f.sr.color = Night(Snowy(f.c, 0.9f));
 
             foreach (var s in Shops)
             {

@@ -302,9 +302,28 @@ def cprizma(g, fc, ucgen_uz, o0, o1, mat):
 
 # ------------------------------------------------------------------ bina parçaları
 
+def cam_grubu(cam, cu, zb):
+    """Pencere camı üç ışık grubundan birine düşer (Cam_, Cam2_, Cam3_; renk aynı).
+    Unity'de gece her grup ayrı saatte yanıp söner: binada bazı pencereler yanar, bazıları karanlık kalır."""
+    if not cam.startswith("Cam_"):
+        return cam
+    k = int(abs(cu * 7.31 + zb * 3.17 + cu * zb * 0.53) * 10.0) % 3
+    if k == 0:
+        return cam
+    ad = f"Cam{k + 1}_{cam[4:]}"
+    HEX[ad] = HEX[cam]
+    return ad
+
+
+def isik_havuzu(g, x, y, z, ic=1.2, dis=2.3):
+    """Lambanın altında gece parlayan ışık halkası (gündüz görünmez: Unity'de saydam, gece yanar)."""
+    duz_poligon(g, poligon(14, dis, dis, x, y), z + 0.008, M("IsikHavuzDis", "#ffd98a"))
+    duz_poligon(g, poligon(12, ic, ic, x, y), z + 0.014, M("IsikHavuzIc", "#ffe7a8"))
+
+
 def pencere(g, fc, cu, zb, w, h, r, sade=False):
     T = r["suslu"]
-    cdortgen(g, fc, cu - w / 2, cu + w / 2, 0.012, zb, zb + h, r["cam"])
+    cdortgen(g, fc, cu - w / 2, cu + w / 2, 0.012, zb, zb + h, cam_grubu(r["cam"], cu, zb))
     t = 0.09
     ckutu(g, fc, cu - w / 2 - t, cu - w / 2, 0, 0.07, zb, zb + h, T)
     ckutu(g, fc, cu + w / 2, cu + w / 2 + t, 0, 0.07, zb, zb + h, T)
@@ -2083,6 +2102,8 @@ def sokak_lambasi(g, x, y, kol_x, kol_y, r):
     cubuk(g, (x, y, z + 3.7), (x + kol_x * 0.5, y + kol_y * 0.5, z + 4.2), 0.03, r["koyu"], kabuk=False)
     kutu(g, ux - 0.18, ux + 0.18, uy - 0.16, uy + 0.16, z + 4.08, z + 4.24, r["koyu"])
     kutu(g, ux - 0.14, ux + 0.14, uy - 0.12, uy + 0.12, z + 4.03, z + 4.08, r["isik"])
+    if DETAY:
+        isik_havuzu(g, ux, uy, z)
 
 
 def trafik_lambasi(g, x, y, yon_x, yon_y, r):
@@ -2358,6 +2379,8 @@ def park_lambasi(g, x, y, r, z0=ZC):
     silindir(g, x, y, z0 + 0.15, 2.85, 0.028, 6, r["koyu"], kabuk=False)
     top(g, (x, y, z0 + 3.12), 0.17, 0.17, 0.2, r["isik"])
     silindir(g, x, y, z0 + 3.3, 0.06, 0.1, 6, r["koyu"], kabuk=False)
+    if DETAY:
+        isik_havuzu(g, x, y, z0, ic=0.9, dis=1.7)
 
 
 def park_cop(g, x, y, r, z0=ZC):
