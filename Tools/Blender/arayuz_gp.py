@@ -116,10 +116,19 @@ class Cizim:
             st = dr.strokes[i]
             st.cyclic = kapali
             st.material_index = mats[i]
+            for ad_, deger in (("fill_opacity", 1.0), ("softness", 0.0)):
+                try:
+                    setattr(st, ad_, deger)
+                except Exception:
+                    pass
             for j, (x, y) in enumerate(pts):
                 pt = st.points[j]
                 pt.position = (x, y, z + i * 0.0005)
                 pt.radius = k * (0.85 + 0.3 * self.rnd.random()) if cizgi else 0.001
+                try:
+                    pt.opacity = 1.0
+                except Exception:
+                    pass
         return ob
 
 
@@ -525,7 +534,8 @@ def main():
     pn_kl = os.path.join(KOK, "Panel")
     os.makedirs(ik_kl, exist_ok=True)
     os.makedirs(pn_kl, exist_ok=True)
-    gizle = [o for o in sc.collection.objects if o.type not in ("CAMERA",) and not o.name.startswith("GP_")]
+    # Sahnedeki bütün diğer nesneler (varsayılan küp, ışık, eski modeller) render dışı: sadece çizim görünsün
+    gizle = [o for o in sc.objects if o.type != "CAMERA" and not o.name.startswith("GP_")]
     eski = [(o, o.hide_render) for o in gizle]
     for o in gizle:
         o.hide_render = True
