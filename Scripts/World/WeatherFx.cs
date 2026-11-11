@@ -42,6 +42,15 @@ namespace KuryeTycoon
 
         Texture2D dot, glare, beam, puff;
 
+        // Hava3D (Blender'dan gelen 3D bulut, yağmur, kar, yaprak) bu yoğunlukları okur
+        public float RainAmt => rainAmt;
+        public float SnowAmt => snowAmt;
+        public float WindAmt => windAmt;
+        public float SunAmt => sunAmt;
+        public float CloudAmt => cloudAmt;
+        public float StormAmt => stormAmt;
+        public float Flash => flash;
+
         void Awake() { I = this; }
 
         void Start()
@@ -236,7 +245,11 @@ namespace KuryeTycoon
             Tint(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.22f + stormAmt * 0.16f);
             Tint(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.10f);
 
+            // 3D hava açıkken (yakın görünüm) bulut, yağmur, kar ve yapraklar 3D modellerle çizilir: ekrandakiler atlanır
+            bool hava3D = Hava3D.Showing;
+
             // Bulut gölgeleri: haritanın üstünden rüzgârla kayan koyu lekeler
+            if (!hava3D)
             foreach (var c in clouds)
             {
                 GUI.color = new Color(0.05f, 0.06f, 0.09f, 0.18f * Mathf.Clamp01(cloudAmt + rainAmt + sunV * 0.5f));
@@ -277,7 +290,7 @@ namespace KuryeTycoon
             }
 
             // Yağmur: rüzgâr yönüne eğik ince çizgiler
-            if (rain.Count > 0)
+            if (rain.Count > 0 && !hava3D)
             {
                 float angle = Mathf.Atan2(windAmt * 420f * 1.2f, 1100f) * Mathf.Rad2Deg;
                 GUI.color = new Color(0.80f, 0.86f, 0.98f, 0.55f + stormAmt * 0.15f);
@@ -299,6 +312,7 @@ namespace KuryeTycoon
             }
 
             // Kar taneleri
+            if (!hava3D)
             foreach (var d in snow)
             {
                 GUI.color = new Color(1f, 1f, 1f, 0.95f);
@@ -308,6 +322,7 @@ namespace KuryeTycoon
 
             // Savrulan yapraklar
             var leafCols = new[] { new Color(0.45f, 0.55f, 0.20f, 0.9f), new Color(0.75f, 0.50f, 0.15f, 0.9f), new Color(0.55f, 0.30f, 0.15f, 0.9f) };
+            if (!hava3D)
             foreach (var d in leaves)
             {
                 GUI.color = leafCols[d.kind];
@@ -321,6 +336,7 @@ namespace KuryeTycoon
             float darkness = Mathf.Clamp01(rainAmt * 0.55f + stormAmt * 0.35f + snowAmt * 0.15f);
             var cloudCol = Color.Lerp(new Color(1f, 1f, 1f), new Color(0.38f, 0.40f, 0.45f), darkness);
             float cloudAlpha = Mathf.Clamp01(0.35f + cloudAmt * 0.25f + rainAmt * 0.15f) * (sunAmt > 0.5f ? 0.75f : 1f);
+            if (!hava3D)
             foreach (var c in clouds)
             {
                 float w2 = c.size * 2f, h2 = c.size;

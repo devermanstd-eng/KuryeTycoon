@@ -37,7 +37,7 @@ except ImportError:          # Blender dışında (önizleme / test) sadece geom
     IN_BLENDER = False
 
 # ================================== AYARLAR ==================================
-MODEL = "mustakil_ev"      # "sira_ev" · "ofis_kulesi" · "mustakil_ev" · "market" · "fastfood" · "apartman" · "dukkan" (altı dükkanlı binalar) · "sehir" (yollar, zemin, ağaçlar, parklar) · "katalog" (konut, büro, sanayi, kamu, yeni parklar) · "kurye" · "yaya"
+MODEL = "mustakil_ev"      # "sira_ev" · "ofis_kulesi" · "mustakil_ev" · "market" · "fastfood" · "apartman" · "dukkan" (altı dükkanlı binalar) · "sehir" (yollar, zemin, ağaçlar, parklar) · "katalog" (konut, büro, sanayi, kamu, yeni parklar) · "hava" (bulut, yağmur, kar, yaprak, şimşek) · "kurye" · "yaya"
 STIL = "kirmizi_tugla"     # sıra ev için: "kirmizi_tugla" · "pembe_siva" · "kahve_siva" · "karisik"
 OFIS_STIL = "beton"        # ofis kulesi için: "beton" · "gri" · "beyaz" · "karisik"
 OFIS_KAT = (5, 7)          # ofis kulesinin kat sayısı (zemindeki lobi hariç)
@@ -4308,11 +4308,136 @@ def katalog():
 
 
 
+# ------------------------------------------------------------------ hava: bulut, yağmur, kar, yaprak, şimşek (Unity'de Hava3D kullanır)
+
+def bulut(rnd, buyuk, koyu):
+    """Alçak poligon bulut: düz tabanlı, üstü kabarık top kümeleri. Ölçü metre; Unity kendi boyuna ölçekler."""
+    g = Govde()
+    renk = M("BulutKoyu", "#8f959e") if koyu else M("Bulut", "#f6f7f9")
+    golge = M("BulutAlt", "#6f757e") if koyu else M("BulutAlti", "#dfe4ea")
+    L = rnd.uniform(26.0, 34.0) if buyuk else rnd.uniform(14.0, 19.0)
+    D = L * rnd.uniform(0.45, 0.6)
+    n = rnd.randint(6, 8) if buyuk else rnd.randint(4, 5)
+    # Taban: yassı geniş top (alt yüzü hafif koyu: güneşte gölgeli taraf)
+    top(g, (0.0, 0.0, D * 0.12), L * 0.5, D * 0.48, D * 0.16, golge)
+    for i in range(n):
+        u = (i + 0.5) / n - 0.5
+        x = u * L * 0.8 + rnd.uniform(-1.0, 1.0)
+        y = rnd.uniform(-D * 0.18, D * 0.18)
+        r = (D * 0.42) * (1.0 - abs(u) * 0.9) * rnd.uniform(0.8, 1.15)
+        top(g, (x, y, D * 0.12 + r * 0.4), r * 1.2, r, r * 0.68, renk)
+    # Ortada bir iki büyük kabarık tepe
+    for _ in range(2 if buyuk else 1):
+        x = rnd.uniform(-L * 0.15, L * 0.15)
+        r = D * rnd.uniform(0.38, 0.46)
+        top(g, (x, rnd.uniform(-1.0, 1.0), D * 0.22 + r * 0.4), r * 1.25, r * 0.95, r * 0.72, renk)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g) * 0.8)
+    return g, ortala(g)
+
+
+def damla():
+    """Yağmur damlası çizgisi: ince, uzun, 6 yüzlü (1 m boy; Unity ölçekler)."""
+    g = Govde()
+    mat = M("Yagmur", "#b9d4f0")
+    n = 6
+    pts = []
+    for z, rr in ((0.0, 0.0), (0.12, 0.045), (0.75, 0.03), (1.0, 0.0)):
+        if rr == 0.0:
+            pts.append((0.0, 0.0, z))
+        else:
+            pts += [(rr * math.cos(2 * math.pi * i / n), rr * math.sin(2 * math.pi * i / n), z) for i in range(n)]
+    # 0: alt uç, 1..6: alt halka, 7..12: üst halka, 13: üst uç
+    f = [[0, 1 + (i + 1) % n, 1 + i] for i in range(n)]
+    f += [[1 + i, 1 + (i + 1) % n, 7 + (i + 1) % n, 7 + i] for i in range(n)]
+    f += [[7 + i, 7 + (i + 1) % n, 13] for i in range(n)]
+    dis_bukey(g, pts, f, mat, kabuk=False)
+    return g, ortala(g)
+
+
+def sicrama():
+    """Yere düşen damlanın sıçrama halkası (taç): alçak, açık mavi."""
+    g = Govde()
+    mat = M("Sicrama", "#d6e6f8")
+    n = 10
+    for i in range(n):
+        a0, a1 = 2 * math.pi * i / n, 2 * math.pi * (i + 0.55) / n
+        p = [(0.5 * math.cos(a0), 0.5 * math.sin(a0), 0.0), (0.5 * math.cos(a1), 0.5 * math.sin(a1), 0.0),
+             (0.62 * math.cos(a1), 0.62 * math.sin(a1), 0.18), (0.62 * math.cos(a0), 0.62 * math.sin(a0), 0.22)]
+        yonlu = [p[0], p[1], p[2], p[3]]
+        ic = [(q[0] * 0.85, q[1] * 0.85, q[2]) for q in yonlu]
+        dis_bukey(g, yonlu + ic, [[0, 1, 2, 3], [7, 6, 5, 4], [0, 4, 5, 1], [1, 5, 6, 2], [2, 6, 7, 3], [3, 7, 4, 0]], mat, kabuk=False)
+    return g, ortala(g)
+
+
+def kar_tanesi():
+    """Altı kollu yassı kar tanesi (1 m çap)."""
+    g = Govde()
+    mat = M("Kar", "#ffffff")
+    for k in range(3):
+        a = k * math.pi / 3
+        d = (math.cos(a), math.sin(a), 0.0)
+        yonlu_kutu(g, (0.0, 0.0, 0.0), mul(d, 0.5), (-d[1] * 0.06, d[0] * 0.06, 0.0), (0.0, 0.0, 0.03), mat, kabuk=False)
+        for s in (-1, 1):
+            m = mul(d, 0.3 * s)
+            for e in (-1, 1):
+                b = (math.cos(a + e * 0.6), math.sin(a + e * 0.6), 0.0)
+                yonlu_kutu(g, add(m, mul(b, 0.08 * s)), mul(b, 0.1 * s), (-b[1] * 0.04, b[0] * 0.04, 0.0), (0.0, 0.0, 0.025), mat, kabuk=False)
+    return g, ortala(g)
+
+
+def yaprak(renk):
+    """Rüzgârda savrulan yaprak: hafif kıvrık, ortası damarlı."""
+    g = Govde()
+    mat = M("Yaprak", renk)
+    damar = M("YaprakDamar", koyu_ton(renk, 0.7))
+    pts = [(0.0, -0.5, 0.0), (0.22, -0.25, 0.04), (0.26, 0.05, 0.06), (0.15, 0.32, 0.04), (0.0, 0.5, 0.0),
+           (-0.15, 0.32, 0.04), (-0.26, 0.05, 0.06), (-0.22, -0.25, 0.04)]
+    ust = [(p[0], p[1], p[2] + 0.02) for p in pts]
+    n = len(pts)
+    dis_bukey(g, pts + ust, [list(range(n))[::-1], list(range(n, 2 * n))] + [[i, (i + 1) % n, n + (i + 1) % n, n + i] for i in range(n)], mat, kabuk=False)
+    yonlu_kutu(g, (0.0, -0.05, 0.05), (0.0, 0.5, 0.0), (0.015, 0.0, 0.0), (0.0, 0.0, 0.012), damar, kabuk=False)
+    return g, ortala(g)
+
+
+def simsek():
+    """Şimşek: zikzak, parlak sarı-beyaz yassı prizma (10 m boy; Unity ölçekler)."""
+    g = Govde()
+    mat = M("Simsek", "#fff6c2")
+    cizgi = [(0.0, 10.0), (0.9, 7.6), (-0.2, 6.9), (1.1, 4.4), (0.1, 3.9), (1.0, 1.4), (0.5, 0.0)]
+    for (x0, z0), (x1, z1) in zip(cizgi, cizgi[1:]):
+        c = ((x0 + x1) / 2, 0.0, (z0 + z1) / 2)
+        ax = ((x1 - x0) / 2, 0.0, (z1 - z0) / 2)
+        yonlu_kutu(g, c, ax, (0.18, 0.0, 0.0), (0.0, 0.12, 0.0), mat, kabuk=False)
+    return g, ortala(g)
+
+
+def hava_parcalari():
+    sonuc = []
+    for i in range(3):
+        rnd = random.Random(TOHUM * 31 + i)
+        g, gen = bulut(rnd, buyuk=i > 0, koyu=False)
+        sonuc.append((f"Hava_bulut_{i + 1}", g, gen))
+    for i in range(2):
+        rnd = random.Random(TOHUM * 57 + i)
+        g, gen = bulut(rnd, buyuk=True, koyu=True)
+        sonuc.append((f"Hava_firtina_{i + 1}", g, gen))
+    sonuc.append(("Hava_damla",) + damla())
+    sonuc.append(("Hava_sicrama",) + sicrama())
+    sonuc.append(("Hava_kar",) + kar_tanesi())
+    for i, renk in enumerate(("#7aa043", "#d9952e", "#b5552f")):
+        sonuc.append((f"Hava_yaprak_{i + 1}",) + yaprak(renk))
+    sonuc.append(("Hava_simsek",) + simsek())
+    return sonuc
+
+
 def uret():
     if MODEL == "sehir":
         return sehir_parcalari()
     if MODEL == "katalog":
         return katalog()
+    if MODEL == "hava":
+        return hava_parcalari()
     if MODEL == "dukkan":
         sonuc = []
         for i, k in enumerate(DUKKANLAR):
