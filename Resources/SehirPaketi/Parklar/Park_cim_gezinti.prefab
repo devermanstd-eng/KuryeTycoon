@@ -230,8 +230,6 @@ MeshRenderer:
   - {fileID: 2100000, guid: 5a3a51d30b6c1a84e876d99266bfaa31, type: 2}
   - {fileID: 2100000, guid: 7023d20c4600a1d448d2461eb34e13cb, type: 2}
   - {fileID: 2100000, guid: 32c0a197315620a479767035ed550403, type: 2}
-  - {fileID: 2100000, guid: 351f987402d84e140aa27d0cf1c266e4, type: 2}
-  - {fileID: 2100000, guid: 6f8e010d9d3337f44ae5581ddb532cea, type: 2}
   - {fileID: 2100000, guid: 4ed8be0b9c7169a459dd0ac99f4a88e9, type: 2}
   - {fileID: 2100000, guid: bb1479ed8f6ac8e488a30e227c673d41, type: 2}
   - {fileID: 2100000, guid: 1306b51fb32ba074fbc6b8c4952329c7, type: 2}
