@@ -32,7 +32,7 @@ namespace KuryeTycoon
 
         // ---------------------------------------------------------------- saat ve mevsim
 
-        static float HourF => GameClock.I == null ? 12f : (GameClock.I.TotalMinutes % 1440f) / 60f;
+        public static float HourF => GameClock.I == null ? 12f : (GameClock.I.TotalMinutes % 1440f) / 60f;
 
         static float SeasonCos
         {
@@ -62,7 +62,7 @@ namespace KuryeTycoon
         /// <summary>Güneşin görünürlüğü (hava efektlerindeki güneş parlaması bununla çarpılır).</summary>
         public static float Daylight01 => Enabled ? 1f - Night01 : 1f;
 
-        static float Dusk01
+        public static float Dusk01
         {
             get
             {
@@ -72,7 +72,7 @@ namespace KuryeTycoon
             }
         }
 
-        static float Dawn01
+        public static float Dawn01
         {
             get
             {
@@ -172,10 +172,12 @@ namespace KuryeTycoon
             var full = new Rect(0, 0, sw, sh);
             float night = Night01, dusk = Dusk01, dawn = Dawn01;
 
-            // Işık tonu
-            Tint(full, new Color(1f, 0.48f, 0.18f), dusk * 0.20f);
-            Tint(full, new Color(1f, 0.62f, 0.72f), dawn * 0.13f);
-            Tint(full, new Color(0.02f, 0.035f, 0.11f), night * 0.56f);
+            // Işık tonu. Gerçek güneş ışığı açıksa (Gorsel3D) binalar zaten renklenip kararıyor: ekran tonu hafif kalır,
+            // sadece ışıktan etkilenmeyen 2D zemini akşama ve geceye uydurur.
+            bool lit3D = Gorsel3D.Active;
+            Tint(full, new Color(1f, 0.48f, 0.18f), dusk * (lit3D ? 0.08f : 0.20f));
+            Tint(full, new Color(1f, 0.62f, 0.72f), dawn * (lit3D ? 0.05f : 0.13f));
+            Tint(full, new Color(0.02f, 0.035f, 0.11f), night * (lit3D ? 0.40f : 0.56f));
 
             if (night < 0.15f) return;
             var cam = Camera.main;

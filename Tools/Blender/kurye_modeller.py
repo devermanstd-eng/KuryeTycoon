@@ -3424,7 +3424,8 @@ def saat(g, fc, cu, zc, rad, r, o=0.0):
     ckutu(g, fc, cu, cu + rad * 0.55, o + 0.1, o + 0.13, zc - 0.03, zc + 0.03, r["koyu"])
 
 
-def kaldirim_arsa(g, PW, PD, r, on_d=2.2, zemin="kaldirim"):
+def kaldirim_arsa(g, PW, PD, r, on_d=2.2, zemin="cim"):
+    """Arsa: önde kaldırım şeridi, gerisi çim (şehir griye boğulmasın)."""
     levha(g, 0.0, PW, 0.0, PD, 0.0, EV_ZEMIN, r["cim"] if zemin == "cim" else r["kaldirim"])
     levha(g, 0.0, PW, 0.0, on_d, EV_ZEMIN, EV_ZEMIN + 0.12, r["kaldirim"])
 

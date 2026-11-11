@@ -64,6 +64,8 @@ namespace KuryeTycoon
         public static int OwnBuildingCount { get { LoadPack(); return ownAll.Length; } }
         // Kendi park parçalarımız (Resources/SehirPaketi/Parklar): park kareleri, göl, anıt, meydan çeşmesi
         static GameObject[] parkTiles, courtTiles, countryExtras;
+        /// <summary>Kendi binalarımızın dikey çarpanı: taban kareye sığdığı için binalar basık görünüyordu.</summary>
+        const float OwnHeightBoost = 1.18f;
         static GameObject[] ownOld, ownHigh, ownMixed;
         static GameObject[] ownIndustry, ownFarm, ownKamu;   // fabrika/depo/garaj · ahır/sera/yel değirmeni · kamu binaları
         List<GameObject> kamuKalan;                         // bu kurulumda henüz yerleşmemiş kamu binaları (her biri bir kez)
@@ -200,6 +202,7 @@ namespace KuryeTycoon
             public MeshFilter mf;     // kutu binalarda; paket modellerinde null
             public float height;      // tam boy (kare biriminde)
             public bool prefab;
+            public float heightMul = 1f;  // paket modellerinde yükselme çarpanı (kendi binalarımız biraz daha uzun: referanstaki gibi dolu silüet)
             public bool flat;         // yol / zemin: yükselmez, sadece görünür olur
             public Color baseColor;
             public Vector2Int tile;
@@ -295,7 +298,7 @@ namespace KuryeTycoon
                     // Paket yolları açıksa zemin: kaldırım ya da çim (bölgeye göre)
                     if (roads3D)
                     {
-                        bool grass = zone == Zone.Park || zone == Zone.Houses || zone == Zone.Country ||
+                        bool grass = zone == Zone.Park || zone == Zone.Houses || zone == Zone.Country || zone == Zone.River ||
                                      (!frontage && (zone == Zone.HighRise || zone == Zone.Mixed || zone == Zone.Campus));
                         var gnd = grass && groundGrass != null ? groundGrass : groundBlock;
                         // Kendi park parçalarımız ve meydan çeşmesi kendi zeminiyle gelir (üst üste binmesin)
@@ -307,6 +310,15 @@ namespace KuryeTycoon
                     if (zone == Zone.Country)
                     {
                         AddTrees(tile, rng, 2 + rng.Next(3), packTreesOk);
+                        continue;
+                    }
+                    // Nehir kıyısı (kıvrımlı nehrin suyu olmayan tarafı): çimenli set, seyrek ağaç ve çalı
+                    if (zone == Zone.River)
+                    {
+                        AddTrees(tile, rng, 1 + rng.Next(3), packTreesOk);
+                        if (UsePack && countryExtras != null && countryExtras.Length > 0 && rng.NextDouble() < 0.35)
+                            AddPrefab(countryExtras[rng.Next(countryExtras.Length)], tile, 0f, (float)rng.NextDouble() * 360f, null,
+                                      new Vector2((float)rng.NextDouble() * 0.5f - 0.25f, (float)rng.NextDouble() * 0.5f - 0.25f), 0.06f, false);
                         continue;
                     }
 
@@ -435,7 +447,10 @@ namespace KuryeTycoon
                                 if (UsePack && courtTiles.Length > 0)
                                 {
                                     // İç avlu: otopark, havuz ya da bahçe; bir köşesinde ağaç
-                                    AddFlat(courtTiles[rng.Next(courtTiles.Length)], tile, 90f * rng.Next(4), 2);
+                                    // Avlular çoğunlukla yeşil (bahçe, havuz): otopark seyrek, şehir griye boğulmasın
+                                    var avlu = courtTiles[rng.Next(courtTiles.Length)];
+                                    if (avlu.name.Contains("otopark") && rng.NextDouble() < 0.65) avlu = courtTiles[rng.Next(courtTiles.Length)];
+                                    AddFlat(avlu, tile, 90f * rng.Next(4), 2);
                                     AddTrees(tile, rng, 1, packTreesOk, new Vector2(rng.Next(2) == 0 ? -0.36f : 0.36f, rng.Next(2) == 0 ? -0.36f : 0.36f), 0.04f);
                                 }
                                 // İç avlu: eski şehirde az ağaç, diğerlerinde yeşil alan
@@ -666,8 +681,9 @@ namespace KuryeTycoon
             if (renderers.Length == 0) { Destroy(holder.gameObject); return; }
             foreach (var r in renderers)
             {
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                r.receiveShadows = false;
+                // Binalar gölge düşürür ve alır (güneş: Gorsel3D). 2D Renderer'da bu ayarların etkisi yok.
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                r.receiveShadows = true;
                 r.sortingOrder = 5;
             }
 
@@ -683,8 +699,9 @@ namespace KuryeTycoon
             // Aynı model her karede biraz farklı renkte (duvar, kapı, panjur, çatı): şehir tekrar eden kopyalar gibi görünmesin
             int seed = ownModel ? ((tile.x + 101) * 73856093 ^ (tile.y + 37) * 19349663 ^ (int)(offset.x * 1000f)) & 0x7fffffff : -1;
 
-            pieces.Add(new Piece { t = holder, height = height, prefab = true, tile = tile, shop = shop, varSeed = seed });
-            if (targetHeight <= 0f && registerHeight) heightByTile[tile] = height;
+            float mul = ownModel && targetHeight <= 0f ? OwnHeightBoost : 1f;
+            pieces.Add(new Piece { t = holder, height = height * mul, prefab = true, tile = tile, shop = shop, varSeed = seed, heightMul = mul });
+            if (targetHeight <= 0f && registerHeight) heightByTile[tile] = height * mul;
             Tint(renderers, !CityMap.I.IsUnlocked(tile), seed);
         }
 
@@ -799,8 +816,9 @@ namespace KuryeTycoon
             if (renderers.Length == 0) { Destroy(holder.gameObject); return; }
             foreach (var r in renderers)
             {
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                r.receiveShadows = false;
+                // Yol ve park parçaları binaların gölgesini alır; üstlerindeki lamba, ağaç, bank da gölge düşürür
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                r.receiveShadows = true;
                 r.sortingOrder = order; // zemin karelerinin üstünde, binaların altında
             }
             var b = CombinedBounds(renderers);
@@ -917,7 +935,7 @@ namespace KuryeTycoon
                 var s = p.t.localScale;
                 // Kutu: birim kutu boyu kadar uzatılır. Paket modeli: zaten doğru boyda, sadece yükselme oranı.
                 if (p.flat) continue;
-                p.t.localScale = new Vector3(s.x, s.y, Mathf.Max(0.001f, (p.prefab ? 1f : p.height) * g));
+                p.t.localScale = new Vector3(s.x, s.y, Mathf.Max(0.001f, (p.prefab ? p.heightMul : p.height) * g));
             }
         }
     }

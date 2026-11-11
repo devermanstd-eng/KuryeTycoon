@@ -167,8 +167,37 @@ namespace KuryeTycoon
             return false;
         }
 
-        public static bool WaterAt(int x, int y) => InRiverRows(y) && !RoadAt(x, y);
+        public static bool WaterAt(int x, int y) => InRiverRows(y) && !RoadAt(x, y) && RiverWaterAt(x, y);
         public static bool BridgeAt(int x, int y) => InRiverRows(y) && RoadAt(x, y);
+        /// <summary>Nehir şeridinde suyun olmadığı kıyı karesi (çimen ve ağaç: nehir dümdüz kanal gibi görünmesin).</summary>
+        public static bool RiverBankAt(int x, int y) => InRiverRows(y) && !RoadAt(x, y) && !RiverWaterAt(x, y);
+
+        /// <summary>
+        /// Nehir şeridinin (3 kare) hangi karelerinde su var: orta sıra hep su (tekneler ve köprüler için),
+        /// kenar sıralar kıvrımlı: nehir bir güneye bir kuzeye yaslanır, karşı kıyıda çimenli set kalır.
+        /// Batıdaki liman ve haritanın kenarları hep geniş (şehir dışındaki nehre bağlansın).
+        /// </summary>
+        static bool RiverWaterAt(int x, int y)
+        {
+            int mid = RiverBlockY * Block + Block / 2;
+            if (y == mid) return true;
+            if (x < 12 || x > Width - 3) return true;
+            float s = Mathf.Sin(x * 0.36f + 0.8f) + 0.35f * Mathf.Sin(x * 0.9f + 2.1f);
+            return y < mid ? s > -0.45f : s < 0.45f;
+        }
+
+        /// <summary>
+        /// Şehrin dışında nehrin orta çizgisi: şehir kenarından uzaklaştıkça kıvrılır (referanstaki gibi doğal akış).
+        /// Şehrin içinde düz (RiverY).
+        /// </summary>
+        public static float RiverCurveY(float x)
+        {
+            float d = x < -0.5f ? -0.5f - x : x > Width - 0.5f ? x - (Width - 0.5f) : 0f;
+            if (d <= 0f) return RiverY;
+            float amp = Mathf.Min(d * 0.45f, 6f);
+            float side = x < 0f ? 1f : -1f;
+            return RiverY + side * amp * Mathf.Sin(d * 0.16f);
+        }
         public static bool RailAt(int x, int y) => y == RailY && x >= RailFromX && x < Width && !RoadAt(x, y);
         /// <summary>Tren yolunun yolu kestiği hemzemin geçit.</summary>
         public static bool RailCrossingAt(int x, int y) => y == RailY && x >= RailFromX && RoadAt(x, y);
@@ -227,14 +256,16 @@ namespace KuryeTycoon
         public static readonly Color RoadColor = new Color(0.25f, 0.26f, 0.30f);
         public static readonly Color BridgeColor = new Color(0.42f, 0.40f, 0.38f);
         public static readonly Color WaterColor = new Color(0.22f, 0.50f, 0.72f);
-        public static readonly Color GrassColor = new Color(0.33f, 0.58f, 0.32f);
-        public static readonly Color PlazaColor = new Color(0.80f, 0.74f, 0.63f);
-        public static readonly Color SidewalkColor = new Color(0.60f, 0.60f, 0.58f);
-        public static readonly Color YardColor = new Color(0.47f, 0.47f, 0.48f);
+        public static readonly Color GrassColor = new Color(0.40f, 0.62f, 0.33f);
+        public static readonly Color RiverBankColor = new Color(0.44f, 0.64f, 0.35f);
+        public static readonly Color PlazaColor = new Color(0.82f, 0.76f, 0.64f);
+        // Kaldırım ve avlu: soğuk gri yerine sıcak, açık taş rengi (referanstaki gibi şehir griye boğulmasın)
+        public static readonly Color SidewalkColor = new Color(0.74f, 0.71f, 0.65f);
+        public static readonly Color YardColor = new Color(0.60f, 0.58f, 0.53f);
         public static readonly Color RailBedColor = new Color(0.42f, 0.36f, 0.32f);
         public static readonly Color MallColor = new Color(0.88f, 0.76f, 0.72f);
         public static readonly Color OtogarColor = new Color(0.64f, 0.66f, 0.70f);
-        public static readonly Color CountryColor = new Color(0.36f, 0.55f, 0.30f);   // şehir dışı çayır
+        public static readonly Color CountryColor = new Color(0.42f, 0.62f, 0.33f);   // şehir dışı çayır
 
         static readonly Color[] OldTownRoofs = { new Color(0.66f, 0.34f, 0.26f), new Color(0.56f, 0.40f, 0.30f), new Color(0.36f, 0.50f, 0.42f), new Color(0.70f, 0.46f, 0.32f) };
         static readonly Color[] HighRiseRoofs = { new Color(0.80f, 0.60f, 0.62f), new Color(0.72f, 0.56f, 0.64f), new Color(0.84f, 0.68f, 0.62f) };
@@ -275,6 +306,7 @@ namespace KuryeTycoon
             if (BridgeAt(x, y)) return BridgeColor;
             if (RoadAt(x, y)) return RoadColor;
             if (WaterAt(x, y)) return WaterColor;
+            if (RiverBankAt(x, y)) return RiverBankColor;
             if (RailAt(x, y)) return RailBedColor;
             switch (ZoneOf(x, y))
             {
@@ -309,7 +341,7 @@ namespace KuryeTycoon
         {
             if (RoadAt(x, y) || WaterAt(x, y) || RailAt(x, y)) return false;
             var z = ZoneOf(x, y);
-            if (z == Zone.Park || z == Zone.Plaza || z == Zone.Mall || z == Zone.Country) return false;
+            if (z == Zone.Park || z == Zone.Plaza || z == Zone.Mall || z == Zone.Country || z == Zone.River) return false;
             if (z == Zone.Warehouse) return true;          // sanayide iç kareler de depo
             return IsFrontage(x, y);
         }
@@ -345,8 +377,21 @@ namespace KuryeTycoon
                     if (InCity(cx, cy)) return true;
                 }
             // Nehir uzantısı
-            if (Mathf.Abs(p.y - RiverY) < 1.5f + margin && (p.x < 0f || p.x > Width - 1f)) return true;
+            if ((p.x < 0f || p.x > Width - 1f) && Mathf.Abs(p.y - RiverCurveY(p.x)) < 1.7f + margin) return true;
             // Kır yolları
+            foreach (var r in CountryRoads)
+            {
+                if (Mathf.Approximately(r.a.y, r.b.y))
+                {
+                    if (Mathf.Abs(p.y - r.a.y) < 0.4f + margin && p.x >= Mathf.Min(r.a.x, r.b.x) - margin && p.x <= Mathf.Max(r.a.x, r.b.x) + margin) return true;
+                }
+                else if (Mathf.Abs(p.x - r.a.x) < 0.4f + margin && p.y >= Mathf.Min(r.a.y, r.b.y) - margin && p.y <= Mathf.Max(r.a.y, r.b.y) + margin) return true;
+            }
+            return false;
+        }
+
+        static bool NearCountryRoad(Vector2 p, float margin)
+        {
             foreach (var r in CountryRoads)
             {
                 if (Mathf.Approximately(r.a.y, r.b.y))
@@ -409,6 +454,21 @@ namespace KuryeTycoon
                 if (NearCountryFeature(p, 0.6f)) continue;
                 CountryTrees.Add(new Vector3(p.x, p.y, 0.25f + (float)rng.NextDouble() * 0.3f));
             }
+            // Nehir kıyısında ağaç sıraları (kıvrımı belli etsin)
+            for (int side = -1; side <= 1; side += 2)
+                for (float d = 1.5f; d < ring; d += 0.9f)
+                {
+                    float x = side < 0 ? -0.5f - d : Width - 0.5f + d;
+                    float cy = RiverCurveY(x);
+                    for (int bank = -1; bank <= 1; bank += 2)
+                    {
+                        if (rng.NextDouble() > 0.6) continue;
+                        var p = new Vector2(x + (float)rng.NextDouble() * 0.5f, cy + bank * (2.1f + (float)rng.NextDouble() * 1.2f));
+                        if (NearCountryRoad(p, 0.5f)) continue;
+                        CountryTrees.Add(new Vector3(p.x, p.y, 0.3f + (float)rng.NextDouble() * 0.3f));
+                    }
+                }
+
             // Şehrin kenarı boyunca ağaç sırası (şehir kırdan yumuşakça ayrılsın)
             for (float x = -1.5f; x < Width + 1f; x += 1.1f)
             {
@@ -440,7 +500,7 @@ namespace KuryeTycoon
         void TryEdgeTree(Vector2 p, System.Random rng)
         {
             // Kenar ağaçları şehrin hemen dışında: sadece nehir ve kır yollarından uzak dur
-            if (Mathf.Abs(p.y - RiverY) < 2f) return;
+            if (Mathf.Abs(p.y - RiverCurveY(p.x)) < 2f) return;
             foreach (var r in CountryRoads)
             {
                 if (Mathf.Approximately(r.a.y, r.b.y) && Mathf.Abs(p.y - r.a.y) < 0.9f) return;
@@ -593,9 +653,24 @@ namespace KuryeTycoon
                  new Vector2(Width + pad * 2f, Height + pad * 2f), -10, false);
             foreach (var f in Fields)
                 Deco("Tarla", countryRoot, false, f.c, f.r.center, f.r.size, -9, false);
-            // Nehir şehrin iki yanından devam eder
-            Deco("Tisza (batı)", countryRoot, false, WaterColor, new Vector2(-0.5f - pad / 2f, RiverY), new Vector2(pad, 3f), -8, false);
-            Deco("Tisza (doğu)", countryRoot, false, WaterColor, new Vector2(Width - 0.5f + pad / 2f, RiverY), new Vector2(pad, 3f), -8, false);
+            // Nehir şehrin iki yanından kıvrılarak devam eder: eğriyi kısa, döndürülmüş parçalarla çiz
+            // (önce biraz geniş çimen kıyı, üstüne su)
+            const float step = 0.7f;
+            for (int side = -1; side <= 1; side += 2)
+                for (float d = 0f; d < pad; d += step)
+                {
+                    float xa = side < 0 ? -0.5f - d : Width - 0.5f + d;
+                    float xb = xa + side * step;
+                    var pa = new Vector2(xa, RiverCurveY(xa));
+                    var pb = new Vector2(xb, RiverCurveY(xb));
+                    var mid = (pa + pb) / 2f;
+                    float len = Vector2.Distance(pa, pb) + 0.25f;
+                    float ang = Mathf.Atan2(pb.y - pa.y, pb.x - pa.x) * Mathf.Rad2Deg;
+                    var bank = Deco("Tisza kıyısı", countryRoot, false, RiverBankColor, mid, new Vector2(len, 3.9f), -9, false);
+                    bank.transform.rotation = Quaternion.Euler(0f, 0f, ang);
+                    var water = Deco("Tisza", countryRoot, false, WaterColor, mid, new Vector2(len, 3f), -8, false);
+                    water.transform.rotation = Quaternion.Euler(0f, 0f, ang);
+                }
             foreach (var r in CountryRoads)
             {
                 var mid = (r.a + r.b) / 2f;
@@ -661,7 +736,7 @@ namespace KuryeTycoon
                         // Çatı sırtı: bir ton açık şerit, binalar düz kareden ayırt edilsin
                         Deco("Çatı sırtı", roofRoot, false, Color.Lerp(roof, Color.white, 0.18f), p + off, new Vector2(s * 0.92f, s * 0.18f), 1);
                     }
-                    else if (z == Zone.Park || z == Zone.Houses || z == Zone.Country || (!IsFrontage(x, y) && z != Zone.Plaza && z != Zone.Mall && z != Zone.OldTown))
+                    else if (z == Zone.Park || z == Zone.Houses || z == Zone.Country || z == Zone.River || (!IsFrontage(x, y) && z != Zone.Plaza && z != Zone.Mall && z != Zone.OldTown))
                     {
                         // Ağaçlar (park ve kır daha sık)
                         int n = z == Zone.Park || z == Zone.Country ? 3 + rng.Next(2) : 1 + rng.Next(2);
@@ -755,7 +830,11 @@ namespace KuryeTycoon
                 b.x += b.dir * b.speed * dt;
                 if (b.x > Width + 12f) b.x = -12f;
                 if (b.x < -12f) b.x = Width + 12f;
-                b.t.localPosition = new Vector3(b.x, b.y, 0f);
+                // Şehir dışında nehir kıvrılır: tekne eğriyi izler ve akış yönüne döner
+                float cy = RiverCurveY(b.x);
+                float slope = (RiverCurveY(b.x + 0.2f) - RiverCurveY(b.x - 0.2f)) / 0.4f;
+                b.t.localPosition = new Vector3(b.x, cy + (b.y - RiverY), 0f);
+                b.t.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan(slope) * Mathf.Rad2Deg);
                 b.t.localScale = new Vector3(b.dir, 1f, 1f);
             }
 

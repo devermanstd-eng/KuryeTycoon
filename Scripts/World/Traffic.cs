@@ -198,8 +198,9 @@ namespace KuryeTycoon
             if (renderers.Length == 0) { Destroy(inst); AttachBox(a, new Vector3(0.3f, 0.15f, 0.1f), CarColors[0]); return; }
             foreach (var r in renderers)
             {
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                r.receiveShadows = false;
+                // Araçlar ve yayalar güneşte küçük gölge düşürür (Gorsel3D)
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                r.receiveShadows = true;
                 r.sortingOrder = byHeight ? 19 : 4;   // yayalar kurye karakterleriyle aynı katmanda, araçlar binaların altında
             }
 
