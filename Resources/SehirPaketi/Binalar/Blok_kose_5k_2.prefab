@@ -74,10 +74,10 @@ MeshRenderer:
   - {fileID: 2100000, guid: 7b38e6d2a62bef447a329e3ca1fbdd26, type: 2}
   - {fileID: 2100000, guid: e7d975e21602f9246a6af0b7e52db0dc, type: 2}
   - {fileID: 2100000, guid: abe089cec34334240b1cc36518f57282, type: 2}
+  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
+  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: 1c2664539af3db740b9dd8d2f017df5d, type: 2}
   - {fileID: 2100000, guid: d9fb0278abea3fa48a5d2bec753c316f, type: 2}
-  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
-  - {fileID: 2100000, guid: c6fd1e9764ef78b4f9095b63489ff2c8, type: 2}
   - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
   - {fileID: 2100000, guid: 3b287089fe554d646a4f513eacea1f00, type: 2}
   - {fileID: 2100000, guid: 08d5f437520753c43be430e7f661fb1a, type: 2}
@@ -154,8 +154,8 @@ LODGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 4431527474024475683}
   serializedVersion: 3
-  m_LocalReferencePoint: {x: 0, y: 9.205, z: 0}
-  m_Size: 18.41
+  m_LocalReferencePoint: {x: 0, y: 9.17, z: 0}
+  m_Size: 18.48
   m_FadeMode: 0
   m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
@@ -244,10 +244,10 @@ MeshRenderer:
   - {fileID: 2100000, guid: 7b38e6d2a62bef447a329e3ca1fbdd26, type: 2}
   - {fileID: 2100000, guid: e7d975e21602f9246a6af0b7e52db0dc, type: 2}
   - {fileID: 2100000, guid: abe089cec34334240b1cc36518f57282, type: 2}
+  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
+  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: 1c2664539af3db740b9dd8d2f017df5d, type: 2}
   - {fileID: 2100000, guid: d9fb0278abea3fa48a5d2bec753c316f, type: 2}
-  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
-  - {fileID: 2100000, guid: c6fd1e9764ef78b4f9095b63489ff2c8, type: 2}
   - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
   - {fileID: 2100000, guid: 3b287089fe554d646a4f513eacea1f00, type: 2}
   - {fileID: 2100000, guid: f1cb14043e1059547b688ed068bcbe1a, type: 2}

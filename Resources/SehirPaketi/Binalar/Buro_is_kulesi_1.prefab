@@ -71,11 +71,12 @@ MeshRenderer:
   - {fileID: 2100000, guid: e7d975e21602f9246a6af0b7e52db0dc, type: 2}
   - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
   - {fileID: 2100000, guid: 7023d20c4600a1d448d2461eb34e13cb, type: 2}
+  - {fileID: 2100000, guid: 7b38e6d2a62bef447a329e3ca1fbdd26, type: 2}
+  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
+  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: 7d18d79ac193451499b03aa8d4b860c1, type: 2}
   - {fileID: 2100000, guid: 7e88b401383224f47b8711b3d674b4e7, type: 2}
   - {fileID: 2100000, guid: a9e888dbffcec0543906bf341919feae, type: 2}
-  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
-  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
   - {fileID: 2100000, guid: 904d171d3196fd745ba3afe9d0ea2b69, type: 2}
   - {fileID: 2100000, guid: 760b78a75188fa744bd5b091b1f63dc9, type: 2}
   - {fileID: 2100000, guid: 98cdd8ca5e008dd498c20476009b4a42, type: 2}
@@ -174,11 +175,12 @@ MeshRenderer:
   - {fileID: 2100000, guid: e7d975e21602f9246a6af0b7e52db0dc, type: 2}
   - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
   - {fileID: 2100000, guid: 7023d20c4600a1d448d2461eb34e13cb, type: 2}
+  - {fileID: 2100000, guid: 7b38e6d2a62bef447a329e3ca1fbdd26, type: 2}
+  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
+  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: 7d18d79ac193451499b03aa8d4b860c1, type: 2}
   - {fileID: 2100000, guid: 7e88b401383224f47b8711b3d674b4e7, type: 2}
   - {fileID: 2100000, guid: a9e888dbffcec0543906bf341919feae, type: 2}
-  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
-  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
   - {fileID: 2100000, guid: 904d171d3196fd745ba3afe9d0ea2b69, type: 2}
   - {fileID: 2100000, guid: 760b78a75188fa744bd5b091b1f63dc9, type: 2}
   - {fileID: 2100000, guid: 98cdd8ca5e008dd498c20476009b4a42, type: 2}
@@ -247,8 +249,8 @@ LODGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6523295051981221621}
   serializedVersion: 3
-  m_LocalReferencePoint: {x: 0, y: 27.476278, z: 0}
-  m_Size: 54.952557
+  m_LocalReferencePoint: {x: 0, y: 27.435278, z: 0}
+  m_Size: 55.034557
   m_FadeMode: 0
   m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0

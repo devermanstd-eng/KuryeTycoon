@@ -74,11 +74,12 @@ MeshRenderer:
   - {fileID: 2100000, guid: 7b38e6d2a62bef447a329e3ca1fbdd26, type: 2}
   - {fileID: 2100000, guid: e7d975e21602f9246a6af0b7e52db0dc, type: 2}
   - {fileID: 2100000, guid: f1cb14043e1059547b688ed068bcbe1a, type: 2}
+  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
+  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: 7d18d79ac193451499b03aa8d4b860c1, type: 2}
   - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
   - {fileID: 2100000, guid: b07451a3bff02e541bb3ea9674b6ce30, type: 2}
   - {fileID: 2100000, guid: 3b287089fe554d646a4f513eacea1f00, type: 2}
-  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: c812503070db6f54695dcc89af5d04df, type: 2}
   - {fileID: 2100000, guid: 1c2664539af3db740b9dd8d2f017df5d, type: 2}
   - {fileID: 2100000, guid: f2e5104696747054a84d1acdd3a9066c, type: 2}
@@ -184,11 +185,12 @@ MeshRenderer:
   - {fileID: 2100000, guid: 7b38e6d2a62bef447a329e3ca1fbdd26, type: 2}
   - {fileID: 2100000, guid: e7d975e21602f9246a6af0b7e52db0dc, type: 2}
   - {fileID: 2100000, guid: f1cb14043e1059547b688ed068bcbe1a, type: 2}
+  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
+  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: 7d18d79ac193451499b03aa8d4b860c1, type: 2}
   - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
   - {fileID: 2100000, guid: b07451a3bff02e541bb3ea9674b6ce30, type: 2}
   - {fileID: 2100000, guid: 3b287089fe554d646a4f513eacea1f00, type: 2}
-  - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: c812503070db6f54695dcc89af5d04df, type: 2}
   - {fileID: 2100000, guid: 1c2664539af3db740b9dd8d2f017df5d, type: 2}
   - {fileID: 2100000, guid: f2e5104696747054a84d1acdd3a9066c, type: 2}
@@ -262,8 +264,8 @@ LODGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7961874058412819516}
   serializedVersion: 3
-  m_LocalReferencePoint: {x: 0, y: 12.428, z: 0}
-  m_Size: 24.856
+  m_LocalReferencePoint: {x: 0, y: 12.393001, z: 0}
+  m_Size: 24.926
   m_FadeMode: 0
   m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0

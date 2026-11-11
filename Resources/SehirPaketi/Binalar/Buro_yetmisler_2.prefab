@@ -70,6 +70,8 @@ MeshRenderer:
   - {fileID: 2100000, guid: 69e2f8127d581904a85879e206ecb2d3, type: 2}
   - {fileID: 2100000, guid: e7d975e21602f9246a6af0b7e52db0dc, type: 2}
   - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
+  - {fileID: 2100000, guid: 7b38e6d2a62bef447a329e3ca1fbdd26, type: 2}
+  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
   - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: 0ac886712b2ddef448949a8f2153399b, type: 2}
   - {fileID: 2100000, guid: a9e888dbffcec0543906bf341919feae, type: 2}
@@ -144,8 +146,8 @@ LODGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3565097389886456730}
   serializedVersion: 3
-  m_LocalReferencePoint: {x: 0, y: 12.2625, z: 0}
-  m_Size: 24.525
+  m_LocalReferencePoint: {x: 0, y: 12.22, z: 0}
+  m_Size: 24.609999
   m_FadeMode: 0
   m_AnimateCrossFading: 0
   m_LastLODIsBillboard: 0
@@ -230,6 +232,8 @@ MeshRenderer:
   - {fileID: 2100000, guid: 69e2f8127d581904a85879e206ecb2d3, type: 2}
   - {fileID: 2100000, guid: e7d975e21602f9246a6af0b7e52db0dc, type: 2}
   - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
+  - {fileID: 2100000, guid: 7b38e6d2a62bef447a329e3ca1fbdd26, type: 2}
+  - {fileID: 2100000, guid: 8c639f80bc13dc746a5a6e6bdba9544d, type: 2}
   - {fileID: 2100000, guid: e980217f824eb1046892ff08cf3a0c1a, type: 2}
   - {fileID: 2100000, guid: 0ac886712b2ddef448949a8f2153399b, type: 2}
   - {fileID: 2100000, guid: a9e888dbffcec0543906bf341919feae, type: 2}
