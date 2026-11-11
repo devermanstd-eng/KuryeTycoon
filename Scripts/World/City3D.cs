@@ -220,6 +220,35 @@ namespace KuryeTycoon
         public static int TintVersion { get; private set; }
         /// <summary>Şehir kurulunca çağrılır (gece ışıkları pencere ve lambaları kaydeder).</summary>
         public static event System.Action Built;
+
+        float nightAmt;
+        /// <summary>Gece: kod kutusu binalar (AVM, otogar, merkez ofis, depo kutuları) ışıksız malzemeyle çizildiği için
+        /// geceleri bembeyaz parlıyordu; renkleri geceye göre koyulaşır (Gorsel3D çağırır).</summary>
+        public void SetNight(float n)
+        {
+            if (Mathf.Abs(n - nightAmt) < 0.03f && !(n == 0f && nightAmt > 0f)) return;
+            nightAmt = n;
+            var map = CityMap.I;
+            if (map == null) return;
+            foreach (var p in pieces)
+            {
+                if (p.prefab || p.mf == null) continue;
+                Paint(p.mf.mesh, BoxColor(p, map));
+            }
+        }
+
+        Color BoxColor(Piece p, CityMap map)
+        {
+            var c = p.hq ? CompanyProfile.Primary : p.baseColor;
+            if (p.shop != null && !p.shop.contracted) c = Color.Lerp(c, new Color(0.45f, 0.47f, 0.52f), 0.55f);
+            if (!map.IsUnlocked(p.tile)) c = CityMap.LockedTint(c);
+            if (nightAmt > 0f)
+            {
+                var m = CityMap.NightMul;
+                c = Color.Lerp(c, new Color(c.r * m.r, c.g * m.g, c.b * m.b, c.a), nightAmt * 0.85f);
+            }
+            return c;
+        }
         Material mat;
         float lastGrow = -1f;
         int lastUnlock = -1;
@@ -921,10 +950,7 @@ namespace KuryeTycoon
                     Tint(p.t.GetComponentsInChildren<Renderer>(true), !map.IsUnlocked(p.tile), p.varSeed);
                     continue;
                 }
-                var c = p.hq ? CompanyProfile.Primary : p.baseColor;
-                if (p.shop != null && !p.shop.contracted) c = Color.Lerp(c, new Color(0.45f, 0.47f, 0.52f), 0.55f);
-                if (!map.IsUnlocked(p.tile)) c = CityMap.LockedTint(c);
-                Paint(p.mf.mesh, c);
+                Paint(p.mf.mesh, BoxColor(p, map));
             }
             lastUnlock = map.UnlockLevel;
             lastContracts = ContractCount();

@@ -551,12 +551,12 @@ namespace KuryeTycoon
             RefreshColors();
         }
 
-        static readonly Color NightMul = new Color(0.20f, 0.25f, 0.42f);
+        public static readonly Color NightMul = new Color(0.36f, 0.34f, 0.50f);   // mor-lavanta gece (3D ortam ışığıyla aynı ton)
         Color Night(Color c)
         {
             if (nightAmt <= 0f) return c;
             var n = new Color(c.r * NightMul.r, c.g * NightMul.g, c.b * NightMul.b, c.a);
-            return Color.Lerp(c, n, nightAmt * 0.9f);
+            return Color.Lerp(c, n, nightAmt * 0.85f);
         }
 
         /// <summary>Islak zemin: yağmurda yollar ve zemin koyulaşıp maviye kayar (su birikintisi parlaklığı). 0 = kuru.</summary>

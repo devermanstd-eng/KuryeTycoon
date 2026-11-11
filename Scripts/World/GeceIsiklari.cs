@@ -47,17 +47,18 @@ namespace KuryeTycoon
         readonly List<int> nearest = new List<int>();
         MaterialPropertyBlock mpb;
         bool active;
+        int tintVersion = -1;
         float timer, lightTimer, collectTimer;
         Transform collectedRoot;
 
         const int MaxLights = 72;            // aynı anda gerçek ışık alan lamba sayısı (kameranın baktığı yer)
 
-        static readonly Color Warm = new Color(1.00f, 0.74f, 0.38f);
-        static readonly Color Warm2 = new Color(1.00f, 0.85f, 0.58f);
+        static readonly Color Warm = new Color(1.00f, 0.72f, 0.34f);
+        static readonly Color Warm2 = new Color(1.00f, 0.82f, 0.50f);
         static readonly Color Tv = new Color(0.45f, 0.62f, 1.00f);
         static readonly Color OfficeC = new Color(0.86f, 0.93f, 1.00f);
         static readonly Color ShopC = new Color(1.00f, 0.92f, 0.75f);
-        static readonly Color LampC = new Color(1.00f, 0.80f, 0.45f);
+        static readonly Color LampC = new Color(1.00f, 0.68f, 0.36f);   // turuncu sodyum lamba (referanstaki gibi)
 
         const int VWarm = 1, VWarm2 = 2, VTv0 = 3, VTv1 = 4, VTv2 = 5, VOffice = 6, VShop = 7, VSign = 8, VLamp = 9, VLampBroken = 10;
 
@@ -82,7 +83,7 @@ namespace KuryeTycoon
                 var l = go.AddComponent<Light>();
                 l.type = LightType.Point;
                 l.color = LampC;
-                l.range = 1.1f;            // ≈ 11 m: lambanın altı, kaldırım ve yolun yarısı
+                l.range = 0.75f;           // ≈ 7,5 m: lambanın altında küçük sıcak havuz (çimleri boyamasın)
                 l.intensity = 0f;
                 l.shadows = LightShadows.None;
                 l.renderMode = LightRenderMode.ForcePixel;
@@ -195,15 +196,16 @@ namespace KuryeTycoon
             switch (e.kind)
             {
                 case Kind.Window:
-                    e.onAt = -0.6f + R01(s, 1) * 2.4f;                 // gün batımına göre (saat)
+                    // Akşam şehir pırıl pırıl: pencerelerin çoğu gün batımı civarında yanar, gece ilerledikçe seyrelir
+                    e.onAt = -0.8f + R01(s, 1) * 1.6f;                 // gün batımına göre (saat)
                     float type = R01(s, 2);
-                    if (type < 0.15f) e.offAt = 99f;                   // bütün gece (gece kuşu, nöbetçi)
-                    else if (type < 0.30f) e.offAt = 21.0f + R01(s, 3) * 1.5f;   // erken yatan
-                    else e.offAt = 22.5f + R01(s, 4) * 3.0f;           // 22:30–01:30
+                    if (type < 0.20f) e.offAt = 99f;                   // bütün gece (gece kuşu, nöbetçi)
+                    else if (type < 0.32f) e.offAt = 21.5f + R01(s, 3) * 1.5f;   // erken yatan
+                    else e.offAt = 23.0f + R01(s, 4) * 3.0f;           // 23:00–02:00
                     e.morningOn = R01(s, 5) < 0.35f ? -1.6f + R01(s, 6) * 1.0f : 99f;   // gün doğumuna göre: erkenciler
                     e.morningOff = 0.2f + R01(s, 7) * 0.8f;
                     float v = R01(s, 8);
-                    e.variant = v < 0.12f ? VTv0 + (int)(s % 3u) : v < 0.55f ? VWarm : VWarm2;
+                    e.variant = v < 0.06f ? VTv0 + (int)(s % 3u) : v < 0.6f ? VWarm : VWarm2;
                     break;
                 case Kind.Office:
                     e.onAt = -1.0f + R01(s, 1) * 0.8f;
@@ -240,8 +242,8 @@ namespace KuryeTycoon
             Color c; float k;
             switch (variant)
             {
-                case VWarm: c = Warm; k = 1.6f; break;
-                case VWarm2: c = Warm2; k = 1.4f; break;
+                case VWarm: c = Warm; k = 2.2f; break;
+                case VWarm2: c = Warm2; k = 1.9f; break;
                 case VTv0: case VTv1: case VTv2: c = Tv; k = 1.0f; break;
                 case VOffice: c = OfficeC; k = 1.2f; break;
                 case VShop: c = ShopC; k = 2.0f; break;
@@ -250,7 +252,7 @@ namespace KuryeTycoon
                     var baseC = day.HasProperty("_BaseColor") ? day.GetColor("_BaseColor") : day.color;
                     c = Color.Lerp(baseC, Color.white, 0.2f); k = 1.8f; break;
                 }
-                default: c = LampC; k = 4.0f; break;
+                default: c = new Color(1f, 0.85f, 0.6f); k = 3.0f; break;
             }
             if (locked) k *= 0.4f;
             if (variant != VSign && m.HasProperty("_BaseColor"))
@@ -284,6 +286,8 @@ namespace KuryeTycoon
                 return;
             }
             active = true;
+            // Şehir yeniden boyandıysa (bölge açıldı, sözleşme değişti) camların rengi sıfırlandı: hepsini yeniden uygula
+            if (tintVersion != City3D.TintVersion) { tintVersion = City3D.TintVersion; foreach (var e in entries) e.state = -1; timer = 0f; }
 
             // Televizyonlar ve arızalı lambalar titrer (ortak malzemeler: tek tek boyamaya gerek yok)
             float t = Time.unscaledTime;
@@ -324,8 +328,18 @@ namespace KuryeTycoon
                 e.state = st;
                 var mats = e.r.sharedMaterials;
                 if (e.index >= mats.Length) continue;
-                mats[e.index] = lit ? Night(e.day, e.variant, e.locked) : e.day;
+                var nm = lit ? Night(e.day, e.variant, e.locked) : e.day;
+                mats[e.index] = nm;
                 e.r.sharedMaterials = mats;
+                // Bina renk çeşitliliği (City3D) camın rengini property block ile sabitliyor: yanınca sıcak renge geçir
+                if (e.kind != Kind.Lamp && e.kind != Kind.Sign && !e.locked)
+                {
+                    e.r.GetPropertyBlock(mpb, e.index);
+                    var bc = nm.HasProperty("_BaseColor") ? nm.GetColor("_BaseColor") : nm.color;
+                    mpb.SetColor("_BaseColor", bc);
+                    mpb.SetColor("_Color", bc);
+                    e.r.SetPropertyBlock(mpb, e.index);
+                }
             }
         }
 
@@ -381,7 +395,7 @@ namespace KuryeTycoon
                 if (l.gameObject.activeSelf != use) l.gameObject.SetActive(use);
                 if (!use) continue;
                 l.transform.position = lampPoints[nearest[i]];
-                l.intensity = 0.55f * k;   // lamba başı yerden ≈0,42 birim yukarıda: altı sıcak bir ışık havuzu
+                l.intensity = 0.32f * k;   // lamba başı yerden ≈0,42 birim yukarıda: altı sıcak bir ışık havuzu
             }
         }
 

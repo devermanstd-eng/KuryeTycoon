@@ -39,14 +39,15 @@ namespace KuryeTycoon
         static readonly Color SunDay = new Color(1.00f, 0.95f, 0.86f);
         static readonly Color SunDusk = new Color(1.00f, 0.62f, 0.36f);
         static readonly Color SunDawn = new Color(1.00f, 0.72f, 0.70f);
-        static readonly Color Moon = new Color(0.55f, 0.65f, 0.95f);
+        static readonly Color Moon = new Color(0.62f, 0.60f, 0.90f);   // lavanta ay ışığı (referanstaki mor akşam)
 
         static readonly Color SkyDay = new Color(0.66f, 0.72f, 0.80f);
         static readonly Color EquatorDay = new Color(0.64f, 0.60f, 0.54f);
         static readonly Color GroundDay = new Color(0.40f, 0.44f, 0.34f);
-        static readonly Color SkyNight = new Color(0.12f, 0.15f, 0.26f);
-        static readonly Color EquatorNight = new Color(0.10f, 0.11f, 0.18f);
-        static readonly Color GroundNight = new Color(0.06f, 0.07f, 0.10f);
+        // Gece ortam ışığı: zifiri lacivert değil, binaların seçildiği mor-lavanta alacakaranlık
+        static readonly Color SkyNight = new Color(0.30f, 0.29f, 0.44f);
+        static readonly Color EquatorNight = new Color(0.27f, 0.23f, 0.32f);
+        static readonly Color GroundNight = new Color(0.14f, 0.13f, 0.17f);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -192,7 +193,7 @@ namespace KuryeTycoon
             if (dawn > 0f) day = Color.Lerp(day, SunDawn, dawn * 0.8f);
             sun.color = Color.Lerp(day, Moon, Mathf.SmoothStep(0f, 1f, night));
             float dayI = Mathf.Lerp(1.25f, 0.95f, Mathf.Max(dusk, dawn));
-            sun.intensity = Mathf.Lerp(dayI, 0.28f, night);
+            sun.intensity = Mathf.Lerp(dayI, 0.35f, night);
             sun.shadowStrength = Mathf.Lerp(0.72f, 0.45f, night);
 
             // Bulutlu ve yağmurlu havada güneş zayıflar, gölgeler silikleşir
@@ -209,6 +210,10 @@ namespace KuryeTycoon
             RenderSettings.ambientSkyColor = Color.Lerp(SkyDay, SkyNight, night);
             RenderSettings.ambientEquatorColor = Color.Lerp(Color.Lerp(EquatorDay, new Color(0.75f, 0.55f, 0.45f), dusk * 0.6f), EquatorNight, night);
             RenderSettings.ambientGroundColor = Color.Lerp(GroundDay, GroundNight, night);
+            // Gece camlar gündüz gökyüzünü yansıtıp mavi-beyaz parlamasın
+            RenderSettings.reflectionIntensity = Mathf.Lerp(1f, 0.12f, night);
+            // Kod kutusu binalar (AVM, otogar, merkez) ışıktan etkilenmiyor: geceye kendileri uysun
+            if (City3D.I != null) City3D.I.SetNight(night);
         }
     }
 }
