@@ -47,7 +47,7 @@ namespace KuryeTycoon
         static GameObject[] ownHouses, ownTown, ownAll;
         static Dictionary<string, List<GameObject>> ownByKey;
         static readonly string[] OwnPrefixes = { "MustakilEv_", "SiraEv_", "OfisKulesi_", "Market_", "FastFood_", "Apartman_", "Dukkan_",
-                                                            "Konut_", "Buro_", "Sanayi_", "Kamu_", "Blok_" };
+                                                            "Konut_", "Buro_", "Sanayi_", "Kamu_", "Blok_", "Simge_" };
         /// <summary>Dükkan adı → kendi binasının ad parçası (FastFood_burger_queen_1_1 gibi).</summary>
         static readonly Dictionary<string, string> ShopModel = new Dictionary<string, string>
         {
@@ -77,6 +77,9 @@ namespace KuryeTycoon
         static Dictionary<string, GameObject> avenueJunction;
         // Bitişik blok binaları (Blender: MODEL = "blok"): kat sayısı → modeller
         static Dictionary<int, List<GameObject>> blokDuz, blokKose;
+        // Referans (CityRT) binaları: tek tek şehir binaları ve dükkânlar; simge yapılar bir bloğun tamamını kaplar
+        static GameObject[] ownRef, ownSimge;
+        Dictionary<Vector2Int, GameObject> simgeBlok;   // blok merkezi → o bloğa konan simge yapı
         public static int PackBuildingCount { get { LoadPack(); return packBuildings.Length; } }
         public static int PackTreeCount { get { LoadPack(); return packTrees.Length; } }
         public static bool PackRoadsOk { get { LoadPack(); return roadStraight != null && roadCross != null; } }
@@ -95,12 +98,15 @@ namespace KuryeTycoon
             var town = new List<GameObject>();
             ownByKey = new Dictionary<string, List<GameObject>>();
             var industry = new List<GameObject>(); var farm = new List<GameObject>(); var kamu = new List<GameObject>();
+            var refs = new List<GameObject>(); var simge = new List<GameObject>();
             blokDuz = new Dictionary<int, List<GameObject>>();
             blokKose = new Dictionary<int, List<GameObject>>();
             foreach (var p in loaded)
             {
                 if (!IsOwn(p.name)) { all.Add(p); continue; }
                 own.Add(p);
+                if (p.name.StartsWith("Simge_")) { simge.Add(p); continue; }
+                if (p.name.StartsWith("Konut_ref") || p.name.StartsWith("Dukkan_cadde") || p.name.StartsWith("Buro_klinker")) refs.Add(p);
                 if (p.name.StartsWith("Blok_"))
                 {
                     // Blok_duz_5k_2 → tür "duz", 5 kat
@@ -116,7 +122,7 @@ namespace KuryeTycoon
                 if (p.name.StartsWith("MustakilEv_") || p.name.StartsWith("Konut_villa") || p.name.StartsWith("Konut_konak") ||
                     p.name.StartsWith("Konut_sale")) houses.Add(p);
                 else if (p.name.StartsWith("Apartman_") || p.name.StartsWith("SiraEv_") || p.name.StartsWith("OfisKulesi_") ||
-                         p.name.StartsWith("Dukkan_genel") || p.name.StartsWith("Konut_") || p.name.StartsWith("Buro_")) town.Add(p);
+                         p.name.StartsWith("Dukkan_genel") || p.name.StartsWith("Dukkan_cadde") || p.name.StartsWith("Konut_") || p.name.StartsWith("Buro_")) town.Add(p);
                 else if (p.name.StartsWith("Sanayi_fabrika") || p.name.StartsWith("Sanayi_depo") || p.name.StartsWith("Sanayi_garaj")) industry.Add(p);
                 else if (p.name.StartsWith("Sanayi_")) farm.Add(p);
                 else if (p.name.StartsWith("Kamu_")) kamu.Add(p);
@@ -133,12 +139,14 @@ namespace KuryeTycoon
             ownIndustry = industry.ToArray();
             ownFarm = farm.ToArray();
             ownKamu = kamu.ToArray();
+            ownRef = refs.ToArray();
+            ownSimge = simge.ToArray();
             // Bölgeye göre bina havuzları: eski şehirde sıra evler, kule bloklarda ofis kuleleri, çarşıda karışık
             var old = new List<GameObject>(); var high = new List<GameObject>(); var mixed = new List<GameObject>();
             foreach (var p in town)
             {
                 bool apt = p.name.StartsWith("Apartman_"), sira = p.name.StartsWith("SiraEv_"), ofis = p.name.StartsWith("OfisKulesi_");
-                bool dukkan = p.name.StartsWith("Dukkan_genel");
+                bool dukkan = p.name.StartsWith("Dukkan_genel") || p.name.StartsWith("Dukkan_cadde");
                 bool eskiKonut = p.name.StartsWith("Konut_sira_evler") || p.name.StartsWith("Konut_tugla_apt") || p.name.StartsWith("Konut_avlulu");
                 bool yeniBlok = p.name.StartsWith("Konut_balkonlu") || p.name.StartsWith("Buro_");
                 if (sira || apt || dukkan || eskiKonut || p.name.StartsWith("Buro_saat")) old.Add(p);
@@ -336,6 +344,7 @@ namespace KuryeTycoon
             foreach (var s in map.Shops) shopTiles[s.tile] = s;
 
             var rng = new System.Random(12345);
+            SimgeBloklariniSec(map, shopTiles);
             for (int x = 0; x < CityMap.Width; x++)
             {
                 for (int y = 0; y < CityMap.Height; y++)
@@ -387,6 +396,23 @@ namespace KuryeTycoon
                             AddPrefab(countryExtras[rng.Next(countryExtras.Length)], tile, 0f, (float)rng.NextDouble() * 360f, null,
                                       new Vector2((float)rng.NextDouble() * 0.5f - 0.25f, (float)rng.NextDouble() * 0.5f - 0.25f), 0.06f, false);
                         continue;
+                    }
+
+                    if (simgeBlok != null && simgeBlok.Count > 0 && !frontageRoadOnly(map, x, y))
+                    {
+                        var bm = CityMap.BlockCenterOf(x, y);
+                        if (simgeBlok.TryGetValue(bm, out var sp))
+                        {
+                            if (tile == bm)
+                            {
+                                // Simge yapı bloğun dokuz karesini kaplar (opera, gar, pazar …), önü güneydeki yola bakar
+                                AddPrefab(sp, tile, 2.95f, 180f, null, default, 0f, true, true);
+                                float hh = heightByTile.TryGetValue(tile, out var h0) ? h0 : 1f;
+                                for (int dx = -1; dx <= 1; dx++)
+                                    for (int dy = -1; dy <= 1; dy++) heightByTile[new Vector2Int(x + dx, y + dy)] = hh;
+                            }
+                            continue;
+                        }
                     }
 
                     if (tile == map.HQTile)
@@ -532,6 +558,13 @@ namespace KuryeTycoon
                                 kamuKalan.RemoveAt(ki);
                                 AddPrefab(kb, tile, OwnFootprint(kb, 0.97f), face, null, default, 0f, true, true);
                             }
+                            else if (own && ownRef != null && ownRef.Length > 0 && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise) &&
+                                     rng.NextDouble() < 0.28)
+                            {
+                                // Referans binaları (Haussmann, Altbau, pasajlı bina, pub, fırın, benzinlik …)
+                                var rb = ownRef[rng.Next(ownRef.Length)];
+                                AddPrefab(rb, tile, OwnFootprint(rb, 0.97f), face, null, default, 0f, true, true);
+                            }
                             else if (BlokVar && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise) &&
                                      !(zone == Zone.HighRise && floors >= 10 && rng.NextDouble() < 0.5) && rng.NextDouble() < 0.88)
                             {
@@ -590,6 +623,50 @@ namespace KuryeTycoon
             const float RefWidth = 14f;   // metre: tipik müstakil ev arsası
             float w = Width(prefab);
             return Mathf.Min(0.99f, baseFoot * Mathf.Clamp(w / RefWidth, 0.95f, 1.3f));
+        }
+
+        /// <summary>Karenin bloğu bir simge yapıya ayrıldıysa (yollar hariç) true. Yol karesi değilse çağrılır.</summary>
+        static bool frontageRoadOnly(CityMap map, int x, int y) => map.IsRoad(x, y);
+
+        /// <summary>
+        /// Simge yapılar için bloklar seç: eski şehir, çarşı ve kule bloklarından içinde yol, su, dükkân, merkez ofis ya da
+        /// meydan çeşmesi olmayan 3×3 bloklar. Her simge bir kez, bloklar birbirine bitişik değil.
+        /// </summary>
+        void SimgeBloklariniSec(CityMap map, Dictionary<Vector2Int, Shop> shopTiles)
+        {
+            simgeBlok = new Dictionary<Vector2Int, GameObject>();
+            if (!UsePack || ownSimge == null || ownSimge.Length == 0) return;
+            var aday = new List<Vector2Int>();
+            for (int bx = 0; bx * CityMap.Block + 3 < CityMap.Width; bx++)
+                for (int by = 0; by * CityMap.Block + 3 < CityMap.Height; by++)
+                {
+                    var c = new Vector2Int(bx * CityMap.Block + 2, by * CityMap.Block + 2);
+                    var z = CityMap.ZoneOf(c);
+                    if (z != Zone.OldTown && z != Zone.Mixed && z != Zone.HighRise && z != Zone.Campus) continue;
+                    bool ok = true;
+                    for (int dx = -1; dx <= 1 && ok; dx++)
+                        for (int dy = -1; dy <= 1 && ok; dy++)
+                        {
+                            var t = new Vector2Int(c.x + dx, c.y + dy);
+                            if (map.IsRoad(t.x, t.y) || CityMap.WaterAt(t.x, t.y) || CityMap.RailAt(t.x, t.y) || shopTiles.ContainsKey(t) ||
+                                t == map.HQTile || t == CityMap.PlazaCenter || CityMap.ZoneOf(t) != z) ok = false;
+                        }
+                    if (ok) aday.Add(c);
+                }
+            var rng = new System.Random(4242);
+            var simgeler = new List<GameObject>(ownSimge);
+            while (simgeler.Count > 0 && aday.Count > 0)
+            {
+                var c = aday[rng.Next(aday.Count)];
+                aday.Remove(c);
+                bool komsu = false;
+                foreach (var k in simgeBlok.Keys)
+                    if (Mathf.Abs(k.x - c.x) <= CityMap.Block && Mathf.Abs(k.y - c.y) <= CityMap.Block) komsu = true;
+                if (komsu) continue;
+                int i = rng.Next(simgeler.Count);
+                simgeBlok[c] = simgeler[i];
+                simgeler.RemoveAt(i);
+            }
         }
 
         static bool BlokVar => UsePack && blokDuz != null && blokDuz.Count > 0;

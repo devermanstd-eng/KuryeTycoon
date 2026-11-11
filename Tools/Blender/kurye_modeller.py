@@ -5264,6 +5264,1813 @@ def bloklar():
     return sonuc
 
 
+# ------------------------------------------------------------------ REFERANS (CityRT Avrupa kataloğu) — tek tek binalar
+# Konut_ref_*: şehir binaları · Konut_villa_* / Konut_konak_*: bahçeli evler · Dukkan_cadde_*: cadde dükkânları
+# Buro_klinker: büro · Sanayi_*: atölye ve fabrikalar · Simge_*: bir bloğu kaplayan simge yapılar (opera, gar, pazar …)
+# Park_cim_* / Avlu_*: park ve avlu kareleri (10 m)
+
+def araba_renk(rnd):
+    return M("Araba", rnd.choice(ARABA_RENK))
+
+
+def tonoz_y(g, x0, x1, y0, y1, z, h, mat, n=10, kabuk=True):
+    """Y boyunca beşik tonoz (yarım silindir): x0..x1 açıklık, z üzengi, h yükseklik."""
+    xc, R = (x0 + x1) / 2, (x1 - x0) / 2
+    arc = [(xc + R * math.cos(math.pi * i / n), z + h * math.sin(math.pi * i / n)) for i in range(n + 1)]
+    m = n + 1
+    pts = [(x, y0, zz) for x, zz in arc] + [(x, y1, zz) for x, zz in arc]
+    yz = [list(range(m)), list(range(m, 2 * m))] + [[i, i + 1, m + i + 1, m + i] for i in range(n)] + [[0, n, m + n, m]]
+    dis_bukey(g, pts, yz, mat, kabuk)
+
+
+def tonoz_kaburga(g, x0, x1, y, z, h, mat, n=10, t=0.12):
+    xc, R = (x0 + x1) / 2, (x1 - x0) / 2 + 0.06
+    arc = [(xc + R * math.cos(math.pi * i / n), z + (h + 0.06) * math.sin(math.pi * i / n)) for i in range(n + 1)]
+    for (a, b), (c, d) in zip(arc, arc[1:]):
+        cubuk(g, (a, y, b), (c, y, d), t, mat, kabuk=False)
+
+
+def kemer(g, fc, u, z0, w, h, o0, o1, mat, n=8):
+    """Kemerli açıklık (kapı, pencere): dikdörtgen + yarım daire tepe."""
+    R = w / 2
+    zc = z0 + h - R
+    pts = [(u - R, z0), (u + R, z0)] + [(u + R * math.cos(math.pi * i / n), zc + R * math.sin(math.pi * i / n)) for i in range(n + 1)]
+    cephe_poligon(g, fc, pts, o0, o1, mat)
+
+
+def yuvarlak_pencere(g, fc, u, zc, R, o, mat, n=12):
+    cephe_poligon(g, fc, [(u + R * math.cos(2 * math.pi * i / n), zc + R * math.sin(2 * math.pi * i / n)) for i in range(n)], o, o + 0.04, mat)
+
+
+def mansart(g, x0, x1, y0, y1, zt, r, rnd, n=None, oval=False, arka=True, h=2.6, ic=0.9, yan_egik=True, korn=True):
+    """Bağımsız bina için çinko / kiremit mansart: dört yan eğik, önde (ve arkada) çatı pencereleri. Dönüş: üst kotu."""
+    if korn:
+        kutu(g, x0 - 0.2, x1 + 0.2, y0 - 0.2, y1 + 0.2, zt - 0.25, zt, r["suslu"], atla=("zn",))
+    xi0, xi1 = (x0 + ic, x1 - ic) if yan_egik else (x0, x1)
+    pts = [(x0, y0, zt), (x1, y0, zt), (x1, y1, zt), (x0, y1, zt),
+           (xi0, y0 + ic, zt + h), (xi1, y0 + ic, zt + h), (xi1, y1 - ic, zt + h), (xi0, y1 - ic, zt + h)]
+    dis_bukey(g, pts, [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]], r["cati"])
+    kutu(g, xi0, xi1, y0 + ic, y1 - ic, zt + h, zt + h + 0.1, r["cati_koyu"])
+    W = x1 - x0
+    n = n or max(2, int((W - 1.0) / 2.5))
+    for yuz in ((0, 1) if arka else (0,)):
+        for i in range(n):
+            cx = x0 + 0.5 + (W - 1.0) * (i + 0.5) / n
+            if yuz == 0:
+                yd = y0 + 0.1
+                kutu(g, cx - 0.45, cx + 0.45, yd, yd + 1.1, zt + 0.1, zt + 1.5, r["suslu"], atla=("zn",))
+                fc = Cephe((cx - 0.45, yd, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+            else:
+                yd = y1 - 0.1
+                kutu(g, cx - 0.45, cx + 0.45, yd - 1.1, yd, zt + 0.1, zt + 1.5, r["suslu"], atla=("zn",))
+                fc = Cephe((cx + 0.45, yd, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+            if oval:
+                yuvarlak_pencere(g, fc, 0.45, zt + 0.85, 0.3, 0.005, cam_grubu(r["cam"], cx, zt + yuz))
+                cephe_poligon(g, fc, [(0.45 + 0.52 * math.cos(math.pi * k / 8), zt + 1.45 + 0.4 * math.sin(math.pi * k / 8)) for k in range(9)],
+                              -1.1, 0.04, r["cati"])
+            else:
+                cdortgen(g, fc, 0.15, 0.75, 0.01, zt + 0.35, zt + 1.3, cam_grubu(r["cam"], cx, zt + yuz))
+                cprizma(g, fc, [(-0.05, zt + 1.5), (0.95, zt + 1.5), (0.45, zt + 1.95)], -1.1, 0.04, r["cati"])
+    return zt + h
+
+
+def baca_sira(g, x, y, z, r, n=4, h=1.5, yon="y"):
+    """Paris bacası: sıva kütle, üstünde sıra sıra kiremit baca kapakları."""
+    L = 0.45 * n
+    if yon == "y":
+        kutu(g, x - 0.35, x + 0.35, y - L / 2, y + L / 2, z, z + h, r["duvar"])
+        kutu(g, x - 0.42, x + 0.42, y - L / 2 - 0.07, y + L / 2 + 0.07, z + h, z + h + 0.1, r["suslu"])
+        pts = [(x, y - L / 2 + 0.225 + i * 0.45) for i in range(n)]
+    else:
+        kutu(g, x - L / 2, x + L / 2, y - 0.35, y + 0.35, z, z + h, r["duvar"])
+        kutu(g, x - L / 2 - 0.07, x + L / 2 + 0.07, y - 0.42, y + 0.42, z + h, z + h + 0.1, r["suslu"])
+        pts = [(x - L / 2 + 0.225 + i * 0.45, y) for i in range(n)]
+    for px, py in pts:
+        silindir(g, px, py, z + h + 0.1, 0.38, 0.11, 6, r["saksi"])
+
+
+def paris(g, rnd, r, x0, x1, y0, y1, kat, stil="haussmann", yuzler=("on",), dukkan=True, tema="genel", sagir=()):
+    """Bağımsız Avrupa binası gövdesi: seçilen cephelerde blok cephesi (dükkân, pencere, balkon, korniş), diğerlerinde pencere."""
+    z0 = EV_ZEMIN
+    H0 = z0 + BLOK_ZEMIN
+    Ht = H0 + (kat - 1) * BLOK_KAT
+    kutu(g, x0, x1, y0, y1, z0, Ht, r["duvar"], atla=("zn",))
+    on, sag, sol, arka = cepheler(x0, x1, y0, y1)
+    g.tema = tema
+    for ad, fc, L in (("on", on, x1 - x0), ("sag", sag, y1 - y0), ("sol", sol, y1 - y0), ("arka", arka, x1 - x0)):
+        if ad in yuzler:
+            blok_cephe(g, fc, L, kat, r, rnd, dukkan if ad == "on" else (dukkan and rnd.random() < 0.5), stil, z0)
+        elif ad not in sagir:
+            pencereler(g, fc, L, H0, kat - 1, BLOK_KAT, r, w=0.8, h=1.4, aralik=2.4, sade=True)
+    return Ht, on, sag, sol, arka
+
+
+def sagir_duvar(g, x, y0, y1, z1, r, t=0.3):
+    """Komşu binaya yaslanan yüksek sağır yan duvar (çatının üstüne taşan)."""
+    kutu(g, x - t / 2, x + t / 2, y0, y1, EV_ZEMIN, z1, r["duvar"])
+    kutu(g, x - t / 2 - 0.05, x + t / 2 + 0.05, y0, y1, z1, z1 + 0.12, r["suslu"])
+
+
+def ferforje_cit(g, x0, x1, y, r, z0=None, kapi=None, aralik=2.4):
+    """Taş dikmeli ferforje bahçe çiti; kapi = (a, b) aralığı boş kalır (ya da kapı kanadı)."""
+    z0 = EV_ZEMIN if z0 is None else z0
+    n = max(1, int((x1 - x0) / aralik))
+    xs = [x0 + (x1 - x0) * i / n for i in range(n + 1)]
+    for x in xs:
+        kutu(g, x - 0.2, x + 0.2, y - 0.2, y + 0.2, z0, z0 + 1.35, r["suslu"])
+        kutu(g, x - 0.25, x + 0.25, y - 0.25, y + 0.25, z0 + 1.35, z0 + 1.45, r["suslu"])
+    for a, b in zip(xs, xs[1:]):
+        if kapi and a >= kapi[0] - 0.01 and b <= kapi[1] + 0.01:
+            continue
+        kutu(g, a + 0.2, b - 0.2, y - 0.12, y + 0.12, z0, z0 + 0.35, r["suslu"])
+        cubuk(g, (a + 0.2, y, z0 + 1.05), (b - 0.2, y, z0 + 1.05), 0.05, r["demir"], kabuk=False)
+        k = max(1, int((b - a) / 0.22)) if DETAY else 2
+        for i in range(1, k):
+            xx = a + 0.2 + (b - a - 0.4) * i / k
+            cubuk(g, (xx, y, z0 + 0.35), (xx, y, z0 + 1.15), 0.03, r["demir"], kabuk=False)
+
+
+def cicek_kutusu(g, fc, u, z, r, rnd, w=0.9):
+    ckutu(g, fc, u - w / 2, u + w / 2, 0, 0.25, z - 0.22, z, r["saksi"] if rnd.random() < 0.5 else r["ahsap"])
+    if DETAY:
+        for k in range(3):
+            p = fc.P(u - w / 2 + 0.15 + k * (w - 0.3) / 2, 0.15, z + 0.08)
+            top(g, p, 0.13, 0.13, 0.11, rnd.choice(r["cicek"] + [r["cali"]]))
+
+
+def lamba_klasik(g, x, y, r, h=3.6, z0=None):
+    """Dökme demir klasik sokak feneri (koyu yeşil)."""
+    z0 = EV_ZEMIN if z0 is None else z0
+    yesil = M("Fener", "#2f4a3a")
+    silindir(g, x, y, z0, 0.35, 0.12, 6, yesil)
+    silindir(g, x, y, z0 + 0.35, h - 0.35, 0.05, 6, yesil, kabuk=False)
+    kutu(g, x - 0.18, x + 0.18, y - 0.18, y + 0.18, z0 + h, z0 + h + 0.45, r["isik"])
+    koni(g, x, y, z0 + h + 0.45, 0.3, 0.26, 4, yesil)
+
+
+def masa_semsiye(g, x, y, r, renk, z0=None):
+    z0 = EV_ZEMIN if z0 is None else z0
+    silindir(g, x, y, z0, 0.75, 0.32, 8, r["beyaz"])
+    silindir(g, x, y, z0, 2.0, 0.03, 6, r["metal"], kabuk=False)
+    koni(g, x, y, z0 + 1.95, 0.45, 0.95, 8, renk)
+    for a in (0.0, math.pi):
+        silindir(g, x + 0.6 * math.cos(a), y + 0.6 * math.sin(a), z0, 0.45, 0.17, 6, r["koyu"])
+
+
+def fici(g, x, y, r, z0=None):
+    z0 = EV_ZEMIN if z0 is None else z0
+    silindir(g, x, y, z0, 0.9, 0.32, 8, M("Fici", "#6b4a2f"))
+    silindir(g, x, y, z0 + 0.42, 0.06, 0.34, 8, r["koyu"], kabuk=False)
+
+
+def bisiklet(g, x, y, aci, r, rnd, z0=None):
+    z0 = EV_ZEMIN if z0 is None else z0
+    d = (math.cos(aci), math.sin(aci), 0.0)
+    renk = M("Bisiklet", rnd.choice(["#d9473a", "#3f73e6", "#2f8f5a", "#f2c14a", "#2b2d31"]))
+    for s in (-0.5, 0.5):
+        c = (x + d[0] * s, y + d[1] * s, z0 + 0.34)
+        top(g, c, 0.34 if abs(d[0]) > 0.5 else 0.04, 0.34 if abs(d[1]) > 0.5 else 0.04, 0.34, r["koyu"])
+    cubuk(g, (x - d[0] * 0.5, y - d[1] * 0.5, z0 + 0.34), (x, y, z0 + 0.8), 0.04, renk, kabuk=False)
+    cubuk(g, (x, y, z0 + 0.8), (x + d[0] * 0.5, y + d[1] * 0.5, z0 + 0.34), 0.04, renk, kabuk=False)
+
+
+def kamyon(g, x, y, aci, r, renk, z0=None):
+    z0 = EV_ZEMIN if z0 is None else z0
+    u = (math.cos(aci), math.sin(aci), 0.0)
+    v = (-u[1], u[0], 0.0)
+    yonlu_kutu(g, add((x, y, z0 + 1.6), mul(u, -0.9)), mul(u, 2.4), mul(v, 1.1), (0, 0, 1.25), renk)
+    yonlu_kutu(g, add((x, y, z0 + 1.2), mul(u, 2.3)), mul(u, 0.8), mul(v, 1.05), (0, 0, 0.85), r["beyaz"])
+    cdortgen(g, Cephe(add((x, y, 0.0), add(mul(u, 3.12), mul(v, 0.9))), mul(v, -1.0), u), 0.2, 1.6, 0.0, z0 + 1.35, z0 + 1.9, r["cam"])
+    for su in (-2.2, 0.4, 2.3):
+        for sv in (-1.12, 1.12):
+            c = add(add((x, y, z0 + 0.4), mul(u, su)), mul(v, sv))
+            yonlu_kutu(g, c, mul(u, 0.4), mul(v, 0.1), (0, 0, 0.4), r["koyu"])
+
+
+def serit_tente_tezgah(g, x, y, w, d, r, renk, z0=None, aci=0.0):
+    """Pazar tezgâhı: ahşap tezgâh, dört direk, çizgili tente, üstünde ürünler."""
+    z0 = EV_ZEMIN if z0 is None else z0
+    kutu(g, x - w / 2, x + w / 2, y - d / 2, y + d / 2, z0, z0 + 0.85, r["ahsap"])
+    for k in range(int(w / 0.35)):
+        top(g, (x - w / 2 + 0.2 + k * 0.35, y, z0 + 0.95), 0.14, 0.14, 0.12, r["urun"][k % len(r["urun"])])
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            cubuk(g, (x + sx * w / 2, y + sy * d / 2, z0), (x + sx * w / 2, y + sy * d / 2, z0 + 2.2), 0.06, r["koyu"], kabuk=False)
+    n = 6
+    for i in range(n):
+        a, b = x - w / 2 - 0.1 + (w + 0.2) * i / n, x - w / 2 - 0.1 + (w + 0.2) * (i + 1) / n
+        yonlu_kutu(g, ((a + b) / 2, y, z0 + 2.3), ((b - a) / 2, 0, 0), (0, d / 2 + 0.25, -0.18), (0, 0, 0.03),
+                   renk if i % 2 == 0 else r["beyaz"])
+
+
+# ---------------- KONUT
+
+def ref_kira(rnd):
+    """Kira apartmanı: bosajlı taş zemin, 2. ve 5. katta boydan boya balkonlar, çinko mansart, köşede rotunda."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    PW, PD = 18.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    x0, x1, y0, y1 = 1.4, 17.0, 1.4, 12.8
+    Ht, on, sag, sol, arka = paris(g, rnd, r, x0, x1, y0, y1, 6, "haussmann", ("on", "sol", "sag"), dukkan=False)
+    # Köşe rotundası (sol ön köşe): yuvarlak cumba, kubbe ve fener
+    cx, cy, R = x0 + 0.4, y0 + 0.4, 1.5
+    silindir(g, cx, cy, EV_ZEMIN, Ht + 0.6, R, 12, r["duvar"])
+    for f in range(5):
+        z = EV_ZEMIN + BLOK_ZEMIN + f * BLOK_KAT
+        silindir(g, cx, cy, z - 0.12, 0.16, R + 0.08, 12, r["suslu"])
+        for a in (math.pi * 1.05, math.pi * 1.25, math.pi * 1.45):
+            d = (math.cos(a), math.sin(a), 0.0)
+            t = (-d[1], d[0], 0.0)
+            yonlu_kutu(g, (cx + d[0] * (R + 0.01), cy + d[1] * (R + 0.01), z + 1.3), mul(t, 0.36), mul(d, 0.02), (0, 0, 0.85),
+                       cam_grubu(r["cam"], a, z), kabuk=False)
+    top(g, (cx, cy, Ht + 0.6), R + 0.1, R + 0.1, 1.9, M("Kubbe", BLOK_CINKO))
+    silindir(g, cx, cy, Ht + 2.3, 0.6, 0.3, 8, r["suslu"])
+    # Ana giriş: ortada camlı saçak
+    L = x1 - x0
+    cam_kapi(g, on, L / 2, EV_ZEMIN, r, w=1.8, h=2.8, kasa=r["koyu"], sacak=False)
+    ckutu(g, on, L / 2 - 1.6, L / 2 + 1.6, 0, 1.5, EV_ZEMIN + 3.0, EV_ZEMIN + 3.12, M("SacakCam", "#9fb8c6"))
+    ckutu(g, on, L / 2 - 1.65, L / 2 + 1.65, 0, 1.55, EV_ZEMIN + 3.12, EV_ZEMIN + 3.2, r["koyu"])
+    mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=6, oval=rnd.random() < 0.5)
+    baca_sira(g, x0 + 4.0, (y0 + y1) / 2, Ht + 2.6, r, 4)
+    baca_sira(g, x1 - 3.0, (y0 + y1) / 2, Ht + 2.6, r, 3)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_kubbeli(rnd):
+    """Kubbeli apartman: dar, yüksek Haussmann; oval çatı pencereleri, iki yanda çatıyı aşan sağır duvarlar, çatı ışıklıkları."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    PW, PD = 11.0, 12.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    x0, x1, y0, y1 = 0.5, 10.5, 1.4, 11.4
+    Ht, on, *_ = paris(g, rnd, r, x0, x1, y0, y1, 7, "haussmann", ("on",), dukkan=True,
+                       tema=rnd.choice(["firin", "kafe", "genel", "kitap"]), sagir=("sag", "sol"))
+    zt = mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=4, oval=True, yan_egik=False)
+    for x in (x0, x1):
+        sagir_duvar(g, x, y0 + 0.4, y1 - 0.4, zt + 0.2, r)
+        baca_sira(g, x, (y0 + y1) / 2, zt + 0.32, r, 5)
+    for k in range(2):
+        kutu(g, 3.5 + k * 3, 4.3 + k * 3, y0 + 4.0, y0 + 5.0, zt, zt + 0.2, M("Isiklik", "#bcd3df"))
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_faubourg(rnd):
+    """Faubourg evi: kiremit mansart, sıra sıra lukarn, yeşil panjurlar ve pencere önü çiçekleri, yanda camlı ek."""
+    g = Govde()
+    r = blok_renk(rnd, "klasik")
+    r["cati"], r["cati_koyu"] = M("Cati", "#b0583a"), M("CatiKoyu", koyu_ton("#b0583a"))
+    r["duvar"] = M("Duvar", rnd.choice(["#e8c98f", "#ecd3a4", "#e6c08a"]))
+    PW, PD = 16.0, 12.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    x0, x1, y0, y1 = 2.2, 15.6, 1.4, 11.0
+    kat = 6
+    Ht, on, sag, sol, arka = paris(g, rnd, r, x0, x1, y0, y1, kat, "klasik", ("on",), dukkan=rnd.random() < 0.5, sagir=("sol",))
+    L = x1 - x0
+    n = max(2, int(round(L / 2.45)))
+    pj = M("Panjur", rnd.choice(["#5f8a6a", "#4f7a5a", "#6f9a7a"]))
+    for f in range(kat - 1):
+        z = EV_ZEMIN + BLOK_ZEMIN + f * BLOK_KAT
+        for i in range(n):
+            u = L * (i + 0.5) / n
+            for s in (-1, 1):
+                ckutu(g, on, u + s * 0.62 - 0.17, u + s * 0.62 + 0.17, 0, 0.05, z + 0.8, z + 2.35, pj)
+            cicek_kutusu(g, on, u, z + 0.72, r, rnd)
+    mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=7, yan_egik=False)
+    sagir_duvar(g, x0, y0, y1, Ht + 2.0, r)
+    baca_sira(g, x0 + 0.2, (y0 + y1) / 2, Ht + 2.1, r, 3)
+    baca_sira(g, x1 - 0.6, (y0 + y1) / 2, Ht + 2.6, r, 3)
+    cam = M("CamEk", "#bcd3df")
+    kutu(g, 0.3, x0, 5.5, 10.0, EV_ZEMIN, EV_ZEMIN + 3.2, cam)                    # camlı ek (veranda)
+    kutu(g, 0.2, x0, 5.4, 10.1, EV_ZEMIN + 3.2, EV_ZEMIN + 3.35, r["koyu"])
+    for yy in (5.5, 7.75, 10.0):
+        kutu(g, 0.25, 0.35, yy - 0.05, yy + 0.05, EV_ZEMIN, EV_ZEMIN + 3.2, r["koyu"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_altbau(rnd):
+    """Avlulu kira apartmanı (Altbau): pastel sıva, kemerli geçit, geçidin üstünde cumba, altta dükkânlar, yan duvarda reklam."""
+    g = Govde()
+    r = blok_renk(rnd, "siva")
+    r["duvar"] = M("Duvar", rnd.choice(["#ecc9c4", "#e9d2b4", "#d6e0cc", "#e2cfe0"]))
+    r["cati"], r["cati_koyu"] = M("Cati", "#8a4a32"), M("CatiKoyu", koyu_ton("#8a4a32"))
+    PW, PD = 18.0, 12.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    x0, x1, y0, y1 = 1.0, 17.0, 1.4, 11.0
+    kat = 6
+    Ht, on, sag, sol, arka = paris(g, rnd, r, x0, x1, y0, y1, kat, "siva", ("on",), dukkan=True, tema=rnd.choice(["kafe", "genel", "cicek"]),
+                                   sagir=("sol",))
+    L = x1 - x0
+    # Kemerli geçit (ortada) ve üstünde üç katlık cumba
+    kemer(g, on, L / 2, EV_ZEMIN, 2.8, 3.3, 0.0, 0.2, r["suslu"])
+    kemer(g, on, L / 2, EV_ZEMIN, 2.3, 3.0, 0.2, 0.22, M("Gecit", "#3a3633"))
+    z1 = EV_ZEMIN + BLOK_ZEMIN
+    ckutu(g, on, L / 2 - 1.8, L / 2 + 1.8, 0, 0.9, z1 + 0.1, z1 + 3 * BLOK_KAT, r["duvar"])
+    cfc = Cephe(on.P(L / 2 - 1.8, 0.9, 0.0), on.u, on.out)
+    for f in range(3):
+        for cu in (0.9, 2.7):
+            pencere(g, cfc, cu, z1 + f * BLOK_KAT + 0.8, 0.8, 1.45, r, sade=True)
+    ckutu(g, on, L / 2 - 1.9, L / 2 + 1.9, 0, 1.0, z1 + 3 * BLOK_KAT, z1 + 3 * BLOK_KAT + 0.15, r["suslu"])
+    korkuluk(g, on, L / 2 - 1.8, L / 2 + 1.8, 0.95, z1 + 3 * BLOK_KAT + 0.15, r)
+    zt = mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=7, yan_egik=False)
+    sagir_duvar(g, x0, y0, y1, zt - 0.3, r)
+    ckutu(g, sol, 2.0, 7.5, 0, 0.03, Ht - 6.0, Ht - 2.0, M("Reklam", "#efe2c4"))           # eski boya reklam
+    ckutu(g, sol, 2.4, 7.1, 0.03, 0.05, Ht - 3.4, Ht - 2.8, r["kirmizi"])
+    for x in (x0 + 2.5, x1 - 2.5, (x0 + x1) / 2):
+        ev_baca(g, x, y0 + 4.5, zt - 1.0, zt + 0.8, r)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_pasajli(rnd):
+    """Pasajlı bina: üç kat yüksekliğinde kemer, ardında dökme demir ve camdan tonozlu pasaj, kemerin üstünde saat."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    PW, PD = 16.0, 16.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    x0, x1, y0, y1 = 0.8, 15.2, 1.4, 8.6
+    kat = 6
+    Ht, on, *_ = paris(g, rnd, r, x0, x1, y0, y1, kat, "haussmann", ("on",), dukkan=True, tema="genel", sagir=("sag", "sol"))
+    L = x1 - x0
+    z0 = EV_ZEMIN
+    kemer(g, on, L / 2, z0, 3.8, 9.2, 0.0, 0.25, r["suslu"])
+    kemer(g, on, L / 2, z0, 3.2, 8.8, 0.25, 0.27, M("PasajCam", "#a9c9de"))
+    for k in range(1, 4):
+        ckutu(g, on, L / 2 - 1.6, L / 2 + 1.6, 0.25, 0.3, z0 + k * 2.2, z0 + k * 2.2 + 0.08, r["koyu"])
+    ckutu(g, on, L / 2 - 0.06, L / 2 + 0.06, 0.25, 0.3, z0, z0 + 8.6, r["koyu"])
+    saat(g, on, L / 2, z0 + 9.9, 0.55, r, o=0.1)
+    # Pasaj: iki yanda alçak kanatlar, ortada cam tonoz
+    for a, b in ((x0, 6.4), (9.6, x1)):
+        kutu(g, a, b, y1, 15.4, z0, z0 + 10.0, r["duvar"], atla=("zn",))
+        kutu(g, a - 0.1, b + 0.1, y1, 15.5, z0 + 10.0, z0 + 10.35, r["suslu"])
+    kutu(g, 6.4, 9.6, y1, 15.4, z0, z0 + 0.1, r["tas_acik"])
+    tonoz_y(g, 6.4, 9.6, y1, 15.4, z0 + 7.0, 1.6, M("Vitrin_a9c9de", "#a9c9de"), kabuk=False)
+    for yy in range(int(y1) + 1, 16, 1):
+        tonoz_kaburga(g, 6.4, 9.6, yy, z0 + 7.0, 1.6, r["koyu"], t=0.08)
+    mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=6, yan_egik=False)
+    cephe_poligon(g, on, [(L / 2 - 2.2, Ht), (L / 2 + 2.2, Ht), (L / 2, Ht + 1.4)], 0.0, 0.4, r["suslu"])
+    for x in (x0, x1):
+        sagir_duvar(g, x, y0, y1, Ht + 2.4, r)
+        baca_sira(g, x, (y0 + y1) / 2, Ht + 2.5, r, 4)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_eski_sehir(rnd):
+    """Eski şehir evleri: iki bitişik mansartlı ev, oval çatı pencereleri, ön bahçede alçak çit, çöp kutuları ve basamaklar."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    PW, PD = 16.0, 13.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["cim"])
+    levha(g, 0, PW, 0, 1.4, EV_ZEMIN, EV_ZEMIN + 0.12, r["kaldirim"])
+    for i, (a, b) in enumerate(((0.6, 8.0), (8.0, 15.4))):
+        ri = dict(r)
+        if i == 1:
+            ri["duvar"] = M("Duvar", rnd.choice(["#efe5d2", "#e2d3b8"]))
+        Ht, on, sag, sol, arka = paris(g, rnd, ri, a, b, 3.8, 11.6, 3, "klasik", ("on",), dukkan=False)
+        mansart(g, a, b, 3.8, 11.6, Ht, ri, rnd, n=2, oval=True, ic=1.0)
+        baca_sira(g, (a + b) / 2, 7.7, Ht + 2.6, ri, 3, yon="x")
+        L = b - a
+        for k in range(3):                                                     # giriş basamakları
+            ckutu(g, on, L / 2 - 0.9, L / 2 + 0.9, 0, 0.9 - k * 0.3, EV_ZEMIN + k * 0.15, EV_ZEMIN + (k + 1) * 0.15, r["beton"])
+        cit_hat(g, a + 0.2, 1.7, a + L / 2 - 1.1, 1.7, EV_ZEMIN, M("Cit", "#7a3b2e"), h=0.8, aralik=0.5)
+        cit_hat(g, a + L / 2 + 1.1, 1.7, b - 0.2, 1.7, EV_ZEMIN, M("Cit", "#7a3b2e"), h=0.8, aralik=0.5)
+        for k in range(2):
+            cop_kutusu(g, a + 0.8 + k * 0.6, 3.0, r, M("CopMavi", "#3f5f9a") if k else r["koyu"])
+        for k in range(3):
+            top(g, (b - 1.0 - k * 0.6, 2.6, EV_ZEMIN + 0.3), 0.25, 0.25, 0.22, rnd.choice(r["cicek"] + [r["cali"]]))
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_mews(rnd):
+    """Ahır sokağı (mews): beş pastel iki katlı ev, araba kapıları (bazıları camlanmış), çiçek kutuları, taş döşeli avlu, babalar."""
+    g = Govde()
+    r = ar(rnd, "#e8e4dc", cati="#4f5560")
+    PW, PD = 20.0, 10.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("ArnavutTasi", "#c9a88a"))
+    renkler = ["#dfe6ea", "#efe2c8", "#f0cfc6", "#e8e2d4", "#dfe8d8", "#e6d8ea"]
+    rnd.shuffle(renkler)
+    z0, H = EV_ZEMIN, EV_ZEMIN + 5.8
+    for i in range(5):
+        a, b = 0.2 + i * 3.92, 0.2 + (i + 1) * 3.92
+        duv = M("Duvar", renkler[i])
+        kutu(g, a, b, 3.0, 9.6, z0, H, duv, atla=("zn",))
+        fc = Cephe((a, 3.0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+        kapi_renk = M("Kapi", rnd.choice(["#2f4a6a", "#2f5a3a", "#3a3d42", "#6a2f3a"]))
+        if rnd.random() < 0.35:
+            cdortgen(g, fc, 0.4, 2.8, 0.02, z0 + 0.1, z0 + 2.4, cam_grubu(r["cam"], a, z0))
+            ckutu(g, fc, 0.3, 2.9, 0, 0.06, z0 + 2.4, z0 + 2.55, r["koyu"])
+        else:
+            ckutu(g, fc, 0.4, 2.8, 0, 0.06, z0, z0 + 2.45, kapi_renk)
+            for k in range(1, 4):
+                ckutu(g, fc, 0.4 + k * 0.6, 0.4 + k * 0.6 + 0.04, 0.06, 0.08, z0, z0 + 2.45, r["koyu"])
+        ckutu(g, fc, 3.0, 3.75, 0, 0.05, z0, z0 + 2.2, kapi_renk)
+        lamba_klasik(g, a + 3.45, 2.75, r, h=0.2, z0=z0 + 2.35) if DETAY else None
+        for u in (1.0, 2.8):
+            pencere(g, fc, u, z0 + 3.4, 0.85, 1.3, {**r, "duvar": duv}, sade=True)
+            cicek_kutusu(g, fc, u, z0 + 3.32, r, rnd)
+        if rnd.random() < 0.4 and DETAY:                                       # mor salkım
+            for k in range(5):
+                top(g, fc.P(0.6 + k * 0.6, 0.15, z0 + 2.9), 0.25, 0.12, 0.22, M("Salkim", "#9a7ac8"))
+        for k in range(2):
+            silindir(g, a + 0.5 + k * 2.9, 2.6, z0, 0.5, 0.25, 8, r["saksi"])
+            top(g, (a + 0.5 + k * 2.9, 2.6, z0 + 1.0), 0.32, 0.32, 0.45, r["cali"])
+    besik_cati(g, "x", 0.2, 19.8, 3.0, 9.6, H, r, sacak=0.25, yan_sacak=0.15)
+    for i in range(5):
+        cx = 0.2 + i * 3.92 + 1.96
+        kutu(g, cx - 0.5, cx + 0.5, 3.6, 4.6, H, H + 1.3, r["suslu"])
+        cdortgen(g, Cephe((cx - 0.5, 3.6, 0.0), (1, 0, 0), (0, -1, 0)), 0.2, 0.8, 0.01, H + 0.2, H + 1.0, r["cam"])
+        kutu(g, cx - 0.62, cx + 0.62, 3.5, 4.7, H + 1.3, H + 1.42, r["cati_koyu"])
+        if i % 2 == 0:
+            ev_baca(g, cx + 1.2, 6.3, H + 1.0, H + 3.3, r)
+    for k in range(8):                                                         # babalar
+        silindir(g, 1.0 + k * 2.5, 0.6, z0, 0.75, 0.12, 6, r["koyu"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_kosk(rnd):
+    """Ön avlulu köşk: dar, yüksek taş ev; simetrik cephe, alınlıkta yuvarlak pencere, mansart, uzun bacalar, ferforje çit."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    PW, PD = 12.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["cim"])
+    x0, x1, y0, y1 = 1.6, 10.4, 4.5, 12.5
+    Ht, on, sag, sol, arka = paris(g, rnd, r, x0, x1, y0, y1, 4, "haussmann", ("on",), dukkan=False)
+    L = x1 - x0
+    ckutu(g, on, L / 2 - 1.6, L / 2 + 1.6, 0, 0.35, EV_ZEMIN, Ht, r["duvar"])           # öne çıkan orta aks
+    cephe_poligon(g, on, [(L / 2 - 1.9, Ht), (L / 2 + 1.9, Ht), (L / 2, Ht + 1.6)], 0.0, 0.45, r["suslu"])
+    yuvarlak_pencere(g, on, L / 2, Ht + 0.6, 0.38, 0.46, r["cam"])
+    zt = mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=2)
+    for x in (x0 + 0.8, x1 - 0.8):
+        baca_sira(g, x, (y0 + y1) / 2, zt - 0.6, r, 3, h=2.4)
+    levha(g, L / 2 + x0 - 0.8, L / 2 + x0 + 0.8, 0, y0, EV_ZEMIN, EV_ZEMIN + 0.05, r["tas_acik"])
+    ferforje_cit(g, 0.3, PW - 0.3, 0.6, r, kapi=(4.0, 8.0), aralik=2.85)
+    for x in (2.0, 10.0):
+        top(g, (x, 2.0, EV_ZEMIN + 0.6), 0.55, 0.55, 0.55, r["cali"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_artnouveau(rnd):
+    """Art Nouveau villa: turuncu tuğla, sivri külahlı yuvarlak kule, alınlıkta yuvarlak pencere, mor şerit, balkon, ferforje çit."""
+    g = Govde()
+    r = ar(rnd, rnd.choice(["#d98a5a", "#cf7a4e", "#e09a6a"]), cati="#5a6470")
+    r["suslu"] = M("Suslu", "#f2e6cf")
+    PW, PD = 12.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["cim"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 3.0, 10.6, 4.4, 11.8
+    KY, kat = 3.1, 3
+    Ht = z0 + 0.6 + kat * KY
+    kutu(g, x0, x1, y0, y1, z0, Ht, r["duvar"], atla=("zn",))
+    on, sag, sol, arka = cepheler(x0, x1, y0, y1)
+    L = x1 - x0
+    ckutu(g, on, -0.05, L + 0.05, 0, 0.08, z0, z0 + 0.6, r["suslu"])
+    pencereler(g, on, L, z0 + 0.6, kat, KY, r, w=1.1, h=1.7, aralik=2.6, atla=((2.0, 4.2),))
+    ckutu(g, on, 2.6, 3.7, 0, 0.06, z0 + 0.6, z0 + 2.9, r["kapi"])
+    ckutu(g, on, 2.3, 4.0, 0, 1.0, z0 + 3.0, z0 + 3.12, M("Sacak", "#7f9fb8"))
+    for k in range(3):
+        ckutu(g, on, 2.4, 3.9, 0, 1.0 - k * 0.3, z0 + 0.15 * k, z0 + 0.15 * (k + 1), r["suslu"])
+    ckutu(g, on, 4.6, 7.0, 0, 0.9, z0 + 0.6 + KY - 0.1, z0 + 0.6 + KY + 0.05, r["beton"])   # balkon
+    korkuluk(g, on, 4.6, 7.0, 0.9, z0 + 0.6 + KY + 0.05, r)
+    for fc, LL in ((sag, y1 - y0), (sol, y1 - y0), (arka, L)):
+        pencereler(g, fc, LL, z0 + 0.6, kat, KY, r, w=0.9, h=1.5, aralik=2.4, sade=True)
+    mor = M("Serit", rnd.choice(["#b89ad0", "#9ab8d0", "#d0b89a"]))
+    for fc, LL in ((on, L), (sag, y1 - y0), (sol, y1 - y0)):
+        ckutu(g, fc, 0, LL, 0, 0.05, Ht - 0.9, Ht - 0.5, mor)
+    zr = kalca_cati(g, x0, x1, y0, y1, Ht, 0.8, r["cati"], sacak=0.35)
+    # Önde alınlık ve yuvarlak pencere
+    cephe_poligon(g, on, [(L * 0.45, Ht), (L - 0.2, Ht), ((L * 0.45 + L - 0.2) / 2, Ht + 2.6)], -0.2, 0.25, r["duvar"])
+    yuvarlak_pencere(g, on, (L * 0.45 + L - 0.2) / 2, Ht + 0.9, 0.42, 0.26, r["cam"])
+    # Köşe kulesi
+    cx, cy, R = x0 + 0.2, y0 + 0.3, 1.5
+    silindir(g, cx, cy, z0, Ht + 0.8, R, 12, r["duvar"])
+    silindir(g, cx, cy, Ht - 0.9, 0.4, R + 0.03, 12, mor)
+    for f in range(kat):
+        z = z0 + 0.6 + f * KY
+        for a in (math.pi * 1.1, math.pi * 1.4):
+            d = (math.cos(a), math.sin(a), 0.0)
+            t = (-d[1], d[0], 0.0)
+            yonlu_kutu(g, (cx + d[0] * (R + 0.01), cy + d[1] * (R + 0.01), z + 1.4), mul(t, 0.32), mul(d, 0.02), (0, 0, 0.75),
+                       cam_grubu(r["cam"], a, z), kabuk=False)
+    koni(g, cx, cy, Ht + 0.8, 3.6, R + 0.25, 12, r["cati"])
+    cubuk(g, (cx, cy, Ht + 4.3), (cx, cy, Ht + 5.2), 0.06, r["sari"])
+    ev_baca(g, x1 - 1.5, y1 - 2.5, zr - 1.5, zr + 0.9, r)
+    ferforje_cit(g, 0.3, PW - 0.3, 0.6, r, kapi=(4.53, 7.47), aralik=2.94)
+    calilik(g, 7.5, 11.3, 1.4, r, rnd)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_konak_bahceli(rnd):
+    """Bahçeli konak: ahşap karkas üst kat, dik kiremit çatı ve çatı pencereleri, garaj kanadı, çitli bahçe ve patika."""
+    g = Govde()
+    r = ar(rnd, rnd.choice(["#f2e6cf", "#efe2c8"]), cati=rnd.choice(["#c0573a", "#b04a32"]))
+    PW, PD = 16.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["cim"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 6.0, 14.5, 4.5, 11.5
+    zb = z0 + 0.4
+    Ht = zb + 2 * 2.8
+    tugla = M("Tugla", "#b8634a")
+    kutu(g, x0, x1, y0, y1, z0, zb + 2.8, tugla, atla=("zn",))
+    kutu(g, x0 - 0.05, x1 + 0.05, y0 - 0.05, y1 + 0.05, zb + 2.8, Ht, r["duvar"], atla=("zn",))
+    on, sag, sol, arka = cepheler(x0, x1, y0, y1)
+    W, D = x1 - x0, y1 - y0
+    for fc, L in ((on, W), (sag, D), (sol, D), (arka, W)):
+        n = int(L / 1.4)
+        for k in range(n + 1):
+            u = k * L / n
+            ckutu(g, fc, u - 0.08, u + 0.08, -0.05, 0.03, zb + 2.8, Ht, r["ahsap_koyu"])
+        for zz in (zb + 2.8, Ht - 0.14):
+            ckutu(g, fc, -0.05, L + 0.05, -0.05, 0.035, zz, zz + 0.14, r["ahsap_koyu"])
+    for u in (1.4, W - 1.4):
+        ev_pencere(g, on, u, zb + 0.6, 0.95, 1.4, r, rnd, panjur=True, saksi=True)
+        ev_pencere(g, on, u, zb + 3.4, 0.85, 1.2, r, rnd, panjur=False, saksi=True)
+    ckutu(g, on, W / 2 - 0.55, W / 2 + 0.55, 0, 0.06, zb, zb + 2.3, r["kapi"])
+    ckutu(g, on, W / 2 - 0.9, W / 2 + 0.9, 0, 0.9, zb + 2.4, zb + 2.52, r["ahsap_koyu"])
+    zr = besik_cati(g, "x", x0, x1, y0, y1, Ht, r, sacak=0.5)
+    for cx in (x0 + 2.3, x1 - 2.3):
+        kutu(g, cx - 0.55, cx + 0.55, y0 + 0.2, y0 + 1.6, Ht - 0.1, Ht + 1.3, r["duvar"], atla=("zn",))
+        dfc = Cephe((cx - 0.55, y0 + 0.2, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+        cdortgen(g, dfc, 0.2, 0.9, 0.01, Ht + 0.1, Ht + 1.05, r["cam"])
+        cprizma(g, dfc, [(-0.1, Ht + 1.3), (1.2, Ht + 1.3), (0.55, Ht + 1.9)], -1.5, 0.15, r["cati"])
+    ev_baca(g, x0 + 1.2, (y0 + y1) / 2 + 0.6, zr - 1.2, zr + 0.8, r)
+    # Garaj kanadı
+    gx0, gx1 = 1.2, x0
+    kutu(g, gx0, gx1, y0 + 1.0, y1, z0, z0 + 3.0, r["duvar"], atla=("zn",))
+    gfc = Cephe((gx0, y0 + 1.0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    ckutu(g, gfc, 0.6, 4.2, 0, 0.06, z0, z0 + 2.4, M("GarajKapi", "#7a4a2e"))
+    for k in range(1, 5):
+        ckutu(g, gfc, 0.6, 4.2, 0.06, 0.08, z0 + k * 0.48, z0 + k * 0.48 + 0.04, r["ahsap_koyu"])
+    besik_cati(g, "y", y0 + 1.0, y1, gx0, gx1, z0 + 3.0, r, sacak=0.3, yan_sacak=0.2)
+    levha(g, 1.8, 4.6, 0, y0 + 1.0, z0, z0 + 0.04, M("Patika", "#cfc6b6"))
+    levha(g, x0 + W / 2 - 0.6, x0 + W / 2 + 0.6, 0, y0, z0, z0 + 0.04, M("Patika", "#cfc6b6"))
+    cit = M("Cit", "#5a3b26")
+    cit_hat(g, 4.9, 0.4, 9.6, 0.4, z0, cit, h=0.8, aralik=0.6)
+    cit_hat(g, 11.2, 0.4, 15.6, 0.4, z0, cit, h=0.8, aralik=0.6)
+    cit_hat(g, 15.6, 0.4, 15.6, 13.6, z0, cit, h=0.8, aralik=0.6)
+    bank(g, 12.5, 2.6, math.pi / 2, r, z0)
+    kutu(g, 2.0, 3.0, y1 + 0.3, y1 + 1.0, z0, z0 + 1.0, M("Cop", "#4f7a4a"))
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+# ---------------- CADDE DÜKKÂNLARI
+
+def ref_firin(rnd, bistro=False):
+    """Ekmek fırını / teraslı bistro: dar Haussmann, zeminde koyu kırmızı dükkân cephesi; bistroda yeşil tente ve teras."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    r["ana"] = M("Marka", "#8e1f2a" if not bistro else "#7a1f24")
+    PW, PD = 9.0, 12.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    x0, x1, y0, y1 = 0.5, 8.5, 2.4 if bistro else 1.4, 11.4
+    Ht, on, *_ = paris(g, rnd, r, x0, x1, y0, y1, 5, "haussmann", ("on",), dukkan=True,
+                       tema="kafe" if bistro else "firin", sagir=("sag", "sol"))
+    L = x1 - x0
+    z0 = EV_ZEMIN
+    tabela(g, on, L / 2, z0 + BLOK_ZEMIN - 0.55, L - 1.0, 0.45, 0.18, r, "BRASSERIE" if bistro else "BOULANGERIE",
+           renk=r["ana"], yazi_renk=M("Yazi", "#f2d58a"), oran=0.6)
+    zt = mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=3, oval=not bistro, yan_egik=False)
+    for x in (x0, x1):
+        sagir_duvar(g, x, y0 + 0.3, y1 - 0.3, zt + 0.3, r)
+        baca_sira(g, x, (y0 + y1) / 2, zt + 0.42, r, 5)
+    if bistro:
+        yesil = M("Tente", "#2f6a46")
+        tente(g, on, -0.2, L + 0.2, z0 + 2.9, 2.2, r, yesil)
+        for x in (1.8, 4.5, 7.0):
+            silindir(g, x, 1.2, z0, 0.75, 0.3, 8, r["beyaz"])
+            for a in (0.0, math.pi):
+                silindir(g, x + 0.55 * math.cos(a), 1.2, z0, 0.45, 0.16, 6, r["koyu"])
+        for x in (0.6, 8.4):
+            kutu(g, x - 0.35, x + 0.35, 0.6, 1.3, z0, z0 + 0.6, r["ana"])
+            top(g, (x, 0.95, z0 + 1.0), 0.35, 0.35, 0.45, r["cali"])
+    else:
+        bank(g, 6.8, 0.8, -math.pi / 2, r, z0)
+        bisiklet(g, 1.5, 0.7, 0.0, r, rnd)
+        silindir(g, 0.8, 1.0, z0, 0.4, 0.22, 6, r["saksi"])
+        top(g, (0.8, 1.0, z0 + 0.65), 0.28, 0.28, 0.3, r["cali"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_pub(rnd):
+    """Köşedeki pub: tuğla bina, koyu lacivert/yeşil zemin kat ve altın yazı, köşede pahlı giriş ve dökme demir sütun,
+    asma tabela, çiçek kutuları, fıçılar, şemsiyeli masalar."""
+    g = Govde()
+    r = ar(rnd, rnd.choice(["#9c4a35", "#a8503a"]), cati="#5a4a44", ana=rnd.choice(["#1f2f4a", "#1f4a36"]))
+    r["suslu"] = M("Suslu", "#efe6d4")
+    PW, PD = 14.0, 12.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 1.6, 13.0, 1.6, 10.8
+    H0, KY = z0 + 3.6, 3.0
+    Ht = H0 + 2 * KY
+    pah = 1.4
+    pts = [(x0 + pah, y0), (x1, y0), (x1, y1), (x0, y1), (x0, y0 + pah)]
+    prizma_poligon(g, pts, z0, Ht, r["duvar"])
+    prizma_poligon(g, [(x - 0.12 if x <= x0 + 0.01 else x + 0.12 if x >= x1 - 0.01 else x,
+                        y - 0.12 if y <= y0 + 0.01 else y + 0.12 if y >= y1 - 0.01 else y) for x, y in pts], z0, H0, r["ana"])
+    on = Cephe((x0 + pah, y0 - 0.12, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    sol = Cephe((x0 - 0.12, y1, 0.0), (0.0, -1.0, 0.0), (-1.0, 0.0, 0.0))
+    altin = M("Yazi", "#e8c35a")
+    for fc, L in ((on, x1 - x0 - pah), (sol, y1 - y0 - pah)):
+        ckutu(g, fc, 0.2, L - 0.2, 0, 0.05, H0 - 0.75, H0 - 0.35, altin)
+        vitrin(g, fc, 0.6, L - 0.6, z0 + 0.5, H0 - 1.0, r, aralik=1.3, kasa=r["ana"])
+    p0 = (x0 - 0.12, y0 + pah)
+    p1 = (x0 + pah, y0 - 0.12)
+    # Pahlı köşedeki camlı kapı (çapraz yüz): cepheye düz bir dörtgen
+    d = norm((p1[0] - p0[0], p1[1] - p0[1], 0.0))
+    o = (-0.03, -0.03)
+    a = (p0[0] + d[0] * 0.3 + o[0], p0[1] + d[1] * 0.3 + o[1])
+    b = (p1[0] - d[0] * 0.3 + o[0], p1[1] - d[1] * 0.3 + o[1])
+    bv = len(g.v)
+    g.v += [(a[0], a[1], z0), (b[0], b[1], z0), (b[0], b[1], z0 + 2.4), (a[0], a[1], z0 + 2.4)]
+    idx = [bv, bv + 1, bv + 2, bv + 3]
+    if dot(newell([g.v[i] for i in idx]), (-1.0, -1.0, 0.0)) < 0:
+        idx = idx[::-1]
+    HEX["Vitrin_8a9aa8"] = "#8a9aa8"
+    g.yuz(idx, "Vitrin_8a9aa8", kabuk=False)
+    silindir(g, x0 + 0.1, y0 + 0.1, z0, H0 - z0, 0.12, 8, r["ana"])
+    on2 = Cephe((x0 + pah, y0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    sol2 = Cephe((x0, y1, 0.0), (0.0, -1.0, 0.0), (-1.0, 0.0, 0.0))
+    for fc, L in ((on2, x1 - x0 - pah), (sol2, y1 - y0 - pah)):
+        n = max(2, int(L / 2.3))
+        for f in range(2):
+            for i in range(n):
+                u = L * (i + 0.5) / n
+                pencere(g, fc, u, H0 + f * KY + 0.7, 0.95, 1.5, r)
+                cicek_kutusu(g, fc, u, H0 + f * KY + 0.62, r, rnd)
+        for zz in range(int((Ht - H0) / 0.5)):                                 # köşe taşları
+            ckutu(g, fc, L - 0.5 if zz % 2 else L - 0.35, L, 0, 0.04, H0 + zz * 0.5, H0 + zz * 0.5 + 0.4, r["suslu"])
+    zr = kalca_cati(g, x0, x1, y0, y1, Ht, 0.55, r["cati"], sacak=0.3)
+    for x in (x0 + 2.0, x1 - 1.6):
+        ev_baca(g, x, y1 - 1.6, zr - 1.4, zr + 0.6, r)
+    cikma_tabela(g, sol2, y1 - y0 - pah - 0.8, H0 + 0.3, r, r["ana"])
+    for (x, y) in ((4.0, 0.8), (9.5, 0.8)):
+        masa_semsiye(g, x, y, r, M("Semsiye", rnd.choice(["#2f6a46", "#f6f3ec"])))
+    for (x, y) in ((0.7, 4.5), (0.7, 5.4), (0.7, 7.5)):
+        fici(g, x, y, r)
+    lamba_klasik(g, 0.6, 0.6, r)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_eski_dukkanlar(rnd):
+    """Eski şehir dükkânları: solda mansartlı taş bina (kırmızı tenteli brasserie), sağda basamaklı alınlıklı tuğla ev (peynirci)."""
+    g = Govde()
+    PW, PD = 14.0, 12.0
+    r = blok_renk(rnd, "haussmann")
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    z0 = EV_ZEMIN
+    r["ana"] = M("Marka", "#8e1f2a")
+    Ht, on, *_ = paris(g, rnd, r, 0.5, 7.4, 1.6, 11.0, 3, "haussmann", ("on", "sol"), dukkan=True, tema="kafe", sagir=("sag",))
+    tente(g, on, 0.3, 6.6, z0 + 2.9, 1.6, r, M("Tente", "#a0242c"))
+    mansart(g, 0.5, 7.4, 1.6, 11.0, Ht, r, rnd, n=3, oval=True)
+    baca_sira(g, 4.0, 6.3, Ht + 2.6, r, 3, yon="x")
+    for x in (1.5, 4.0):
+        masa_semsiye(g, x, 0.8, r, M("Semsiye", "#f6f3ec")) if False else silindir(g, x, 0.8, z0, 0.75, 0.3, 8, r["beyaz"])
+    r2 = blok_renk(rnd, "kanal")
+    r2["ana"] = M("Marka", "#1f4a36")
+    kat = 4
+    H0 = z0 + BLOK_ZEMIN
+    Ht2 = H0 + (kat - 1) * BLOK_KAT
+    x0, x1, y0, y1 = 7.4, 13.5, 1.6, 11.0
+    kutu(g, x0, x1, y0, y1, z0, Ht2, r2["duvar"], atla=("zn",))
+    fc = Cephe((x0, y0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    g.tema = "genel"
+    blok_cephe(g, fc, x1 - x0, kat, r2, rnd, True, "tugla", z0)
+    tente(g, fc, 0.3, x1 - x0 - 0.3, z0 + 2.9, 1.4, r2, M("Tente", "#1f4a36"), r2["beyaz"])
+    besik_cati(g, "y", y0 + 0.3, y1, x0, x1, Ht2, {**r2, "cati": M("Cati", "#4a3f3a"), "cati_koyu": M("CatiKoyu", "#3a302c")},
+               sacak=0.0, yan_sacak=0.15)
+    L = x1 - x0
+    for k in range(5):                                                         # basamaklı alınlık
+        u0, u1 = 0.2 + k * 0.55, L - 0.2 - k * 0.55
+        if u1 - u0 < 0.6:
+            break
+        ckutu(g, fc, u0, u1, 0, 0.3, Ht2 + k * 0.7, Ht2 + (k + 1) * 0.7, r2["duvar"])
+        ckutu(g, fc, u0 - 0.05, u0 + 0.45, 0, 0.36, Ht2 + (k + 1) * 0.7, Ht2 + (k + 1) * 0.7 + 0.08, r2["suslu"])
+        ckutu(g, fc, u1 - 0.45, u1 + 0.05, 0, 0.36, Ht2 + (k + 1) * 0.7, Ht2 + (k + 1) * 0.7 + 0.08, r2["suslu"])
+    pencere(g, fc, L / 2, Ht2 + 0.6, 0.8, 1.2, r2, sade=True)
+    cikma_tabela(g, fc, L - 0.4, H0 - 0.2, r2, r2["ana"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_bufe(rnd):
+    """Durak büfesi: gazete ve dondurma büfesi (afişli, mavi çatılı), tek ayaklı masa, banklı tramvay durağı, posta kutusu."""
+    g = Govde()
+    r = ar(rnd, "#2f5a9a", ana="#2f5a9a")
+    PW, PD = 14.0, 9.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Kaldirim", "#ddd7cc"))
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 0.8, 7.6, 2.0, 6.5
+    kutu(g, x0, x1, y0, y1, z0, z0 + 2.9, r["duvar"], atla=("zn",))
+    kutu(g, x0 - 0.25, x1 + 0.25, y0 - 0.4, y1 + 0.25, z0 + 2.9, z0 + 3.25, r["duvar"])
+    on = Cephe((x0, y0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    for a, b, metin in ((0.3, 3.2, "KIOSQUE"), (3.6, 6.5, "PRESSE")):
+        ckutu(g, on, a, b, 0, 0.05, z0 + 0.9, z0 + 2.4, M("Pano", "#f2e6cf"))
+        for i in range(8):
+            u = a + 0.25 + (i % 4) * 0.68
+            zz = z0 + 1.05 + (i // 4) * 0.6
+            ckutu(g, on, u, u + 0.5, 0.05, 0.07, zz, zz + 0.45, rnd.choice(r["urun"]))
+        tabela(g, on, (a + b) / 2, z0 + 2.65, b - a - 0.4, 0.35, 0.08, r, metin, renk=r["beyaz"], yazi_renk=r["duvar"], oran=0.7)
+    ckutu(g, on, 0.3, 6.5, 0, 0.6, z0 + 0.85, z0 + 0.95, r["ahsap"])
+    kutu(g, 0.2, 0.75, 4.0, 5.2, z0, z0 + 1.0, M("Cop", "#e0b24a"))
+    silindir(g, 2.0, 0.9, z0, 1.05, 0.05, 6, r["metal"])
+    silindir(g, 2.0, 0.9, z0 + 1.05, 0.05, 0.4, 8, r["beyaz"])
+    for x in (4.2, 5.0):
+        kutu(g, x - 0.3, x + 0.3, 1.2, 1.5, z0, z0 + 1.2, r["metal"])        # gazete standı
+    yesil = M("Cim", "#9cc46a")
+    levha(g, 8.2, 11.0, 4.8, 8.6, z0, z0 + 0.06, yesil)
+    agac(g, 9.6, 6.8, r, rnd, boy=1.6, rr=0.95)
+    kutu(g, 8.6, 9.2, 2.0, 2.5, z0, z0 + 1.1, M("PostaKutusu", "#f2c14a"))
+    # Tramvay durağı
+    sx0, sx1, sy0, sy1 = 10.5, 13.7, 2.4, 4.0
+    for x in (sx0, sx1):
+        for y in (sy0, sy1):
+            cubuk(g, (x, y, z0), (x, y, z0 + 2.6), 0.08, r["koyu"], kabuk=False)
+    kutu(g, sx0 - 0.2, sx1 + 0.2, sy0 - 0.4, sy1 + 0.2, z0 + 2.6, z0 + 2.75, M("SacakCam", "#9fb8c6"))
+    kutu(g, sx0, sx1, sy1 - 0.05, sy1, z0 + 0.3, z0 + 2.5, M("DurakCam", "#bcd3df"))
+    kutu(g, sx0 + 0.3, sx1 - 0.3, sy1 - 0.5, sy1 - 0.1, z0 + 0.45, z0 + 0.55, r["ahsap"])
+    kutu(g, sx1 - 0.05, sx1, sy0, sy1, z0 + 0.6, z0 + 2.2, M("Yazi", "#e8f0c8"))   # ışıklı hat haritası
+    cubuk(g, (10.0, 1.4, z0), (10.0, 1.4, z0 + 2.8), 0.07, r["metal"])
+    silindir(g, 10.0, 1.4, z0 + 2.6, 0.06, 0.38, 10, M("DurakTabela", "#3f9a5a"))
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_benzinlik(rnd):
+    """Marketli benzinlik: pompaların üstünde yeşil kenarlı saçak, küçük market, yıkama bölümü, yol kenarında fiyat direği."""
+    g = Govde()
+    r = ar(rnd, "#d8d2c6", ana="#2f6a46")
+    PW, PD = 16.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["asfalt"])
+    z0 = EV_ZEMIN
+    kutu(g, 1.5, 12.0, 9.0, 13.5, z0, z0 + 3.6, r["duvar"], atla=("zn",))
+    mfc = Cephe((1.5, 9.0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    vitrin(g, mfc, 0.6, 6.0, z0 + 0.1, z0 + 2.6, r, aralik=1.4, poster=0.4, rnd=rnd)
+    cam_kapi(g, mfc, 7.2, z0, r, w=1.4, h=2.4, sacak=False)
+    duz_cati_ust(g, 1.5, 12.0, 9.0, 13.5, z0 + 3.6, r, rnd, r["duvar"], klima=2)
+    kutu(g, 12.0, 15.5, 8.5, 13.5, z0, z0 + 3.2, M("Yikama", "#e9e7e2"), atla=("zn",))   # yıkama bölümü
+    ckutu(g, Cephe((12.0, 8.5, 0.0), (1.0, 0, 0), (0, -1.0, 0)), 0.4, 3.1, 0, 0.05, z0, z0 + 2.8, r["koyu"])
+    for (x, y) in ((4.0, 3.0), (11.0, 3.0), (4.0, 6.4), (11.0, 6.4)):
+        kutu(g, x - 0.3, x + 0.3, y - 0.3, y + 0.3, z0, z0 + 5.0, r["beyaz"])
+    kutu(g, 2.0, 13.5, 1.6, 7.8, z0 + 5.0, z0 + 5.8, r["beyaz"], atla=("zn",))
+    for fc, L in ((Cephe((2.0, 1.6, 0.0), (1, 0, 0), (0, -1, 0)), 11.5), (Cephe((13.5, 1.6, 0.0), (0, 1, 0), (1, 0, 0)), 6.2),
+                  (Cephe((2.0, 7.8, 0.0), (0, -1, 0), (-1, 0, 0)), 6.2)):
+        ckutu(g, fc, 0, L, 0, 0.05, z0 + 5.1, z0 + 5.6, r["ana"])
+        ckutu(g, fc, 0, L, 0.05, 0.07, z0 + 5.0, z0 + 5.08, M("Serit", "#e08a3a"))
+    tabela(g, Cephe((2.0, 1.6, 0.0), (1, 0, 0), (0, -1, 0)), 7.0, z0 + 5.35, 4.0, 0.35, 0.08, r, "STATION-SERVICE",
+           renk=r["ana"], yazi_renk=r["beyaz"], oran=0.7)
+    for (x, y) in ((6.5, 3.4), (6.5, 6.0), (9.0, 3.4), (9.0, 6.0)):
+        kutu(g, x - 0.6, x + 0.6, y - 0.35, y + 0.35, z0, z0 + 0.2, r["beton"])
+        kutu(g, x - 0.35, x + 0.35, y - 0.22, y + 0.22, z0 + 0.2, z0 + 1.7, r["ana"])
+        kutu(g, x - 0.3, x + 0.3, y - 0.24, y + 0.24, z0 + 1.1, z0 + 1.5, r["beyaz"])
+    park_araba(g, 4.5, 4.7, 0.0, araba_renk(rnd), r, z0)
+    park_araba(g, 10.8, 4.7, math.pi, araba_renk(rnd), r, z0)
+    # Fiyat direği
+    kutu(g, 0.6, 1.4, 0.5, 1.0, z0, z0 + 6.0, r["beyaz"])
+    kutu(g, 0.55, 1.45, 0.45, 1.05, z0 + 4.6, z0 + 6.0, M("Turuncu", "#e0602a"))
+    kutu(g, 0.55, 1.45, 0.45, 1.05, z0 + 3.0, z0 + 4.5, r["ana"])
+    kutu(g, 14.0, 14.6, 1.0, 1.6, z0, z0 + 1.3, M("Hava", "#3f73e6"))
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_market(rnd):
+    """Mahalle marketi: tek katlı indirim marketi, kırmızı şerit, saçak altında camlı giriş, otopark, cam atık kumbaraları,
+    bisiklet park yeri, fiyat direği."""
+    g = Govde()
+    r = ar(rnd, "#efece6", ana=rnd.choice(["#c9302c", "#2f6ab0", "#e0a020"]))
+    PW, PD = 18.0, 16.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["asfalt"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 0.8, 12.5, 3.0, 15.2
+    kutu(g, x0, x1, y0, y1, z0, z0 + 4.2, r["duvar"], atla=("zn",))
+    on, sag, sol, arka = cepheler(x0, x1, y0, y1)
+    for fc, L in ((on, x1 - x0), (sag, y1 - y0)):
+        ckutu(g, fc, -0.05, L + 0.05, 0, 0.12, z0 + 3.1, z0 + 4.2, r["ana"])
+    tabela(g, sag, 2.5, z0 + 3.65, 4.5, 0.6, 0.15, r, "SUPERMARCHE", renk=r["ana"], yazi_renk=r["beyaz"], oran=0.6)
+    cdortgen(g, sag, 6.0, 10.5, 0.01, z0 + 0.1, z0 + 2.8, M("Vitrin_bcd3df", "#bcd3df"))
+    cam_kapi(g, sag, 8.2, z0, r, w=1.8, h=2.6, sacak=False)
+    ckutu(g, sag, 5.5, 11.5, 0, 2.0, z0 + 2.9, z0 + 3.1, r["ana"])
+    vitrin(g, on, 1.0, 10.5, z0 + 0.2, z0 + 2.6, r, aralik=2.0, poster=0.6, rnd=rnd)
+    duz_cati_ust(g, x0, x1, y0, y1, z0 + 4.2, r, rnd, r["duvar"], klima=3)
+    for k in range(2):
+        kutu(g, 4.0 + k * 4, 5.2 + k * 4, 8.0, 9.0, z0 + 4.77, z0 + 5.0, M("Isiklik", "#bcd3df"))
+    for i in range(3):
+        boya(g, 13.2, 17.6, 4.0 + i * 2.6, 4.06 + i * 2.6, r["serit"], z=z0 + 0.008)
+    park_araba(g, 15.5, 5.3, 0.0, araba_renk(rnd), r, z0)
+    for k in range(4):
+        cubuk(g, (2.0 + k * 0.6, 1.8, z0), (2.0 + k * 0.6, 1.8, z0 + 0.7), 0.05, r["metal"])
+    for k, c in enumerate(("#4f7a4a", "#8a5a3a")):
+        kutu(g, 14.0 + k * 1.3, 15.1 + k * 1.3, 13.5, 14.6, z0, z0 + 1.6, M("CamKumbara", c))
+    kutu(g, 16.6, 17.2, 1.0, 1.4, z0, z0 + 3.2, r["beyaz"])
+    kutu(g, 16.5, 17.3, 0.95, 1.45, z0 + 2.0, z0 + 3.0, r["ana"])
+    top(g, (14.3, 2.2, z0 + 0.5), 0.8, 0.5, 0.45, r["cali"])
+    park_lambasi(g, 13.0, 15.0, r, z0)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_autohaus(rnd):
+    """Autohaus: küp logolu grafit renkli cam showroom, camın ardında arabalar, önünde fiyat etiketli satış alanı ve direk."""
+    g = Govde()
+    r = ar(rnd, "#3a3d42", ana="#e6e2da")
+    PW, PD = 18.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Kaldirim", "#d8d2c6"))
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 1.0, 17.0, 6.5, 13.4
+    kutu(g, x0, x1, y0 + 0.4, y1, z0, z0 + 4.6, r["duvar"], atla=("zn",))
+    fc = Cephe((x0, y0 + 0.4, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    cdortgen(g, fc, 0.2, x1 - x0 - 0.2, 0.01, z0, z0 + 4.2, M("Vitrin_9fb8c6", "#9fb8c6"))
+    for k in range(9):
+        ckutu(g, fc, 0.1 + k * 1.97, 0.1 + k * 1.97 + 0.1, 0, 0.08, z0, z0 + 4.3, r["koyu"])
+    kutu(g, x0 - 0.3, x1 + 0.3, y0 - 0.6, y1 + 0.3, z0 + 4.6, z0 + 5.2, r["duvar"])
+    for k in range(3):
+        park_araba(g, 3.5 + k * 5.0, 10.2, 0.0, araba_renk(rnd), r, z0)
+    kutu(g, 13.5, 15.5, 9.5, 11.5, z0 + 5.2, z0 + 7.2, r["koyu"])            # küp logo
+    for fc2 in cepheler(13.5, 15.5, 9.5, 11.5):
+        cephe_poligon(g, fc2, [(0.5, z0 + 6.6), (1.5, z0 + 6.6), (1.5, z0 + 6.0), (1.0, z0 + 5.6), (0.5, z0 + 6.0)], 0.0, 0.04, r["ana"])
+    yesil = M("Cim", "#9cc46a")
+    levha(g, 0, PW, 0, 0.8, z0, z0 + 0.1, yesil)
+    for k in range(4):
+        x = 2.0 + k * 4.0
+        park_araba(g, x, 3.6, math.pi / 2 + (0.3 if k % 2 else -0.3), araba_renk(rnd), r, z0)
+        kutu(g, x - 0.5, x + 0.5, 1.4, 1.5, z0 + 0.6, z0 + 1.2, r["beyaz"])
+        cubuk(g, (x, 1.45, z0), (x, 1.45, z0 + 0.6), 0.04, r["metal"])
+    for k in range(5):
+        kutu(g, 0.6 + k * 3.6, 1.6 + k * 3.6, 5.6, 6.3, z0, z0 + 0.6, r["cali"])
+    kutu(g, 16.6, 17.4, 1.2, 1.6, z0, z0 + 5.0, r["koyu"])
+    kutu(g, 16.5, 17.5, 1.15, 1.65, z0 + 4.0, z0 + 4.9, r["ana"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_fitness(rnd):
+    """Fitness stüdyosu: siyah kutu, cam arkasında koşu bantları ve bisikletler, neon dambıl ve 24/7, otopark."""
+    g = Govde()
+    r = ar(rnd, "#2b2d31", ana="#ff4fa0")
+    PW, PD = 18.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["asfalt"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 0.6, 17.4, 6.2, 13.6
+    kutu(g, x0, x1, y0, y1, z0, z0 + 5.2, r["duvar"], atla=("zn",))
+    fc = Cephe((x0, y0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    cdortgen(g, fc, 0.3, x1 - x0 - 0.3, 0.01, z0 + 0.1, z0 + 3.6, M("Vitrin_d8e4ea", "#d8e4ea"))
+    neon = M("Yazi", "#ff4fa0")
+    ckutu(g, fc, 0.2, x1 - x0 - 0.2, 0, 0.05, z0 + 3.75, z0 + 3.85, neon)
+    tabela(g, fc, (x1 - x0) / 2 + 1.0, z0 + 4.45, 2.2, 0.6, 0.06, r, "24/7", renk=r["duvar"], yazi_renk=M("Yazi", "#4fe0e0"), oran=0.8)
+    for u in (4.0, (x1 - x0) / 2 - 1.0):
+        ckutu(g, fc, u - 0.5, u + 0.5, 0, 0.06, z0 + 4.4, z0 + 4.5, neon)
+        ckutu(g, fc, u - 0.55, u - 0.4, 0, 0.06, z0 + 4.25, z0 + 4.65, neon)
+        ckutu(g, fc, u + 0.4, u + 0.55, 0, 0.06, z0 + 4.25, z0 + 4.65, neon)
+    for k in range(12):                                                        # koşu bantları
+        x = x0 + 1.0 + k * 1.3
+        kutu(g, x - 0.35, x + 0.35, y0 + 0.6, y0 + 2.2, z0, z0 + 0.25, r["koyu"])
+        kutu(g, x - 0.35, x + 0.35, y0 + 0.6, y0 + 0.8, z0 + 0.25, z0 + 1.3, r["metal"])
+    cam_kapi(g, fc, 9.5, z0, r, w=1.8, h=2.8, kasa=r["koyu"])
+    duz_cati_ust(g, x0, x1, y0, y1, z0 + 5.2, r, rnd, r["duvar"], klima=3)
+    for i in range(6):
+        boya(g, 1.0 + i * 2.6, 1.06 + i * 2.6, 0.6, 4.6, r["serit"], z=z0 + 0.008)
+    for k in range(4):
+        park_araba(g, 2.3 + k * 2.6 + (2.6 if k > 1 else 0), 2.6, math.pi / 2, araba_renk(rnd), r, z0)
+    for k in range(5):
+        bisiklet(g, 11.5 + k * 0.5, 5.4, math.pi / 2, r, rnd)
+    kutu(g, 16.8, 17.4, 0.6, 1.2, z0, z0 + 3.4, r["koyu"])
+    kutu(g, 16.75, 17.45, 0.55, 1.25, z0 + 2.4, z0 + 3.3, neon)
+    kutu(g, 0.6, 17.4, 0.1, 0.4, z0, z0 + 0.5, r["cali"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+# ---------------- BÜRO
+
+def ref_buro_klinker(rnd):
+    """Büro binası: koyu klinker, sivri başlıklı sık tuğla payandalar, teraslı basamaklı üst katlar, altın sivri kemerli portal
+    ve döner kapı, önünde bisiklet park yeri."""
+    g = Govde()
+    r = ar(rnd, rnd.choice(["#7a3a2a", "#6e3426", "#843f2c"]), ana="#2f5a3a")
+    r["suslu"] = M("Suslu", "#efe2c8")
+    PW, PD = 16.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    z0 = EV_ZEMIN
+    KY = 3.3
+    kademeler = [(1.0, 15.0, 1.6, 13.0, 7), (1.9, 14.1, 2.5, 12.1, 1), (2.8, 13.2, 3.4, 11.2, 1)]
+    z = z0
+    altin = M("Altin", "#d9a83a")
+    for ki, (x0, x1, y0, y1, nk) in enumerate(kademeler):
+        h = (BLOK_ZEMIN if ki == 0 else 0.0) + nk * KY
+        kutu(g, x0, x1, y0, y1, z, z + h, r["duvar"], atla=("zn",))
+        for fc, L in zip(cepheler(x0, x1, y0, y1), (x1 - x0, y1 - y0, y1 - y0, x1 - x0)):
+            n = int(L / 1.25)
+            zb = z + (BLOK_ZEMIN if ki == 0 else 0.0)
+            for k in range(n + 1):
+                u = k * L / n
+                ckutu(g, fc, u - 0.12, u + 0.12, 0, 0.22, zb, z + h + 0.5, r["duvar"])
+                if DETAY:
+                    p = fc.P(u, 0.11, 0.0)
+                    koni(g, p[0], p[1], z + h + 0.5, 0.5, 0.17, 4, r["duvar"])
+            for f in range(nk):
+                zz = zb + f * KY
+                for k in range(n):
+                    u = (k + 0.5) * L / n
+                    cdortgen(g, fc, u - 0.38, u + 0.38, 0.01, zz + 0.7, zz + 2.6, cam_grubu(r["cam"], u, zz))
+                ckutu(g, fc, -0.05, L + 0.05, 0, 0.12, zz, zz + 0.15, r["suslu"])
+        z += h
+        if ki < 2:
+            kutu(g, x0, x1, y0, y1, z, z + 0.25, r["beton"])
+            for k in range(5):
+                top(g, (x0 + 1.5 + k * (x1 - x0 - 3) / 4, y0 + 0.5, z + 0.5), 0.35, 0.3, 0.3, r["cali"])
+    duz_cati_ust(g, 2.8, 13.2, 3.4, 11.2, z, r, rnd, r["duvar"], klima=1)
+    kutu(g, 6.0, 9.0, 6.0, 8.5, z + 0.5, z + 2.3, r["duvar"])
+    cubuk(g, (12.0, 9.0, z + 0.5), (12.0, 9.0, z + 5.0), 0.1, r["metal"])
+    # Zemin kat: koyu yeşil vitrinler, ortada altın sivri kemerli portal ve döner kapı
+    on = Cephe((1.0, 1.6, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    L = 14.0
+    for a, b in ((0.4, 5.4), (8.6, 13.6)):
+        vitrin(g, on, a, b, z0 + 0.3, z0 + 2.7, r, aralik=1.25, kasa=r["ana"])
+        tente(g, on, a, b, z0 + 2.75, 0.9, r, r["ana"], r["beyaz"])
+    cephe_poligon(g, on, [(5.5, z0), (8.5, z0), (8.5, z0 + 4.2), (7.0, z0 + 6.0), (5.5, z0 + 4.2)], 0.0, 0.3, altin)
+    cephe_poligon(g, on, [(6.0, z0), (8.0, z0), (8.0, z0 + 3.9), (7.0, z0 + 5.2), (6.0, z0 + 3.9)], 0.3, 0.32, M("Vitrin_8fa8b8", "#8fa8b8"))
+    silindir(g, 8.0, 0.7, z0, 2.6, 0.9, 10, M("DonerKapi", "#bcd3df"))
+    silindir(g, 8.0, 0.7, z0 + 2.6, 0.2, 0.95, 10, altin)
+    for k in range(8):
+        bisiklet(g, 1.6 + k * 0.6 if k < 4 else 9.8 + (k - 4) * 0.6, 0.6, math.pi / 2, r, rnd)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+# ---------------- SANAYİ
+
+def testere_cati(g, x0, x1, y0, y1, z, n, h, r, cati, cam):
+    """Testere dişi çatı: dişler y boyunca dizilir, dik yüzleri camlı (kuzeye)."""
+    D = (y1 - y0) / n
+    for i in range(n):
+        a, b = y0 + i * D, y0 + (i + 1) * D
+        pts = [(x0, a, z), (x1, a, z), (x1, b, z), (x0, b, z), (x0, b, z + h), (x1, b, z + h)]
+        dis_bukey(g, pts, [[0, 1, 2, 3], [0, 1, 5, 4], [2, 3, 4, 5], [0, 4, 3], [1, 2, 5]], cati)
+        cdortgen(g, Cephe((x1, b, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)), 0.3, x1 - x0 - 0.3, 0.02, z + 0.2, z + h - 0.15, cam)
+
+
+def ref_matbaa(rnd):
+    """Matbaa: üç katlı tuğla, büyük kafesli pencereler, testere dişi çatı, uzun baca, saatli alınlık, yükleme kapısı, kamyon."""
+    g = Govde()
+    r = ar(rnd, rnd.choice(["#a8503a", "#9c4a35", "#b05a40"]), cati="#8f949a")
+    r["suslu"] = M("Suslu", "#e8d6c8")
+    PW, PD = 14.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 1.0, 10.5, 1.6, 12.6
+    KY = 3.8
+    Ht = z0 + 3 * KY
+    kutu(g, x0, x1, y0, y1, z0, Ht, r["duvar"], atla=("zn",))
+    on, sag, sol, arka = cepheler(x0, x1, y0, y1)
+    for fc, L in ((on, x1 - x0), (sag, y1 - y0), (sol, y1 - y0)):
+        n = int(L / 2.2)
+        for f in range(3):
+            for i in range(n):
+                u = L * (i + 0.5) / n
+                if fc is sag and f == 0 and abs(u - L * 0.7) < 1.5:
+                    continue
+                w, h = 1.5, 2.6
+                zz = z0 + f * KY + 0.6
+                cdortgen(g, fc, u - w / 2, u + w / 2, 0.01, zz, zz + h, cam_grubu(r["cam"], u, zz))
+                for k in (1, 2):
+                    ckutu(g, fc, u - w / 2 + k * w / 3 - 0.03, u - w / 2 + k * w / 3 + 0.03, 0, 0.05, zz, zz + h, r["cerceve"])
+                for k in (1, 2, 3):
+                    ckutu(g, fc, u - w / 2, u + w / 2, 0, 0.05, zz + k * h / 4 - 0.03, zz + k * h / 4 + 0.03, r["cerceve"])
+                ckutu(g, fc, u - w / 2 - 0.1, u + w / 2 + 0.1, 0, 0.1, zz + h, zz + h + 0.25, r["suslu"])
+            ckutu(g, fc, -0.05, L + 0.05, 0, 0.12, z0 + (f + 1) * KY - 0.15, z0 + (f + 1) * KY, r["suslu"])
+    ckutu(g, sag, (y1 - y0) * 0.7 - 1.3, (y1 - y0) * 0.7 + 1.3, 0, 0.06, z0, z0 + 3.4, M("Kepenk", "#6f7a84"))
+    testere_cati(g, x0, x1, y0, y1, Ht, 3, 2.4, r, r["cati"], M("Cam_bcd3df", "#bcd3df"))
+    L = x1 - x0
+    cephe_poligon(g, on, [(L / 2 - 2.2, Ht), (L / 2 + 2.2, Ht), (L / 2 + 2.2, Ht + 1.0), (L / 2 + 1.2, Ht + 1.0),
+                          (L / 2 + 1.2, Ht + 1.7), (L / 2 - 1.2, Ht + 1.7), (L / 2 - 1.2, Ht + 1.0), (L / 2 - 2.2, Ht + 1.0)], 0.0, 0.3, r["duvar"])
+    saat(g, on, L / 2, Ht + 0.95, 0.5, r, o=0.3)
+    silindir(g, x0 + 1.2, y1 - 1.0, z0, 20.0, 0.65, 10, r["duvar"])
+    for zz in (8.0, 14.0, 19.0):
+        silindir(g, x0 + 1.2, y1 - 1.0, z0 + zz, 0.35, 0.75, 10, r["suslu"])
+    kamyon(g, 12.4, 7.0, math.pi / 2, r, M("Kamyon", "#7f9aa8"))
+    cikma_tabela(g, on, 0.6, z0 + 3.0, r, r["koyu"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_lastik(rnd):
+    """Lastik fabrikası: gri kule ve tabela, silolar ve konveyör, uzun vulkanizasyon atölyesi, koyu ofis, dev lastik, otopark."""
+    g = Govde()
+    r = ar(rnd, "#d6d6d2", cati="#5a6068")
+    PW, PD = 18.0, 16.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["asfalt"])
+    z0 = EV_ZEMIN
+    kutu(g, 0.8, 7.0, 1.0, 7.4, z0, z0 + 15.0, r["duvar"], atla=("zn",))
+    for fc, L in zip(cepheler(0.8, 7.0, 1.0, 7.4), (6.2, 6.4, 6.4, 6.2)):
+        for k in range(4):
+            cdortgen(g, fc, 0.4, L - 0.4, 0.01, z0 + 2.0 + k * 3.3, z0 + 2.9 + k * 3.3, M("CamKoyu", "#5f7f99"))
+    tabela(g, Cephe((0.8, 1.0, 0.0), (1, 0, 0), (0, -1, 0)), 3.1, z0 + 13.6, 4.8, 0.8, 0.1, r, "MÉLANGES", renk=r["koyu"],
+           yazi_renk=r["beyaz"], oran=0.6)
+    for k, c in enumerate(("#efece6", "#2b2d31", "#efece6")):
+        x = 8.4 + k * 2.2
+        silindir(g, x, 3.0, z0 + 1.2, 7.0, 0.95, 10, M("Silo", c))
+        koni(g, x, 3.0, z0 + 8.2, 0.6, 0.95, 10, M("Silo", c))
+        koni(g, x, 3.0, z0 + 1.2, -1.0, 0.95, 10, M("Silo", c)) if False else None
+        for sx in (-0.6, 0.6):
+            cubuk(g, (x + sx, 3.0, z0), (x + sx, 3.0, z0 + 1.3), 0.12, r["metal"])
+    cubuk(g, (13.5, 3.0, z0 + 6.5), (16.5, 8.0, z0 + 3.5), 0.6, r["metal"])         # konveyör
+    kutu(g, 8.0, 17.4, 8.0, 15.2, z0, z0 + 5.0, r["duvar"], atla=("zn",))
+    duz_cati_ust(g, 8.0, 17.4, 8.0, 15.2, z0 + 5.0, r, rnd, r["duvar"], klima=0)
+    for k in range(3):
+        silindir(g, 10.0 + k * 3.0, 13.5, z0 + 5.5, 1.6, 0.18, 8, r["metal"])
+        kutu(g, 9.5 + k * 3.0, 11.0 + k * 3.0, 9.5, 10.5, z0 + 5.55, z0 + 5.8, M("Isiklik", "#bcd3df"))
+    for fc, L in zip(cepheler(8.0, 17.4, 8.0, 15.2), (9.4, 7.2, 7.2, 9.4)):
+        cdortgen(g, fc, 0.6, L - 0.6, 0.01, z0 + 3.3, z0 + 4.4, M("CamKoyu", "#5f7f99"))
+    kutu(g, 0.8, 7.0, 9.0, 15.2, z0, z0 + 6.6, M("Ofis", "#2e3a4a"), atla=("zn",))
+    for fc, L in zip(cepheler(0.8, 7.0, 9.0, 15.2), (6.2, 6.2, 6.2, 6.2)):
+        for f in range(2):
+            for k in range(3):
+                u = L * (k + 0.5) / 3
+                cdortgen(g, fc, u - 0.6, u + 0.6, 0.01, z0 + 0.9 + f * 3.0, z0 + 2.2 + f * 3.0, cam_grubu(r["cam"], u, f))
+    duz_cati_ust(g, 0.8, 7.0, 9.0, 15.2, z0 + 6.6, r, rnd, M("Ofis", "#2e3a4a"), klima=1)
+    pts = [(9.0 + 1.6 * math.cos(2 * math.pi * i / 12), 6.4, z0 + 1.6 + 1.6 * math.sin(2 * math.pi * i / 12)) for i in range(12)]
+    pts += [(p[0], 7.4, p[2]) for p in pts]
+    dis_bukey(g, pts, [list(range(12)), list(range(12, 24))] + [[i, (i + 1) % 12, 12 + (i + 1) % 12, 12 + i] for i in range(12)], r["koyu"])
+    for k in range(3):
+        park_araba(g, 14.0 + k * 1.3 - 4.0 if False else 10.5 + k * 2.3, 6.0 if False else 5.8, math.pi / 2, araba_renk(rnd), r, z0) if False else None
+    for k in range(3):
+        park_araba(g, 12.3 + k * 2.3, 6.3, math.pi / 2, araba_renk(rnd), r, z0)
+    for x in (8.0, 17.6):
+        cit_hat(g, x, 0.3, x, 7.6, z0, r["metal"], h=1.6, aralik=1.5)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_insaat_deposu(rnd):
+    """İnşaat malzemeleri ve kereste deposu: kapıda büro/showroom, tahta raflı açık sundurma, tuğla paletleri, kum ve çakıl
+    bölmeleri, forklift, telli çit."""
+    g = Govde()
+    r = ar(rnd, "#efe2c8", cati="#7f9aa0", ana="#2f6a46")
+    PW, PD = 18.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Beton", "#c9c4bb"))
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 0.8, 7.6, 1.4, 8.4
+    kutu(g, x0, x1, y0, y1, z0, z0 + 6.4, r["duvar"], atla=("zn",))
+    on, sag, sol, arka = cepheler(x0, x1, y0, y1)
+    vitrin(g, on, 0.4, 4.6, z0 + 0.2, z0 + 2.7, r, aralik=1.4)
+    ckutu(g, on, 5.2, 6.2, 0, 0.06, z0, z0 + 2.4, r["ana"])
+    for fc, L in ((on, 6.8), (sol, 7.0), (sag, 7.0)):
+        for k in range(3):
+            pencere(g, fc, L * (k + 0.5) / 3, z0 + 3.6, 1.0, 1.5, r, sade=True)
+    tabela(g, on, 3.4, z0 + 3.15, 5.0, 0.6, 0.15, r, "MATERIAUX", renk=r["ana"], yazi_renk=r["beyaz"], oran=0.6)
+    duz_cati_ust(g, x0, x1, y0, y1, z0 + 6.4, r, rnd, r["duvar"], klima=0)
+    # Açık sundurma
+    sx0, sx1, sy0, sy1 = 8.4, 17.6, 9.0, 13.6
+    for x in (sx0, (sx0 + sx1) / 2, sx1):
+        for y in (sy0, sy1):
+            kutu(g, x - 0.12, x + 0.12, y - 0.12, y + 0.12, z0, z0 + 4.6, r["metal"])
+    yonlu_kutu(g, ((sx0 + sx1) / 2, (sy0 + sy1) / 2 - 0.4, z0 + 4.8), ((sx1 - sx0) / 2 + 0.3, 0, 0), (0, (sy1 - sy0) / 2 + 0.8, -0.5),
+               (0, 0, 0.06), r["cati"])
+    ah = M("Kereste", "#c99a5a")
+    for k in range(3):
+        for j in range(4):
+            kutu(g, sx0 + 0.4 + j * 2.2, sx0 + 2.3 + j * 2.2, sy1 - 1.4, sy1 - 0.4, z0 + 0.3 + k * 1.2, z0 + 0.6 + k * 1.2, ah)
+    for k in range(3):                                                         # kum ve çakıl bölmeleri
+        x = 9.0 + k * 2.8
+        kutu(g, x - 0.1, x, 5.6, 8.0, z0, z0 + 1.2, r["beton"])
+        kutu(g, x + 2.4, x + 2.5, 5.6, 8.0, z0, z0 + 1.2, r["beton"])
+        kutu(g, x, x + 2.4, 7.9, 8.0, z0, z0 + 1.2, r["beton"])
+        top(g, (x + 1.2, 6.9, z0 + 0.3), 1.1, 1.0, 0.85, M("Kum", ["#e0c890", "#a9a49a", "#c8a070"][k]))
+    for k in range(3):                                                         # tuğla paletleri
+        kutu(g, 9.0 + k * 1.5, 10.2 + k * 1.5, 2.0, 3.2, z0, z0 + 0.15, r["ahsap"])
+        kutu(g, 9.05 + k * 1.5, 10.15 + k * 1.5, 2.05, 3.15, z0 + 0.15, z0 + 1.0, M("Tugla", "#b8634a"))
+    kutu(g, 14.5, 16.0, 2.2, 3.6, z0, z0 + 1.4, M("Forklift", "#f2c14a"))
+    cubuk(g, (14.6, 2.2, z0 + 1.4), (14.6, 2.2, z0 + 2.6), 0.1, r["koyu"])
+    cubuk(g, (15.9, 2.2, z0 + 1.4), (15.9, 2.2, z0 + 2.6), 0.1, r["koyu"])
+    kutu(g, 14.6, 15.9, 1.4, 2.2, z0 + 0.2, z0 + 0.3, r["koyu"])
+    for (a, b) in (((8.2, 0.3), (17.7, 0.3)), ((17.7, 0.3), (17.7, 8.6))):
+        cit_hat(g, a[0], a[1], b[0], b[1], z0, r["metal"], h=1.8, aralik=1.6)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_tamirhane(rnd):
+    """Garaj ve oto tamirhanesi: seksiyonel kapılı tuğla atölye, açık bölmede liftte araba, kırmızı tabela, eski benzin pompası,
+    lastik yığınları, yağ varilleri, avluda arabalar, telli çit."""
+    g = Govde()
+    r = ar(rnd, rnd.choice(["#a8503a", "#9c4a35"]), ana="#c9302c")
+    PW, PD = 16.0, 14.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["asfalt"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 0.8, 13.0, 7.2, 13.6
+    kutu(g, x0, x1, y0, y1, z0, z0 + 4.6, r["duvar"], atla=("zn",))
+    fc = Cephe((x0, y0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    kep = M("Kepenk", "#9aa0a6")
+    ckutu(g, fc, 0.6, 3.6, 0, 0.06, z0, z0 + 3.2, kep)
+    for k in range(1, 7):
+        ckutu(g, fc, 0.6, 3.6, 0.06, 0.08, z0 + k * 0.45, z0 + k * 0.45 + 0.04, r["koyu"])
+    ckutu(g, fc, 4.2, 7.2, 0, 0.02, z0, z0 + 3.2, M("Ic", "#2b2622"))          # açık bölme
+    kutu(g, x0 + 4.6, x0 + 6.8, y0 + 0.4, y0 + 2.4, z0 + 1.2, z0 + 1.3, r["metal"])
+    park_araba(g, x0 + 5.7, y0 + 1.3, math.pi / 2, araba_renk(rnd), r, z0 + 1.3)
+    cdortgen(g, fc, 8.2, 11.6, 0.01, z0 + 0.9, z0 + 2.6, cam_grubu(r["cam"], 9.0, 0.0))
+    ckutu(g, fc, 7.6, 8.4, 0, 0.05, z0, z0 + 2.3, r["kapi"])
+    tabela(g, fc, 5.2, z0 + 3.9, 7.0, 0.9, 0.2, r, "GARAGE", renk=r["ana"], yazi_renk=r["beyaz"], oran=0.6)
+    duz_cati_ust(g, x0, x1, y0, y1, z0 + 4.6, r, rnd, r["duvar"], klima=1)
+    kutu(g, 13.4, 13.9, 7.6, 8.1, z0, z0 + 1.8, M("Pompa", "#3f73e6"))
+    top(g, (13.65, 7.85, z0 + 2.0), 0.22, 0.22, 0.22, r["beyaz"])
+    for (x, y, a) in ((2.4, 3.0, math.pi / 2), (5.4, 4.0, math.pi / 2 + 0.3), (9.2, 4.6, 0.2), (12.5, 3.0, math.pi / 2)):
+        park_araba(g, x, y, a, araba_renk(rnd), r, z0)
+    for k in range(4):
+        for j in range(3):
+            silindir(g, 14.7, 10.0 + k * 0.9, z0 + j * 0.25, 0.24, 0.4, 10, r["koyu"])
+    for k in range(3):
+        silindir(g, 14.6 + (k % 2) * 0.7, 12.6 + (k // 2) * 0.7, z0, 0.9, 0.3, 8, M("Varil", "#2f5a9a"))
+    for (a, b) in (((0.3, 0.4), (15.7, 0.4)), ((0.3, 0.4), (0.3, 7.0)), ((15.7, 0.4), (15.7, 9.0))):
+        cit_hat(g, a[0], a[1], b[0], b[1], z0, r["metal"], h=1.8, aralik=1.5)
+    park_lambasi(g, 15.0, 1.2, r, z0)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_atolye(rnd):
+    """Tuğla atölye: ikiz alınlıklı (biri krem sıvalı, biri tuğla) atölyeler, kemerli yeşil kapılar, kiremit çatı, çatı
+    sırtının altında vinç kirişi, önde taş avlu ve alçak çit."""
+    g = Govde()
+    PW, PD = 14.0, 13.0
+    r = ar(rnd, "#efe2c8", cati="#b0583a")
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    z0 = EV_ZEMIN
+    yesil = M("Kapi", "#2f5a3a")
+    for i, (a, b, duv) in enumerate(((0.8, 6.8, "#efe2c8"), (6.8, 13.2, "#a8503a"))):
+        ri = dict(r)
+        ri["duvar"] = M("Duvar", duv)
+        y0, y1 = 4.6, 12.4
+        H = z0 + 4.2
+        kutu(g, a, b, y0, y1, z0, H, ri["duvar"], atla=("zn",))
+        fc = Cephe((a, y0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+        L = b - a
+        kemer(g, fc, L * 0.32, z0, 1.6, 2.9, 0.0, 0.06, yesil)
+        ckutu(g, fc, L * 0.32 - 0.95, L * 0.32 + 0.95, 0, 0.12, z0 + 2.9, z0 + 3.1, ri["suslu"])
+        pencere(g, fc, L * 0.75, z0 + 1.0, 0.9, 1.4, ri, sade=True)
+        for s in (-1, 1):
+            ckutu(g, fc, L * 0.75 + s * 0.65 - 0.17, L * 0.75 + s * 0.65 + 0.17, 0, 0.05, z0 + 1.0, z0 + 2.4, yesil)
+        zr = besik_cati(g, "y", y0, y1, a, b, H, ri, sacak=0.25, yan_sacak=0.25)
+        pencere(g, fc, L / 2, H + 0.4, 0.8, 1.2, ri, sade=True)
+        for s in (-1, 1):
+            ckutu(g, fc, L / 2 + s * 0.6 - 0.16, L / 2 + s * 0.6 + 0.16, 0, 0.05, H + 0.4, H + 1.6, yesil)
+        ckutu(g, fc, L / 2 - 0.35, L / 2 + 0.35, -0.3, 0.3, zr + 0.1, zr + 0.6, ri["suslu"])     # alınlık kapak taşı
+        for s in (0.0, L):
+            ckutu(g, fc, s - 0.3 if s else 0.0, s if s else 0.3, -0.3, 0.3, H - 0.1, H + 0.4, ri["suslu"])
+        cubuk(g, fc.P(L / 2, 0.0, zr - 0.6), fc.P(L / 2, 0.9, zr - 0.6), 0.12, r["ahsap_koyu"])
+        levha(g, a + 0.3, b - 0.3, 0.6, y0, z0, z0 + 0.04, M("TasAvlu", "#d6cfc2"))
+        if i == 0:
+            ev_baca(g, a + 1.2, y0 + 3.0, zr - 1.4, zr + 0.4, ri)
+    cit = M("Cit", "#9c4a35")
+    for (a, b) in ((0.5, 5.6), (8.4, 13.5)):
+        cit_hat(g, a, 0.4, b, 0.4, z0, cit, h=0.7, aralik=1.0)
+    agac(g, 13.3, 3.2, r, rnd, boy=1.6, rr=0.9)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+# ---------------- SİMGE YAPILAR (bir bloğu kaplar: ~28 m)
+
+def ref_opera(rnd):
+    """Opera binası: görkemli merdiven, çift sütunlu açık galeri, yaldızlı kanatlı figürler, salonun üstünde bakır kubbe,
+    sahne kulesi, köşelerde küçük kubbeler."""
+    g = Govde()
+    r = ar(rnd, "#ecdfc8", cati="#7fa88f", ana="#c9a03a")
+    r["suslu"] = M("Suslu", "#f4ecdc")
+    bakir, altin = M("Bakir", "#7fa88f"), M("Altin", "#d9a83a")
+    PW, PD = 28.0, 28.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Meydan", "#d6cfc2"))
+    z0 = EV_ZEMIN
+    # Ön pavyon
+    x0, x1, y0, y1 = 3.0, 25.0, 6.5, 14.0
+    zb = z0 + 1.6
+    Ht = zb + 9.5
+    kutu(g, x0, x1, y0, y1, z0, Ht, r["duvar"], atla=("zn",))
+    on, sag, sol, arka = cepheler(x0, x1, y0, y1)
+    L = x1 - x0
+    for k in range(6):                                                         # zemin: kemerli kapılar
+        u = 2.5 + k * 3.4
+        kemer(g, on, u, zb, 1.8, 3.4, 0.0, 0.04, M("Kapi", "#2f4a3a"))
+        kemer(g, on, u, zb, 2.2, 3.7, -0.02, 0.0, r["suslu"]) if False else None
+    ckutu(g, on, -0.1, L + 0.1, 0, 0.6, zb + 4.0, zb + 4.4, r["suslu"])
+    for k in range(7):                                                         # galeri: çift sütunlar
+        u = 0.8 + k * 3.4
+        for du in (-0.35, 0.35):
+            p = on.P(u + du, 0.8, 0.0)
+            silindir(g, p[0], p[1], zb + 4.4, 4.4, 0.24, 8, r["suslu"])
+    for k in range(6):
+        u = 2.5 + k * 3.4
+        kemer(g, on, u, zb + 4.6, 1.8, 3.8, 0.0, 0.04, cam_grubu(r["cam"], u, 3.0))
+    ckutu(g, on, -0.2, L + 0.2, 0, 1.2, zb + 8.8, zb + 9.5, r["suslu"])
+    kutu(g, x0 + 7.0, x1 - 7.0, y0 + 0.5, y1, Ht, Ht + 1.6, r["duvar"])     # atik
+    cephe_poligon(g, on, [(7.0, Ht), (L - 7.0, Ht), (L - 7.0, Ht + 1.6), (7.0, Ht + 1.6)], -0.5, 0.0, r["duvar"])
+    tabela(g, on, L / 2, Ht + 0.8, 4.0, 0.6, 0.0, r, "OPÉRA", renk=r["duvar"], yazi_renk=altin, oran=0.7)
+    for x in (x0 + 7.2, x1 - 7.2):                                             # kanatlı figürler
+        top(g, (x, y0 + 0.9, Ht + 2.3), 0.35, 0.35, 0.7, altin)
+        for s in (-1, 1):
+            yonlu_kutu(g, (x + s * 0.55, y0 + 0.9, Ht + 2.8), (0.45, 0, 0.0), (0, 0.06, 0), (0, 0, 0.55), altin)
+    for fc, LL in ((sag, y1 - y0), (sol, y1 - y0)):
+        for k in range(2):
+            kemer(g, fc, LL * (k + 0.5) / 2, zb + 4.6, 1.6, 3.4, 0.0, 0.04, cam_grubu(r["cam"], k, 3.0))
+    # Köşe pavyonları ve küçük kubbeler
+    for cx in (x0 + 1.6, x1 - 1.6):
+        kutu(g, cx - 1.8, cx + 1.8, y0 - 0.4, y0 + 3.2, z0, Ht + 0.6, r["duvar"])
+        top(g, (cx, y0 + 1.4, Ht + 0.6), 1.7, 1.7, 1.6, bakir)
+        top(g, (cx, y0 + 1.4, Ht + 2.2), 0.3, 0.3, 0.5, altin)
+    # Salon ve kubbe
+    kutu(g, 5.0, 23.0, y1, 22.0, z0, z0 + 14.0, r["duvar"], atla=("zn",))
+    for fc, LL in zip(cepheler(5.0, 23.0, y1, 22.0)[1:3], (8.0, 8.0)):
+        pencereler(g, fc, LL, z0 + 2.0, 3, 3.6, r, w=1.2, h=2.2, aralik=2.7, sade=True)
+    silindir(g, 14.0, 18.0, z0 + 14.0, 1.6, 6.0, 16, r["duvar"])
+    for k in range(4):
+        a = 2 * math.pi * k / 4
+        yuvarlak_pencere(g, Cephe((14.0 + 6.02 * math.cos(a), 18.0 + 6.02 * math.sin(a), 0.0), (-math.sin(a), math.cos(a), 0.0),
+                                  (math.cos(a), math.sin(a), 0.0)), 0.0, z0 + 14.8, 0.45, 0.0, r["cam"])
+    top(g, (14.0, 18.0, z0 + 15.6), 6.1, 6.1, 4.8, bakir)
+    silindir(g, 14.0, 18.0, z0 + 20.2, 1.2, 0.9, 8, r["suslu"])
+    top(g, (14.0, 18.0, z0 + 21.4), 1.0, 1.0, 0.9, bakir)
+    top(g, (14.0, 18.0, z0 + 22.4), 0.3, 0.3, 0.5, altin)
+    # Sahne kulesi
+    kutu(g, 7.0, 21.0, 22.0, 27.0, z0, z0 + 19.0, r["duvar"], atla=("zn",))
+    besik_cati(g, "x", 7.0, 21.0, 22.0, 27.0, z0 + 19.0, {**r, "cati": bakir, "cati_koyu": M("BakirKoyu", "#6a8f78")}, sacak=0.2, yan_sacak=0.2)
+    for x in (7.3, 20.7):
+        top(g, (x, 24.5, z0 + 20.5), 0.4, 0.4, 0.8, altin)
+    # Merdiven
+    for k in range(8):
+        kutu(g, x0 + 2.0, x1 - 2.0, y0 - 0.55 * (k + 1), y0 - 0.55 * k, z0, zb - k * 0.2, r["suslu"])
+    for x in (x0 + 1.6, x1 - 1.6, x0 + 6.0, x1 - 6.0):
+        lamba_klasik(g, x, 1.6, r, h=3.0)
+    silindir(g, 1.6, 1.6, z0, 2.4, 0.6, 10, M("Morris", "#2f4a3a"))
+    top(g, (1.6, 1.6, z0 + 2.5), 0.65, 0.65, 0.5, M("Morris", "#2f4a3a"))
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_gar(rnd):
+    """Cam peron çatılı tren garı: saat kuleli taş bina, dev yarım daire pencere, mansartlı yan pavyonlar; arkada demir-cam
+    peron tonozu, peronlar ve lokomotif; önde tramvay ve taksi."""
+    g = Govde()
+    r = ar(rnd, "#e6d6b8", cati="#5a6470")
+    r["suslu"] = M("Suslu", "#f4ecdc")
+    PW, PD = 30.0, 30.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Meydan", "#d6cfc2"))
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 3.0, 27.0, 5.0, 12.0
+    Ht = z0 + 11.0
+    kutu(g, x0, x1, y0, y1, z0, Ht, r["duvar"], atla=("zn",))
+    on, sag, sol, arka = cepheler(x0, x1, y0, y1)
+    L = x1 - x0
+    kemer(g, on, L / 2, z0 + 1.5, 9.0, 9.3, 0.0, 0.4, r["suslu"])
+    kemer(g, on, L / 2, z0 + 1.6, 8.2, 8.8, 0.4, 0.42, M("Vitrin_a9c9de", "#a9c9de"))
+    for k in range(7):                                                         # yelpaze kayıtlar
+        a = math.pi * (k + 1) / 8
+        zc = z0 + 1.6 + 8.8 - 4.1
+        cubuk(g, on.P(L / 2, 0.45, zc), on.P(L / 2 + 4.0 * math.cos(a), 0.45, zc + 4.0 * math.sin(a)), 0.1, r["koyu"], kabuk=False)
+    ckutu(g, on, L / 2 - 4.1, L / 2 + 4.1, 0.4, 0.45, zc - 0.05, zc + 0.05, r["koyu"])
+    for k in range(3):
+        kemer(g, on, L / 2 - 2.6 + k * 2.6, z0, 1.6, 2.8, 0.42, 0.46, M("Kapi", "#2f4a3a"))
+    for u in (2.2, 4.6, L - 4.6, L - 2.2):
+        for f in range(2):
+            pencere(g, on, u, z0 + 1.2 + f * 4.6, 1.2, 2.6, r)
+    ckutu(g, on, -0.1, L + 0.1, 0, 0.5, Ht - 0.6, Ht, r["suslu"])
+    kutu(g, x0 + 0.5, x1 - 0.5, y0 + 0.5, y1 - 0.5, Ht, Ht + 1.0, r["cati"])
+    for cx in (x0 + 2.2, x1 - 2.2):                                            # yan pavyonlar
+        kutu(g, cx - 2.6, cx + 2.6, y0 - 0.5, y1, z0, Ht + 1.6, r["duvar"])
+        mansart(g, cx - 2.6, cx + 2.6, y0 - 0.5, y1, Ht + 1.6, r, rnd, n=2)
+    # Saat kulesi
+    tx, ty = x0 + 7.0, y0 + 1.2
+    kutu(g, tx - 1.6, tx + 1.6, ty - 1.6, ty + 1.6, z0, z0 + 24.0, r["duvar"])
+    for fc in cepheler(tx - 1.6, tx + 1.6, ty - 1.6, ty + 1.6):
+        saat(g, fc, 1.6, z0 + 20.5, 1.1, r)
+        for f in range(4):
+            pencere(g, fc, 1.6, z0 + 6.0 + f * 3.2, 0.7, 1.6, r, sade=True)
+    kutu(g, tx - 1.8, tx + 1.8, ty - 1.8, ty + 1.8, z0 + 24.0, z0 + 24.4, r["suslu"])
+    top(g, (tx, ty, z0 + 24.4), 1.7, 1.7, 2.0, M("Kubbe", BLOK_CINKO))
+    cubuk(g, (tx, ty, z0 + 26.2), (tx, ty, z0 + 28.0), 0.1, r["koyu"])
+    # Peron tonozu
+    cam = M("Vitrin_bcd3df", "#bcd3df")
+    tonoz_y(g, 3.0, 27.0, y1, 29.5, z0 + 4.0, 7.0, cam, n=12, kabuk=False)
+    for k in range(7):
+        tonoz_kaburga(g, 3.0, 27.0, y1 + 0.5 + k * 2.8, z0 + 4.0, 7.0, r["koyu"], n=12, t=0.18)
+    for x in (3.0, 27.0):
+        for k in range(7):
+            cubuk(g, (x, y1 + 0.5 + k * 2.8, z0), (x, y1 + 0.5 + k * 2.8, z0 + 4.0), 0.2, r["koyu"])
+    for x in (8.0, 15.0, 22.0):
+        kutu(g, x - 1.0, x + 1.0, y1, 29.0, z0, z0 + 0.9, r["beton"])
+    kutu(g, 10.5, 13.0, 18.0, 27.0, z0 + 0.6, z0 + 3.2, M("Lokomotif", "#2b2d31"))
+    silindir(g, 11.75, 19.0, z0 + 3.2, 1.2, 0.3, 8, r["koyu"])
+    top(g, (11.75, 19.0, z0 + 5.0), 0.8, 0.8, 0.7, M("Buhar", "#f2f2f2"))
+    kutu(g, 17.5, 20.0, 15.0, 27.0, z0 + 0.6, z0 + 3.2, M("Vagon", "#3f5f4a"))
+    # Önde tramvay ve taksiler
+    kutu(g, 4.0, 15.0, 1.0, 3.2, z0 + 0.4, z0 + 3.2, M("Tramvay", "#c9302c"))
+    cdortgen(g, Cephe((4.0, 1.0, 0.0), (1, 0, 0), (0, -1, 0)), 0.5, 10.5, 0.01, z0 + 1.7, z0 + 2.7, r["cam"])
+    kutu(g, 4.0, 15.0, 1.0, 3.2, z0 + 3.2, z0 + 3.4, r["beyaz"])
+    for k in range(2):
+        park_araba(g, 19.0 + k * 4.5, 2.2, 0.0, M("Taksi", "#2b2d31"), r, z0)
+    for x in (1.0, 29.0):
+        lamba_klasik(g, x, 4.0, r)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_kapali_pazar(rnd):
+    """Kapalı pazar: saatli yuvarlak pencereli tuğla alınlıklar, cam fenerli ana nef, yan nefler ve çizgili tenteli tezgâhlar."""
+    g = Govde()
+    r = ar(rnd, "#a8503a", cati="#5a6470")
+    r["suslu"] = M("Suslu", "#efe2c8")
+    r["urun"] = [M("Urun", c) for c in ("#f2d04a", "#e0525a", "#f0a0c0", "#6fae4a", "#e8e4dc")]
+    PW, PD = 26.0, 28.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Meydan", "#d6cfc2"))
+    z0 = EV_ZEMIN
+    nx0, nx1, y0, y1 = 8.0, 18.0, 3.0, 26.0
+    Hn = z0 + 10.0
+    kutu(g, nx0, nx1, y0, y1, z0, Hn, r["duvar"], atla=("zn",))
+    zr = besik_cati(g, "y", y0, y1, nx0, nx1, Hn, r, sacak=0.3, yan_sacak=0.1)
+    kutu(g, 12.2, 13.8, y0 + 2.0, y1 - 2.0, zr - 0.3, zr + 1.6, M("Vitrin_e8eef2", "#e8eef2"))   # cam fener
+    kutu(g, 12.0, 14.0, y0 + 1.9, y1 - 1.9, zr + 1.6, zr + 1.8, r["cati"])
+    for x0, x1, sx in ((3.0, nx0, -1), (nx1, 23.0, 1)):                        # yan nefler
+        kutu(g, x0, x1, y0 + 1.0, y1 - 1.0, z0, z0 + 5.0, r["duvar"], atla=("zn",))
+        xm = (x0 + x1) / 2
+        yonlu_kutu(g, (xm, (y0 + y1) / 2, z0 + 5.8), ((x1 - x0) / 2 + 0.4, 0, -sx * 0.8 * 0 + sx * 0.0), (0, (y1 - y0) / 2 - 0.6, 0), (0, 0, 0.08), r["cati"])
+        fc = cepheler(nx0, nx1, y0, y1)[1 if sx > 0 else 2]
+        cdortgen(g, fc, 1.0, y1 - y0 - 1.0, 0.01, z0 + 6.4, z0 + 9.2, cam_grubu(r["cam"], sx, 6.0))
+        sfc = cepheler(x0, x1, y0 + 1.0, y1 - 1.0)[1 if sx > 0 else 2]
+        for k in range(6):
+            kemer(g, sfc, 1.8 + k * 3.6, z0 + 0.5, 1.6, 3.4, 0.0, 0.04, cam_grubu(r["cam"], k, sx))
+    on = Cephe((nx0, y0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    L = nx1 - nx0
+    cephe_poligon(g, on, [(0.0, Hn), (L, Hn), (L / 2, zr + 0.4)], -0.3, 0.3, r["duvar"])
+    saat(g, on, L / 2, z0 + 7.6, 2.0, r, o=0.1)
+    kemer(g, on, L / 2, z0, 3.0, 4.6, 0.0, 0.05, cam_grubu(r["cam"], 0.0, 0.0))
+    for u in (0.0, L):
+        p = on.P(u, 0.2, 0.0)
+        silindir(g, p[0], p[1], z0, Hn + 0.4, 0.4, 8, r["suslu"])
+        koni(g, p[0], p[1], Hn + 0.4, 1.4, 0.45, 8, r["cati"])
+    renkler = [M("Tente", c) for c in ("#c9302c", "#2f6a46", "#2f5a9a", "#e0a020")]
+    for k in range(6):
+        serit_tente_tezgah(g, 1.5, y0 + 3.0 + k * 3.7, 2.2, 1.6, r, renkler[k % 4]) if False else None
+    for k in range(5):
+        x = 2.0
+        y = y0 + 3.0 + k * 4.2
+        serit_tente_tezgah(g, x, y, 1.6, 2.6, r, renkler[k % 4])
+        serit_tente_tezgah(g, PW - x, y, 1.6, 2.6, r, renkler[(k + 2) % 4])
+    for x in (4.0, 22.0):
+        lamba_klasik(g, x, 1.2, r)
+    for k in range(5):
+        bisiklet(g, 14.5 + k * 0.6, 1.3, math.pi / 2, r, rnd)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_pazar_pavyonu(rnd):
+    """Camlı pazar pavyonu: dökme demir ve cam, beşik tonoz, saatli lunet (yelpaze pencere), girişte çizgili tenteli tezgâhlar."""
+    g = Govde()
+    r = ar(rnd, "#5a6470", cati="#7f8a96")
+    r["urun"] = [M("Urun", c) for c in ("#f2d04a", "#e0525a", "#6fae4a", "#f0a0c0", "#e08a3a")]
+    PW, PD = 26.0, 26.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Meydan", "#d6cfc2"))
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 4.0, 22.0, 6.0, 24.0
+    H = z0 + 5.0
+    kutu(g, x0, x1, y0, y1, z0, z0 + 0.6, M("Tugla", "#a8503a"), atla=("zn",))
+    cam = M("Vitrin_bcd3df", "#bcd3df")
+    for fc, L in zip(cepheler(x0, x1, y0, y1), (x1 - x0, y1 - y0, y1 - y0, x1 - x0)):
+        cdortgen(g, fc, 0.0, L, 0.01, z0 + 0.6, H, cam)
+        n = int(L / 1.8)
+        for k in range(n + 1):
+            ckutu(g, fc, k * L / n - 0.07, k * L / n + 0.07, 0, 0.1, z0, H, r["duvar"])
+        ckutu(g, fc, -0.1, L + 0.1, 0, 0.3, H - 0.2, H + 0.2, r["duvar"])
+    kutu(g, x0, x1, y0, y1, z0, z0 + 0.05, M("Ic", "#c9b89a"))
+    tonoz_y(g, x0, x1, y0, y1, H, 6.5, r["cati"], n=12)
+    for k in range(10):
+        tonoz_kaburga(g, x0, x1, y0 + 0.2 + k * 1.95, H, 6.5, r["duvar"], n=12, t=0.14)
+    kutu(g, 12.0, 14.0, y0 + 1.0, y1 - 1.0, H + 6.3, H + 6.9, cam)
+    on = Cephe((x0, y0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    L = x1 - x0
+    cephe_poligon(g, on, [(L / 2 + 9.0 * math.cos(math.pi * i / 12), H + 6.5 * math.sin(math.pi * i / 12)) for i in range(13)], -0.05, 0.05, cam)
+    for k in range(9):
+        a = math.pi * (k + 1) / 10
+        cubuk(g, on.P(L / 2, 0.08, H), on.P(L / 2 + 9.0 * math.cos(a), 0.08, H + 6.5 * math.sin(a)), 0.12, r["duvar"], kabuk=False)
+    saat(g, on, L / 2, H + 0.9, 0.6, {**r, "koyu": r["duvar"]}, o=0.1)
+    ckutu(g, on, L / 2 - 2.0, L / 2 + 2.0, 0, 0.06, z0, z0 + 3.6, M("Ic", "#3a3633"))
+    renkler = [M("Tente", c) for c in ("#c9302c", "#e0a020", "#2f6a46", "#2f5a9a")]
+    for k in range(8):
+        x = 2.0 + k * 2.9
+        if 11.0 < x < 15.5:
+            continue
+        serit_tente_tezgah(g, x, 3.4, 2.4, 1.5, r, renkler[k % 4])
+    for x in (2.0, 24.0):
+        lamba_klasik(g, x, 1.0, r)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_avm(rnd):
+    """Şehir içi alışveriş merkezi: önde korunmuş eski cepheler (taş ve tuğla), ortada tam yükseklikte cam giriş, üstte delikli
+    metal kaplı otopark katı ve çatıda arabalar, arkada spiral rampa, reklam panosu."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    PW, PD = 28.0, 28.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    z0 = EV_ZEMIN
+    Ht, on1, *_ = paris(g, rnd, r, 1.0, 10.0, 1.4, 9.0, 4, "haussmann", ("on", "sol"), dukkan=True, tema="kafe", sagir=())
+    mansart(g, 1.0, 10.0, 1.4, 9.0, Ht, r, rnd, n=3)
+    tente(g, on1, 0.3, 8.7, z0 + 2.9, 1.4, r, M("Tente", "#e0a020"))
+    r2 = blok_renk(rnd, "tugla")
+    r2["duvar"] = M("Duvar", "#b0483a")
+    Ht2, on2, *_ = paris(g, rnd, r2, 18.0, 27.0, 1.4, 9.0, 4, "tugla", ("on", "sag"), dukkan=True, tema="genel", sagir=())
+    tente(g, on2, 0.3, 8.7, z0 + 2.9, 1.2, r2, M("Tente", "#c9302c"), r2["beyaz"])
+    kutu(g, 18.0, 27.0, 1.4, 9.0, Ht2, Ht2 + 0.5, r2["suslu"])
+    # Cam giriş
+    gx0, gx1 = 10.0, 18.0
+    kutu(g, gx0, gx1, 1.4, 9.0, z0, z0 + 17.0, r["koyu"], atla=("zn",))
+    gfc = Cephe((gx0, 1.4, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    cdortgen(g, gfc, 0.4, 7.6, 0.01, z0, z0 + 16.0, M("Vitrin_9fb8c6", "#9fb8c6"))
+    for k in range(1, 5):
+        ckutu(g, gfc, 0.4 + k * 1.44 - 0.05, 0.4 + k * 1.44 + 0.05, 0, 0.08, z0, z0 + 16.0, r["koyu"])
+    for k in range(1, 5):
+        ckutu(g, gfc, 0.4, 7.6, 0, 0.08, z0 + k * 3.4, z0 + k * 3.4 + 0.1, r["koyu"])
+    tabela(g, gfc, 4.0, z0 + 16.5, 5.6, 0.7, 0.1, r, "GALERIES CITYRT", renk=r["koyu"], yazi_renk=M("Yazi", "#e8c35a"), oran=0.55)
+    cam_kapi(g, gfc, 4.0, z0, r, w=2.4, h=3.0, kasa=r["koyu"], sacak=False)
+    # Arkadaki büyük hacim: delikli metal kaplama ve çatı otoparkı
+    kh = M("DelikliMetal", "#a0703a")
+    bx0, bx1, by0, by1 = 1.0, 27.0, 9.0, 27.0
+    Hb = z0 + 15.0
+    kutu(g, bx0, bx1, by0, by1, z0, Hb, kh, atla=("zn",))
+    for fc, L in zip(cepheler(bx0, bx1, by0, by1), (26.0, 18.0, 18.0, 26.0)):
+        for k in range(int(L / 1.1)):
+            u = 0.3 + k * 1.1
+            ckutu(g, fc, u, u + 0.5, 0, 0.06, z0 + 0.5 + (k % 3) * 0.3, Hb - 0.4 - (k % 2) * 0.4, M("DelikliMetal2", "#8a5a2e"))
+    kutu(g, 1.0, 10.0, 1.4, 9.0, Ht + 2.6, Hb, kh) if Ht + 2.6 < Hb else None
+    kutu(g, 18.0, 27.0, 1.4, 9.0, Ht2 + 0.5, Hb, kh)
+    kutu(g, bx0, bx1, 1.4, by1, Hb, Hb + 0.4, r["beton"])
+    for k in range(5):
+        boya(g, 2.0, 26.0, 4.0 + k * 4.4, 4.06 + k * 4.4, r["serit"], z=Hb + 0.41)
+    for k in range(14):
+        x = 2.8 + (k % 7) * 3.4
+        y = 5.6 + (k // 7) * 8.8 + (0 if k % 2 else 2.0)
+        if rnd.random() < 0.8:
+            park_araba(g, x, y, math.pi / 2, araba_renk(rnd), r, Hb + 0.4)
+    kutu(g, 9.0, 19.0, 11.0, 15.0, Hb + 0.4, Hb + 1.4, M("Vitrin_bcd3df", "#bcd3df"))
+    for fc in cepheler(bx0, bx1, 1.4, by1):
+        pass
+    silindir(g, 22.5, 22.5, z0, Hb + 1.2, 4.0, 16, r["beton"])                # spiral rampa
+    for k in range(5):
+        silindir(g, 22.5, 22.5, z0 + 2.0 + k * 3.0, 0.3, 4.1, 16, r["suslu"])
+    kutu(g, 26.9, 27.2, 14.0, 22.0, z0 + 7.0, z0 + 13.0, M("Pano", "#3f9a5a"))
+    kutu(g, 0.8, 1.1, 14.0, 20.0, z0 + 6.0, z0 + 11.0, M("Yazi", "#ff4fa0"))
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_buyuk_magaza(rnd):
+    """Büyük mağaza: kemerli vitrinler, köşelerde küçük kubbeler, atriyumun üstünde vitray kubbe çatı, mansart."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    PW, PD = 26.0, 24.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 1.0, 25.0, 1.4, 22.6
+    Ht, on, sag, sol, arka = paris(g, rnd, r, x0, x1, y0, y1, 5, "haussmann", ("on", "sag", "sol", "arka"), dukkan=False)
+    for fc, L in ((on, x1 - x0), (sag, y1 - y0), (sol, y1 - y0)):
+        n = int(L / 3.6)
+        for k in range(n):
+            u = L * (k + 0.5) / n
+            kemer(g, fc, u, z0 + 0.2, 2.6, 3.0, 0.12, 0.16, M("Vitrin_8a9aa8", "#8a9aa8"))
+            kemer(g, fc, u, z0 + 0.1, 2.9, 3.2, 0.0, 0.12, r["koyu"])
+    tabela(g, on, (x1 - x0) / 2, z0 + 3.5, 8.0, 0.5, 0.12, r, "GRANDS MAGASINS", renk=r["koyu"], yazi_renk=M("Yazi", "#e8c35a"), oran=0.6)
+    zt = mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=8)
+    for cx, cy in ((x0 + 1.0, y0 + 1.0), (x1 - 1.0, y0 + 1.0)):
+        top(g, (cx, cy, Ht + 0.4), 1.6, 1.6, 2.2, M("Kubbe", BLOK_CINKO))
+        top(g, (cx, cy, Ht + 2.6), 0.25, 0.25, 0.5, M("Altin", "#d9a83a"))
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    silindir(g, cx, cy, zt - 0.4, 1.4, 5.4, 18, r["duvar"])
+    renkler = ["#f2d08a", "#c8b8e0", "#a8d0d8", "#f0b8a0", "#d8e0a0"]
+    for k, c in enumerate(renkler):
+        rr = 5.5 - k * 1.05
+        top(g, (cx, cy, zt + 1.0 + k * 0.55), rr, rr, 1.0 + (4 - k) * 0.35, M("Vitray", c))
+    for k in range(4):
+        a = math.pi / 2 * k
+        kutu(g, cx + 5.6 * math.cos(a) - 0.6, cx + 5.6 * math.cos(a) + 0.6, cy + 5.6 * math.sin(a) - 0.6, cy + 5.6 * math.sin(a) + 0.6,
+             zt - 0.4, zt + 1.4, r["suslu"])
+    for x in (0.6, 25.4):
+        lamba_klasik(g, x, 0.7, r)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_grand_otel(rnd):
+    """Grand otel: ana girişin üstünde camlı saçak, bayraklar, kırmızı halı, boydan boya balkonlar, çatı pencereli mansart."""
+    g = Govde()
+    r = blok_renk(rnd, "haussmann")
+    PW, PD = 22.0, 20.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, r["kaldirim"])
+    z0 = EV_ZEMIN
+    x0, x1, y0, y1 = 1.0, 21.0, 2.0, 18.6
+    Ht, on, sag, sol, arka = paris(g, rnd, r, x0, x1, y0, y1, 8, "haussmann", ("on", "sag", "sol", "arka"), dukkan=False)
+    L = x1 - x0
+    cam_kapi(g, on, L / 2, z0, r, w=2.4, h=3.0, kasa=M("Altin", "#b8902a"), sacak=False)
+    ckutu(g, on, L / 2 - 2.8, L / 2 + 2.8, 0, 1.9, z0 + 3.2, z0 + 3.35, M("SacakCam", "#9fb8c6"))
+    ckutu(g, on, L / 2 - 2.85, L / 2 + 2.85, 0, 1.95, z0 + 3.35, z0 + 3.5, r["koyu"])
+    for s in (-1, 1):
+        p = on.P(L / 2 + s * 2.6, 1.8, 0.0)
+        cubuk(g, (p[0], p[1], z0), (p[0], p[1], z0 + 3.2), 0.08, r["koyu"], kabuk=False)
+    levha(g, x0 + L / 2 - 1.0, x0 + L / 2 + 1.0, 0.0, y0, z0, z0 + 0.03, M("Hali", "#a0242c"))
+    tabela(g, on, L / 2, z0 + 4.2, 4.0, 0.6, 0.1, r, "GRAND HÔTEL", renk=r["koyu"], yazi_renk=M("Yazi", "#e8c35a"), oran=0.6)
+    for k, c in enumerate(("#c9302c", "#2f5a9a", "#f6f3ec", "#2f6a46")):     # bayraklar
+        u = 3.0 + k * 4.6
+        if abs(u - L / 2) < 2.0:
+            u += 2.2
+        a, b = on.P(u, 0.0, z0 + 7.0), on.P(u, 1.6, z0 + 7.8)
+        cubuk(g, a, b, 0.07, r["koyu"], kabuk=False)
+        yonlu_kutu(g, add(b, (0.0, 0.0, -0.75)), (0.03, 0, 0), (0, 0.04, 0), (0, 0, 0.0) if False else (0, 0, 0.75), M("Bayrak", c))
+    mansart(g, x0, x1, y0, y1, Ht, r, rnd, n=7)
+    baca_sira(g, x0 + 5.0, (y0 + y1) / 2, Ht + 2.6, r, 4)
+    baca_sira(g, x1 - 5.0, (y0 + y1) / 2, Ht + 2.6, r, 4)
+    for x in (0.5, 21.5):
+        lamba_klasik(g, x, 0.8, r)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_stadyum(rnd):
+    """Mahalle stadyumu: çizgili çim saha, kaleler, reklam panoları, kapalı küçük tribün, skorbord, dört projektör direği,
+    teraslı tuğla kulüp evi, otopark."""
+    g = Govde()
+    r = ar(rnd, "#a8503a", cati="#5a4a44")
+    PW, PD = 30.0, 26.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Cim", "#86b05a"))
+    z0 = EV_ZEMIN
+    px0, px1, py0, py1 = 2.0, 23.0, 2.5, 16.5
+    for k in range(7):
+        x = px0 + k * 3.0
+        levha(g, x, x + 1.5, py0, py1, z0, z0 + 0.03, M("Saha", "#9cc46a"))
+    b = M("Cizgi", "#f6f3ec")
+    zz = z0 + 0.04
+    for (a0, a1, c0, c1) in ((px0, px1, py0, py0 + 0.1), (px0, px1, py1 - 0.1, py1), (px0, px0 + 0.1, py0, py1), (px1 - 0.1, px1, py0, py1),
+                             ((px0 + px1) / 2 - 0.05, (px0 + px1) / 2 + 0.05, py0, py1)):
+        boya(g, a0, a1, c0, c1, b, z=zz)
+    for s in (px0, px1):
+        d = 1 if s == px0 else -1
+        boya(g, min(s, s + d * 3.0), max(s, s + d * 3.0), 6.0, 6.1, b, z=zz)
+        boya(g, min(s, s + d * 3.0), max(s, s + d * 3.0), 12.9, 13.0, b, z=zz)
+        boya(g, s + d * 3.0 - 0.05, s + d * 3.0 + 0.05, 6.0, 13.0, b, z=zz)
+        for y in (8.0, 11.0):
+            cubuk(g, (s, y, z0), (s, y, z0 + 2.0), 0.1, b)
+        cubuk(g, (s, 8.0, z0 + 2.0), (s, 11.0, z0 + 2.0), 0.1, b)
+    renkler = [M("Reklam", c) for c in ("#c9302c", "#2f5a9a", "#e0a020", "#2f6a46")]
+    for k in range(7):
+        kutu(g, px0 + k * 3.0, px0 + k * 3.0 + 2.8, py0 - 0.6, py0 - 0.45, z0, z0 + 0.8, renkler[k % 4])
+    for (a, c) in (((0.6, 0.6), (24.4, 0.6)), ((0.6, 0.6), (0.6, 18.0)), ((24.4, 0.6), (24.4, 18.0))):
+        cit_hat(g, a[0], a[1], c[0], c[1], z0, r["koyu"], h=2.2, aralik=2.0)
+    # Tribün
+    for k in range(4):
+        kutu(g, 6.0, 20.0, 17.2 + k * 0.6, 17.8 + k * 0.6, z0, z0 + 0.5 + k * 0.5, r["beton"])
+    for x in (6.0, 13.0, 20.0):
+        cubuk(g, (x, 19.6, z0), (x, 19.6, z0 + 4.0), 0.18, r["metal"])
+    yonlu_kutu(g, (13.0, 18.4, z0 + 4.0), (7.4, 0, 0), (0, 1.8, 0.4), (0, 0, 0.08), M("Cati", "#5a6470"))
+    for k in range(10):
+        top(g, (7.0 + k * 1.3, 17.8 + (k % 3) * 0.6, z0 + 1.2 + (k % 3) * 0.5), 0.2, 0.2, 0.35, renkler[k % 4])
+    kutu(g, 21.0, 23.5, 18.0, 18.3, z0 + 2.0, z0 + 3.4, r["koyu"])           # skorbord
+    for (x, y) in ((1.2, 1.2), (23.8, 1.2), (1.2, 17.4), (23.8, 17.4)):
+        cubuk(g, (x, y, z0), (x, y, z0 + 13.0), 0.25, r["metal"])
+        kutu(g, x - 0.8, x + 0.8, y - 0.2, y + 0.2, z0 + 13.0, z0 + 14.0, M("Projektor", "#f3e3a0"))
+    # Kulüp evi
+    kx0, kx1, ky0, ky1 = 2.0, 15.0, 20.4, 25.4
+    kutu(g, kx0, kx1, ky0, ky1, z0, z0 + 3.6, r["duvar"], atla=("zn",))
+    kfc = Cephe((kx0, ky0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    for k in range(5):
+        pencere(g, kfc, 1.4 + k * 2.6, z0 + 0.9, 1.1, 1.5, r, sade=True)
+    kalca_cati(g, kx0, kx1, ky0, ky1, z0 + 3.6, 0.5, r["cati"], sacak=0.4)
+    for k in range(3):
+        masa_semsiye(g, 16.5 + k * 1.8 if False else 4.0 + k * 4.0, 19.4 if False else 26.0 - 0.0, r, M("Semsiye", "#f6f3ec")) if False else None
+    # Otopark
+    levha(g, 25.0, 30.0, 0.0, 18.0, z0, z0 + 0.04, r["asfalt"])
+    for k in range(5):
+        boya(g, 25.2, 29.8, 2.0 + k * 3.2, 2.06 + k * 3.2, r["serit"], z=z0 + 0.05)
+        if rnd.random() < 0.8:
+            park_araba(g, 27.5, 3.6 + k * 3.2, 0.0, araba_renk(rnd), r, z0)
+    for k in range(5):
+        bisiklet(g, 17.0 + k * 0.6, 21.0, math.pi / 2, r, rnd)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+def ref_bahce_merkezi(rnd):
+    """Bahçe merkezi: beyaz Venlo serası (gece parlar), file altında çiçekli saksı rafları, küvetlerde küçük ağaçlar, toprak
+    çuvalları, kapıda kasa kulübesi ve çiçek logolu tabela."""
+    g = Govde()
+    r = ar(rnd, "#f6f3ec", ana="#2f6a46")
+    PW, PD = 28.0, 24.0
+    levha(g, 0, PW, 0, PD, 0, EV_ZEMIN, M("Kaldirim", "#d8d2c6"))
+    z0 = EV_ZEMIN
+    gx0, gx1, gy0, gy1 = 11.0, 27.0, 6.0, 22.0
+    cam = M("Vitrin_e8eef2", "#e8eef2")
+    kutu(g, gx0, gx1, gy0, gy1, z0, z0 + 4.0, cam, atla=("zn",))
+    for k in range(4):
+        a, b = gx0 + k * 4.0, gx0 + (k + 1) * 4.0
+        pts = [(a, gy0, z0 + 4.0), (b, gy0, z0 + 4.0), (b, gy1, z0 + 4.0), (a, gy1, z0 + 4.0), ((a + b) / 2, gy0, z0 + 5.8), ((a + b) / 2, gy1, z0 + 5.8)]
+        dis_bukey(g, pts, [[0, 1, 2, 3], [0, 1, 4], [3, 2, 5], [0, 4, 5, 3], [1, 2, 5, 4]], cam, kabuk=False)
+        cubuk(g, ((a + b) / 2, gy0, z0 + 5.8), ((a + b) / 2, gy1, z0 + 5.8), 0.08, r["beyaz"], kabuk=False)
+    for fc, L in zip(cepheler(gx0, gx1, gy0, gy1), (16.0, 16.0, 16.0, 16.0)):
+        for k in range(9):
+            ckutu(g, fc, k * 2.0 - 0.05, k * 2.0 + 0.05, 0, 0.06, z0, z0 + 4.0, r["beyaz"])
+    ckutu(g, Cephe((gx0, gy0, 0.0), (1, 0, 0), (0, -1, 0)), 6.5, 9.0, 0, 0.05, z0, z0 + 2.8, r["beyaz"])
+    # File altı raflar
+    for x in (1.0, 9.0):
+        for y in (3.0, 9.0, 15.0):
+            cubuk(g, (x, y, z0), (x, y, z0 + 3.2), 0.12, r["koyu"], kabuk=False)
+    for k in range(6):
+        yonlu_kutu(g, (5.0, 3.0 + k * 2.4, z0 + 3.3), (4.2, 0, 0), (0, 0.5, 0), (0, 0, 0.04), M("File", "#3f7a4a"))
+    for j in range(3):
+        y = 4.5 + j * 4.0
+        kutu(g, 1.5, 8.5, y - 0.5, y + 0.5, z0 + 0.6, z0 + 0.8, r["ahsap"])
+        for k in range(12):
+            top(g, (1.8 + k * 0.58, y, z0 + 1.0), 0.2, 0.2, 0.18, rnd.choice(r["cicek"] + [r["cali"]]))
+    for k in range(9):                                                         # küvetlerde ağaçlar
+        x = 11.5 + k * 1.6
+        kutu(g, x - 0.35, x + 0.35, 3.6, 4.3, z0, z0 + 0.6, r["ahsap"])
+        top(g, (x, 3.95, z0 + 1.3), 0.5, 0.5, 0.7, r["agac"][k % len(r["agac"])])
+    kutu(g, 10.0, 26.0, 2.2, 2.8, z0, z0 + 0.8, r["cali"])
+    for k in range(4):
+        kutu(g, 2.0 + k * 0.8, 2.7 + k * 0.8, 19.5, 20.5, z0, z0 + 0.4, M("Cuval", "#8a6a4a"))
+    kutu(g, 6.0, 8.0, 19.0, 21.0, z0, z0 + 2.4, r["ana"])                    # kasa kulübesi
+    kutu(g, 5.8, 8.2, 18.8, 21.2, z0 + 2.4, z0 + 2.6, r["beyaz"])
+    kutu(g, 1.0, 1.4, 1.0, 1.4, z0, z0 + 2.6, r["ana"])
+    kutu(g, 0.4, 2.0, 1.0, 1.4, z0 + 2.6, z0 + 4.0, r["ana"])
+    top(g, (1.2, 0.95, z0 + 3.3), 0.45, 0.06, 0.45, r["beyaz"])
+    top(g, (1.2, 0.9, z0 + 3.3), 0.18, 0.06, 0.18, r["sari"])
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g, ortala(g)
+
+
+# ---------------- PARK VE AVLU KARELERİ (10 m)
+
+def ref_park_metro(r, rnd):
+    """Metro önü parkı: Art Nouveau metro girişi, Morris ilan sütunu, Wallace çeşmesi, fenerler, ağaç, bank, saksı."""
+    g = Govde()
+    zemin_levha(g, -YK, YK, -YK, YK, ZC, r["tas_acik"])
+    yesil = M("Fener", "#2f4a3a")
+    kutu(g, -1.8, 1.8, -2.6, 0.6, ZC - 0.6, ZC + 0.01, M("Merdiven", "#5a4a40"))
+    for k in range(5):
+        kutu(g, -1.6, 1.6, -2.4 + k * 0.6, -1.8 + k * 0.6, ZC - 0.6 + k * 0.12, ZC - 0.48 + k * 0.12, r["koyu"])
+    for (a, b) in (((-1.9, -2.7), (-1.9, 0.7)), ((1.9, -2.7), (1.9, 0.7)), ((-1.9, 0.7), (1.9, 0.7))):
+        cit_hat(g, a[0], a[1], b[0], b[1], ZC, yesil, h=1.0, aralik=0.3)
+    for x in (-1.9, 1.9):
+        cubuk(g, (x, -2.7, ZC), (x, -2.7, ZC + 2.6), 0.1, yesil)
+        top(g, (x, -2.7, ZC + 2.7), 0.25, 0.25, 0.35, M("MetroLamba", "#f0a030"))
+    yonlu_kutu(g, (0.0, -2.7, ZC + 2.3), (1.9, 0, 0), (0, 0.06, 0), (0, 0, 0.2), M("MetroTabela", "#e8c35a"))
+    levha(g, -1.5, 2.0, 1.5, 4.5, ZC, ZC + 0.05, r["cim"])
+    silindir(g, 0.2, 3.0, ZC, 2.6, 0.13, 6, r["govde"])
+    for (dx, dy) in ((0, 0), (0.6, 0.3), (-0.5, 0.4), (0.1, -0.5)):
+        top(g, (0.2 + dx, 3.0 + dy, ZC + 3.0), 0.75, 0.75, 0.6, r["agac"][1])
+    silindir(g, 3.4, 1.8, ZC, 2.8, 0.7, 10, yesil)                             # Morris sütunu
+    silindir(g, 3.4, 1.8, ZC + 0.6, 1.6, 0.72, 10, M("Afis", "#f2d08a"))
+    top(g, (3.4, 1.8, ZC + 2.9), 0.78, 0.78, 0.6, yesil)
+    for (dx, dy) in ((-0.3, -0.3), (0.3, -0.3), (-0.3, 0.3), (0.3, 0.3)):     # Wallace çeşmesi
+        cubuk(g, (-3.4 + dx, 2.0 + dy, ZC + 0.4), (-3.4 + dx, 2.0 + dy, ZC + 1.6), 0.06, yesil)
+    silindir(g, -3.4, 2.0, ZC, 0.4, 0.5, 8, yesil)
+    top(g, (-3.4, 2.0, ZC + 1.8), 0.45, 0.45, 0.45, yesil)
+    lamba_klasik(g, 3.6, -2.6, r, h=3.4, z0=ZC)
+    bank(g, 2.4, 3.8, math.pi, r)
+    silindir(g, -2.6, -4.0, ZC, 0.45, 0.3, 8, r["saksi"])
+    top(g, (-2.6, -4.0, ZC + 0.7), 0.35, 0.35, 0.35, r["cali"])
+    return g
+
+
+def ref_otopark_cinar(r, rnd):
+    """Çınar altı otopark: parke taşı, çit çalılar, kulübeli ve bariyerli giriş, fenerler, park etmiş arabalar."""
+    g = Govde()
+    zemin_levha(g, -YK, YK, -YK, YK, Z_ASF, M("ParkeTas", "#cfc9be"))
+    for i in range(5):
+        x = -4.0 + i * 2.15
+        boya(g, x - 0.04, x + 0.04, 1.0, 4.4, r["serit"])
+        boya(g, x - 0.04, x + 0.04, -2.4, 1.0 - 4.4 + 1.0 if False else -2.4 + 0.01, r["serit"]) if False else None
+    for i in range(4):
+        x = -2.9 + i * 2.15
+        if rnd.random() < 0.85:
+            park_araba(g, x, 2.7, math.pi / 2, araba_renk(rnd), r, Z_ASF)
+    for i in range(3):
+        x = -0.8 + i * 2.15
+        boya(g, x - 1.07, x - 1.0, -4.4, -1.4, r["serit"])
+        if rnd.random() < 0.8:
+            park_araba(g, x, -2.9, math.pi / 2, araba_renk(rnd), r, Z_ASF)
+    boya(g, -1.2, 0.4, -0.5, -0.4, r["serit"])
+    boya(g, 1.0, 2.6, 0.4, 0.5, r["serit"])
+    for (a0, a1, b0, b1) in ((-4.9, 4.9, 4.5, 4.95), (4.5, 4.95, -4.9, 4.5), (-4.9, -4.45, -4.9, -2.0), (-4.9, -4.45, 0.5, 4.5)):
+        kutu(g, a0, a1, b0, b1, Z_ASF, Z_ASF + 0.7, r["cali"])
+    kutu(g, -4.4, -3.0, -1.6, -0.2, Z_ASF, Z_ASF + 2.2, M("Kulube", "#3f73e6"))
+    kutu(g, -4.5, -2.9, -1.7, -0.1, Z_ASF + 2.2, Z_ASF + 2.4, r["koyu"])
+    cubuk(g, (-2.9, -0.4, Z_ASF + 0.9), (0.6, -0.4, Z_ASF + 0.9), 0.1, r["kirmizi"])
+    for (x, y) in ((-4.6, 4.6), (4.6, -4.6)):
+        lamba_klasik(g, x, y, r, h=3.6, z0=Z_ASF)
+    for (x, y) in ((4.6, 4.6), (-4.6, -4.6)):
+        top(g, (x, y, Z_ASF + 1.0), 0.6, 0.6, 0.7, r["agac"][0])
+    return g
+
+
+def ref_park_kanal(r, rnd):
+    """Kanal köprüsü: tuğla rıhtım, su, ferforje korkuluklu köprü, bisikletler, yüzen ev, fenerler, basamaklar, ağaçlar."""
+    g = Govde()
+    tugla = M("TuglaZemin", "#b8634a")
+    zemin_levha(g, -YK, YK, -YK, YK, ZC, tugla)
+    su = M("Su", "#5fa8d8")
+    kutu(g, -YK, YK, -1.6, 1.6, ZC - 0.6, ZC + 0.02, su, atla=("zn",))
+    for y in (-1.6, 1.6):
+        kutu(g, -YK, YK, y - 0.12, y + 0.12, ZC, ZC + 0.18, r["tas"])
+    kutu(g, -1.6, 1.6, -2.0, 2.0, ZC + 0.18, ZC + 0.5, M("Kopru", "#a0482e"))
+    for x in (-1.5, 1.5):
+        cit_hat(g, x, -2.0, x, 2.0, ZC + 0.5, r["metal"], h=0.9, aralik=0.25)
+    kutu(g, 2.0, 4.8, -1.2, 1.2, ZC - 0.2, ZC + 0.5, r["beyaz"])            # yüzen ev
+    kutu(g, 2.4, 4.4, -1.0, 1.0, ZC + 0.5, ZC + 2.0, M("Duvar", "#7fae8f"))
+    kutu(g, 2.3, 4.5, -1.1, 1.1, ZC + 2.0, ZC + 2.15, r["koyu"])
+    cdortgen(g, Cephe((2.4, -1.0, 0.0), (1, 0, 0), (0, -1, 0)), 0.4, 1.6, 0.01, ZC + 0.9, ZC + 1.6, r["cam"])
+    for k in range(4):
+        bisiklet(g, -3.8 + k * 0.6, 3.0, math.pi / 2, r, rnd, z0=ZC)
+    for k in range(3):
+        bisiklet(g, -0.8 + k * 0.6, -3.4, math.pi / 2, r, rnd, z0=ZC)
+    for (x, y) in ((-4.2, 2.4), (3.6, -2.4)):
+        lamba_klasik(g, x, y, r, h=3.0, z0=ZC)
+    for (x, y) in ((-3.8, -3.6), (3.8, 3.6)):
+        silindir(g, x, y, ZC, 1.4, 0.1, 6, r["govde"])
+        top(g, (x, y, ZC + 2.0), 0.8, 0.8, 0.7, r["agac"][0])
+    for k in range(4):
+        kutu(g, 2.0, YK, 3.6 + k * 0.35, 3.95 + k * 0.35, ZC, ZC + 0.12 + k * 0.12, r["tas"])
+    return g
+
+
+def referans():
+    sonuc = []
+    tekil = [("Konut_ref_kira", ref_kira), ("Konut_ref_kubbeli", ref_kubbeli), ("Konut_ref_faubourg", ref_faubourg),
+             ("Konut_ref_altbau", ref_altbau), ("Konut_ref_pasajli", ref_pasajli), ("Konut_ref_eski_sehir", ref_eski_sehir),
+             ("Konut_ref_mews", ref_mews), ("Konut_villa_kosk", ref_kosk), ("Konut_villa_artnouveau", ref_artnouveau),
+             ("Konut_konak_bahceli", ref_konak_bahceli),
+             ("Dukkan_cadde_firin", ref_firin), ("Dukkan_cadde_bistro", lambda rnd: ref_firin(rnd, bistro=True)),
+             ("Dukkan_cadde_pub", ref_pub), ("Dukkan_cadde_eski", ref_eski_dukkanlar), ("Dukkan_cadde_bufe", ref_bufe),
+             ("Dukkan_cadde_benzinlik", ref_benzinlik), ("Dukkan_cadde_market", ref_market), ("Dukkan_cadde_autohaus", ref_autohaus),
+             ("Dukkan_cadde_fitness", ref_fitness), ("Buro_klinker_1", ref_buro_klinker),
+             ("Sanayi_fabrika_matbaa", ref_matbaa), ("Sanayi_fabrika_lastik", ref_lastik), ("Sanayi_depo_insaat", ref_insaat_deposu),
+             ("Sanayi_garaj_tamirhane", ref_tamirhane), ("Sanayi_garaj_atolye", ref_atolye),
+             ("Simge_opera", ref_opera), ("Simge_gar", ref_gar), ("Simge_kapali_pazar", ref_kapali_pazar),
+             ("Simge_pazar_pavyonu", ref_pazar_pavyonu), ("Simge_avm", ref_avm), ("Simge_buyuk_magaza", ref_buyuk_magaza),
+             ("Simge_grand_otel", ref_grand_otel), ("Simge_stadyum", ref_stadyum), ("Simge_bahce_merkezi", ref_bahce_merkezi)]
+    for i, (ad, fn) in enumerate(tekil):
+        rnd = random.Random(TOHUM * 4243 + i * 97)
+        g, gen = fn(rnd)
+        sonuc.append((ad, g, gen))
+    r = ar(random.Random(TOHUM), "#e8e4dc")
+    rnd = random.Random(TOHUM * 919)
+    for ad, fn in (("Park_cim_metro", ref_park_metro), ("Avlu_otopark_cinar", ref_otopark_cinar), ("Park_cim_kanal", ref_park_kanal)):
+        g = fn(r, rnd)
+        if CIZGI:
+            kabuk(g, CIZGI_KALINLIK * 0.7)
+        sonuc.append((ad, g, ortala(g)))
+    return sonuc
+
+
 # ------------------------------------------------------------------ hava: bulut, yağmur, kar, yaprak, şimşek (Unity'de Hava3D kullanır)
 
 def bulut(rnd, tip, koyu):
@@ -5424,6 +7231,8 @@ def uret():
         return hava_parcalari()
     if MODEL == "blok":
         return bloklar()
+    if MODEL == "referans":
+        return referans()
     if MODEL == "dukkan":
         sonuc = []
         for i, k in enumerate(DUKKANLAR):
