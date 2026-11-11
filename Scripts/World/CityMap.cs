@@ -390,6 +390,21 @@ namespace KuryeTycoon
             return false;
         }
 
+        /// <summary>Harita dışındaki (x, y) karesi bir kır yolunun üstünde mi?</summary>
+        public static bool CountryRoadAt(int x, int y)
+        {
+            if (x >= 0 && y >= 0 && x < Width && y < Height) return false;
+            foreach (var r in CountryRoads)
+            {
+                if (Mathf.Approximately(r.a.y, r.b.y))
+                {
+                    if (Mathf.RoundToInt(r.a.y) == y && x >= Mathf.Min(r.a.x, r.b.x) - 0.5f && x <= Mathf.Max(r.a.x, r.b.x) + 0.5f) return true;
+                }
+                else if (Mathf.RoundToInt(r.a.x) == x && y >= Mathf.Min(r.a.y, r.b.y) - 0.5f && y <= Mathf.Max(r.a.y, r.b.y) + 0.5f) return true;
+            }
+            return false;
+        }
+
         static bool NearCountryRoad(Vector2 p, float margin)
         {
             foreach (var r in CountryRoads)

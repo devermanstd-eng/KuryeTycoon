@@ -780,9 +780,31 @@ namespace KuryeTycoon
         /// Şehir dışı: ormanlar ve çiftlikler 3D (tarla, çayır, nehir ve kır yolları 2D haritadan görünür).
         /// Parçalar merkez ofisin karesine bağlanır (o kare hep açık): kilitli bölge gibi kararmazlar.
         /// </summary>
+        /// <summary>Kır yolları şehir yollarıyla aynı 3D parçalarla döşenir (şehirden ne kadar uzağa).</summary>
+        const int KirYoluUzunluk = 30;
+
         void BuildCountryside(CityMap map, bool pack, bool packTreesOk, System.Random rng)
         {
             var anchor = map.HQTile;
+            if (UsePack && UseRoads && roadStraight != null)
+            {
+                foreach (var r in CityMap.CountryRoads)
+                {
+                    bool yatay = Mathf.Approximately(r.a.y, r.b.y);
+                    int sabit = Mathf.RoundToInt(yatay ? r.a.y : r.a.x);
+                    float bas = yatay ? Mathf.Min(r.a.x, r.b.x) : Mathf.Min(r.a.y, r.b.y);
+                    float son = yatay ? Mathf.Max(r.a.x, r.b.x) : Mathf.Max(r.a.y, r.b.y);
+                    int lim = yatay ? CityMap.Width : CityMap.Height;
+                    for (int k = Mathf.CeilToInt(bas); k <= Mathf.FloorToInt(son); k++)
+                    {
+                        if (k >= 0 && k < lim) continue;                                   // şehrin içi: zaten yol karesi
+                        if ((k < 0 ? -k : k - lim + 1) > KirYoluUzunluk) continue;
+                        var t = yatay ? new Vector2Int(k, sabit) : new Vector2Int(sabit, k);
+                        // Parçalar merkez ofisin karesine bağlanır: kilitli bölge gibi kararmasın
+                        AddFlat(roadStraight, anchor, yatay ? 90f : 0f, 1, new Vector2(t.x - anchor.x, t.y - anchor.y));
+                    }
+                }
+            }
             int sira = 0;
             bool extras = UsePack && countryExtras != null && countryExtras.Length > 0;
             foreach (var t in map.CountryTrees)
@@ -990,10 +1012,11 @@ namespace KuryeTycoon
         /// <summary>Komşu yollara göre parça seçer: düz, köşe, T, dörtlü kavşak (ana caddelerde geniş sürümleri).</summary>
         void AddRoad(CityMap map, Vector2Int t, int order = 1)
         {
-            bool n = t.y < CityMap.Height - 1 && map.IsRoad(t.x, t.y + 1);
-            bool s = t.y > 0 && map.IsRoad(t.x, t.y - 1);
-            bool e = t.x < CityMap.Width - 1 && map.IsRoad(t.x + 1, t.y);
-            bool w = t.x > 0 && map.IsRoad(t.x - 1, t.y);
+            // Harita kenarındaki yol karesi: şehir dışına devam eden kır yolu da komşu sayılır (kavşak doğru seçilsin)
+            bool n = t.y < CityMap.Height - 1 ? map.IsRoad(t.x, t.y + 1) : CityMap.CountryRoadAt(t.x, t.y + 1);
+            bool s = t.y > 0 ? map.IsRoad(t.x, t.y - 1) : CityMap.CountryRoadAt(t.x, t.y - 1);
+            bool e = t.x < CityMap.Width - 1 ? map.IsRoad(t.x + 1, t.y) : CityMap.CountryRoadAt(t.x + 1, t.y);
+            bool w = t.x > 0 ? map.IsRoad(t.x - 1, t.y) : CityMap.CountryRoadAt(t.x - 1, t.y);
             int count = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
             bool av = AvenuesOn;
             // Açılar Z ekseninde, saat yönünün tersine: 0 = kuzey, 90 = batı, 180 = güney, 270 = doğu.
@@ -1055,10 +1078,10 @@ namespace KuryeTycoon
         }
 
         /// <summary>Düz parça: kareyi tam kaplar, yüzeyi zeminin hemen üstünde, yükselmez.</summary>
-        void AddFlat(GameObject prefab, Vector2Int tile, float angle, int order = 1)
+        void AddFlat(GameObject prefab, Vector2Int tile, float angle, int order = 1, Vector2 offset = default)
         {
             if (prefab == null) return;
-            var holder = Holder(prefab.name, tile, Vector2.zero);
+            var holder = Holder(prefab.name, tile, offset);
             var inst = Instantiate(prefab, holder, false);
             inst.transform.localPosition = Vector3.zero;
             inst.transform.localScale = Vector3.one;
