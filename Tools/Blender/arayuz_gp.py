@@ -129,6 +129,12 @@ class Cizim:
                     pt.opacity = 1.0
                 except Exception:
                     pass
+        # Noktalar Python'dan yazıldı: dolgu üçgenlerinin yeniden hesaplanması için çizime haber ver
+        for fn in ("tag_positions_changed", "tag_topology_changed"):
+            try:
+                getattr(dr, fn)()
+            except Exception:
+                pass
         return ob
 
 
