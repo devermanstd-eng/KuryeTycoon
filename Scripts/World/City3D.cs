@@ -71,6 +71,7 @@ namespace KuryeTycoon
         List<GameObject> kamuKalan;                         // bu kurulumda henüz yerleşmemiş kamu binaları (her biri bir kez)
         static GameObject parkPond, parkMonument, plazaFountain;
         static GameObject roadStraight, roadCorner, roadT, roadCross, groundBlock, groundGrass;
+        static GameObject roadStraightTrees;   // ağaçlı düz yol (Blender: Yol_lane_agacli)
         public static int PackBuildingCount { get { LoadPack(); return packBuildings.Length; } }
         public static int PackTreeCount { get { LoadPack(); return packTrees.Length; } }
         public static bool PackRoadsOk { get { LoadPack(); return roadStraight != null && roadCross != null; } }
@@ -168,6 +169,8 @@ namespace KuryeTycoon
             packBuildings = keep.ToArray();
 
             roadStraight = FindRoad("lane_01", "lane_02", "road lane", "road tile");
+            roadStraightTrees = null;
+            foreach (var p in packRoads) if (p != null && p.name == "Yol_lane_agacli") roadStraightTrees = p;
             roadCorner = FindRoad("corner_01", "corner");
             roadT = FindRoad("t_intersection_01", "t_intersection", "t intersection");
             roadCross = FindRoadExcept("intersection", "t_", "t intersection");
@@ -743,7 +746,6 @@ namespace KuryeTycoon
 
         static void TintVaried(Renderer[] rs, bool dark, int seed)
         {
-            var locked = new Color(0.3f, 0.3f, 0.33f);
             foreach (var r in rs)
             {
                 r.SetPropertyBlock(null);
@@ -753,7 +755,8 @@ namespace KuryeTycoon
                     var m = mats[i];
                     if (m == null || m.name.StartsWith("Cizgi")) continue;   // siyah çizgi hep siyah
                     Color c = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color;
-                    c = dark ? locked : Vary(c, m.name, seed);
+                    c = Vary(c, m.name, seed);
+                    if (dark) c = CityMap.LockedTint(c);
                     var mpb = new MaterialPropertyBlock();
                     mpb.SetColor("_BaseColor", c);
                     mpb.SetColor("_Color", c);
@@ -797,12 +800,20 @@ namespace KuryeTycoon
             if (seed >= 0) { TintVaried(rs, dark, seed); return; }
             foreach (var r in rs)
             {
-                if (!dark) { r.SetPropertyBlock(null); continue; } // malzemenin kendi rengi
-                var mpb = new MaterialPropertyBlock();
-                var c = new Color(0.3f, 0.3f, 0.33f);
-                mpb.SetColor("_BaseColor", c);
-                mpb.SetColor("_Color", c);
-                r.SetPropertyBlock(mpb);
+                r.SetPropertyBlock(null);
+                if (!dark) continue; // malzemenin kendi rengi
+                // Kilitli bölge: her malzeme kendi renginin soluk hâli (düz gri değil)
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null || m.name.StartsWith("Cizgi") || m.name.StartsWith("IsikHavuz")) continue;
+                    var c = CityMap.LockedTint(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color);
+                    var mpb = new MaterialPropertyBlock();
+                    mpb.SetColor("_BaseColor", c);
+                    mpb.SetColor("_Color", c);
+                    r.SetPropertyBlock(mpb, i);
+                }
             }
         }
 
@@ -835,7 +846,14 @@ namespace KuryeTycoon
             if (count >= 3) { AddFlat(roadCross, t, 0f, order); return; }
             // Düz: kanonik kuzey-güney
             float st = (e || w) && !(n || s) ? 90f : 0f;
-            AddFlat(roadStraight, t, st + RoadOffset(0), order);
+            // Bazı caddeler ağaçlı (referanstaki gibi): ana caddeler (her 2. blok yolu) ve şehir içi sokakların bir kısmı
+            var straight = roadStraight;
+            if (roadStraightTrees != null && CityMap.InCity(t.x, t.y))
+            {
+                bool avenue = st == 0f ? (t.x / CityMap.Block) % 2 == 0 : (t.y / CityMap.Block) % 2 == 1;
+                if (avenue && ((t.x * 7 + t.y * 13) % 5) != 0) straight = roadStraightTrees;
+            }
+            AddFlat(straight, t, st + RoadOffset(0), order);
         }
 
         /// <summary>Düz parça: kareyi tam kaplar, yüzeyi zeminin hemen üstünde, yükselmez.</summary>

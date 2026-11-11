@@ -2039,7 +2039,7 @@ def apartman(rnd, _stil=None):
 # Bir kare = 10 m. Oyunda yönler: kuzey = Blender −Y, doğu = Blender −X (FBX Unity'ye bu yönlerle girer).
 # Trafik: arabalar kare merkezinden 1,7 m sağda, yayalar 4,4 m'de → asfalt ±3,6 m, kaldırım 3,6–5 m.
 
-YOL_SABIT = dict(asfalt="#5b5e63", asfalt_koyu="#53565b", serit="#f2f2ee", kaldirim="#d8d1c4", kaldirim2="#cdc5b7",
+YOL_SABIT = dict(asfalt="#6f7277", asfalt_koyu="#676a6f", serit="#f2f2ee", kaldirim="#ddd7cc", kaldirim2="#d1cabd",
                  bordur="#b3ab9e", cim="#9cc46a", cim_koyu="#86b05a", toprak="#8a6a4a", koyu="#2b2d31", metal="#a7abb0",
                  isik="#f3e3a0", kirmizi="#d9473a", sari="#f2c14a", yesil="#4fb36a", mavi="#3f73e6", beyaz="#f6f3ec")
 
@@ -2105,32 +2105,62 @@ def kaldirim(g, x0, x1, y0, y1, r, bordur_kenar=()):
 
 
 def sokak_lambasi(g, x, y, kol_x, kol_y, r):
-    """Kaldırımda lamba; (kol_x, kol_y) kolun uzandığı yön (yola doğru)."""
+    """Modern sokak lambası: ince yuvarlak direk, yola doğru hafif kavisli kol, yassı LED başlık.
+    (kol_x, kol_y) kolun uzandığı yön (yola doğru). Başlığın altındaki YIsik malzemesi gece yanar."""
     z = Z_KAL
-    silindir(g, x, y, z, 0.2, 0.07, 6, r["koyu"], kabuk=False)
-    silindir(g, x, y, z + 0.2, 4.0, 0.035, 6, r["koyu"], kabuk=False)
-    ux, uy = x + kol_x * 1.0, y + kol_y * 1.0
-    cubuk(g, (x, y, z + 4.2), (ux, uy, z + 4.2), 0.045, r["koyu"], kabuk=False)
-    cubuk(g, (x, y, z + 3.7), (x + kol_x * 0.5, y + kol_y * 0.5, z + 4.2), 0.03, r["koyu"], kabuk=False)
-    kutu(g, ux - 0.18, ux + 0.18, uy - 0.16, uy + 0.16, z + 4.08, z + 4.24, r["koyu"])
-    kutu(g, ux - 0.14, ux + 0.14, uy - 0.12, uy + 0.12, z + 4.03, z + 4.08, r["isik"])
+    gri = M("LambaGri", "#3d4247")
+    silindir(g, x, y, z, 0.12, 0.06, 8, gri, kabuk=False)                         # taban flanşı
+    silindir(g, x, y, z + 0.12, 4.4, 0.028, 8, gri, kabuk=False)                  # ince direk
+    # Kavisli kol: direğin tepesinden üç kısa parçayla yola doğru kıvrılır
+    pts = [(0.0, 4.5), (0.25, 4.66), (0.6, 4.74), (1.05, 4.76)]
+    for (a0, h0), (a1, h1) in zip(pts, pts[1:]):
+        cubuk(g, (x + kol_x * a0, y + kol_y * a0, z + h0), (x + kol_x * a1, y + kol_y * a1, z + h1), 0.022, gri, kabuk=False)
+    # Yassı LED başlık (kol yönünde uzun, ince)
+    ux, uy = x + kol_x * 1.2, y + kol_y * 1.2
+    ex, ey = (0.34, 0.1) if abs(kol_x) >= abs(kol_y) else (0.1, 0.34)
+    if abs(kol_x) > 0.1 and abs(kol_y) > 0.1:
+        ex, ey = 0.22, 0.22
+    kutu(g, ux - ex, ux + ex, uy - ey, uy + ey, z + 4.7, z + 4.79, gri)
+    kutu(g, ux - ex + 0.04, ux + ex - 0.04, uy - ey + 0.03, uy + ey - 0.03, z + 4.68, z + 4.7, r["isik"])
     if DETAY:
         isik_havuzu(g, ux, uy, z)
 
 
 def trafik_lambasi(g, x, y, yon_x, yon_y, r):
-    """Kavşak köşesinde trafik ışığı; ışıklar (yon_x, yon_y) yönüne bakar."""
+    """Kavşak köşesinde trafik ışığı: ince direk, dar ve kısa ışık kutusu; ışıklar (yon_x, yon_y) yönüne bakar."""
     z = Z_KAL
-    silindir(g, x, y, z, 3.2, 0.04, 6, r["koyu"], kabuk=False)
+    silindir(g, x, y, z, 2.95, 0.03, 6, r["koyu"], kabuk=False)
     hx, hy = x, y
-    kutu(g, hx - 0.14, hx + 0.14, hy - 0.14, hy + 0.14, z + 2.2, z + 3.3, r["koyu"])
+    w = 0.085                                    # kutu yarı genişliği (eskiden 0.14: çok kalındı)
+    kutu(g, hx - w, hx + w, hy - w, hy + w, z + 2.25, z + 2.95, r["koyu"])
+    kutu(g, hx - w - 0.015, hx + w + 0.015, hy - w - 0.015, hy + w + 0.015, z + 2.95, z + 2.98, r["koyu"])   # ince şapka
     for i, renk in enumerate(("kirmizi", "sari", "yesil")):
-        zz = z + 3.1 - i * 0.33
-        cx, cy = hx + yon_x * 0.14, hy + yon_y * 0.14
-        ex, ey = (0.03, 0.11) if yon_x else (0.11, 0.03)
-        kutu(g, cx - ex, cx + ex, cy - ey, cy + ey, zz - 0.11, zz + 0.11, r[renk])
+        zz = z + 2.83 - i * 0.22
+        cx, cy = hx + yon_x * w, hy + yon_y * w
+        ex, ey = (0.02, 0.06) if yon_x else (0.06, 0.02)
+        kutu(g, cx - ex, cx + ex, cy - ey, cy + ey, zz - 0.06, zz + 0.06, r[renk])
     # Yaya düğmesi
-    kutu(g, x - 0.06, x + 0.06, y - 0.06, y + 0.06, z + 1.0, z + 1.2, r["sari"])
+    kutu(g, x - 0.04, x + 0.04, y - 0.04, y + 0.04, z + 1.0, z + 1.14, r["sari"])
+
+
+def yuvarlak_kose(g, sx, sy, r, rad=0.85):
+    """Kavşak köşesindeki kaldırım: asfalta bakan köşesi yuvarlatılmış (referanstaki gibi yumuşak bordür).
+    sx, sy: köşenin yönü (±1). Kare (YA..YK) × (YA..YK), (YA, YA) köşesi rad yarıçapla yuvarlanır."""
+    cx, cy = sx * (YA + rad), sy * (YA + rad)
+    pts = [(sx * YK, sy * YK), (sx * YA, sy * YK)]
+    n = 6
+    for i in range(n + 1):
+        a = math.pi * 0.5 * i / n
+        # (YA, YA+rad) noktasından (YA+rad, YA) noktasına çeyrek yay
+        pts.append((cx - sx * rad * math.cos(a), cy - sy * rad * math.sin(a)))
+    pts.append((sx * YK, sy * YA))
+    # Saat yönünün tersine sırala (yüz normali yukarı)
+    alan = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
+    if alan < 0:
+        pts.reverse()
+    b = len(g.f)
+    prizma_poligon(g, pts, 0.0, Z_KAL, r["kaldirim"], kabuk=False)
+    cizgisiz(g, b)
 
 
 def yol_tabelasi(g, x, y, r, tur="dur"):
@@ -2201,13 +2231,31 @@ def yol_duz(r):
     return g
 
 
+def yol_duz_agacli(r, rnd):
+    """Ağaçlı düz yol: iki kaldırımda ağaç çukurları ve yuvarlak ağaçlar (referanstaki ağaçlı caddeler)."""
+    g = yol_duz(r)
+    for sx in (-1, 1):
+        for y in (-2.6, 2.6):
+            x = sx * 4.3
+            b = len(g.f)
+            kutu(g, x - 0.45, x + 0.45, y - 0.45, y + 0.45, Z_KAL - 0.02, Z_KAL + 0.01, r["toprak"], atla=("zn",))
+            cizgisiz(g, b)
+            boy = rnd.uniform(1.2, 1.6)
+            silindir(g, x, y, Z_KAL, boy, 0.11, 6, r["govde"])
+            rr = rnd.uniform(0.75, 0.95)
+            renk = rnd.choice(r["agac"])
+            top(g, (x, y, Z_KAL + boy + rr * 0.7), rr, rr, rr * 0.95, renk)
+            top(g, (x + 0.3 * sx, y + 0.2, Z_KAL + boy + rr * 0.3), rr * 0.6, rr * 0.6, rr * 0.55, renk)
+    return g
+
+
 def yol_kose(r):
     """Kanonik köşe: kuzey (−Y) ve doğu (−X) açık; dış kaldırımlar batı (+X) ve güneyde (+Y)."""
     g = Govde()
     zemin_levha(g, -YK, YA, -YK, YA, Z_ASF, r["asfalt"])
     kaldirim(g, YA, YK, -YK, YK, r, ("xn",))
     kaldirim(g, -YK, YA, YA, YK, r, ("yn",))
-    kaldirim(g, -YK, -YA, -YK, -YA, r, ("xp", "yp"))
+    yuvarlak_kose(g, -1, -1, r)
     orta_serit(g, "y", -YK, -0.1, r)
     orta_serit(g, "x", -YK, -0.1, r)
     sokak_lambasi(g, 4.45, 4.45, -0.7, -0.7, r)
@@ -2225,8 +2273,8 @@ def yol_t(r):
     g = Govde()
     zemin_levha(g, -YK, YK, -YK, YA, Z_ASF, r["asfalt"])
     kaldirim(g, -YK, YK, YA, YK, r, ("yn",))
-    kaldirim(g, YA, YK, -YK, -YA, r, ("xn", "yp"))
-    kaldirim(g, -YK, -YA, -YK, -YA, r, ("xp", "yp"))
+    yuvarlak_kose(g, 1, -1, r)
+    yuvarlak_kose(g, -1, -1, r)
     zebra(g, "y", (0.0, -YA - 0.75), r)
     orta_serit(g, "x", -YK, -YA - 0.1, r)
     orta_serit(g, "x", YA + 0.1, YK, r)
@@ -2243,9 +2291,7 @@ def yol_kavsak(r):
     g = Govde()
     zemin_levha(g, -YK, YK, -YK, YK, Z_ASF, r["asfalt"])
     for sx, sy in ((1, 1), (1, -1), (-1, 1), (-1, -1)):
-        x0, x1 = sorted((sx * YA, sx * YK))
-        y0, y1 = sorted((sy * YA, sy * YK))
-        kaldirim(g, x0, x1, y0, y1, r, ("xn" if sx > 0 else "xp", "yn" if sy > 0 else "yp"))
+        yuvarlak_kose(g, sx, sy, r)
     zebra(g, "y", (0.0, -YA - 0.75), r)
     zebra(g, "y", (0.0, YA + 0.75), r)
     zebra(g, "x", (-YA - 0.75, 0.0), r)
@@ -2318,7 +2364,7 @@ def sehir_parcalari():
     """Sabit adlı parçalar: oyun yolları adlarından tanır (City3D.LoadPack)."""
     r = yol_renkleri()
     rnd = random.Random(TOHUM * 777)
-    liste = [("Yol_lane_01", yol_duz(r)), ("Yol_corner_01", yol_kose(r)), ("Yol_t_intersection_01", yol_t(r)),
+    liste = [("Yol_lane_01", yol_duz(r)), ("Yol_lane_agacli", yol_duz_agacli(r, rnd)), ("Yol_corner_01", yol_kose(r)), ("Yol_t_intersection_01", yol_t(r)),
              ("Yol_intersection", yol_kavsak(r)), ("Yol_sidewalk", zemin_kaldirim(r)), ("Yol_grass", zemin_cim(r, rnd))]
     for i in range(3):
         liste.append((f"Agac_yuvarlak_{i + 1}", agac_modeli(r, rnd, "yuvarlak", i)))
@@ -4357,6 +4403,21 @@ def bulut(rnd, tip, koyu):
         L, oran, n, yuk = rnd.uniform(9.0, 13.0), rnd.uniform(0.55, 0.7), rnd.randint(2, 3), 0.85
     elif tip == "firtina":
         L, oran, n, yuk = rnd.uniform(28.0, 36.0), rnd.uniform(0.55, 0.65), rnd.randint(6, 8), 1.0
+    elif tip == "kule":
+        L, oran, n, yuk = rnd.uniform(14.0, 18.0), rnd.uniform(0.65, 0.78), rnd.randint(3, 4), 1.3
+    elif tip == "dagnik":
+        # Dağınık küçük topaklar: tek gövde değil, aralıklı 4–6 küçük bulutçuk
+        g2 = Govde()
+        for _ in range(rnd.randint(4, 6)):
+            x, y = rnd.uniform(-14.0, 14.0), rnd.uniform(-6.0, 6.0)
+            rr = rnd.uniform(2.2, 3.8)
+            top(g2, (x, y, rr * 0.5), rr * 1.4, rr * 1.1, rr * 0.6, renk)
+            top(g2, (x + rr * 0.6, y + 0.3, rr * 0.75), rr * 0.8, rr * 0.7, rr * 0.55, renk)
+        if CIZGI:
+            kabuk(g2, CIZGI_KALINLIK * olcek(g2) * 0.8)
+        return g2, ortala(g2)
+    elif tip == "ince":
+        L, oran, n, yuk = rnd.uniform(36.0, 46.0), rnd.uniform(0.18, 0.24), rnd.randint(8, 10), 0.35
     else:  # kume
         L, oran, n, yuk = rnd.uniform(18.0, 26.0), rnd.uniform(0.5, 0.62), rnd.randint(4, 6), 1.15
     D = L * oran
@@ -4369,7 +4430,7 @@ def bulut(rnd, tip, koyu):
         r = (D * 0.42) * (1.0 - abs(u) * 0.85) * rnd.uniform(0.75, 1.2)
         top(g, (x, y, D * 0.1 + r * 0.4 * yuk), r * 1.2, r, r * 0.68 * yuk, renk)
     # Ortada kabarık tepeler (kümede yüksek, yassıda yok)
-    tepe = {"kume": 2, "firtina": 2, "kucuk": 1, "yassi": 0}[tip]
+    tepe = {"kume": 2, "firtina": 2, "kucuk": 1, "yassi": 0, "kule": 3, "ince": 0}[tip]
     for _ in range(tepe):
         x = rnd.uniform(-L * 0.15, L * 0.15)
         r = D * rnd.uniform(0.36, 0.46)
@@ -4461,7 +4522,7 @@ def simsek():
 
 def hava_parcalari():
     sonuc = []
-    beyaz = ["kume", "kume", "yassi", "yassi", "kucuk", "kucuk", "kume"]
+    beyaz = ["kume", "kume", "kume", "yassi", "yassi", "kucuk", "kucuk", "kule", "kule", "dagnik", "dagnik", "ince"]
     for i, tip in enumerate(beyaz):
         rnd = random.Random(TOHUM * 31 + i)
         g, gen = bulut(rnd, tip, koyu=False)

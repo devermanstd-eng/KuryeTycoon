@@ -255,7 +255,7 @@ namespace KuryeTycoon
 
         public static readonly Color RoadColor = new Color(0.25f, 0.26f, 0.30f);
         public static readonly Color BridgeColor = new Color(0.42f, 0.40f, 0.38f);
-        public static readonly Color WaterColor = new Color(0.22f, 0.50f, 0.72f);
+        public static readonly Color WaterColor = new Color(0.36f, 0.62f, 0.84f);   // açık, canlı nehir mavisi
         public static readonly Color GrassColor = new Color(0.40f, 0.62f, 0.33f);
         public static readonly Color RiverBankColor = new Color(0.44f, 0.64f, 0.35f);
         public static readonly Color PlazaColor = new Color(0.82f, 0.76f, 0.64f);
@@ -425,7 +425,7 @@ namespace KuryeTycoon
             for (float x = -ring; x < Width + ring; x += 6f)
                 for (float y = -ring; y < Height + ring; y += 5f)
                 {
-                    if (rng.NextDouble() < 0.25) continue;          // arada çayır kalsın
+                    if (rng.NextDouble() < 0.6) continue;           // çoğu yer çayır ve ağaç kümesi (referanstaki gibi), tarla seyrek
                     float w = 4f + (float)rng.NextDouble() * 2f, h = 3f + (float)rng.NextDouble() * 2f;
                     var r = new Rect(x + 0.4f, y + 0.4f, w, h);
                     if (!RectClear(r, 0.6f)) continue;
@@ -892,7 +892,8 @@ namespace KuryeTycoon
         public static Color LockedTint(Color c)
         {
             float g = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
-            return Color.Lerp(Color.Lerp(c, new Color(g, g, g), 0.55f), Color.black, 0.38f);
+            // Kilitli bölge: düz koyu gri değil, rengi solmuş ama seçilebilen şehir (referanstaki gibi canlı görünsün)
+            return Color.Lerp(Color.Lerp(c, new Color(g, g, g), 0.5f), Color.black, 0.16f);
         }
 
         void LateUpdate()
