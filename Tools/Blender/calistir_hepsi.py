@@ -5,7 +5,7 @@ _spec = importlib.util.spec_from_file_location("kurye_modeller", _yol)
 km = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(km)
 # Hava parçaları (bulut, damla, kar, yaprak, şimşek): hafif sürüm gerekmez
-_isler = [dict(MODEL="hava", LOD=False), dict(MODEL="katalog"), dict(MODEL="sehir"), dict(MODEL="dukkan")]
+_isler = [dict(MODEL="hava", LOD=False), dict(MODEL="blok"), dict(MODEL="katalog"), dict(MODEL="sehir"), dict(MODEL="dukkan")]
 for t in (1, 2, 3):
     _isler.append(dict(MODEL="mustakil_ev", TOHUM=t, VARYANT=3))
 for t in (1, 2):

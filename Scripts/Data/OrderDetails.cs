@@ -18,7 +18,7 @@ namespace KuryeTycoon
     /// Şehrin adres sistemi. Tutarlıdır: aynı bina her zaman aynı sokakta, aynı numarada, aynı kat sayısındadır.
     ///  • Dikey yollar (x = 0, 4, 8 …) "Cadde", yatay yollar (y = 0, 4, 8 …) "Sokak".
     ///  • Bina numarası, kapısının açıldığı yol boyunca konumuna göre (bir taraf tek, karşı taraf çift).
-    ///  • Kat sayısı blok türüne göre: kule bloklar 7–12, eski şehir 3–5, çarşı 3–6, kampüs 2–4, bahçeli ev ve sanayi 1–2.
+    ///  • Kat sayısı blok türüne ve merkeze uzaklığa göre: kule bloklar 6–12, eski şehir 3–6, çarşı 2–7, kampüs 2–4, bahçeli ev ve sanayi 1–2.
     ///  • 5+ katlı binalarda asansör var; 7+ katlılar iki bloklu (A, B).
     /// </summary>
     public static class Addresses
@@ -46,18 +46,26 @@ namespace KuryeTycoon
 
         static System.Random TileRng(Vector2Int t) => new System.Random(t.x * 73856093 ^ t.y * 19349663 ^ 0x5bd1e995);
 
+        /// <summary>
+        /// Kat sayısı: blok türünün aralığında, şehir merkezine (Kossuth Meydanı) yakınlığa göre.
+        /// Merkezde yüksek binalar, dışa doğru boy düşer (referanstaki silüet); küçük rastgele sapma da var.
+        /// </summary>
         public static int Floors(Vector2Int t)
         {
             var r = TileRng(t);
+            float d = Vector2.Distance(t, CityMap.PlazaCenter);
+            float merkez = Mathf.Clamp01(1f - d / 24f);                 // 1 merkezde, 0 en dışta
+            float v = Mathf.Clamp01(merkez * 0.9f + (float)r.NextDouble() * 0.35f - 0.12f);
+            int Aralik(int min, int max) => min + Mathf.RoundToInt(v * (max - min));
             switch (CityMap.ZoneOf(t))
             {
-                case Zone.HighRise: return 7 + r.Next(6);    // 7–12 kule bloklar
-                case Zone.OldTown: return 3 + r.Next(3);     // 3–5 eski şehir
-                case Zone.Houses: return 1 + r.Next(2);      // 1–2 bahçeli ev
+                case Zone.HighRise: return Aralik(6, 12);     // 6–12 kule bloklar
+                case Zone.OldTown: return Aralik(3, 6);       // 3–6 eski şehir
+                case Zone.Houses: return 1 + r.Next(2);       // 1–2 bahçeli ev
                 case Zone.Mall: return 2;
-                case Zone.Campus: return 2 + r.Next(3);      // 2–4 yurt / fakülte
-                case Zone.Warehouse: return 1 + r.Next(2);   // 1–2 depo / atölye
-                default: return 3 + r.Next(4);               // 3–6 çarşı
+                case Zone.Campus: return 2 + r.Next(3);       // 2–4 yurt / fakülte
+                case Zone.Warehouse: return 1 + r.Next(2);    // 1–2 depo / atölye
+                default: return Aralik(2, 7);                 // 2–7 çarşı
             }
         }
 

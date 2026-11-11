@@ -19,7 +19,7 @@ namespace KuryeTycoon.EditorTools
         const string MalzemeKlasor = "Assets/KuryeTycoon/Modeller/Malzemeler";
         const string PrefabKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Binalar";
         const string EskiKlasor = "Assets/Resources/SehirPaketi/Binalar";
-        static readonly string[] Onekler = { "MustakilEv_", "SiraEv_", "OfisKulesi_", "Market_", "FastFood_", "Apartman_", "Yol_", "Agac_", "Cali_", "Park_", "Meydan_", "Avlu_", "Kir_", "Dukkan_", "Konut_", "Buro_", "Sanayi_", "Kamu_", "Hava_" };
+        static readonly string[] Onekler = { "MustakilEv_", "SiraEv_", "OfisKulesi_", "Market_", "FastFood_", "Apartman_", "Yol_", "Agac_", "Cali_", "Park_", "Meydan_", "Avlu_", "Kir_", "Dukkan_", "Konut_", "Buro_", "Sanayi_", "Kamu_", "Hava_", "Blok_" };
         const string ParkKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Parklar";
         const string YolKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Yollar";
         const string AgacKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Agaclar";
