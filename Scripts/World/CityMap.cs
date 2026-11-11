@@ -4,7 +4,7 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>Bir yapı adasının (iki yol arasındaki 3x3 karelik blok) türü.</summary>
-    public enum Zone { OldTown, HighRise, Houses, Mixed, Mall, Campus, Warehouse, Park, Plaza, River }
+    public enum Zone { OldTown, HighRise, Houses, Mixed, Mall, Campus, Warehouse, Park, Plaza, River, Country }
 
     /// <summary>Haritada adı yazan yer (park, AVM, nehir, bölge).</summary>
     public struct Landmark
@@ -16,7 +16,7 @@ namespace KuryeTycoon
     }
 
     /// <summary>
-    /// Izgara şehir: her 4 karede bir yol. Bölgeler para ile açılır. Bir kare = yaklaşık 200 metre.
+    /// Izgara şehir: her 4 karede bir yol (bazı blokların içinden ara sokak geçer, köşelerdeki bloklar kır). Bölgeler para ile açılır. Bir kare = yaklaşık 200 metre.
     ///  • Beş bölge: Merkez Mahalle (başlangıç, ortada), Doğu İlçesi, Sanayi &amp; Kampüs (doğuda),
     ///    Batı Liman (batıda: liman, otogar) ve Yeşil Tepe (kuzeyde, bütün şehir boyunca villalar).
     ///  • Şehrin ortasından (y = 13–15) Tisza nehri geçer; karşıya sadece 5 köprüden geçilir.
@@ -39,6 +39,7 @@ namespace KuryeTycoon
         /// <summary>Karenin bölgesi (1–5). Bölge sınırındaki yol, açılış sırası önce gelen bölgeye aittir.</summary>
         public static int RegionOf(int x, int y)
         {
+            if (!InCity(x, y)) return 1;   // kır: kilit yok (karartılmaz, üstünde bina da yok)
             if (y >= 25) return 5;      // Yeşil Tepe: kuzey şerit
             if (x < 12) return 4;       // Batı Liman
             if (x <= 24) return 1;      // Merkez Mahalle
@@ -63,19 +64,66 @@ namespace KuryeTycoon
         /// <summary>
         /// Blok türleri: her satır bir blok sırası (by = 0 güney … 7 kuzey), her harf bir blok (bx = 0 batı … 11 doğu).
         /// O eski şehir · H kule bloklar · E bahçeli ev · M çarşı · A AVM/otogar · C kampüs · W sanayi/liman · P park · Z meydan · R nehir
+        /// . kır (şehir dışı: yol yok, orman ve çayır; şehrin sınırı girintili çıkıntılı olsun diye)
         /// Sütunlar: bx 0–2 Batı Liman · 3–5 Merkez · 6–8 Doğu · 9–11 Sanayi; by 6–7 Yeşil Tepe.
         /// </summary>
         static readonly string[] Layout =
         {
-            "EMMOOOEEEACC",   // by 0
+            ".MMOOOEEEACC",   // by 0
             "WAMOZPMEEMAM",   // by 1  (otogar, meydan + HQ, Belediye Parkı, Nyír Plaza AVM)
             "WPMMOMMPMMWW",   // by 2  (liman, nehir kıyısı)
             "RRRRRRRRRRRR",   // by 3  Tisza
             "MHMHHMMHMWWW",   // by 4
-            "EMOHHHEMEWWW",   // by 5  (tren yolu sanayide)
-            "PEEEMEEPEEME",   // by 6  Yeşil Tepe
-            "EEPEEEPEEEEP",   // by 7  Yeşil Tepe
+            ".MOHHHEMEWWW",   // by 5  (tren yolu sanayide)
+            ".EEEMEEPEEM.",   // by 6  Yeşil Tepe
+            "..PEEEPEEE..",   // by 7  Yeşil Tepe
         };
+
+        /// <summary>
+        /// Blokların içinden geçen ara sokaklar: - doğu-batı (bloğun ortasından), | kuzey-güney, . yok.
+        /// Eski şehir, çarşı ve bahçeli evler küçük parsellere bölünür (daha sık, daha karışık şehir).
+        /// </summary>
+        static readonly string[] Alleys =
+        {
+            "..|-|-|.|...",   // by 0
+            "...|...-....",   // by 1
+            "..|.-.-.....",   // by 2
+            "............",   // by 3  nehir
+            "|....-......",   // by 4
+            "..|...|.-...",   // by 5
+            ".-.|.-.|-|..",   // by 6
+            "...|-.-|-...",   // by 7
+        };
+
+        /// <summary>Kaldırılan yol parçaları (iki blok birleşip büyük ada olur): (x, y başı, y sonu) dikey parçalar.</summary>
+        static readonly (int x, int y0, int y1)[] MergedRoads =
+        {
+            (44, 1, 3),     // Kampüs: iki blok tek yerleşke
+            (44, 17, 19),   // Sanayi: büyük lojistik alanı
+        };
+
+        static bool BlockInCity(int bx, int by) =>
+            bx >= 0 && by >= 0 && bx < Layout[0].Length && by < Layout.Length && Layout[by][bx] != '.';
+
+        static bool AlleyAt(int x, int y)
+        {
+            int bx = x / Block, by = y / Block;
+            if (!BlockInCity(bx, by) || by >= Alleys.Length || bx >= Alleys[by].Length) return false;
+            char c = Alleys[by][bx];
+            if (c == '-') return y % Block == 2;
+            if (c == '|') return x % Block == 2;
+            return false;
+        }
+
+        static bool MergedAt(int x, int y)
+        {
+            foreach (var m in MergedRoads)
+                if (x == m.x && y >= m.y0 && y <= m.y1) return true;
+            return false;
+        }
+
+        /// <summary>Kare şehrin içinde mi (kır değil)? Yollar da şehre dahil.</summary>
+        public static bool InCity(int x, int y) => RoadAt(x, y) || ZoneOf(x, y) != Zone.Country;
 
         public static readonly Landmark[] Landmarks =
         {
@@ -101,12 +149,22 @@ namespace KuryeTycoon
         static bool InRiverRows(int y) => y > RiverBlockY * Block && y < (RiverBlockY + 1) * Block;
         static bool IsBridgeX(int x) => System.Array.IndexOf(BridgeX, x) >= 0;
 
-        /// <summary>Yol mu? (Nehrin içinde sadece köprüler yoldur.)</summary>
+        /// <summary>
+        /// Yol mu? Izgara çizgileri (her 4 karede bir) şehirdeki bir bloğa değiyorsa yoldur; kırdaki bloklarda yol yok.
+        /// Nehrin içinde sadece köprüler yoldur. Ayrıca blok içi ara sokaklar ve birleşik bloklarda kaldırılan parçalar.
+        /// </summary>
         public static bool RoadAt(int x, int y)
         {
-            if (x % Block != 0 && y % Block != 0) return false;
+            if (x < 0 || y < 0 || x >= Width || y >= Height) return false;
+            bool vx = x % Block == 0, hy = y % Block == 0;
+            if (!vx && !hy) return AlleyAt(x, y);
             if (InRiverRows(y)) return IsBridgeX(x);
-            return true;
+            if (MergedAt(x, y)) return false;
+            int bx0 = vx ? x / Block - 1 : x / Block, by0 = hy ? y / Block - 1 : y / Block;
+            for (int bx = bx0; bx <= x / Block; bx++)
+                for (int by = by0; by <= y / Block; by++)
+                    if (BlockInCity(bx, by)) return true;
+            return false;
         }
 
         public static bool WaterAt(int x, int y) => InRiverRows(y) && !RoadAt(x, y);
@@ -132,6 +190,7 @@ namespace KuryeTycoon
                 case 'P': return Zone.Park;
                 case 'Z': return Zone.Plaza;
                 case 'R': return Zone.River;
+                case '.': return Zone.Country;
                 default: return Zone.Mixed;
             }
         }
@@ -158,6 +217,7 @@ namespace KuryeTycoon
                 case Zone.Warehouse: return "Sanayi";
                 case Zone.Park: return "Park";
                 case Zone.Plaza: return "Meydan";
+                case Zone.Country: return "Kır";
                 default: return "Nehir";
             }
         }
@@ -200,6 +260,7 @@ namespace KuryeTycoon
                 case Zone.Park: return GrassColor;
                 case Zone.Plaza: return PlazaColor;
                 case Zone.River: return WaterColor;
+                case Zone.Country: return CountryColor;
                 default: p = MixedRoofs; break;
             }
             return p[Hash(x, y) % p.Length];
@@ -217,6 +278,7 @@ namespace KuryeTycoon
             if (RailAt(x, y)) return RailBedColor;
             switch (ZoneOf(x, y))
             {
+                case Zone.Country: return CountryColor;
                 case Zone.Park:
                 case Zone.Houses: return GrassColor;
                 case Zone.Plaza: return PlazaColor;
@@ -247,7 +309,7 @@ namespace KuryeTycoon
         {
             if (RoadAt(x, y) || WaterAt(x, y) || RailAt(x, y)) return false;
             var z = ZoneOf(x, y);
-            if (z == Zone.Park || z == Zone.Plaza || z == Zone.Mall) return false;
+            if (z == Zone.Park || z == Zone.Plaza || z == Zone.Mall || z == Zone.Country) return false;
             if (z == Zone.Warehouse) return true;          // sanayide iç kareler de depo
             return IsFrontage(x, y);
         }
@@ -274,8 +336,14 @@ namespace KuryeTycoon
 
         static bool NearCountryFeature(Vector2 p, float margin)
         {
-            // Şehrin kendisi
-            if (p.x > -0.5f - margin && p.x < Width - 0.5f + margin && p.y > -0.5f - margin && p.y < Height - 0.5f + margin) return true;
+            // Şehrin kendisi (girintili sınır: kırdaki bloklar ormana ve tarlaya açık)
+            for (int i = -1; i <= 1; i++)
+                for (int j = -1; j <= 1; j++)
+                {
+                    int cx = Mathf.RoundToInt(p.x + i * margin), cy = Mathf.RoundToInt(p.y + j * margin);
+                    if (cx < 0 || cy < 0 || cx >= Width || cy >= Height) continue;
+                    if (InCity(cx, cy)) return true;
+                }
             // Nehir uzantısı
             if (Mathf.Abs(p.y - RiverY) < 1.5f + margin && (p.x < 0f || p.x > Width - 1f)) return true;
             // Kır yolları
@@ -320,12 +388,12 @@ namespace KuryeTycoon
                 }
 
             // Ormanlar: rastgele kümeler
-            for (int k = 0; k < 22; k++)   // performans: orman sayısı sınırlı
+            for (int k = 0; k < 40; k++)   // performans: orman sayısı sınırlı
             {
                 var c = new Vector2((float)rng.NextDouble() * (Width + 2 * ring) - ring, (float)rng.NextDouble() * (Height + 2 * ring) - ring);
                 if (NearCountryFeature(c, 2f)) { k--; if (rng.NextDouble() < 0.02) break; continue; }
-                float radius = 1.5f + (float)rng.NextDouble() * 3f;
-                int n = 7 + rng.Next(10);
+                float radius = 2f + (float)rng.NextDouble() * 4f;
+                int n = (int)(radius * radius * 1.6f) + rng.Next(8);   // sık orman: alan büyüdükçe ağaç artar
                 for (int i = 0; i < n; i++)
                 {
                     float a = (float)rng.NextDouble() * Mathf.PI * 2f, d = Mathf.Sqrt((float)rng.NextDouble()) * radius;
@@ -333,6 +401,13 @@ namespace KuryeTycoon
                     if (NearCountryFeature(p, 0.4f)) continue;
                     CountryTrees.Add(new Vector3(p.x, p.y, 0.3f + (float)rng.NextDouble() * 0.3f));
                 }
+            }
+            // Dağınık tek ağaçlar (çayırda)
+            for (int i = 0; i < 160; i++)
+            {
+                var p = new Vector2((float)rng.NextDouble() * (Width + 2 * ring) - ring, (float)rng.NextDouble() * (Height + 2 * ring) - ring);
+                if (NearCountryFeature(p, 0.6f)) continue;
+                CountryTrees.Add(new Vector3(p.x, p.y, 0.25f + (float)rng.NextDouble() * 0.3f));
             }
             // Şehrin kenarı boyunca ağaç sırası (şehir kırdan yumuşakça ayrılsın)
             for (float x = -1.5f; x < Width + 1f; x += 1.1f)
@@ -586,10 +661,10 @@ namespace KuryeTycoon
                         // Çatı sırtı: bir ton açık şerit, binalar düz kareden ayırt edilsin
                         Deco("Çatı sırtı", roofRoot, false, Color.Lerp(roof, Color.white, 0.18f), p + off, new Vector2(s * 0.92f, s * 0.18f), 1);
                     }
-                    else if (z == Zone.Park || z == Zone.Houses || (!IsFrontage(x, y) && z != Zone.Plaza && z != Zone.Mall && z != Zone.OldTown))
+                    else if (z == Zone.Park || z == Zone.Houses || z == Zone.Country || (!IsFrontage(x, y) && z != Zone.Plaza && z != Zone.Mall && z != Zone.OldTown))
                     {
-                        // Ağaçlar (park daha sık)
-                        int n = z == Zone.Park ? 3 + rng.Next(2) : 1 + rng.Next(2);
+                        // Ağaçlar (park ve kır daha sık)
+                        int n = z == Zone.Park || z == Zone.Country ? 3 + rng.Next(2) : 1 + rng.Next(2);
                         if (z == Zone.Park && IsBlockCenter(x, y)) n = 0;
                         for (int i = 0; i < n; i++)
                         {

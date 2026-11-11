@@ -15,7 +15,7 @@ namespace KuryeTycoon
         public static MapCamera I { get; private set; }
 
         [Header("Yakınlaştırma")]
-        public float minOrthoSize = 3.2f;       // en yakın
+        public float minOrthoSize = 1.6f;       // en yakın (binaların detayı görünsün diye yakın)
         public float maxTilt = 50f;             // en yakında kameranın eğimi (derece)
         public float baseTilt = 38f;            // açılı görünümde en uzaktaki eğim (derece)
         public float fov = 30f;                 // perspektif kameranın dikey görüş açısı (dar: maket hissi, az bozulma)
