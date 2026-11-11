@@ -4705,7 +4705,18 @@ BLOK_STIL_RENK = {
     "modern": ["#e9e7e2", "#cfd3d6", "#d8d2c6", "#b9c0c6", "#f2efe8"],
     "klasik": ["#e6c98f", "#d9b98a", "#e8d6b0", "#cbb79a", "#e2c4a8", "#c9d3c4"],
     "cumbali": ["#e9d9a6", "#d6e0c8", "#f0d6c0", "#d8dde6", "#f2e6cf", "#e7c9c3"],
+    # Referans (CityRT Avrupa kataloğu) stilleri
+    "haussmann": ["#e9dcc3", "#ecdfc8", "#e2d3b8", "#efe5d2"],                 # krem taş, çinko mansart
+    "kanal": ["#7a3b2e", "#8e4a36", "#5e3328", "#a0583e", "#6b3a2e"],          # Hollanda kanal evleri (basamaklı alınlık)
+    "barok": ["#cfe0c0", "#f2d68a", "#f0c2b8", "#c8d8e8", "#e8b8c8", "#f4e3b0"],  # pastel barok alınlıklı evler
+    "loft": ["#8e4331", "#7a3b2e", "#9c4a35"],                                 # antrepo lofu (tuğla depo)
+    "modern_tugla": ["#5a3a2e", "#6b4636", "#4e3a33", "#7a5040"],              # koyu tuğla, büyük pencere, yeşil çatı
+    "galerili": ["#e9e7e2", "#d8d2c6", "#cfd8dc", "#efe3cf"],                  # dış galerili (koridor balkonlu) blok
+    "teras": ["#f2efe8", "#e6e2da", "#dfe4e6"],                                # teraslı modern ev
 }
+BLOK_CINKO = "#6f7a86"
+DUKKAN_TEMA_RENK = {"firin": "#8a5a32", "eczane": "#2f8f5a", "pub": "#1f4a36", "kitap": "#2b3f6b",
+                    "cicek": "#c9577a", "bisiklet": "#e08a3a"}
 BLOK_CATI = ["#c0573a", "#b04a32", "#9a5a3f", "#6f6a66", "#5a6470"]
 BLOK_DUKKAN_RENK = ["#d9473a", "#3f73e6", "#2f8f5a", "#e08a3a", "#8a5a9a", "#2b2d31", "#c9a03a", "#3aa0b8"]
 
@@ -4714,11 +4725,102 @@ def blok_renk(rnd, stil):
     r = ar(rnd, rnd.choice(BLOK_STIL_RENK[stil]), cati=rnd.choice(BLOK_CATI), ana=rnd.choice(BLOK_DUKKAN_RENK))
     if stil == "modern":
         r["suslu"] = M("Suslu", rnd.choice(["#3a3d42", "#5a6068", "#f6f3ec"]))
-    elif stil == "tugla":
+    elif stil in ("tugla", "kanal", "loft"):
         r["suslu"] = M("Suslu", rnd.choice(["#efe6d4", "#e6dccb"]))
+    elif stil == "modern_tugla":
+        r["suslu"] = M("Suslu", "#2e2b2a")
+        r["cerceve"] = M("TCerceve", "#2b2d31")
+    elif stil in ("galerili", "teras"):
+        r["suslu"] = M("Suslu", rnd.choice(["#3a3d42", "#f6f3ec"]))
+    if stil == "haussmann":
+        r["cati"] = M("Cati", BLOK_CINKO)
+        r["cati_koyu"] = M("CatiKoyu", koyu_ton(BLOK_CINKO))
+        r["suslu"] = M("Suslu", "#f4ecdc")
     r["kemer"] = "bloklu" if stil in ("klasik", "cumbali") else "duz"
     r["avlu"] = M("AvluTas", "#d6cfc2")
     return r
+
+
+def cikma_tabela(g, fc, u, z, r, mat, ikon=None):
+    """Cepheden dik çıkan asma tabela (fırın simidi, eczane haçı, pub tabelası)."""
+    cubuk(g, fc.P(u, 0.0, z + 0.25), fc.P(u, 1.0, z + 0.25), 0.04, r["demir"], kabuk=False)
+    ckutu(g, fc, u - 0.035, u + 0.035, 0.35, 0.95, z - 0.45, z + 0.15, mat)
+    if ikon == "ekmek":
+        p = fc.P(u, 0.65, z - 0.6)
+        top(g, p, 0.3, 0.3, 0.16, M("Ekmek", "#d9a24a"))
+    elif ikon == "hac":
+        ckutu(g, fc, u - 0.04, u + 0.04, 0.45, 0.85, z - 0.3, z + 0.0, mat)
+
+
+def dukkan_tema(g, fc, L, kapi_u, z0, H0, r, rnd, tema):
+    """Dükkânın türüne göre süs: fırın, eczane, pub, kitapçı, çiçekçi, bisikletçi (referanstaki mahalle dükkânları)."""
+    if not DETAY or tema in ("genel", "kafe"):
+        return
+    ku = 0.35 if kapi_u > L / 2 else L - 0.35
+    yazi_m = M("Yazi", {"eczane": "#4fe08a", "pub": "#e8c35a"}.get(tema, "#f6f3ec"))
+    if tema == "firin":
+        cikma_tabela(g, fc, ku, H0 - 0.2, r, r["ana"], "ekmek")
+        for i in range(3):                                                     # vitrinin önünde ekmek sepetleri
+            p = fc.P(1.0 + i * 0.6 if kapi_u > L / 2 else L - 1.0 - i * 0.6, 0.35, z0)
+            silindir(g, p[0], p[1], z0, 0.35, 0.22, 8, r["ahsap"])
+            top(g, (p[0], p[1], z0 + 0.42), 0.18, 0.18, 0.1, M("Ekmek", "#d9a24a"))
+    elif tema == "eczane":
+        # Yeşil haç (gece yanar)
+        ckutu(g, fc, ku - 0.04, ku + 0.04, 0.3, 1.1, H0 - 0.52, H0 - 0.28, yazi_m)
+        ckutu(g, fc, ku - 0.04, ku + 0.04, 0.58, 0.82, H0 - 0.8, H0 + 0.0, yazi_m)
+        cubuk(g, fc.P(ku, 0.0, H0 - 0.4), fc.P(ku, 0.3, H0 - 0.4), 0.04, r["demir"], kabuk=False)
+    elif tema == "pub":
+        ckutu(g, fc, 0.3, L - 0.3, 0.16, 0.19, H0 - 0.65, H0 - 0.45, yazi_m)                  # altın yazı şeridi
+        cikma_tabela(g, fc, ku, H0 - 0.1, r, r["ana"])
+        for u in (0.6, L - 0.6):                                               # asma çiçek sepetleri
+            cubuk(g, fc.P(u, 0.0, H0 - 0.15), fc.P(u, 0.5, H0 - 0.15), 0.03, r["demir"], kabuk=False)
+            top(g, fc.P(u, 0.5, H0 - 0.55), 0.3, 0.3, 0.25, r["cali"])
+            for k in range(3):
+                top(g, fc.P(u + (k - 1) * 0.18, 0.62, H0 - 0.7), 0.09, 0.09, 0.09, rnd.choice(r["cicek"]))
+        for u in [x for x in (1.2, L - 1.2) if abs(x - kapi_u) > 1.2]:          # fıçı masa
+            p = fc.P(u, 0.6, 0.0)
+            silindir(g, p[0], p[1], z0, 1.0, 0.3, 8, M("Fici", "#6b4a2f"))
+    elif tema == "kitap":
+        for u in [x for x in (1.3, L - 1.3) if abs(x - kapi_u) > 1.3]:           # kitap tezgâhı
+            a, b = u - 0.7, u + 0.7
+            ckutu(g, fc, a, b, 0.2, 0.8, z0, z0 + 0.75, r["ahsap"])
+            for k in range(6):
+                uu = a + 0.1 + k * 0.22
+                ckutu(g, fc, uu, uu + 0.16, 0.3, 0.7, z0 + 0.75, z0 + 0.75 + rnd.uniform(0.08, 0.2), rnd.choice(r["urun"]))
+    elif tema == "cicek":
+        for u in [x for x in (1.2, L - 1.2) if abs(x - kapi_u) > 1.3]:           # basamaklı çiçek sehpası
+            for k in range(3):
+                ckutu(g, fc, u - 0.8, u + 0.8, 0.15 + k * 0.25, 0.4 + k * 0.25, z0, z0 + 0.8 - k * 0.25, r["ahsap"])
+                for j in range(4):
+                    p = fc.P(u - 0.6 + j * 0.4, 0.27 + k * 0.25, 0.0)
+                    zz = z0 + 0.8 - k * 0.25
+                    silindir(g, p[0], p[1], zz, 0.22, 0.1, 6, r["saksi"])
+                    top(g, (p[0], p[1], zz + 0.32), 0.15, 0.15, 0.13, rnd.choice(r["cicek"] + [r["cali"]]))
+    elif tema == "bisiklet":
+        for i, u in enumerate([x for x in (0.9, 2.0, L - 2.0, L - 0.9) if abs(x - kapi_u) > 1.1][:3]):
+            renk = M("Bisiklet", rnd.choice(["#d9473a", "#3f73e6", "#2f8f5a", "#f2c14a"]))
+            for d in (-0.5, 0.5):                                              # tekerlekler (yan yatmış disk)
+                c = fc.P(u, 0.7 + d, z0 + 0.36)
+                top(g, c, 0.04 if abs(fc.out[0]) < 0.5 else 0.34, 0.34 if abs(fc.out[0]) < 0.5 else 0.04, 0.34, r["koyu"])
+            cubuk(g, fc.P(u, 0.2, z0 + 0.36), fc.P(u, 0.7, z0 + 0.8), 0.035, renk, kabuk=False)
+            cubuk(g, fc.P(u, 0.7, z0 + 0.8), fc.P(u, 1.2, z0 + 0.36), 0.035, renk, kabuk=False)
+            cubuk(g, fc.P(u, 0.25, z0 + 0.95), fc.P(u, 0.25, z0 + 0.65), 0.03, r["koyu"], kabuk=False)
+
+
+def korkuluk(g, fc, u0, u1, o, z, r, h=0.95, aralik=0.2, mat=None):
+    """Ferforje korkuluk: üst ve alt lama, aralarda ince dikmeler (dolu siyah bant gibi görünmesin)."""
+    mat = mat or r["demir"]
+    if not DETAY:                                                              # hafif sürüm: sadece üst ve alt lama
+        ckutu(g, fc, u0, u1, o - 0.05, o, z + h - 0.06, z + h, mat)
+        ckutu(g, fc, u0, u1, o - 0.05, o, z + 0.08, z + 0.14, mat)
+        return
+    aralik = max(aralik, 0.28)
+    ckutu(g, fc, u0, u1, o - 0.05, o, z + h - 0.06, z + h, mat)
+    ckutu(g, fc, u0, u1, o - 0.05, o, z + 0.08, z + 0.12, mat)
+    k = max(1, int((u1 - u0) / aralik))
+    for i in range(k + 1):
+        uu = u0 + (u1 - u0) * i / k
+        ckutu(g, fc, uu - 0.015, uu + 0.015, o - 0.04, o - 0.01, z, z + h, mat)
 
 
 def blok_balkon(g, fc, u, z, r, stil, gen=1.7):
@@ -4748,6 +4850,7 @@ def blok_cephe(g, fc, L, kat, r, rnd, dukkan, stil, z0):
                 vitrin(g, fc, a, b, z0 + 0.3, H0 - 1.05, r, aralik=1.6, poster=0.3, rnd=rnd)
         # Dükkân kapısı: renkli kasalı camlı kapı (vitrinden ayrı seçilsin), önünde basamak
         cam_kapi(g, fc, kapi_u, z0, r, w=1.2, h=2.35, kasa=r["ana"], sacak=False)
+        dukkan_tema(g, fc, L, kapi_u, z0, H0, r, rnd, getattr(g, "tema", "genel"))
         ckutu(g, fc, kapi_u - 0.75, kapi_u + 0.75, 0, 0.5, z0 + 2.55, z0 + 2.68, r["cerceve"])     # kapı saçağı
         if rnd.random() < 0.6:
             # Tente kapının iki yanında (kapı ve saçağı görünür kalır)
@@ -4771,7 +4874,7 @@ def blok_cephe(g, fc, L, kat, r, rnd, dukkan, stil, z0):
     # Üst katlar
     n = max(2, int(round(L / 2.45)))
     balkon_sutun = set(i for i in range(n) if rnd.random() < (0.45 if stil == "siva" else 0.25))
-    if stil == "modern":
+    if stil in ("modern", "haussmann", "modern_tugla", "galerili", "loft"):
         balkon_sutun = set()
     # Cumbalı: ortada iki pencere genişliğinde çıkma (üst katlarda), üstü teras
     cumba = None
@@ -4793,6 +4896,45 @@ def blok_cephe(g, fc, L, kat, r, rnd, dukkan, stil, z0):
             u = L * (i + 0.5) / n
             if cumba is not None and cumba[0] - 0.3 < u < cumba[1] + 0.3:
                 continue
+            if stil == "haussmann":
+                # Uzun Fransız pencereleri; 2. ve son katta boydan boya ferforje balkon, diğerlerinde pencere önü korkuluğu
+                pencere(g, fc, u, z + 0.45, 1.0, 2.0, r)
+                if not (f == 1 or f == kat - 2):
+                    ckutu(g, fc, u - 0.6, u + 0.6, 0, 0.25, z + 0.38, z + 0.46, r["suslu"])
+                    korkuluk(g, fc, u - 0.55, u + 0.55, 0.24, z + 0.46, r, h=0.6, aralik=0.18)
+                continue
+            if stil == "modern_tugla":
+                w, h = L / n * 0.62, 1.9
+                ckutu(g, fc, u - w / 2 - 0.12, u + w / 2 + 0.12, 0, 0.18, z + 0.45, z + 0.55, r["cerceve"])
+                ckutu(g, fc, u - w / 2 - 0.12, u + w / 2 + 0.12, 0, 0.18, z + 0.55 + h, z + 0.65 + h, r["cerceve"])
+                ckutu(g, fc, u - w / 2 - 0.12, u - w / 2, 0, 0.18, z + 0.55, z + 0.55 + h, r["cerceve"])
+                ckutu(g, fc, u + w / 2, u + w / 2 + 0.12, 0, 0.18, z + 0.55, z + 0.55 + h, r["cerceve"])
+                cdortgen(g, fc, u - w / 2, u + w / 2, 0.01, z + 0.55, z + 0.55 + h, cam_grubu(r["cam"], u, z))
+                continue
+            if stil == "galerili":
+                # Dış galeri: her katta koridor balkonu, kapı + pencere sırası
+                if i == 0:
+                    ckutu(g, fc, 0.0, L, 0, 1.25, z - 0.05, z + 0.12, r["beton"])
+                    if rnd.random() < 0.5:
+                        korkuluk(g, fc, 0.0, L, 1.25, z + 0.12, r, h=1.0, aralik=0.25)
+                    else:
+                        ckutu(g, fc, 0.0, L, 1.2, 1.25, z + 0.12, z + 1.0, M("BalkonPanel", rnd.choice(["#e0825a", "#6fae6a", "#5f8fd0", "#f2c14a"])))
+                if i % 2 == 0:
+                    ckutu(g, fc, u - 0.45, u + 0.45, 0, 0.05, z + 0.12, z + 2.25, M("Kapi", rnd.choice(["#d9473a", "#3f73e6", "#2f8f5a", "#f2c14a", "#2b2d31"])))
+                else:
+                    pencere(g, fc, u, z + 0.9, 1.1, 1.3, r, sade=True)
+                continue
+            if stil == "loft":
+                if abs(u - L / 2) < L / n * 0.5:
+                    # Ortada yükleme kapıları (her katta), önünde küçük korkuluk
+                    ckutu(g, fc, u - 0.65, u + 0.65, 0, 0.06, z + 0.2, z + 2.4, r["ahsap_koyu"])
+                    ckutu(g, fc, u - 0.7, u + 0.7, 0, 0.5, z + 0.15, z + 0.25, r["beton"])
+                    ckutu(g, fc, u - 0.7, u + 0.7, 0.45, 0.5, z + 0.25, z + 1.15, r["demir"])
+                else:
+                    pencere(g, fc, u, z + 0.5, 0.95, 1.9, r, sade=True)
+                    for k, (a, b) in enumerate(((0.62, 0.62), (0.5, 0.5), (0.3, 0.3))):     # tuğla kemer
+                        ckutu(g, fc, u - a, u + b, 0, 0.1, z + 2.45 + k * 0.12, z + 2.57 + k * 0.12, r["suslu"])
+                continue
             if stil == "modern":
                 w = L / n * 0.72
                 cdortgen(g, fc, u - w / 2, u + w / 2, 0.012, z + 0.55, z + 2.45, cam_grubu(r["cam"], u, z))
@@ -4807,7 +4949,21 @@ def blok_cephe(g, fc, L, kat, r, rnd, dukkan, stil, z0):
         if DETAY and stil != "klasik" and rnd.random() < 0.25:
             klima_dis(g, fc, min(L - 0.5, L * (rnd.randrange(n) + 0.5) / n + 0.75), z + 0.4)
     Ht = H0 + (kat - 1) * BLOK_KAT
-    ckutu(g, fc, 0.0, L, 0, 0.32 if stil == "klasik" else 0.2, Ht - 0.4, Ht, r["suslu"])        # korniş
+    if stil == "haussmann":
+        for f in sorted(set((1, kat - 2))):
+            if 0 <= f < kat - 1:
+                z = H0 + f * BLOK_KAT + 0.45
+                ckutu(g, fc, 0.0, L, 0, 0.8, z - 0.12, z + 0.02, r["beton"])                       # sürekli balkon
+                korkuluk(g, fc, 0.0, L, 0.8, z + 0.02, r, h=1.0, aralik=0.22)
+        for k in range(1, 6):                                                   # rustik taş zemin (yatay derzler)
+            zz = z0 + k * 0.55
+            if zz < H0 - 0.9:
+                ckutu(g, fc, 0.0, 0.35, 0, 0.04, zz, zz + 0.05, r["suslu"])
+                ckutu(g, fc, L - 0.35, L, 0, 0.04, zz, zz + 0.05, r["suslu"])
+    if stil == "loft":
+        cubuk(g, fc.P(L / 2, 0.0, Ht - 0.15), fc.P(L / 2, 1.0, Ht - 0.15), 0.12, r["ahsap_koyu"])  # vinç kirişi
+        cubuk(g, fc.P(L / 2, 0.95, Ht - 0.2), fc.P(L / 2, 0.95, Ht - 1.3), 0.02, r["koyu"], kabuk=False)
+    ckutu(g, fc, 0.0, L, 0, 0.32 if stil in ("klasik", "haussmann") else 0.2, Ht - 0.4, Ht, r["suslu"])        # korniş
     g.kapi_u = kapi_u
     return Ht
 
@@ -4884,6 +5040,28 @@ def blok_arka(g, r, rnd, x0, x1, y0, y1):
 
 def blok_cati(g, x0, x1, y0, y1, Ht, r, rnd, stil):
     t = rnd.random()
+    if stil == "haussmann":
+        blok_mansart(g, x0, x1, y0, y1, Ht, r, rnd)
+        for bx in (x0 + 0.45, x1 - 0.45):                                        # yan duvarlarda baca kümeleri
+            kutu(g, bx - 0.3, bx + 0.3, y0 + 1.2, y1 - 1.2, Ht, Ht + 3.2, r["duvar"])
+            for k in range(4):
+                silindir(g, bx, y0 + 1.6 + k * ((y1 - y0 - 3.2) / 3), Ht + 3.2, 0.35, 0.09, 6, r["saksi"])
+        return
+    if stil == "modern_tugla":
+        kutu(g, x0, x1, y0, y1, Ht, Ht + 0.45, r["suslu"], atla=("zn",), yuzler={"zp": r["cim"]})
+        for k in range(5):
+            top(g, (rnd.uniform(x0 + 1, x1 - 1), rnd.uniform(y0 + 1, y1 - 1), Ht + 0.6), 0.45, 0.45, 0.3, r["cali"])
+        kutu(g, x1 - 2.4, x1 - 0.6, y1 - 2.6, y1 - 0.8, Ht + 0.45, Ht + 2.6, r["cerceve"])
+        return
+    if stil == "loft":
+        zr = besik_cati(g, "y", y0, y1, x0, x1, Ht, r, sacak=0.0, yan_sacak=0.2)
+        return
+    if stil in ("galerili", "teras"):
+        blok_duz_cati(g, x0, x1, y0, y1, Ht, r, rnd, r["suslu"] if stil == "galerili" else r["duvar"])
+        if stil == "teras":
+            for k in range(4):
+                top(g, (x0 + 1.2 + k * 2.4, y0 + 0.9, Ht + 0.75), 0.42, 0.32, 0.32, r["cali"])
+        return
     if stil == "modern" or (stil == "tugla" and t < 0.6):
         blok_duz_cati(g, x0, x1, y0, y1, Ht, r, rnd, r["suslu"] if stil == "tugla" else r["duvar"])
     elif stil in ("klasik", "cumbali") and t < (0.7 if stil == "klasik" else 0.45):
@@ -4893,7 +5071,68 @@ def blok_cati(g, x0, x1, y0, y1, Ht, r, rnd, stil):
         ev_baca(g, rnd.uniform(x0 + 1.5, x1 - 1.5), (y0 + y1) / 2 + 0.9, Ht, zr + 0.3, r)
 
 
+def cephe_poligon(g, fc, pts_uz, o0, o1, mat):
+    """Cephede dışbükey çokgen kabartma (barok alınlık)."""
+    n = len(pts_uz)
+    pts = [fc.P(u, o0, z) for u, z in pts_uz] + [fc.P(u, o1, z) for u, z in pts_uz]
+    dis_bukey(g, pts, [list(range(n)), list(range(n, 2 * n))] + [[i, (i + 1) % n, n + (i + 1) % n, n + i] for i in range(n)], mat)
+
+
+def blok_dar_evler(rnd, stil, kat):
+    """İki dar ev (5 m): kanal evleri (basamaklı tuğla alınlık) ya da barok evler (kavisli pastel alınlık).
+    Sokağa bakan alınlıklar çatının önünü kapatır, her evin rengi farklı (referanstaki Amsterdam / Brüksel sokakları)."""
+    g = Govde()
+    z0, FY, BY = EV_ZEMIN, BLOK_FY, BLOK_BY
+    r0 = blok_renk(rnd, stil)
+    levha(g, 0.0, 10.0, 0.0, FY, 0.0, z0, r0["kaldirim"])
+    levha(g, 0.0, 10.0, FY, 10.0, 0.0, z0, r0["avlu"])
+    H0 = z0 + BLOK_ZEMIN
+    Ht = H0 + (kat - 1) * BLOK_KAT
+    renkler = list(BLOK_STIL_RENK[stil])
+    rnd.shuffle(renkler)
+    for i, (a, b) in enumerate(((0.0, 5.0), (5.0, 10.0))):
+        ri = dict(r0)
+        ri["duvar"] = M("Duvar", renkler[i % len(renkler)])
+        ri["ana"] = M("Marka", rnd.choice(BLOK_DUKKAN_RENK))
+        h_ek = rnd.choice([0.0, 0.0, BLOK_KAT * 0.5]) if kat >= 3 else 0.0
+        Hi = Ht + h_ek
+        kutu(g, a, b, FY, BY, z0, Hi, ri["duvar"], atla=("zn",))
+        fc = Cephe((a, FY, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+        g.tema = rnd.choice(["genel", "firin", "kitap", "cicek", "pub", "kafe"])
+        blok_cephe(g, fc, 5.0, kat, ri, rnd, rnd.random() < 0.55, "tugla" if stil == "kanal" else "siva", z0)
+        if h_ek:
+            pencere(g, fc, 2.5, Ht + 0.2, 0.8, 1.0, ri, sade=True)
+        arka = Cephe((b, BY, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+        pencereler(g, arka, 5.0, H0, kat - 1, BLOK_KAT, ri, w=0.8, h=1.3, aralik=2.4, sade=True)
+        besik_cati(g, "y", FY + 0.3, BY, a, b, Hi, ri, sacak=0.0, yan_sacak=0.15)
+        if stil == "kanal":
+            # Basamaklı alınlık: üst üste daralan tuğla basamaklar, beyaz kapak taşları, tepede vinç kirişi
+            for k in range(4):
+                u0, u1 = 0.25 + k * 0.55, 4.75 - k * 0.55
+                ckutu(g, fc, u0, u1, 0, 0.3, Hi + k * 0.75, Hi + (k + 1) * 0.75, ri["duvar"])
+                ckutu(g, fc, u0 - 0.05, u0 + 0.5, 0, 0.36, Hi + (k + 1) * 0.75, Hi + (k + 1) * 0.75 + 0.08, ri["suslu"])
+                ckutu(g, fc, u1 - 0.5, u1 + 0.05, 0, 0.36, Hi + (k + 1) * 0.75, Hi + (k + 1) * 0.75 + 0.08, ri["suslu"])
+            pencere(g, fc, 2.5, Hi + 0.6, 0.8, 1.1, ri, sade=True)
+            cubuk(g, fc.P(2.5, 0.3, Hi + 2.7), fc.P(2.5, 1.0, Hi + 2.7), 0.1, ri["ahsap_koyu"])
+        else:
+            # Kavisli (çan biçimli) alınlık, omuzlarda süs topları, tepede küçük alınlık
+            pts = [(0.3, Hi), (4.7, Hi), (4.7, Hi + 0.9), (4.3, Hi + 1.9), (3.5, Hi + 2.6), (2.5, Hi + 2.9),
+                   (1.5, Hi + 2.6), (0.7, Hi + 1.9), (0.3, Hi + 0.9)]
+            cephe_poligon(g, fc, pts, 0.0, 0.3, ri["duvar"])
+            for u in (0.4, 4.6):
+                top(g, fc.P(u, 0.2, Hi + 1.15), 0.2, 0.2, 0.2, ri["suslu"])
+            cephe_poligon(g, fc, [(1.9, Hi + 2.8), (3.1, Hi + 2.8), (2.5, Hi + 3.3)], 0.0, 0.36, ri["suslu"])
+            ckutu(g, fc, 0.25, 4.75, 0, 0.36, Hi - 0.1, Hi + 0.05, ri["suslu"])
+            pencere(g, fc, 2.5, Hi + 0.7, 0.9, 1.2, ri, sade=True)
+    blok_arka(g, r0, rnd, 0.0, 10.0, BY, 10.0)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK)
+    return g, ortala(g)
+
+
 def blok_duz(rnd, stil, kat):
+    if stil in ("kanal", "barok"):
+        return blok_dar_evler(rnd, stil, kat)
     g = Govde()
     r = blok_renk(rnd, stil)
     z0, FY, BY = EV_ZEMIN, BLOK_FY, BLOK_BY
@@ -4901,16 +5140,36 @@ def blok_duz(rnd, stil, kat):
     levha(g, 0.0, 10.0, FY, 10.0, 0.0, z0, r["avlu"] if rnd.random() < 0.6 else r["cim"])
     H0 = z0 + BLOK_ZEMIN
     Ht = H0 + (kat - 1) * BLOK_KAT
-    kutu(g, 0.0, 10.0, FY, BY, z0, Ht, r["duvar"], atla=("zn",))
+    teras = stil == "teras" and kat >= 3
+    kutu(g, 0.0, 10.0, FY, BY, z0, Ht - (BLOK_KAT if teras else 0.0), r["duvar"], atla=("zn",))
     on = Cephe((0.0, FY, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
     arka = Cephe((10.0, BY, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
     dukkan = rnd.random() < (0.6 if kat >= 3 else 0.35)
-    blok_cephe(g, on, 10.0, kat, r, rnd, dukkan, stil, z0)
+    g.tema = rnd.choice(["genel", "firin", "eczane", "pub", "kitap", "cicek", "bisiklet", "kafe", "kafe"])
+    if g.tema in DUKKAN_TEMA_RENK:
+        r["ana"] = M("Marka", DUKKAN_TEMA_RENK[g.tema])
+    if teras:
+        # Teraslı: en üst kat 1,8 m geride, önünde cam korkuluklu teras ve saksılar
+        Hm = Ht - BLOK_KAT
+        blok_cephe(g, on, 10.0, kat - 1, r, rnd, dukkan, "modern", z0)
+        kutu(g, 0.0, 10.0, FY, FY + 1.8, Hm - 0.4, Hm, r["beton"], atla=("zn",))
+        ust = Cephe((0.0, FY + 1.8, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+        kutu(g, 0.0, 10.0, FY + 1.8, BY, Hm, Ht, r["duvar"], atla=("zn",))
+        for k in range(3):
+            u = 10.0 * (k + 0.5) / 3
+            cdortgen(g, ust, u - 1.3, u + 1.3, 0.01, Hm + 0.1, Hm + 2.6, cam_grubu(r["cam"], u, Hm))
+        ckutu(g, on, 0.0, 10.0, 0, 0.06, Hm, Hm + 1.0, M("BalkonCam", "#bcd3df"))
+        for k in range(4):
+            p = on.P(1.2 + k * 2.5, -0.5, Hm)
+            silindir(g, p[0], p[1], Hm, 0.4, 0.3, 8, r["saksi"])
+            top(g, (p[0], p[1], Hm + 0.8), 0.4, 0.4, 0.45, r["cali"])
+    else:
+        blok_cephe(g, on, 10.0, kat, r, rnd, dukkan, stil, z0)
     pencereler(g, arka, 10.0, H0, kat - 1, BLOK_KAT, r, w=0.8, h=1.3, aralik=2.6, sade=True)
     ckutu(g, arka, 4.4, 5.6, 0, 0.05, z0, z0 + 2.3, r["kapi"])
-    blok_cati(g, 0.0, 10.0, FY, BY, Ht, r, rnd, stil)
+    blok_cati(g, 0.0, 10.0, FY + (1.8 if teras else 0.0), BY, Ht, r, rnd, stil)
     blok_arka(g, r, rnd, 0.0, 10.0, BY, 10.0)
-    if DETAY and dukkan and rnd.random() < 0.45:
+    if DETAY and dukkan and getattr(g, "tema", "") == "kafe":
         sm = M("Semsiye", rnd.choice(["#f6f3ec", "#d9473a", "#2f8f5a"]))
         ku = getattr(g, "kapi_u", 5.0)
         for x in [x for x in (1.6, 3.6, 6.4, 8.4) if abs(x - ku) > 1.6][:2]:   # kaldırımda kafe masası (kapının önü boş)
@@ -4923,6 +5182,8 @@ def blok_duz(rnd, stil, kat):
 
 
 def blok_kose(rnd, stil, kat):
+    if stil in ("kanal", "barok", "teras"):
+        stil = {"kanal": "tugla", "barok": "cumbali", "teras": "modern"}[stil]
     g = Govde()
     r = blok_renk(rnd, stil)
     z0, FY, BY = EV_ZEMIN, BLOK_FY, BLOK_BY
@@ -4941,14 +5202,14 @@ def blok_kose(rnd, stil, kat):
     for fc in (Cephe((10.0, BY, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)), Cephe((BY, BY, 0.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0))):
         pencereler(g, fc, 10.0 - BY, H0, kat - 1, BLOK_KAT, r, w=0.7, h=1.2, aralik=1.6, sade=True)
     parapet = r["suslu"] if stil == "tugla" else r["duvar"]
-    if stil == "klasik" and rnd.random() < 0.6:
+    if stil == "haussmann" or (stil == "klasik" and rnd.random() < 0.6):
         blok_mansart(g, FY, 10.0, FY, BY, Ht, r, rnd)
         kutu(g, FY, BY, BY, 10.0, Ht, Ht + 0.5, parapet, atla=("zn",), yuzler={"zp": r["beton"]})
     else:
         blok_duz_cati(g, FY, 10.0, FY, BY, Ht, r, rnd, parapet)
         kutu(g, FY, BY, BY, 10.0, Ht, Ht + 0.5, parapet, atla=("zn",), yuzler={"zp": r["beton"]})
     # Köşe kulesi: köşede yuvarlak cumba, sivri külah (eski şehir binalarında)
-    if stil in ("siva", "klasik", "cumbali") and rnd.random() < 0.6 and kat >= 3:
+    if stil in ("siva", "klasik", "cumbali", "haussmann") and rnd.random() < (0.85 if stil == "haussmann" else 0.6) and kat >= 3:
         cx = cy = FY + 0.55
         R = 1.25
         silindir(g, cx, cy, H0, Ht - H0 + 1.0, R, 10, r["duvar"])
@@ -4960,24 +5221,43 @@ def blok_kose(rnd, stil, kat):
                 c = (cx + d[0] * (R + 0.01), cy + d[1] * (R + 0.01), z + 1.55)
                 yonlu_kutu(g, c, mul(t, 0.32), mul(d, 0.02), (0, 0, 0.7), cam_grubu(r["cam"], a, z), kabuk=False)
             silindir(g, cx, cy, z - 0.1, 0.16, R + 0.08, 10, r["suslu"])
-        koni(g, cx, cy, Ht + 1.0, 2.4, R + 0.15, 10, r["cati"])
+        if stil in ("haussmann", "klasik") and rnd.random() < 0.7:
+            # Kubbeli köşe (Belle Époque): çinko kubbe ve fener
+            top(g, (cx, cy, Ht + 1.0), R + 0.12, R + 0.12, 1.7, M("Kubbe", BLOK_CINKO))
+            silindir(g, cx, cy, Ht + 2.55, 0.6, 0.28, 8, r["suslu"])
+            koni(g, cx, cy, Ht + 3.15, 0.6, 0.34, 8, M("Kubbe", BLOK_CINKO))
+        else:
+            koni(g, cx, cy, Ht + 1.0, 2.4, R + 0.15, 10, r["cati"])
     blok_arka(g, r, rnd, BY, 10.0, BY, 10.0)
     if CIZGI:
         kabuk(g, CIZGI_KALINLIK)
     return g, ortala(g)
 
 
+BLOK_STILLER = {
+    2: ["siva", "tugla", "klasik", "cumbali", "kanal", "barok"],
+    3: ["siva", "tugla", "klasik", "cumbali", "kanal", "barok", "loft"],
+    4: ["haussmann", "siva", "kanal", "barok", "loft", "modern_tugla", "galerili", "cumbali"],
+    5: ["haussmann", "siva", "modern", "cumbali", "loft", "modern_tugla", "galerili", "teras"],
+    6: ["haussmann", "modern", "tugla", "cumbali", "modern_tugla", "galerili", "teras"],
+    7: ["haussmann", "modern", "siva", "modern_tugla", "teras", "galerili"],
+    9: ["modern", "tugla", "modern_tugla", "teras", "galerili", "haussmann"],
+}
+BLOK_KOSE_STILLER = {
+    2: ["siva", "tugla", "klasik"], 3: ["siva", "tugla", "cumbali", "klasik"], 4: ["haussmann", "siva", "modern_tugla", "cumbali"],
+    5: ["haussmann", "modern", "cumbali", "modern_tugla"], 6: ["haussmann", "modern", "tugla", "galerili"],
+    7: ["haussmann", "modern", "modern_tugla"], 9: ["modern", "tugla", "modern_tugla"],
+}
+
+
 def bloklar():
     sonuc = []
-    alcak = ["siva", "tugla", "klasik", "cumbali", "siva"]
-    yuksek = ["modern", "tugla", "siva", "cumbali", "modern"]
     for ki, kat in enumerate(BLOK_KATLAR):
-        stiller = alcak if kat <= 4 else yuksek if kat >= 6 else ["siva", "modern", "klasik", "cumbali", "tugla"]
-        for v, stil in enumerate(stiller):
+        for v, stil in enumerate(BLOK_STILLER[kat]):
             rnd = random.Random(TOHUM * 9001 + ki * 131 + v * 17)
             g, gen = blok_duz(rnd, stil, kat)
             sonuc.append((f"Blok_duz_{kat}k_{v + 1}", g, gen))
-        for v, stil in enumerate(stiller[:3]):
+        for v, stil in enumerate(BLOK_KOSE_STILLER[kat]):
             rnd = random.Random(TOHUM * 7001 + ki * 113 + v * 29)
             g, gen = blok_kose(rnd, stil, kat)
             sonuc.append((f"Blok_kose_{kat}k_{v + 1}", g, gen))
