@@ -36,7 +36,7 @@ namespace KuryeTycoon
         }
 
         readonly List<Entry> entries = new List<Entry>();
-        readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
+        MaterialPropertyBlock mpb;   // Awake'te oluşturulur (alan başlatıcısında Unity izin vermiyor)
         bool active;
         int tintVersion = -1;
         float timer;
@@ -63,6 +63,7 @@ namespace KuryeTycoon
         void Awake()
         {
             I = this;
+            mpb = new MaterialPropertyBlock();
             City3D.Built += Collect;
         }
 

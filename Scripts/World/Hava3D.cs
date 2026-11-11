@@ -33,7 +33,7 @@ namespace KuryeTycoon
 
         class Cloud { public Transform t; public Renderer[] rs; public bool storm; public float speed; public float grow; public bool leaving; public float baseScale; public Vector3 shape; }
         readonly List<Cloud> clouds = new List<Cloud>();
-        readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
+        MaterialPropertyBlock mpb;   // Awake'te oluşturulur (alan başlatıcısında Unity izin vermiyor)
 
         Transform bolt;
         float boltTimer, lastFlash;
@@ -57,6 +57,7 @@ namespace KuryeTycoon
         void Awake()
         {
             I = this;
+            mpb = new MaterialPropertyBlock();
             TryInit();
         }
 
@@ -121,8 +122,29 @@ namespace KuryeTycoon
         {
             var mf = prefab.GetComponentInChildren<MeshFilter>(true);
             var mr = prefab.GetComponentInChildren<Renderer>(true);
-            mesh = mf != null ? mf.sharedMesh : null;
+            mesh = mf != null ? SingleSubmesh(mf.sharedMesh) : null;
             mat = mr != null ? mr.sharedMaterial : null;
+        }
+
+        /// <summary>Parçacık sistemi tek alt mesh ister: FBX'ten birden çok parçalı gelirse hepsini tek parçada birleştirir.</summary>
+        static Mesh SingleSubmesh(Mesh m)
+        {
+            if (m == null || m.subMeshCount <= 1) return m;
+            if (!m.isReadable)
+            {
+                Debug.LogWarning("Kurye Tycoon · 3D hava: " + m.name + " okunamıyor (FBX Read/Write kapalı). Prefab aracını yeniden çalıştırın.");
+                return null;
+            }
+            var tris = new List<int>();
+            for (int i = 0; i < m.subMeshCount; i++) tris.AddRange(m.GetTriangles(i));
+            var c = new Mesh { name = m.name + " (tek)" };
+            c.indexFormat = m.indexFormat;
+            c.SetVertices(m.vertices);
+            c.SetNormals(m.normals);
+            c.subMeshCount = 1;
+            c.SetTriangles(tris, 0);
+            c.RecalculateBounds();
+            return c;
         }
 
         static GameObject Spawn(GameObject prefab, Transform parent)

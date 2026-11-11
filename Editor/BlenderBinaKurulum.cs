@@ -153,6 +153,9 @@ namespace KuryeTycoon.EditorTools
             if (mi.importLights) { mi.importLights = false; degisti = true; }
             if (mi.importAnimation) { mi.importAnimation = false; degisti = true; }
             if (mi.animationType != ModelImporterAnimationType.None) { mi.animationType = ModelImporterAnimationType.None; degisti = true; }
+            // Hava parçaları (damla, kar, yaprak) parçacık sisteminde kullanılır: mesh oyunda okunabilir olmalı
+            bool hava = Path.GetFileName(yol).StartsWith("Hava_");
+            if (hava && !mi.isReadable) { mi.isReadable = true; degisti = true; }
             if (degisti) mi.SaveAndReimport();
         }
 
