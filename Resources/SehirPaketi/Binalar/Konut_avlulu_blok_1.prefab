@@ -66,12 +66,14 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
+  - {fileID: 2100000, guid: 368a1ecefda598440b5cdc8deda06d18, type: 2}
   - {fileID: 2100000, guid: 9c08bae24cc89c04b86ff6cccee2d48a, type: 2}
   - {fileID: 2100000, guid: 91d21763f716ba147ad9ff2147421cc8, type: 2}
   - {fileID: 2100000, guid: 0b65f5cd3c17fa54c8f1e2271b0328c5, type: 2}
-  - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
+  - {fileID: 2100000, guid: 3b287089fe554d646a4f513eacea1f00, type: 2}
   - {fileID: 2100000, guid: f06ae75fd3746474397e3bd2992c9e60, type: 2}
-  - {fileID: 2100000, guid: 368a1ecefda598440b5cdc8deda06d18, type: 2}
+  - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
+  - {fileID: 2100000, guid: 1c2664539af3db740b9dd8d2f017df5d, type: 2}
   - {fileID: 2100000, guid: b12f067bc10d4e84ba4d6bb3589f4dbe, type: 2}
   - {fileID: 2100000, guid: 760b78a75188fa744bd5b091b1f63dc9, type: 2}
   - {fileID: 2100000, guid: 98cdd8ca5e008dd498c20476009b4a42, type: 2}
@@ -170,12 +172,14 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
+  - {fileID: 2100000, guid: 368a1ecefda598440b5cdc8deda06d18, type: 2}
   - {fileID: 2100000, guid: 9c08bae24cc89c04b86ff6cccee2d48a, type: 2}
   - {fileID: 2100000, guid: 91d21763f716ba147ad9ff2147421cc8, type: 2}
   - {fileID: 2100000, guid: 0b65f5cd3c17fa54c8f1e2271b0328c5, type: 2}
-  - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
+  - {fileID: 2100000, guid: 3b287089fe554d646a4f513eacea1f00, type: 2}
   - {fileID: 2100000, guid: f06ae75fd3746474397e3bd2992c9e60, type: 2}
-  - {fileID: 2100000, guid: 368a1ecefda598440b5cdc8deda06d18, type: 2}
+  - {fileID: 2100000, guid: ffc14ea825fe2ea438016a06da06b14d, type: 2}
+  - {fileID: 2100000, guid: 1c2664539af3db740b9dd8d2f017df5d, type: 2}
   - {fileID: 2100000, guid: b12f067bc10d4e84ba4d6bb3589f4dbe, type: 2}
   - {fileID: 2100000, guid: 760b78a75188fa744bd5b091b1f63dc9, type: 2}
   - {fileID: 2100000, guid: 98cdd8ca5e008dd498c20476009b4a42, type: 2}
