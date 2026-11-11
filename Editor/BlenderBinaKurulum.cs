@@ -154,8 +154,10 @@ namespace KuryeTycoon.EditorTools
             if (mi.importAnimation) { mi.importAnimation = false; degisti = true; }
             if (mi.animationType != ModelImporterAnimationType.None) { mi.animationType = ModelImporterAnimationType.None; degisti = true; }
             // Hava parçaları (damla, kar, yaprak) parçacık sisteminde kullanılır: mesh oyunda okunabilir olmalı
-            bool hava = Path.GetFileName(yol).StartsWith("Hava_");
-            if (hava && !mi.isReadable) { mi.isReadable = true; degisti = true; }
+            // Yol ve park parçaları da okunur olmalı: GeceIsiklari lambaların yerini mesh'ten bulup oraya gerçek ışık koyar
+            string dosya = Path.GetFileName(yol);
+            bool okunur = dosya.StartsWith("Hava_") || dosya.StartsWith("Yol_") || dosya.StartsWith("Park_") || dosya.StartsWith("Meydan_");
+            if (okunur && !mi.isReadable) { mi.isReadable = true; degisti = true; }
             if (degisti) mi.SaveAndReimport();
         }
 
@@ -169,7 +171,7 @@ namespace KuryeTycoon.EditorTools
             bool havuz = ad.StartsWith("IsikHavuz");      // lamba altındaki ışık halkası: saydam, ışıksız
             bool cizgi = ad.StartsWith("Cizgi") || ad.StartsWith("Simsek") || havuz;
             // Gece ışık verenler (GeceIsiklari): pencere camları, ofis camları, lamba başları
-            bool isikVeren = ad.StartsWith("Cam_") || ad.StartsWith("Cam2_") || ad.StartsWith("Cam3_") || ad.StartsWith("CamKoyu") ||
+            bool isikVeren = ad.StartsWith("Vitrin_") || ad.StartsWith("Yazi_") || ad.StartsWith("Cam_") || ad.StartsWith("Cam2_") || ad.StartsWith("Cam3_") || ad.StartsWith("CamKoyu") ||
                              ad.StartsWith("OfisCam") || ad.StartsWith("YIsik") || ad.StartsWith("PIsik") || ad.StartsWith("Isik_") ||
                              ad.StartsWith("TSari_isik");
             Color renk = AddanRenk(ad, out bool bulundu);

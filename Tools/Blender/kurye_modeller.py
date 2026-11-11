@@ -318,6 +318,8 @@ def cam_grubu(cam, cu, zb):
 def isik_havuzu(g, x, y, z, ic=1.2, dis=2.3):
     """Lambanın altında gece parlayan ışık halkası (gündüz görünmez: Unity'de saydam, gece yanar).
     Halka karenin (±YK) dışına taşmaz: taşarsa parçanın sınırı büyür, Unity yolu küçültür ve yollar arasında boşluk kalır."""
+    # Sert sarı diskler kötü görünüyordu: lamba ışığı artık Unity'de gerçek ışık kaynağı (GeceIsiklari)
+    return
     k = YK - 0.02
 
     def icinde(pts):
@@ -1482,7 +1484,12 @@ def park_yerleri(g, x0, y0, n, r, gen=2.5, der=4.6, yon=1):
 
 def vitrin(g, fc, u0, u1, z0, z1, r, aralik=1.5, kasa=None, poster=0.0, rnd=None):
     kasa = kasa or r["cerceve"]
-    cdortgen(g, fc, u0, u1, 0.02, z0, z1, r["cam"])
+    # Vitrin camı ayrı malzeme: gece dükkân kapanana kadar içi ışıklı görünür (Unity GeceIsiklari)
+    vcam = r["cam"]
+    if vcam.startswith("Cam_"):
+        vcam = "Vitrin_" + vcam[4:]
+        HEX[vcam] = HEX[r["cam"]]
+    cdortgen(g, fc, u0, u1, 0.02, z0, z1, vcam)
     n = max(1, int(round((u1 - u0) / aralik)))
     for i in range(n + 1):
         u = u0 + (u1 - u0) * i / n

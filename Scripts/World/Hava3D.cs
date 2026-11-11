@@ -283,7 +283,6 @@ namespace KuryeTycoon
                 : !WeatherFx.Enabled ? "hava efektleri ayarlardan kapalı"
                 : fx == null || mc == null || cam == null || CityMap.I == null ? "oyun henüz hazır değil"
                 : GameBootstrap.I == null || !GameBootstrap.I.Started ? "oyun başlamadı"
-                : !mc.ShowModels ? "harita uzak/düz görünümde (yakınlaşınca 3D hava başlar)"
                 : null;
             if (reason != lastReason)
             {
@@ -371,7 +370,8 @@ namespace KuryeTycoon
         {
             if (whiteClouds.Length == 0) return;
             float rainy = Mathf.Clamp01(fx.RainAmt + fx.StormAmt * 0.5f);
-            int want = Mathf.Clamp(Mathf.RoundToInt(fx.SunAmt * 5f + fx.CloudAmt * 12f + fx.RainAmt * 6f + fx.StormAmt * 6f + fx.SnowAmt * 4f), 0, 30);
+            // Uzak ve yakın görünümde aynı bulutlar; bulutlu havada gök gerçekten kalabalık olsun
+            int want = Mathf.Clamp(Mathf.RoundToInt(fx.SunAmt * 8f + fx.CloudAmt * 32f + fx.RainAmt * 10f + fx.StormAmt * 12f + fx.SnowAmt * 8f), 0, 64);
             int active = 0;
             foreach (var c in clouds) if (!c.leaving) active++;
             // Fazla bulutlar küçülerek kaybolur, eksikler büyüyerek belirir (yağmura geçince fırtına bulutları gelir)
