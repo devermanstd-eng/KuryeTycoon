@@ -35,19 +35,58 @@ namespace KuryeTycoon
         bool pipelineOk;
         Camera lastCam;
 
-        // Günün renkleri
-        static readonly Color SunDay = new Color(1.00f, 0.95f, 0.86f);
-        static readonly Color SunDusk = new Color(1.00f, 0.62f, 0.36f);
-        static readonly Color SunDawn = new Color(1.00f, 0.72f, 0.70f);
-        static readonly Color Moon = new Color(0.62f, 0.60f, 0.90f);   // lavanta ay ışığı (referanstaki mor akşam)
+        // ---------------------------------------------------------------- günün dört bölümüne göre ışık
+        // Sabah 06–11 (pembe şafak → serin altın, uzun gölgeler) · Gündüz 11–17 (parlak, nötr) ·
+        // Akşam 17–21 (altın → turuncu gün batımı → mor alacakaranlık) · Gece 21–06 (lavanta ay ışığı).
+        // Saat anahtarları arasında yumuşak geçiş yapılır.
+        struct Anahtar
+        {
+            public float saat, siddet, golge;
+            public Color gunes, gok, ufuk, zemin;
+            public Anahtar(float saat, Color gunes, float siddet, Color gok, Color ufuk, Color zemin, float golge)
+            { this.saat = saat; this.gunes = gunes; this.siddet = siddet; this.gok = gok; this.ufuk = ufuk; this.zemin = zemin; this.golge = golge; }
+        }
 
-        static readonly Color SkyDay = new Color(0.66f, 0.72f, 0.80f);
-        static readonly Color EquatorDay = new Color(0.64f, 0.60f, 0.54f);
-        static readonly Color GroundDay = new Color(0.40f, 0.44f, 0.34f);
-        // Gece ortam ışığı: zifiri lacivert değil, binaların seçildiği mor-lavanta alacakaranlık
-        static readonly Color SkyNight = new Color(0.30f, 0.29f, 0.44f);
-        static readonly Color EquatorNight = new Color(0.27f, 0.23f, 0.32f);
-        static readonly Color GroundNight = new Color(0.14f, 0.13f, 0.17f);
+        static Color C(float r, float g, float b) => new Color(r, g, b);
+
+        static readonly Color Moon = C(0.62f, 0.60f, 0.90f);   // lavanta ay ışığı (referanstaki mor akşam)
+        static readonly Anahtar GeceA = new Anahtar(0f, Moon, 0.35f, C(0.30f, 0.29f, 0.44f), C(0.27f, 0.23f, 0.32f), C(0.14f, 0.13f, 0.17f), 0.45f);
+
+        static readonly Anahtar[] Anahtarlar =
+        {
+            GeceA,
+            new Anahtar(4.9f,  Moon, 0.35f, C(0.30f, 0.29f, 0.44f), C(0.27f, 0.23f, 0.32f), C(0.14f, 0.13f, 0.17f), 0.45f),
+            // Sabah: şafakta pembe-turuncu, sonra serin altın; güneş alçak, gölgeler uzun
+            new Anahtar(6.0f,  C(1.00f, 0.70f, 0.62f), 0.70f, C(0.50f, 0.50f, 0.64f), C(0.62f, 0.50f, 0.50f), C(0.26f, 0.26f, 0.27f), 0.55f),
+            new Anahtar(7.3f,  C(1.00f, 0.86f, 0.71f), 1.05f, C(0.62f, 0.70f, 0.84f), C(0.66f, 0.62f, 0.58f), C(0.36f, 0.40f, 0.33f), 0.66f),
+            new Anahtar(10.4f, C(1.00f, 0.93f, 0.84f), 1.20f, C(0.65f, 0.72f, 0.82f), C(0.64f, 0.61f, 0.55f), C(0.40f, 0.44f, 0.34f), 0.70f),
+            // Gündüz: en parlak, nötr beyaz ışık, gölgeler kısa
+            new Anahtar(11.6f, C(1.00f, 0.96f, 0.90f), 1.30f, C(0.68f, 0.74f, 0.80f), C(0.64f, 0.60f, 0.54f), C(0.40f, 0.44f, 0.34f), 0.72f),
+            new Anahtar(16.4f, C(1.00f, 0.95f, 0.86f), 1.25f, C(0.67f, 0.72f, 0.79f), C(0.65f, 0.60f, 0.53f), C(0.40f, 0.43f, 0.33f), 0.72f),
+            // Akşam: altın saat → turuncu gün batımı → mor alacakaranlık (pencereler ve lambalar yanar)
+            new Anahtar(17.6f, C(1.00f, 0.80f, 0.56f), 1.10f, C(0.66f, 0.64f, 0.70f), C(0.72f, 0.60f, 0.50f), C(0.40f, 0.38f, 0.32f), 0.70f),
+            new Anahtar(19.0f, C(1.00f, 0.58f, 0.34f), 0.90f, C(0.60f, 0.50f, 0.62f), C(0.80f, 0.55f, 0.46f), C(0.34f, 0.30f, 0.30f), 0.60f),
+            new Anahtar(20.2f, C(0.82f, 0.56f, 0.78f), 0.55f, C(0.42f, 0.36f, 0.56f), C(0.45f, 0.34f, 0.44f), C(0.20f, 0.18f, 0.22f), 0.50f),
+            // Gece
+            new Anahtar(21.0f, Moon, 0.35f, C(0.30f, 0.29f, 0.44f), C(0.27f, 0.23f, 0.32f), C(0.14f, 0.13f, 0.17f), 0.45f),
+            new Anahtar(24.0f, Moon, 0.35f, C(0.30f, 0.29f, 0.44f), C(0.27f, 0.23f, 0.32f), C(0.14f, 0.13f, 0.17f), 0.45f),
+        };
+
+        /// <summary>Saate göre ışık anahtarı (iki anahtar arasında yumuşak geçiş).</summary>
+        static Anahtar Profil(float h)
+        {
+            h = ((h % 24f) + 24f) % 24f;
+            for (int i = 0; i < Anahtarlar.Length - 1; i++)
+            {
+                var a = Anahtarlar[i];
+                var b = Anahtarlar[i + 1];
+                if (h < a.saat || h > b.saat) continue;
+                float t = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(a.saat, b.saat, h));
+                return new Anahtar(h, Color.Lerp(a.gunes, b.gunes, t), Mathf.Lerp(a.siddet, b.siddet, t), Color.Lerp(a.gok, b.gok, t),
+                                   Color.Lerp(a.ufuk, b.ufuk, t), Color.Lerp(a.zemin, b.zemin, t), Mathf.Lerp(a.golge, b.golge, t));
+            }
+            return GeceA;
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -162,39 +201,27 @@ namespace KuryeTycoon
         {
             if (sun == null) return;
             bool cycle = DayNight.Enabled && GameClock.I != null;
-            float hour = cycle ? DayNight.HourF : 15.5f;          // döngü kapalıysa hep öğleden sonra
-            float rise = DayNight.Sunrise, set = DayNight.Sunset;
+            float hour = cycle ? DayNight.HourF : 14f;          // döngü kapalıysa hep gündüz
             float night = cycle ? DayNight.Night01 : 0f;
-            float dusk = cycle ? DayNight.Dusk01 : 0f;
-            float dawn = cycle ? DayNight.Dawn01 : 0f;
+            var p = Profil(hour);
 
-            // Gün içindeki konum: 0 doğuş (doğu), 0,5 öğle (güney), 1 batış (batı)
-            float t = Mathf.Clamp01(Mathf.InverseLerp(rise - 0.4f, set + 0.4f, hour));
+            // Güneşin yolu: sabah 05:30 doğu (alçak) → öğle güney (yüksek) → akşam 20:30 batı (alçak)
+            float t = Mathf.Clamp01(Mathf.InverseLerp(5.5f, 20.5f, hour));
             float az = Mathf.PI * t;
             var horiz = new Vector2(Mathf.Cos(az), -Mathf.Sin(az));            // +x doğu, −y güney (kameranın tarafı)
-            // Öğlen bile tam tepede değil: gölgeler hep görünsün
-            float elev = Mathf.Lerp(14f, 52f, Mathf.Sin(Mathf.PI * t)) * Mathf.Deg2Rad;
+            // Öğlen bile tam tepede değil: gölgeler hep görünsün. Sabah ve akşam güneş alçak, gölgeler uzun.
+            float elev = Mathf.Lerp(6f, 52f, Mathf.Pow(Mathf.Sin(Mathf.PI * t), 0.85f)) * Mathf.Deg2Rad;
 
             Vector3 toSun;
             if (night > 0.5f)
-            {
-                // Gece: güneybatıdan alçak ay ışığı
-                toSun = new Vector3(-0.45f, -0.6f, -0.65f).normalized;
-            }
+                toSun = new Vector3(-0.45f, -0.6f, -0.65f).normalized;        // gece: güneybatıdan alçak ay ışığı
             else
-            {
-                // Dünyada "yukarı" −Z
-                toSun = new Vector3(horiz.x * Mathf.Cos(elev), horiz.y * Mathf.Cos(elev), -Mathf.Sin(elev)).normalized;
-            }
+                toSun = new Vector3(horiz.x * Mathf.Cos(elev), horiz.y * Mathf.Cos(elev), -Mathf.Sin(elev)).normalized;   // dünyada "yukarı" −Z
             sun.transform.rotation = Quaternion.LookRotation(-toSun, Vector3.up);
 
-            var day = SunDay;
-            if (dusk > 0f) day = Color.Lerp(day, SunDusk, dusk);
-            if (dawn > 0f) day = Color.Lerp(day, SunDawn, dawn * 0.8f);
-            sun.color = Color.Lerp(day, Moon, Mathf.SmoothStep(0f, 1f, night));
-            float dayI = Mathf.Lerp(1.25f, 0.95f, Mathf.Max(dusk, dawn));
-            sun.intensity = Mathf.Lerp(dayI, 0.35f, night);
-            sun.shadowStrength = Mathf.Lerp(0.72f, 0.45f, night);
+            sun.color = p.gunes;
+            sun.intensity = p.siddet;
+            sun.shadowStrength = p.golge;
 
             // Bulutlu ve yağmurlu havada güneş zayıflar, gölgeler silikleşir
             var fx = WeatherFx.I;
@@ -207,9 +234,9 @@ namespace KuryeTycoon
             // 2D zemin ve kır da geceye uysun (ışıktan etkilenmiyorlar)
             if (CityMap.I != null) CityMap.I.SetNight(night);
 
-            RenderSettings.ambientSkyColor = Color.Lerp(SkyDay, SkyNight, night);
-            RenderSettings.ambientEquatorColor = Color.Lerp(Color.Lerp(EquatorDay, new Color(0.75f, 0.55f, 0.45f), dusk * 0.6f), EquatorNight, night);
-            RenderSettings.ambientGroundColor = Color.Lerp(GroundDay, GroundNight, night);
+            RenderSettings.ambientSkyColor = p.gok;
+            RenderSettings.ambientEquatorColor = p.ufuk;
+            RenderSettings.ambientGroundColor = p.zemin;
             // Gece camlar gündüz gökyüzünü yansıtıp mavi-beyaz parlamasın
             RenderSettings.reflectionIntensity = Mathf.Lerp(1f, 0.12f, night);
             // Kod kutusu binalar (AVM, otogar, merkez) ışıktan etkilenmiyor: geceye kendileri uysun

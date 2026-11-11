@@ -893,7 +893,7 @@ namespace KuryeTycoon
             Add(px => StatCard(px, Icons.Kind.Star, new Color(1f, 0.80f, 0.25f), "İTİBAR", rep), Est("İTİBAR", rep));
             string cour = $"{CourierManager.I.OnlineCount} / {CourierManager.I.Couriers.Count}";
             Add(px => StatCard(px, Icons.Kind.Couriers, prim, "ÇEVRİMİÇİ", cour), Est("ÇEVRİMİÇİ", cour));
-            string time = $"{clock.Hour:00}:{clock.Minute:00}";
+            string time = $"{clock.Hour:00}:{clock.Minute:00} · {DayNight.PhaseName}";   // günün bölümü: Sabah, Gündüz, Akşam, Gece
             string date = $"{clock.DayName.ToUpperInvariant()} · {clock.DateText.ToUpperInvariant()}";
             Add(px => StatCard(px, Icons.Kind.Clock, new Color(0.85f, 0.85f, 0.95f), date, time), Est(date, time));
             string season = clock.SeasonName.ToUpperInvariant();
