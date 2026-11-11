@@ -829,7 +829,11 @@ namespace KuryeTycoon
                 r.sortingOrder = order; // zemin karelerinin üstünde, binaların altında
             }
             var b = CombinedBounds(renderers);
-            float s = 1.01f / Mathf.Max(0.001f, Mathf.Max(b.size.x, b.size.y));
+            float boyut = Mathf.Max(b.size.x, b.size.y);
+            // Kendi yol ve park parçalarımız 10 m karedir; kenardan taşan trafik ışığı, lamba ya da ışık halkası
+            // parçanın sınırını büyütüp onu küçültmesin (yoksa yollar arasında boşluk kalıyor)
+            if (IsOwnFlat(prefab.name) && boyut > 9.5f && boyut < 12f) boyut = 10f;
+            float s = 1.01f / Mathf.Max(0.001f, boyut);
             inst.transform.localScale = Vector3.one * s;
             b = CombinedBounds(renderers);
             // Paket parçası: en üst yüzey zeminin hemen üstünde. Kendi parçalarımızda (lamba, trafik ışığı, ağaç var)

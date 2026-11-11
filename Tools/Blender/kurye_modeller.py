@@ -316,9 +316,14 @@ def cam_grubu(cam, cu, zb):
 
 
 def isik_havuzu(g, x, y, z, ic=1.2, dis=2.3):
-    """Lambanın altında gece parlayan ışık halkası (gündüz görünmez: Unity'de saydam, gece yanar)."""
-    duz_poligon(g, poligon(14, dis, dis, x, y), z + 0.008, M("IsikHavuzDis", "#ffd98a"))
-    duz_poligon(g, poligon(12, ic, ic, x, y), z + 0.014, M("IsikHavuzIc", "#ffe7a8"))
+    """Lambanın altında gece parlayan ışık halkası (gündüz görünmez: Unity'de saydam, gece yanar).
+    Halka karenin (±YK) dışına taşmaz: taşarsa parçanın sınırı büyür, Unity yolu küçültür ve yollar arasında boşluk kalır."""
+    k = YK - 0.02
+
+    def icinde(pts):
+        return [(min(max(px, -k), k), min(max(py, -k), k)) for px, py in pts]
+    duz_poligon(g, icinde(poligon(14, dis, dis, x, y)), z + 0.008, M("IsikHavuzDis", "#ffd98a"))
+    duz_poligon(g, icinde(poligon(12, ic, ic, x, y)), z + 0.014, M("IsikHavuzIc", "#ffe7a8"))
 
 
 def pencere(g, fc, cu, zb, w, h, r, sade=False):
@@ -4333,27 +4338,39 @@ def katalog():
 
 # ------------------------------------------------------------------ hava: bulut, yağmur, kar, yaprak, şimşek (Unity'de Hava3D kullanır)
 
-def bulut(rnd, buyuk, koyu):
-    """Alçak poligon bulut: düz tabanlı, üstü kabarık top kümeleri. Ölçü metre; Unity kendi boyuna ölçekler."""
+def bulut(rnd, tip, koyu):
+    """Alçak poligon bulut. tip: "kume" (kabarık, yüksek), "yassi" (uzun, alçak), "kucuk" (tek iki top),
+    "firtina" (koyu, büyük, tepesi örs gibi yayvan). Ölçü metre; Unity kendi boyuna ölçekler ve her birini ayrıca esnetir."""
     g = Govde()
     renk = M("BulutKoyu", "#8f959e") if koyu else M("Bulut", "#f6f7f9")
     golge = M("BulutAlt", "#6f757e") if koyu else M("BulutAlti", "#dfe4ea")
-    L = rnd.uniform(26.0, 34.0) if buyuk else rnd.uniform(14.0, 19.0)
-    D = L * rnd.uniform(0.45, 0.6)
-    n = rnd.randint(6, 8) if buyuk else rnd.randint(4, 5)
+    if tip == "yassi":
+        L, oran, n, yuk = rnd.uniform(30.0, 40.0), rnd.uniform(0.32, 0.42), rnd.randint(7, 9), 0.5
+    elif tip == "kucuk":
+        L, oran, n, yuk = rnd.uniform(9.0, 13.0), rnd.uniform(0.55, 0.7), rnd.randint(2, 3), 0.85
+    elif tip == "firtina":
+        L, oran, n, yuk = rnd.uniform(28.0, 36.0), rnd.uniform(0.55, 0.65), rnd.randint(6, 8), 1.0
+    else:  # kume
+        L, oran, n, yuk = rnd.uniform(18.0, 26.0), rnd.uniform(0.5, 0.62), rnd.randint(4, 6), 1.15
+    D = L * oran
     # Taban: yassı geniş top (alt yüzü hafif koyu: güneşte gölgeli taraf)
-    top(g, (0.0, 0.0, D * 0.12), L * 0.5, D * 0.48, D * 0.16, golge)
+    top(g, (0.0, 0.0, D * 0.1), L * 0.5, D * 0.48, D * 0.13 * (0.7 if tip == "yassi" else 1.0), golge)
     for i in range(n):
         u = (i + 0.5) / n - 0.5
-        x = u * L * 0.8 + rnd.uniform(-1.0, 1.0)
-        y = rnd.uniform(-D * 0.18, D * 0.18)
-        r = (D * 0.42) * (1.0 - abs(u) * 0.9) * rnd.uniform(0.8, 1.15)
-        top(g, (x, y, D * 0.12 + r * 0.4), r * 1.2, r, r * 0.68, renk)
-    # Ortada bir iki büyük kabarık tepe
-    for _ in range(2 if buyuk else 1):
+        x = u * L * 0.82 + rnd.uniform(-1.0, 1.0)
+        y = rnd.uniform(-D * 0.2, D * 0.2)
+        r = (D * 0.42) * (1.0 - abs(u) * 0.85) * rnd.uniform(0.75, 1.2)
+        top(g, (x, y, D * 0.1 + r * 0.4 * yuk), r * 1.2, r, r * 0.68 * yuk, renk)
+    # Ortada kabarık tepeler (kümede yüksek, yassıda yok)
+    tepe = {"kume": 2, "firtina": 2, "kucuk": 1, "yassi": 0}[tip]
+    for _ in range(tepe):
         x = rnd.uniform(-L * 0.15, L * 0.15)
-        r = D * rnd.uniform(0.38, 0.46)
-        top(g, (x, rnd.uniform(-1.0, 1.0), D * 0.22 + r * 0.4), r * 1.25, r * 0.95, r * 0.72, renk)
+        r = D * rnd.uniform(0.36, 0.46)
+        top(g, (x, rnd.uniform(-1.0, 1.0), D * 0.22 * yuk + r * 0.45 * yuk), r * 1.2, r * 0.95, r * 0.8 * yuk, renk)
+    if tip == "firtina":
+        # Örs: tepede yayvan, düz üstlü koyu katman
+        zt = D * 0.22 + D * 0.5
+        top(g, (rnd.uniform(-2.0, 2.0), 0.0, zt), L * 0.42, D * 0.42, D * 0.12, renk)
     if CIZGI:
         kabuk(g, CIZGI_KALINLIK * olcek(g) * 0.8)
     return g, ortala(g)
@@ -4437,13 +4454,14 @@ def simsek():
 
 def hava_parcalari():
     sonuc = []
-    for i in range(3):
+    beyaz = ["kume", "kume", "yassi", "yassi", "kucuk", "kucuk", "kume"]
+    for i, tip in enumerate(beyaz):
         rnd = random.Random(TOHUM * 31 + i)
-        g, gen = bulut(rnd, buyuk=i > 0, koyu=False)
+        g, gen = bulut(rnd, tip, koyu=False)
         sonuc.append((f"Hava_bulut_{i + 1}", g, gen))
-    for i in range(2):
+    for i, tip in enumerate(["firtina", "firtina", "kume"]):
         rnd = random.Random(TOHUM * 57 + i)
-        g, gen = bulut(rnd, buyuk=True, koyu=True)
+        g, gen = bulut(rnd, tip, koyu=True)
         sonuc.append((f"Hava_firtina_{i + 1}", g, gen))
     sonuc.append(("Hava_damla",) + damla())
     sonuc.append(("Hava_sicrama",) + sicrama())

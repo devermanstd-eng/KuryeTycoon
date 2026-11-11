@@ -97,6 +97,7 @@ namespace KuryeTycoon
             entries.Clear();
             var city = City3D.I;
             if (city == null || city.Root == null) return;
+            collectedRoot = city.Root;
             var map = CityMap.I;
             foreach (var r in city.Root.GetComponentsInChildren<Renderer>(true))
             {
@@ -130,6 +131,7 @@ namespace KuryeTycoon
                 }
             }
             tintVersion = -1;
+            Debug.Log($"Kurye Tycoon · gece ışıkları: {entries.Count} pencere/lamba parçası bulundu");
         }
 
         /// <summary>Her pencere grubunun ve lambanın kendi saatleri (tohumlu: her oyunda aynı bina aynı alışkanlıkta).</summary>
@@ -165,8 +167,20 @@ namespace KuryeTycoon
 
         // ---------------------------------------------------------------- her kare
 
+        Transform collectedRoot;
+        float collectTimer;
+
         void LateUpdate()
         {
+            // Şehir bu sistemden önce kurulmuş olabilir (oyun açılışı): kök değişince ya da ilk kez görünce pencere ve lambaları topla
+            collectTimer -= Time.unscaledDeltaTime;
+            if (collectTimer <= 0f)
+            {
+                collectTimer = 1.5f;
+                var city = City3D.I;
+                if (city != null && city.Root != null && city.Root != collectedRoot && city.Root.childCount > 0) Collect();
+            }
+
             bool on = Gorsel3D.Active && DayNight.Enabled && GameClock.I != null && MapCamera.I != null &&
                       MapCamera.I.ShowModels && entries.Count > 0;
             if (!on)

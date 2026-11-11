@@ -31,7 +31,7 @@ namespace KuryeTycoon
         ParticleSystem rainPs, splashPs, snowPs;
         readonly List<ParticleSystem> leafPs = new List<ParticleSystem>();
 
-        class Cloud { public Transform t; public Renderer[] rs; public bool storm; public float speed; public float grow; public bool leaving; public float baseScale; }
+        class Cloud { public Transform t; public Renderer[] rs; public bool storm; public float speed; public float grow; public bool leaving; public float baseScale; public Vector3 shape; }
         readonly List<Cloud> clouds = new List<Cloud>();
         readonly MaterialPropertyBlock mpb = new MaterialPropertyBlock();
 
@@ -39,8 +39,9 @@ namespace KuryeTycoon
         float boltTimer, lastFlash;
 
         // Ölçüler (1 kare = 1 birim ≈ 10 m)
-        const float CloudHeight = 9f;      // en uzun kulelerin (≈6) üstünde
-        const float CloudWidth = 5.5f;     // büyük bulutun genişliği (kare)
+        const float CloudHeightMin = 6.8f; // en uzun kulelerin (≈6,5) hemen üstünde: kameradan iyi görünsün
+        const float CloudHeightMax = 8.5f;
+        const float CloudWidth = 3.2f;     // ortalama bulut genişliği (kare)
         const float RainTop = 6f;          // damlaların doğduğu yükseklik
         const float RainSpeed = 18f;
 
@@ -348,7 +349,7 @@ namespace KuryeTycoon
         {
             if (whiteClouds.Length == 0) return;
             float rainy = Mathf.Clamp01(fx.RainAmt + fx.StormAmt * 0.5f);
-            int want = Mathf.Clamp(Mathf.RoundToInt(fx.SunAmt * 3f + fx.CloudAmt * 8f + fx.RainAmt * 4f + fx.StormAmt * 4f + fx.SnowAmt * 3f), 0, 22);
+            int want = Mathf.Clamp(Mathf.RoundToInt(fx.SunAmt * 5f + fx.CloudAmt * 12f + fx.RainAmt * 6f + fx.StormAmt * 6f + fx.SnowAmt * 4f), 0, 30);
             int active = 0;
             foreach (var c in clouds) if (!c.leaving) active++;
             // Fazla bulutlar küçülerek kaybolur, eksikler büyüyerek belirir (yağmura geçince fırtına bulutları gelir)
@@ -358,9 +359,11 @@ namespace KuryeTycoon
                 if (!clouds[i].storm && !clouds[i].leaving && Random.value < 0.004f) { clouds[i].leaving = true; active--; }
             while (active < want) { AddCloud(rainy > 0.5f); active++; }
 
-            // Yakınlaşınca bulutların kendisi manzarayı kapatır: sadece gölgesi kalsın
-            bool shadowOnly = mc.Zoom > 0.62f;
-            var mode = shadowOnly ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly : UnityEngine.Rendering.ShadowCastingMode.On;
+            // Yakınlaşınca bulutların kendisi manzarayı kapatır: sadece gölgesi kalsın.
+            // Kameraya çok yakın geçen bulut da (ekranı kaplayan dev gri leke) sadece gölge olur.
+            bool zoomedIn = mc.Zoom > 0.7f;
+            var cam = Camera.main;
+            float camGround = cam != null ? Mathf.Abs(cam.transform.position.z) : 30f;
             float gray = Mathf.Clamp01(fx.RainAmt * 0.45f + fx.StormAmt * 0.3f + fx.SnowAmt * 0.15f);
             float minX = -14f, maxX = CityMap.Width + 14f;
 
@@ -373,7 +376,9 @@ namespace KuryeTycoon
                 p.x += (c.speed + wind * 0.9f) * dt;
                 if (p.x > maxX) { p.x = minX; p.y = Random.Range(-6f, CityMap.Height + 6f); }
                 c.t.position = p;
-                c.t.localScale = Vector3.one * c.baseScale * Mathf.SmoothStep(0f, 1f, c.grow);
+                c.t.localScale = c.shape * c.baseScale * Mathf.SmoothStep(0f, 1f, c.grow);
+                bool near = cam != null && Vector3.Distance(cam.transform.position, p) < camGround * 0.6f;
+                var mode = zoomedIn || near ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly : UnityEngine.Rendering.ShadowCastingMode.On;
                 foreach (var r in c.rs)
                 {
                     if (r.shadowCastingMode != mode) r.shadowCastingMode = mode;
@@ -397,14 +402,17 @@ namespace KuryeTycoon
                 if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds);
             }
             float w = Mathf.Max(0.01f, Mathf.Max(b.size.x, b.size.y));
-            float target = CloudWidth * Random.Range(0.6f, 1.15f) * (storm ? 1.25f : 1f);
+            // Her bulut farklı: boyu, eni, yüksekliği ve yönü rastgele (aynı model bile tekrar etmesin)
+            float target = CloudWidth * Random.Range(0.55f, 1.35f) * (storm ? 1.2f : 1f);
+            var shape = new Vector3(Random.Range(0.8f, 1.35f), Random.Range(0.6f, 1.15f), Random.Range(0.75f, 1.3f));
             var c = new Cloud
             {
                 t = go.transform, rs = rs, storm = storm, speed = Random.Range(0.25f, 0.55f),
-                baseScale = target / w, grow = 0f
+                baseScale = target / w, grow = 0f, shape = shape
             };
+            go.transform.rotation = Quaternion.Euler(0f, 0f, Random.Range(-35f, 35f)) * Quaternion.Euler(-90f, 0f, 0f);
             go.transform.position = new Vector3(Random.Range(-14f, CityMap.Width + 14f), Random.Range(-6f, CityMap.Height + 6f),
-                                                -CloudHeight - Random.Range(0f, 2.5f));
+                                                -Random.Range(CloudHeightMin, CloudHeightMax));
             go.transform.localScale = Vector3.zero;
             clouds.Add(c);
         }
