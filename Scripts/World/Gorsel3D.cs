@@ -90,7 +90,7 @@ namespace KuryeTycoon
         void CreateSun()
         {
             // Sahnedeki diğer yönlü ışıkları kapat (ör. karakterler için eklenen yedek güneş): iki güneş, iki gölge olmasın
-            foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
+            foreach (var l in FindObjectsByType<Light>())
                 if (l.type == LightType.Directional) l.enabled = false;
 
             var go = new GameObject("Güneş");
