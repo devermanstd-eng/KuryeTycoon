@@ -67,32 +67,34 @@ namespace KuryeTycoon
         /// . kır (şehir dışı: yol yok, orman ve çayır; şehrin sınırı girintili çıkıntılı olsun diye)
         /// Sütunlar: bx 0–2 Batı Liman · 3–5 Merkez · 6–8 Doğu · 9–11 Sanayi; by 6–7 Yeşil Tepe.
         /// </summary>
+        // Budapeşte gibi: merkez nehrin iki yakasında (Pest ve Buda iç semtleri) bitişik nizam, avlulu yoğun bloklar ve kuleler;
+        // dışa doğru çarşı (karışık), en dışta müstakil ev mahalleleri (Yeşil Tepe = Buda tepeleri); sanayi ve liman doğuda.
         static readonly string[] Layout =
         {
-            ".MMOOOEEEACC",   // by 0
-            "WAMOZPMEEMAM",   // by 1  (otogar, meydan + HQ, Belediye Parkı, Nyír Plaza AVM)
-            "WPMMOMMPMMWW",   // by 2  (liman, nehir kıyısı)
+            ".EEOOMMEEACC",   // by 0  dış güney: bahçeli evler, eski şehrin ucu, Tepe AVM, kampüs
+            "WAMOZPOMMEAE",   // by 1  (otogar, meydan + HQ, Belediye Parkı, Nyír Plaza AVM)
+            "WMOOHOOPMMEE",   // by 2  güney yakası: yoğun merkez (Buda iç semtleri), Nehir Parkı
             "RRRRRRRRRRRR",   // by 3  Tisza
-            "MHMHHMMHMWWW",   // by 4
-            ".MOHHHEMEWWW",   // by 5  (tren yolu sanayide)
-            ".EEEMEEPEEM.",   // by 6  Yeşil Tepe
-            "..PEEEPEEE..",   // by 7  Yeşil Tepe
+            "MMOOHHOOMMWW",   // by 4  kuzey yakası: yoğun merkez (Pest iç semtleri), doğuda sanayi
+            ".EMOHHMMEWWW",   // by 5  kule bloklar, dışa doğru çarşı ve evler (tren yolu sanayide)
+            ".EEEEPEEEEE.",   // by 6  Yeşil Tepe: müstakil evler
+            "..EEEPEEEE..",   // by 7  Yeşil Tepe
         };
 
         /// <summary>
         /// Blokların içinden geçen ara sokaklar: - doğu-batı (bloğun ortasından), | kuzey-güney, . yok.
-        /// Eski şehir, çarşı ve bahçeli evler küçük parsellere bölünür (daha sık, daha karışık şehir).
+        /// Merkezdeki bloklar bölünmez (avlulu kapalı bloklar); müstakil ev mahalleleri küçük parsellere bölünür (çok sokaklı).
         /// </summary>
         static readonly string[] Alleys =
         {
-            "..|-|-|.|...",   // by 0
-            "...|...-....",   // by 1
-            "..|.-.-.....",   // by 2
+            ".|-..-.|-...",   // by 0
+            ".........-.|",   // by 1
+            "..........-|",   // by 2
             "............",   // by 3  nehir
-            "|....-......",   // by 4
-            "..|...|.-...",   // by 5
-            ".-.|.-.|-|..",   // by 6
-            "...|-.-|-...",   // by 7
+            "............",   // by 4
+            ".|......-...",   // by 5
+            ".-|-|.-|-|-.",   // by 6
+            "..|-|.-|-|..",   // by 7
         };
 
         /// <summary>Kaldırılan yol parçaları (iki blok birleşip büyük ada olur): (x, y başı, y sonu) dikey parçalar.</summary>

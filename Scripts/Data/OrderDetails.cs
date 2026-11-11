@@ -53,8 +53,9 @@ namespace KuryeTycoon
         public static int Floors(Vector2Int t)
         {
             var r = TileRng(t);
-            float d = Vector2.Distance(t, CityMap.PlazaCenter);
-            float merkez = Mathf.Clamp01(1f - d / 24f);                 // 1 merkezde, 0 en dışta
+            // Şehrin kalbi nehrin iki yakasındaki iç semtler: en yüksek binalar orada, dışa doğru boy düşer
+            float d = Vector2.Distance(t, new Vector2(20f, 14f));
+            float merkez = Mathf.Clamp01(1f - d / 20f);                 // 1 merkezde, 0 en dışta
             float v = Mathf.Clamp01(merkez * 0.9f + (float)r.NextDouble() * 0.35f - 0.12f);
             int Aralik(int min, int max) => min + Mathf.RoundToInt(v * (max - min));
             switch (CityMap.ZoneOf(t))
