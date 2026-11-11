@@ -37,7 +37,7 @@ except ImportError:          # Blender dışında (önizleme / test) sadece geom
     IN_BLENDER = False
 
 # ================================== AYARLAR ==================================
-MODEL = "mustakil_ev"      # "sira_ev" · "ofis_kulesi" · "mustakil_ev" · "market" · "fastfood" · "apartman" · "dukkan" (altı dükkanlı binalar) · "sehir" (yollar, zemin, ağaçlar, parklar) · "katalog" (konut, büro, sanayi, kamu, yeni parklar) · "hava" (bulut, yağmur, kar, yaprak, şimşek) · "kurye" · "yaya"
+MODEL = "mustakil_ev"      # "sira_ev" · "ofis_kulesi" · "mustakil_ev" · "market" · "fastfood" · "apartman" · "dukkan" (altı dükkanlı binalar) · "sehir" (yollar, zemin, ağaçlar, parklar) · "katalog" (konut, büro, sanayi, kamu, yeni parklar) · "hava" (bulut, yağmur, kar, yaprak, şimşek) · "blok" (bitişik blok ve köşe binaları) · "kurye" · "yaya"
 STIL = "kirmizi_tugla"     # sıra ev için: "kirmizi_tugla" · "pembe_siva" · "kahve_siva" · "karisik"
 OFIS_STIL = "beton"        # ofis kulesi için: "beton" · "gri" · "beyaz" · "karisik"
 OFIS_KAT = (5, 7)          # ofis kulesinin kat sayısı (zemindeki lobi hariç)
@@ -2143,17 +2143,19 @@ def trafik_lambasi(g, x, y, yon_x, yon_y, r):
     kutu(g, x - 0.04, x + 0.04, y - 0.04, y + 0.04, z + 1.0, z + 1.14, r["sari"])
 
 
-def yuvarlak_kose(g, sx, sy, r, rad=0.85):
+def yuvarlak_kose(g, sx, sy, r, rad=0.85, ax=YA, ay=YA):
     """Kavşak köşesindeki kaldırım: asfalta bakan köşesi yuvarlatılmış (referanstaki gibi yumuşak bordür).
-    sx, sy: köşenin yönü (±1). Kare (YA..YK) × (YA..YK), (YA, YA) köşesi rad yarıçapla yuvarlanır."""
-    cx, cy = sx * (YA + rad), sy * (YA + rad)
-    pts = [(sx * YK, sy * YK), (sx * YA, sy * YK)]
+    sx, sy: köşenin yönü (±1). Kare (ax..YK) × (ay..YK), (ax, ay) köşesi rad yarıçapla yuvarlanır.
+    ax, ay: dikey ve yatay yolun asfalt yarı genişliği (cadde daha geniş)."""
+    rad = min(rad, (YK - max(ax, ay)) * 0.8)
+    cx, cy = sx * (ax + rad), sy * (ay + rad)
+    pts = [(sx * YK, sy * YK), (sx * ax, sy * YK)]
     n = 6
     for i in range(n + 1):
         a = math.pi * 0.5 * i / n
-        # (YA, YA+rad) noktasından (YA+rad, YA) noktasına çeyrek yay
+        # (ax, ay+rad) noktasından (ax+rad, ay) noktasına çeyrek yay
         pts.append((cx - sx * rad * math.cos(a), cy - sy * rad * math.sin(a)))
-    pts.append((sx * YK, sy * YA))
+    pts.append((sx * YK, sy * ay))
     # Saat yönünün tersine sırala (yüz normali yukarı)
     alan = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
     if alan < 0:
@@ -2190,12 +2192,12 @@ def yol_tabelasi(g, x, y, r, tur="dur"):
         kutu(g, x - 0.1, x + 0.1, y - 0.06, y - 0.04, zc + 0.16, zc + 0.26, r["beyaz"])
 
 
-def zebra(g, eksen, merkez, r, uzun=1.6):
-    """Yaya geçidi: eksen "y" ise yol Y boyunca gider, çizgiler X'e dizilir; merkez = (x, y)."""
+def zebra(g, eksen, merkez, r, uzun=1.6, yari=YA):
+    """Yaya geçidi: eksen "y" ise yol Y boyunca gider, çizgiler X'e dizilir; merkez = (x, y). yari: asfaltın yarı genişliği."""
     cx, cy = merkez
-    n = 7
+    n = 7 if yari <= YA + 0.05 else 9
     for i in range(n):
-        u = -YA + 0.35 + i * (2 * YA - 0.7) / (n - 1)
+        u = -yari + 0.35 + i * (2 * yari - 0.7) / (n - 1)
         if eksen == "y":
             boya(g, cx + u - 0.22, cx + u + 0.22, cy - uzun / 2, cy + uzun / 2, r["serit"])
         else:
@@ -2304,6 +2306,159 @@ def yol_kavsak(r):
     return g
 
 
+# ---------- geniş caddeler (iki şeritli gidiş, iki şeritli dönüş) ve kavşak varyantları
+# Ana caddeler (oyunda her ikinci blok yolu) daha geniş: asfalt ±YC, kaldırım daha dar (binaların önünde ayrıca kaldırım var).
+YC = 4.3
+
+
+def kesik_cizgi(g, eksen, a, b, off, r, w=0.07):
+    """off kadar kaydırılmış kesik şerit çizgisi (a..b, 2,5 m periyot)."""
+    p = a
+    while p < b - 0.01:
+        q0, q1 = p + 0.65, min(b, p + 1.85)
+        if q0 < b:
+            if eksen == "y":
+                boya(g, off - w, off + w, q0, q1, r["serit"])
+            else:
+                boya(g, q0, q1, off - w, off + w, r["serit"])
+        p += 2.5
+
+
+def serit_kol(g, eksen, a, b, h, r):
+    """Kolun yol çizgileri: sokakta kesik orta çizgi; caddede çift düz orta çizgi + iki kesik şerit çizgisi."""
+    if b - a < 0.3:
+        return
+    if h <= YA + 0.05:
+        orta_serit(g, eksen, a, b, r)
+        return
+    for off in (-0.13, 0.13):
+        if eksen == "y":
+            boya(g, off - 0.05, off + 0.05, a, b, r["sari"])
+        else:
+            boya(g, a, b, off - 0.05, off + 0.05, r["sari"])
+    kesik_cizgi(g, eksen, a, b, h / 2 + 0.05, r)
+    kesik_cizgi(g, eksen, a, b, -h / 2 - 0.05, r)
+
+
+def yol_cadde(r, rnd=None, agacli=False):
+    """Kanonik düz cadde: kuzey-güney (Blender Y boyunca), dört şerit, çift sarı orta çizgi."""
+    g = Govde()
+    zemin_levha(g, -YC, YC, -YK, YK, Z_ASF, r["asfalt"])
+    kaldirim(g, YC, YK, -YK, YK, r, ("xn",))
+    kaldirim(g, -YK, -YC, -YK, YK, r, ("xp",))
+    serit_kol(g, "y", -YK, YK, YC, r)
+    sokak_lambasi(g, 4.7, 0.0, -1.0, 0.0, r)
+    rogar(g, 1.0, 2.6, Z_ASF)
+    izgara(g, 3.85, 4.2, -3.3, -2.6, Z_ASF)
+    izgara(g, -4.2, -3.85, 2.0, 2.7, Z_ASF)
+    if agacli and rnd is not None:
+        for sx in (-1, 1):
+            for y in ((-2.6, 2.6) if sx > 0 else (-3.4, 0.0, 3.4)):
+                x = sx * 4.66
+                b = len(g.f)
+                kutu(g, x - 0.28, x + 0.28, y - 0.4, y + 0.4, Z_KAL - 0.02, Z_KAL + 0.01, r["toprak"], atla=("zn",))
+                cizgisiz(g, b)
+                boy = rnd.uniform(1.4, 1.8)
+                silindir(g, x, y, Z_KAL, boy, 0.1, 6, r["govde"])
+                rr = rnd.uniform(0.7, 0.85)
+                renk = rnd.choice(r["agac"])
+                top(g, (x - sx * 0.15, y, Z_KAL + boy + rr * 0.7), rr, rr, rr * 0.95, renk)
+    return g
+
+
+def yol_kavsak_g(r, kollar, hx, hy):
+    """Genel kavşak/köşe parçası. kollar: "N" (−Y), "S" (+Y), "E" (−X), "W" (+X) — Unity'deki kanonik yönler.
+    hx: kuzey-güney yolun asfalt yarı genişliği, hy: doğu-batı yolun (sokak YA, cadde YC)."""
+    g = Govde()
+    N, S, E, W = ("N" in kollar), ("S" in kollar), ("E" in kollar), ("W" in kollar)
+    n = N + S + E + W
+    x_lo, x_hi = (-YK if E else -hx), (YK if W else hx)
+    y_lo, y_hi = (-YK if N else -hy), (YK if S else hy)
+    zemin_levha(g, x_lo, x_hi, y_lo, y_hi, Z_ASF, r["asfalt"])
+    # Kapalı kenarlarda düz kaldırım (önce batı/doğu tam boy, sonra kuzey/güney aradaki boşluk)
+    if not W:
+        kaldirim(g, hx, YK, -YK, YK, r, ("xn",))
+    if not E:
+        kaldirim(g, -YK, -hx, -YK, YK, r, ("xp",))
+    sx0, sx1 = (-hx if not E else -YK), (hx if not W else YK)
+    if not S:
+        kaldirim(g, sx0, sx1, hy, YK, r, ("yn",))
+    if not N:
+        kaldirim(g, sx0, sx1, -YK, -hy, r, ("yp",))
+    # İki kolun arasındaki köşeler: yuvarlatılmış kaldırım
+    for sx, kx in ((1, W), (-1, E)):
+        for sy, ky in ((1, S), (-1, N)):
+            if kx and ky:
+                yuvarlak_kose(g, sx, sy, r, ax=hx, ay=hy)
+    # Yaya geçitleri ve şerit çizgileri
+    zeb = n >= 3
+    d_y = hy + (1.6 if zeb else 0.1)       # kuzey/güney kolunda çizgi bu mesafeden başlar
+    d_x = hx + (1.6 if zeb else 0.1)
+    if n == 2:
+        d_y = d_x = 0.1
+    # Yaya geçidi karenin içinde kalsın (caddede kol kısa: geçit biraz daha dar ve kavşağa yakın)
+    def zb(h):
+        uz = max(0.9, min(1.6, YK - h - 0.1))
+        return YK - uz / 2 - 0.05, uz
+    (zy, uy), (zx, ux) = zb(hy), zb(hx)
+    if zeb:
+        d_y, d_x = zy + uy / 2 + 0.1, zx + ux / 2 + 0.1
+    if N:
+        if zeb: zebra(g, "y", (0.0, -zy), r, uzun=uy, yari=hx)
+        serit_kol(g, "y", -YK, -d_y, hx, r)
+    if S:
+        if zeb: zebra(g, "y", (0.0, zy), r, uzun=uy, yari=hx)
+        serit_kol(g, "y", d_y, YK, hx, r)
+    if E:
+        if zeb: zebra(g, "x", (-zx, 0.0), r, uzun=ux, yari=hy)
+        serit_kol(g, "x", -YK, -d_x, hy, r)
+    if W:
+        if zeb: zebra(g, "x", (zx, 0.0), r, uzun=ux, yari=hy)
+        serit_kol(g, "x", d_x, YK, hy, r)
+    # Köşe noktaları (kaldırım ortası)
+    def kp(sx, sy):
+        return sx * (hx + (YK - hx) * 0.5), sy * (hy + (YK - hy) * 0.5)
+    if n == 4:
+        for (sx, sy, yx, yy) in ((1, -1, 0.0, 1.0), (-1, 1, 0.0, -1.0), (1, 1, -1.0, 0.0), (-1, -1, 1.0, 0.0)):
+            px, py = kp(sx, sy)
+            trafik_lambasi(g, px, py, yx, yy, r)
+    elif n == 3:
+        kapali = "S" if not S else "N" if not N else "W" if not W else "E"
+        if kapali == "S":
+            sokak_lambasi(g, 0.0, hy + (YK - hy) * 0.6, 0.0, -1.0, r)
+            for sx, tur in ((1, "dikkat"), (-1, "yaya")):
+                px, py = kp(sx, -1)
+                yol_tabelasi(g, px, py, r, tur)
+    elif n == 2 and not (N and S) and not (E and W):
+        # Köşe: dış köşede lamba ve küçük ağaç çukuru
+        sx = 1 if not W else -1
+        sy = 1 if not S else -1
+        px, py = kp(sx, sy)
+        sokak_lambasi(g, sx * (YK - 0.5), sy * (YK - 0.5), -sx * 0.7, -sy * 0.7, r)
+        b = len(g.f)
+        tx, ty = sx * (YK - 0.65), sy * (hy + (YK - hy) * 0.2)
+        kutu(g, tx - 0.3, tx + 0.3, ty - 0.3, ty + 0.3, Z_KAL - 0.02, Z_KAL + 0.01, r["toprak"], atla=("zn",))
+        cizgisiz(g, b)
+        top(g, (tx, ty, Z_KAL + 0.3), 0.36, 0.36, 0.3, r["cali"])
+    rogar(g, 1.3, -1.1, Z_ASF)
+    return g
+
+
+def cadde_parcalari(r, rnd):
+    """Geniş cadde ve sokakla birleştiği kavşaklar. Ad kuralı (Unity City3D.AddRoad bunu arar):
+    Yol_kavsak_ca: kuzey-güney cadde × doğu-batı sokak · Yol_kavsak_cc: iki cadde
+    Yol_t_XY: X = yatay kol (batı-doğu), Y = gövde (kuzey); c = cadde, s = sokak
+    Yol_kose_XY: X = kuzey kolu, Y = doğu kolu."""
+    w = {"c": YC, "s": YA}
+    liste = [("Yol_cadde_01", yol_cadde(r)), ("Yol_cadde_agacli", yol_cadde(r, rnd, True)),
+             ("Yol_kavsak_ca", yol_kavsak_g(r, "NSEW", YC, YA)), ("Yol_kavsak_cc", yol_kavsak_g(r, "NSEW", YC, YC))]
+    for bar, govde in (("c", "s"), ("s", "c"), ("c", "c")):
+        liste.append((f"Yol_t_{bar}{govde}", yol_kavsak_g(r, "WNE", w[govde], w[bar])))
+    for kuzey, dogu in (("c", "s"), ("s", "c"), ("c", "c")):
+        liste.append((f"Yol_kose_{kuzey}{dogu}", yol_kavsak_g(r, "NE", w[kuzey], w[dogu])))
+    return liste
+
+
 def zemin_kaldirim(r):
     g = Govde()
     zemin_levha(g, -YK, YK, -YK, YK, Z_KAL, r["kaldirim"])
@@ -2372,6 +2527,7 @@ def sehir_parcalari():
         liste.append((f"Agac_cam_{i + 1}", agac_modeli(r, rnd, "cam", i)))
     for i in range(2):
         liste.append((f"Cali_{i + 1}", agac_modeli(r, rnd, "cali", i)))
+    liste += cadde_parcalari(r, rnd)
     liste += park_parcalari()
     liste += avlu_parcalari()
     sonuc = []
@@ -2681,7 +2837,7 @@ def avlu_otopark(r, rnd):
     renkler = [M("Araba", c) for c in ("#d9473a", "#3f73e6", "#f6f3ec", "#2b2d31", "#f2c14a", "#4fb36a", "#a7abb0")]
     for sy in (-1, 1):
         for i in range(4):
-            if rnd.random() < 0.3:
+            if rnd.random() < 0.12:
                 continue
             x = -3.4 + i * 2.25
             park_araba(g, x, sy * 2.8, math.pi / 2, rnd.choice(renkler), r, Z_ASF)
@@ -2760,11 +2916,113 @@ def kir_kaya(r, rnd):
     return g
 
 
+def cit_hat(g, x0, y0, x1, y1, z0, mat, h=0.85, aralik=1.0):
+    """Alçak çit: dikmeler ve iki yatay lata (x0,y0) → (x1,y1)."""
+    L = math.hypot(x1 - x0, y1 - y0)
+    n = max(1, int(L / aralik))
+    for i in range(n + 1):
+        t = i / n
+        x, y = x0 + (x1 - x0) * t, y0 + (y1 - y0) * t
+        kutu(g, x - 0.04, x + 0.04, y - 0.04, y + 0.04, z0, z0 + h, mat)
+    for zz in (0.35, h - 0.08):
+        cubuk(g, (x0, y0, z0 + zz), (x1, y1, z0 + zz), 0.05, mat, kabuk=False)
+
+
+def avlu_agac(g, x, y, z0, r, rnd, boy=1.3, rr=0.75):
+    silindir(g, x, y, z0, boy, 0.09, 6, r["govde"])
+    renk = rnd.choice(r["agac"])
+    top(g, (x, y, z0 + boy + rr * 0.7), rr, rr, rr * 0.95, renk)
+
+
+ARABA_RENK = ("#d9473a", "#3f73e6", "#f6f3ec", "#2b2d31", "#f2c14a", "#4fb36a", "#a7abb0", "#8a5a9a", "#e08a3a")
+
+
+def avlu_otopark_agacli(r, rnd):
+    """Dolu otopark: iki sıra park yeri (çoğu dolu), uçlarda ağaçlı adacıklar, aydınlatma direği."""
+    g = Govde()
+    zemin_levha(g, -YK, YK, -YK, YK, Z_ASF, r["asfalt"])
+    renkler = [M("Araba", c) for c in ARABA_RENK]
+    for sy in (-1, 1):
+        for i in range(5):
+            x = -3.75 + i * 2.15
+            boya(g, x - 0.05, x + 0.05, min(sy * 1.3, sy * 4.9), max(sy * 1.3, sy * 4.9), r["serit"])
+        for i in range(4):
+            x = -2.67 + i * 2.15
+            if rnd.random() < 0.85:
+                park_araba(g, x, sy * 3.05, math.pi / 2, rnd.choice(renkler), r, Z_ASF)
+        for sx in (-1, 1):
+            b = len(g.f)
+            kutu(g, sx * 4.0, sx * 4.95, min(sy * 1.3, sy * 4.95), max(sy * 1.3, sy * 4.95), 0.0, Z_KAL, r["bordur"],
+                 atla=("zn",), yuzler={"zp": r["cim"]})
+            cizgisiz(g, b)
+            avlu_agac(g, sx * 4.47, sy * 3.1, Z_KAL, r, rnd)
+    for x in (-1.2, 1.6):                                                      # yön okları
+        boya(g, x - 0.5, x + 0.5, -0.06, 0.06, r["serit"])
+    park_lambasi(g, 0.0, 4.6, r, Z_ASF)
+    return g
+
+
+def avlu_karma(r, rnd):
+    """Yarısı otopark, yarısı bahçe: ahşap çit, ağaçlar, bank, çalılar, çöp konteynerleri."""
+    g = Govde()
+    zemin_levha(g, -YK, 0.0, -YK, YK, Z_ASF, r["asfalt"])
+    zemin_levha(g, 0.0, YK, -YK, YK, ZC, r["cim"])
+    renkler = [M("Araba", c) for c in ARABA_RENK]
+    for i in range(4):
+        y = -3.6 + i * 2.4
+        boya(g, -4.9, -0.6, y - 1.2 - 0.05, y - 1.2 + 0.05, r["serit"])
+        if rnd.random() < 0.8:
+            park_araba(g, -2.6, y, 0.0, rnd.choice(renkler), r, Z_ASF)
+    cit_hat(g, 0.15, -4.8, 0.15, -0.8, ZC, r["ahsap"])
+    cit_hat(g, 0.15, 0.8, 0.15, 4.8, ZC, r["ahsap"])
+    for (x, y) in ((2.2, -3.4), (3.9, 3.3), (1.6, 3.9)):
+        avlu_agac(g, x, y, ZC, r, rnd)
+    bank(g, 3.0, 0.0, math.pi / 2, r)
+    for i in range(5):
+        top(g, (4.5, -2.0 + i * 0.6, ZC + 0.3), 0.36, 0.32, 0.3, r["cali"])
+    cop = M("Konteyner", "#4f7a4a")
+    for i in range(2):
+        x = -4.4 + i * 1.3
+        kutu(g, x - 0.5, x + 0.5, 4.2, 4.85, Z_ASF, Z_ASF + 1.0, cop)
+        kutu(g, x - 0.52, x + 0.52, 4.18, 4.87, Z_ASF + 1.0, Z_ASF + 1.08, r["koyu"])
+    return g
+
+
+def avlu_oyun(r, rnd):
+    """Çocuk oyun alanı: kum havuzu, kaydırak, salıncak, ağaçlar, banklar, çevresinde alçak çit."""
+    g = Govde()
+    cim_taban(g, r)
+    duz_poligon(g, [(-3.6, -3.0), (3.6, -3.0), (3.6, 3.0), (-3.6, 3.0)], ZC + 0.01, r["kum"])
+    kutu(g, -3.2, -1.2, -2.6, -0.8, ZC, ZC + 0.25, r["ahsap"])                 # kum havuzu
+    duz_poligon(g, [(-3.05, -2.45), (-1.35, -2.45), (-1.35, -0.95), (-3.05, -0.95)], ZC + 0.255, r["kum"])
+    kutu(g, 0.6, 1.6, 0.6, 1.6, ZC, ZC + 1.6, r["kirmizi"])                    # kaydırak kulesi
+    kutu(g, 0.5, 1.7, 0.5, 1.7, ZC + 1.6, ZC + 1.75, r["sari"])
+    yonlu_kutu(g, (1.1, -0.6, ZC + 0.85), (0.35, 0, 0), (0, 1.2, -0.8), (0, 0, 0.04), r["mavi"])
+    for x in (-1.0, 2.6):                                                      # salıncak
+        cubuk(g, (x, 1.6, ZC), (x, 2.2, ZC + 2.0), 0.07, r["metal"])
+        cubuk(g, (x, 2.8, ZC), (x, 2.2, ZC + 2.0), 0.07, r["metal"])
+    cubuk(g, (-1.0, 2.2, ZC + 2.0), (2.6, 2.2, ZC + 2.0), 0.07, r["metal"])
+    for x in (-0.1, 1.7):
+        for dx in (-0.25, 0.25):
+            cubuk(g, (x + dx, 2.2, ZC + 2.0), (x + dx, 2.2, ZC + 0.5), 0.02, r["koyu"], kabuk=False)
+        kutu(g, x - 0.3, x + 0.3, 2.05, 2.35, ZC + 0.45, ZC + 0.52, r["kirmizi"])
+    for (x, y) in ((-4.3, -4.3), (4.3, -4.3), (-4.3, 4.3), (4.3, 4.3)):
+        avlu_agac(g, x, y, ZC, r, rnd, boy=1.5, rr=0.8)
+    bank(g, 0.0, -3.9, 0.0, r)
+    bank(g, -3.9, 1.0, math.pi / 2, r)
+    m = r["metal"]
+    for a, b in (((-4.9, -4.9), (-0.8, -4.9)), ((0.8, -4.9), (4.9, -4.9)), ((-4.9, 4.9), (-0.8, 4.9)), ((0.8, 4.9), (4.9, 4.9)),
+                 ((-4.9, -4.9), (-4.9, -0.8)), ((-4.9, 0.8), (-4.9, 4.9)), ((4.9, -4.9), (4.9, -0.8)), ((4.9, 0.8), (4.9, 4.9))):
+        cit_hat(g, a[0], a[1], b[0], b[1], ZC, m, h=0.7)
+    return g
+
+
 def avlu_parcalari():
     r = park_renkleri()
     r["cam_koyu"] = M("CamKoyu", "#5f7f99")
     rnd = random.Random(TOHUM * 313)
     return [("Avlu_otopark", avlu_otopark(r, rnd)), ("Avlu_havuz", avlu_havuz(r, rnd)), ("Avlu_bahce", avlu_bahce(r, rnd)),
+            ("Avlu_otopark_agacli", avlu_otopark_agacli(r, rnd)), ("Avlu_karma", avlu_karma(r, rnd)), ("Avlu_oyun", avlu_oyun(r, rnd)),
             ("Kir_cicek_1", kir_cicek(r, rnd)), ("Kir_cicek_2", kir_cicek(r, rnd)), ("Kir_kaya_1", kir_kaya(r, rnd))]
 
 
@@ -4389,6 +4647,279 @@ def katalog():
 
 
 
+# ------------------------------------------------------------------ bitişik blok binaları (referanstaki kapalı bloklar)
+# Her model tam 10 m × 10 m kare: bina kaldırıma yaslanır, iki yanı komşusuna değer (aralarında boşluk kalmaz),
+# arkası bloğun avlusuna bakar. Unity bunları ölçeklemeden (1 m = 0,1 kare) yerleştirir.
+#   Blok_duz_Nk_V  : sokağa (−Y) bakan ara bina, N kat
+#   Blok_kose_Nk_V : köşe binası, iki sokağa (−Y ve −X) bakan L biçimli
+BLOK_FY = 1.4       # önde kalan kaldırım şeridi
+BLOK_BY = 8.2       # binanın arka duvarı (arkada 1,8 m avlu şeridi)
+BLOK_ZEMIN = 3.4    # zemin kat yüksekliği (dükkân / giriş)
+BLOK_KAT = 3.0      # üst kat yüksekliği
+BLOK_KATLAR = (2, 3, 4, 5, 6, 7, 9)
+BLOK_STIL_RENK = {
+    "siva": ["#f1e4c8", "#ecd3a4", "#f0cdb0", "#d9dfc6", "#cfdbe3", "#e8d6c8", "#f4f0e6", "#e9c9b5", "#dfe6d0"],
+    "tugla": ["#a8503a", "#9c4a35", "#b8634a", "#8f4a3a"],
+    "modern": ["#e9e7e2", "#cfd3d6", "#d8d2c6", "#b9c0c6", "#f2efe8"],
+    "klasik": ["#e6c98f", "#d9b98a", "#e8d6b0", "#cbb79a", "#e2c4a8", "#c9d3c4"],
+}
+BLOK_CATI = ["#c0573a", "#b04a32", "#9a5a3f", "#6f6a66", "#5a6470"]
+BLOK_DUKKAN_RENK = ["#d9473a", "#3f73e6", "#2f8f5a", "#e08a3a", "#8a5a9a", "#2b2d31", "#c9a03a", "#3aa0b8"]
+
+
+def blok_renk(rnd, stil):
+    r = ar(rnd, rnd.choice(BLOK_STIL_RENK[stil]), cati=rnd.choice(BLOK_CATI), ana=rnd.choice(BLOK_DUKKAN_RENK))
+    if stil == "modern":
+        r["suslu"] = M("Suslu", rnd.choice(["#3a3d42", "#5a6068", "#f6f3ec"]))
+    elif stil == "tugla":
+        r["suslu"] = M("Suslu", rnd.choice(["#efe6d4", "#e6dccb"]))
+    r["kemer"] = "bloklu" if stil == "klasik" else "duz"
+    r["avlu"] = M("AvluTas", "#d6cfc2")
+    return r
+
+
+def blok_balkon(g, fc, u, z, r, stil, gen=1.7):
+    ckutu(g, fc, u - gen / 2, u + gen / 2, 0, 0.95, z - 0.15, z, r["beton"])
+    if stil == "modern":
+        cam = M("BalkonCam", "#bcd3df")
+        ckutu(g, fc, u - gen / 2, u + gen / 2, 0.9, 0.95, z, z + 1.0, cam)
+    else:
+        ckutu(g, fc, u - gen / 2, u + gen / 2, 0.9, 0.95, z + 0.92, z + 1.0, r["demir"])
+        k = int(gen / 0.18)
+        for i in range(k + 1):
+            uu = u - gen / 2 + gen * i / k
+            ckutu(g, fc, uu - 0.015, uu + 0.015, 0.9, 0.93, z, z + 0.92, r["demir"])
+        for su in (-1, 1):
+            ckutu(g, fc, u + su * gen / 2 - 0.03, u + su * gen / 2 + 0.03, 0.05, 0.93, z + 0.92, z + 1.0, r["demir"])
+
+
+def blok_cephe(g, fc, L, kat, r, rnd, dukkan, stil, z0):
+    """Sokağa bakan cephe: zemin kat dükkân ya da giriş, üst katlarda pencere ve balkon, tepede korniş."""
+    H0 = z0 + BLOK_ZEMIN
+    if dukkan:
+        kapi_u = L * rnd.choice([0.2, 0.5, 0.8])
+        ckutu(g, fc, 0.1, L - 0.1, 0, 0.16, H0 - 0.85, H0 - 0.25, r["ana"])                  # tabela bandı
+        ckutu(g, fc, 0.0, L, 0, 0.08, z0, z0 + 0.2, r["taban"])
+        for a, b in ((0.45, kapi_u - 0.75), (kapi_u + 0.75, L - 0.45)):
+            if b - a > 0.8:
+                vitrin(g, fc, a, b, z0 + 0.3, H0 - 1.05, r, aralik=1.6, poster=0.3, rnd=rnd)
+        ckutu(g, fc, kapi_u - 0.6, kapi_u + 0.6, 0, 0.05, z0, z0 + 2.3, r["cerceve"])
+        kcam = r["cam"]
+        if kcam.startswith("Cam_"):
+            kcam = "Vitrin_" + kcam[4:]
+            HEX[kcam] = HEX[r["cam"]]
+        cdortgen(g, fc, kapi_u - 0.5, kapi_u + 0.5, 0.06, z0 + 0.1, z0 + 2.2, kcam)
+        if rnd.random() < 0.6:
+            tente(g, fc, 0.4, L - 0.4, H0 - 1.0, 1.0, r, r["ana"], r["beyaz"] if rnd.random() < 0.5 else None)
+    else:
+        kapi_u = L * rnd.choice([0.25, 0.5, 0.75])
+        ckutu(g, fc, 0.0, L, 0, 0.1, z0, z0 + 0.8, r["taban"])
+        ckutu(g, fc, kapi_u - 0.65, kapi_u + 0.65, 0, 0.05, z0, z0 + 2.6, r["kapi"])
+        cdortgen(g, fc, kapi_u - 0.45, kapi_u + 0.45, 0.06, z0 + 2.1, z0 + 2.5, r["cam"])
+        ckutu(g, fc, kapi_u - 0.8, kapi_u + 0.8, 0, 0.12, z0 + 2.6, z0 + 2.8, r["suslu"])
+        ckutu(g, fc, kapi_u - 0.9, kapi_u + 0.9, 0, 0.7, z0 + 2.85, z0 + 2.97, r["suslu"])       # giriş saçağı
+        n0 = max(1, int(round(L / 2.4)))
+        for i in range(n0):
+            u = L * (i + 0.5) / n0
+            if abs(u - kapi_u) < 1.2:
+                continue
+            pencere(g, fc, u, z0 + 1.1, 0.9, 1.5, r, sade=True)
+    # Üst katlar
+    n = max(2, int(round(L / 2.45)))
+    balkon_sutun = set(i for i in range(n) if rnd.random() < (0.45 if stil in ("siva", "modern") else 0.25))
+    for f in range(kat - 1):
+        z = H0 + f * BLOK_KAT
+        if stil in ("klasik", "siva") and f == 0:
+            ckutu(g, fc, 0.0, L, 0, 0.14, z - 0.12, z + 0.05, r["suslu"])                   # kat silmesi
+        for i in range(n):
+            u = L * (i + 0.5) / n
+            if stil == "modern":
+                w = L / n * 0.72
+                cdortgen(g, fc, u - w / 2, u + w / 2, 0.012, z + 0.55, z + 2.45, cam_grubu(r["cam"], u, z))
+                ckutu(g, fc, u - w / 2 - 0.06, u + w / 2 + 0.06, 0, 0.06, z + 0.5, z + 0.56, r["suslu"])
+                ckutu(g, fc, u - w / 2 - 0.06, u + w / 2 + 0.06, 0, 0.06, z + 2.45, z + 2.5, r["suslu"])
+            else:
+                pencere(g, fc, u, z + 0.8, 0.95 if stil != "tugla" else 0.85, 1.55, r)
+            if i in balkon_sutun and f >= 0 and (f % 2 == 0 or stil == "modern"):
+                blok_balkon(g, fc, u, z + 0.62, r, stil, gen=min(1.8, L / n * 0.85))
+        if DETAY and stil != "klasik" and rnd.random() < 0.25:
+            klima_dis(g, fc, min(L - 0.5, L * (rnd.randrange(n) + 0.5) / n + 0.75), z + 0.4)
+    Ht = H0 + (kat - 1) * BLOK_KAT
+    ckutu(g, fc, 0.0, L, 0, 0.32 if stil == "klasik" else 0.2, Ht - 0.4, Ht, r["suslu"])        # korniş
+    return Ht
+
+
+def blok_duz_cati(g, x0, x1, y0, y1, H, r, rnd, parapet):
+    """Düz çatı: parapet, klima, bazen su deposu ve merdiven kulübesi (kare sınırını aşmaz)."""
+    kutu(g, x0, x1, y0, y1, H, H + 0.5, parapet, atla=("zn",), yuzler={"zp": r["beton"]})
+    for _ in range(rnd.randint(1, 2)):
+        kx, ky = rnd.uniform(x0 + 1.0, x1 - 1.0), rnd.uniform(y0 + 1.2, y1 - 1.2)
+        kutu(g, kx - 0.5, kx + 0.5, ky - 0.38, ky + 0.38, H + 0.5, H + 1.05, r["klima"])
+    if rnd.random() < 0.4:
+        kx, ky = rnd.uniform(x0 + 1.5, x1 - 1.5), rnd.uniform(y0 + 1.5, y1 - 1.5)
+        kutu(g, kx - 0.9, kx + 0.9, ky - 0.9, ky + 0.9, H + 0.5, H + 2.7, r["duvar"])
+        kutu(g, kx - 1.0, kx + 1.0, ky - 1.0, ky + 1.0, H + 2.7, H + 2.85, r["beton"])
+    elif rnd.random() < 0.4:
+        kx, ky = rnd.uniform(x0 + 1.5, x1 - 1.5), rnd.uniform(y0 + 1.5, y1 - 1.5)
+        for dx, dy in ((-0.55, -0.55), (0.55, -0.55), (-0.55, 0.55), (0.55, 0.55)):
+            cubuk(g, (kx + dx, ky + dy, H + 0.5), (kx + dx, ky + dy, H + 1.6), 0.08, r["demir"])
+        silindir(g, kx, ky, H + 1.6, 1.3, 0.75, 8, M("Depo", "#8a6a4a"))
+    if DETAY and rnd.random() < 0.5:
+        cati_anteni(g, rnd.uniform(x0 + 0.8, x1 - 0.8), rnd.uniform(y0 + 0.8, y1 - 0.8), H + 0.5)
+
+
+def blok_mansart(g, x0, x1, y0, y1, zt, r, rnd):
+    """Mansart çatı (yanlarda dik: komşu binayla birleşir), önde çatı pencereleri."""
+    kutu(g, x0, x1, y0 - 0.2, y1 + 0.2, zt - 0.22, zt, r["suslu"], atla=("zn",))
+    h, ic = 2.3, 0.9
+    pts = [(x0, y0 - 0.08, zt), (x1, y0 - 0.08, zt), (x1, y1 + 0.08, zt), (x0, y1 + 0.08, zt),
+           (x0, y0 + ic, zt + h), (x1, y0 + ic, zt + h), (x1, y1 - ic, zt + h), (x0, y1 - ic, zt + h)]
+    dis_bukey(g, pts, [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]], r["cati"])
+    kutu(g, x0, x1, y0 + ic, y1 - ic, zt + h, zt + h + 0.1, r["cati_koyu"])
+    n = 3
+    W = x1 - x0
+    for i in range(n):
+        cx = x0 + W * (i + 0.5) / n
+        yd = y0 + 0.1
+        kutu(g, cx - 0.45, cx + 0.45, yd, yd + 1.1, zt + 0.15, zt + 1.5, r["suslu"], atla=("zn",))
+        dfc = Cephe((cx - 0.45, yd, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+        cdortgen(g, dfc, 0.15, 0.75, 0.01, zt + 0.35, zt + 1.3, cam_grubu(r["cam"], cx, zt))
+        cprizma(g, dfc, [(-0.05, zt + 1.5), (0.95, zt + 1.5), (0.45, zt + 1.9)], 0.0, 1.1, r["cati"])
+    ym = (y0 + y1) / 2
+    bx = rnd.choice([x0 + 0.6, x1 - 0.6])
+    kutu(g, bx - 0.35, bx + 0.35, ym - 0.6, ym + 0.6, zt, zt + h + 0.8, r["baca"])
+
+
+def blok_arka(g, r, rnd, x0, x1, y0, y1):
+    """Avluya bakan arka şerit: park etmiş araba, çöp kutuları, çalı, küçük ağaç, bisiklet."""
+    z0 = EV_ZEMIN
+    renkler = [M("Araba", c) for c in ARABA_RENK]
+    x = x0 + 0.4
+    while x < x1 - 0.6:
+        k = rnd.random()
+        kalan = x1 - x
+        yc = (y0 + y1) / 2
+        if k < 0.3 and kalan > 4.6 and y1 - y0 >= 1.75:
+            park_araba(g, x + 2.2, yc, 0.0, rnd.choice(renkler), r, z0)
+            x += 4.7
+        elif k < 0.5:
+            for i in range(rnd.randint(1, 3)):
+                cop_kutusu(g, x + 0.3 + i * 0.6, y1 - 0.4, r, rnd.choice([r["koyu"], M("CopYesil", "#4f7a4a"), M("CopMavi", "#3f5f9a")]))
+            x += 2.0
+        elif k < 0.7 and kalan > 1.4:
+            agac(g, x + 0.6, yc, r, rnd, boy=1.1, rr=0.62)
+            x += 1.6
+        elif k < 0.85:
+            calilik(g, x, min(x1 - 0.2, x + 2.4), y1 - 0.45, r, rnd)
+            x += 2.6
+        else:
+            for i in range(3):
+                bx = x + 0.3 + i * 0.55
+                cubuk(g, (bx, y0 + 0.4, z0), (bx, y0 + 0.4, z0 + 0.7), 0.04, r["metal"])
+            x += 1.8
+
+
+def blok_cati(g, x0, x1, y0, y1, Ht, r, rnd, stil):
+    t = rnd.random()
+    if stil == "modern" or (stil == "tugla" and t < 0.6):
+        blok_duz_cati(g, x0, x1, y0, y1, Ht, r, rnd, r["suslu"] if stil == "tugla" else r["duvar"])
+    elif stil == "klasik" and t < 0.7:
+        blok_mansart(g, x0, x1, y0, y1, Ht, r, rnd)
+    else:
+        zr = besik_cati(g, "x", x0, x1, y0, y1, Ht, r, sacak=0.32, yan_sacak=0.0)
+        ev_baca(g, rnd.uniform(x0 + 1.5, x1 - 1.5), (y0 + y1) / 2 + 0.9, Ht, zr + 0.3, r)
+
+
+def blok_duz(rnd, stil, kat):
+    g = Govde()
+    r = blok_renk(rnd, stil)
+    z0, FY, BY = EV_ZEMIN, BLOK_FY, BLOK_BY
+    levha(g, 0.0, 10.0, 0.0, FY, 0.0, z0, r["kaldirim"])
+    levha(g, 0.0, 10.0, FY, 10.0, 0.0, z0, r["avlu"] if rnd.random() < 0.6 else r["cim"])
+    H0 = z0 + BLOK_ZEMIN
+    Ht = H0 + (kat - 1) * BLOK_KAT
+    kutu(g, 0.0, 10.0, FY, BY, z0, Ht, r["duvar"], atla=("zn",))
+    on = Cephe((0.0, FY, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    arka = Cephe((10.0, BY, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+    dukkan = rnd.random() < (0.6 if kat >= 3 else 0.35)
+    blok_cephe(g, on, 10.0, kat, r, rnd, dukkan, stil, z0)
+    pencereler(g, arka, 10.0, H0, kat - 1, BLOK_KAT, r, w=0.8, h=1.3, aralik=2.6, sade=True)
+    ckutu(g, arka, 4.4, 5.6, 0, 0.05, z0, z0 + 2.3, r["kapi"])
+    blok_cati(g, 0.0, 10.0, FY, BY, Ht, r, rnd, stil)
+    blok_arka(g, r, rnd, 0.0, 10.0, BY, 10.0)
+    if DETAY and dukkan and rnd.random() < 0.45:
+        sm = M("Semsiye", rnd.choice(["#f6f3ec", "#d9473a", "#2f8f5a"]))
+        for x in (2.0, 7.0):                                                    # kaldırımda kafe masası
+            silindir(g, x, 0.75, z0, 0.75, 0.3, 8, r["beyaz"])
+            silindir(g, x, 0.75, z0, 1.9, 0.03, 6, r["metal"], kabuk=False)
+            koni(g, x, 0.75, z0 + 1.85, 0.45, 0.65, 8, sm)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK)
+    return g, ortala(g)
+
+
+def blok_kose(rnd, stil, kat):
+    g = Govde()
+    r = blok_renk(rnd, stil)
+    z0, FY, BY = EV_ZEMIN, BLOK_FY, BLOK_BY
+    levha(g, 0.0, 10.0, 0.0, FY, 0.0, z0, r["kaldirim"])
+    levha(g, 0.0, FY, FY, 10.0, 0.0, z0, r["kaldirim"])
+    levha(g, FY, 10.0, FY, 10.0, 0.0, z0, r["avlu"])
+    H0 = z0 + BLOK_ZEMIN
+    Ht = H0 + (kat - 1) * BLOK_KAT
+    kutu(g, FY, 10.0, FY, BY, z0, Ht, r["duvar"], atla=("zn",))
+    kutu(g, FY, BY, BY, 10.0, z0, Ht, r["duvar"], atla=("zn", "yn"))
+    L = 10.0 - FY
+    on = Cephe((FY, FY, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+    yan = Cephe((FY, 10.0, 0.0), (0.0, -1.0, 0.0), (-1.0, 0.0, 0.0))
+    blok_cephe(g, on, L, kat, r, rnd, rnd.random() < 0.75, stil, z0)
+    blok_cephe(g, yan, L, kat, r, rnd, rnd.random() < 0.4, stil, z0)
+    for fc in (Cephe((10.0, BY, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)), Cephe((BY, BY, 0.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0))):
+        pencereler(g, fc, 10.0 - BY, H0, kat - 1, BLOK_KAT, r, w=0.7, h=1.2, aralik=1.6, sade=True)
+    parapet = r["suslu"] if stil == "tugla" else r["duvar"]
+    if stil == "klasik" and rnd.random() < 0.6:
+        blok_mansart(g, FY, 10.0, FY, BY, Ht, r, rnd)
+        kutu(g, FY, BY, BY, 10.0, Ht, Ht + 0.5, parapet, atla=("zn",), yuzler={"zp": r["beton"]})
+    else:
+        blok_duz_cati(g, FY, 10.0, FY, BY, Ht, r, rnd, parapet)
+        kutu(g, FY, BY, BY, 10.0, Ht, Ht + 0.5, parapet, atla=("zn",), yuzler={"zp": r["beton"]})
+    # Köşe kulesi: köşede yuvarlak cumba, sivri külah (eski şehir binalarında)
+    if stil in ("siva", "klasik") and rnd.random() < 0.6 and kat >= 3:
+        cx = cy = FY + 0.55
+        R = 1.25
+        silindir(g, cx, cy, H0, Ht - H0 + 1.0, R, 10, r["duvar"])
+        for f in range(kat - 1):
+            z = H0 + f * BLOK_KAT
+            for a in (math.pi * 1.0, math.pi * 1.25, math.pi * 1.5):
+                d = (math.cos(a), math.sin(a), 0.0)
+                t = (-d[1], d[0], 0.0)
+                c = (cx + d[0] * (R + 0.01), cy + d[1] * (R + 0.01), z + 1.55)
+                yonlu_kutu(g, c, mul(t, 0.32), mul(d, 0.02), (0, 0, 0.7), cam_grubu(r["cam"], a, z), kabuk=False)
+            silindir(g, cx, cy, z - 0.1, 0.16, R + 0.08, 10, r["suslu"])
+        koni(g, cx, cy, Ht + 1.0, 2.4, R + 0.15, 10, r["cati"])
+    blok_arka(g, r, rnd, BY, 10.0, BY, 10.0)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK)
+    return g, ortala(g)
+
+
+def bloklar():
+    sonuc = []
+    alcak = ["siva", "tugla", "klasik"]
+    yuksek = ["modern", "tugla", "siva"]
+    for ki, kat in enumerate(BLOK_KATLAR):
+        stiller = alcak if kat <= 4 else yuksek if kat >= 6 else ["siva", "modern", "klasik"]
+        for v, stil in enumerate(stiller):
+            rnd = random.Random(TOHUM * 9001 + ki * 131 + v * 17)
+            g, gen = blok_duz(rnd, stil, kat)
+            sonuc.append((f"Blok_duz_{kat}k_{v + 1}", g, gen))
+        for v, stil in enumerate(stiller[:2]):
+            rnd = random.Random(TOHUM * 7001 + ki * 113 + v * 29)
+            g, gen = blok_kose(rnd, stil, kat)
+            sonuc.append((f"Blok_kose_{kat}k_{v + 1}", g, gen))
+    return sonuc
+
+
 # ------------------------------------------------------------------ hava: bulut, yağmur, kar, yaprak, şimşek (Unity'de Hava3D kullanır)
 
 def bulut(rnd, tip, koyu):
@@ -4547,6 +5078,8 @@ def uret():
         return katalog()
     if MODEL == "hava":
         return hava_parcalari()
+    if MODEL == "blok":
+        return bloklar()
     if MODEL == "dukkan":
         sonuc = []
         for i, k in enumerate(DUKKANLAR):
