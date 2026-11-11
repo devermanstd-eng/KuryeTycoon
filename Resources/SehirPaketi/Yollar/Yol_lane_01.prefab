@@ -66,12 +66,12 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 9dfb536231e70fe499e0ef12fc7e0651, type: 2}
-  - {fileID: 2100000, guid: 9c08bae24cc89c04b86ff6cccee2d48a, type: 2}
+  - {fileID: 2100000, guid: cdef6dfb863b8e9439025521efbcf749, type: 2}
+  - {fileID: 2100000, guid: 69e2f8127d581904a85879e206ecb2d3, type: 2}
   - {fileID: 2100000, guid: 70a0754a2aba748478b3e98849fc50ca, type: 2}
-  - {fileID: 2100000, guid: 4195c9d5926679a48a628e87c6951a29, type: 2}
+  - {fileID: 2100000, guid: f6a075dde00322241b7e3d95a57b3c6e, type: 2}
   - {fileID: 2100000, guid: b813ebdddc64b964c90fd6e60ace0702, type: 2}
-  - {fileID: 2100000, guid: 7023d20c4600a1d448d2461eb34e13cb, type: 2}
+  - {fileID: 2100000, guid: 690fd8ae39f8314418907de5afc6a13f, type: 2}
   - {fileID: 2100000, guid: 32c0a197315620a479767035ed550403, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
@@ -138,7 +138,7 @@ LODGroup:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7211882270603562417}
   serializedVersion: 3
-  m_LocalReferencePoint: {x: 0, y: 2.245, z: 0}
+  m_LocalReferencePoint: {x: 0, y: 2.52, z: 0}
   m_Size: 10.005433
   m_FadeMode: 0
   m_AnimateCrossFading: 0
@@ -220,12 +220,12 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 9dfb536231e70fe499e0ef12fc7e0651, type: 2}
-  - {fileID: 2100000, guid: 9c08bae24cc89c04b86ff6cccee2d48a, type: 2}
+  - {fileID: 2100000, guid: cdef6dfb863b8e9439025521efbcf749, type: 2}
+  - {fileID: 2100000, guid: 69e2f8127d581904a85879e206ecb2d3, type: 2}
   - {fileID: 2100000, guid: 70a0754a2aba748478b3e98849fc50ca, type: 2}
-  - {fileID: 2100000, guid: 4195c9d5926679a48a628e87c6951a29, type: 2}
+  - {fileID: 2100000, guid: f6a075dde00322241b7e3d95a57b3c6e, type: 2}
   - {fileID: 2100000, guid: b813ebdddc64b964c90fd6e60ace0702, type: 2}
-  - {fileID: 2100000, guid: 7023d20c4600a1d448d2461eb34e13cb, type: 2}
+  - {fileID: 2100000, guid: 690fd8ae39f8314418907de5afc6a13f, type: 2}
   - {fileID: 2100000, guid: 32c0a197315620a479767035ed550403, type: 2}
   - {fileID: 2100000, guid: 61e8ccf6657e9e449ae7db8c2430b135, type: 2}
   - {fileID: 2100000, guid: fb371f04abed70b46a22e0915b177a18, type: 2}
