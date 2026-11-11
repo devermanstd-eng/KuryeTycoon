@@ -421,7 +421,7 @@ namespace KuryeTycoon
         void ChartAxisLabels(Rect lr, List<string> labels)
         {
             if (labels.Count == 0) return;
-            small.normal.textColor = UITheme.TextDim;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
             var oldAlign = small.alignment;
             small.alignment = TextAnchor.UpperLeft;
             GUI.Label(new Rect(lr.x, lr.y - 2f, lr.width / 2f, 16f), labels[0], small);
@@ -433,7 +433,7 @@ namespace KuryeTycoon
         void ChartTip(Rect r, int i, float bw, string text)
         {
             if (chartTip == null) chartTip = new GUIStyle(small) { alignment = TextAnchor.MiddleCenter, wordWrap = false };
-            chartTip.normal.textColor = UITheme.Text;
+            chartTip.normal.textColor = UITheme.Yazi(UITheme.Text);
             var size = chartTip.CalcSize(new GUIContent(text));
             float x = Mathf.Clamp(r.x + i * bw + bw / 2f - size.x / 2f - 6f, r.x, r.xMax - size.x - 12f);
             var tr = new Rect(x, r.y + 2f, size.x + 12f, 18f);
@@ -465,7 +465,7 @@ namespace KuryeTycoon
                 float d = 12f + pulse * 4f;
                 UITheme.Box(new Rect(c.x - d / 2f, c.y - d / 2f, d, d), UITheme.WithAlpha(col, 0.85f), d / 2f);
                 Icons.Draw(new Rect(c.x - 7f, c.y - 7f, 14f, 14f), Icons.Kind.Calendar, Color.white);
-                eventPill.normal.textColor = Color.white;
+                eventPill.normal.textColor = UITheme.Yazi(Color.white);
                 var sz = eventPill.CalcSize(new GUIContent(e.title));
                 var pr = new Rect(c.x - sz.x / 2f - 8f, c.y - d / 2f - 26f, sz.x + 16f, 20f);
                 UITheme.Box(pr, new Color(0.05f, 0.08f, 0.14f, 0.85f), 10f);
@@ -474,7 +474,7 @@ namespace KuryeTycoon
 
             // Sağ üstte etkinlik rozeti (alanı olmayan etkinlikler de görünsün)
             string txt = $"{e.title} · {e.TimeText}";
-            eventPill.normal.textColor = UITheme.Text;
+            eventPill.normal.textColor = UITheme.Yazi(UITheme.Text);
             var s2 = eventPill.CalcSize(new GUIContent(txt));
             var br = new Rect(sw - s2.x - 60f, TopBar + 10f, s2.x + 44f, 26f);
             UITheme.Shadowed(br, new Color(0.07f, 0.09f, 0.13f, 0.92f), 13f, 3f);

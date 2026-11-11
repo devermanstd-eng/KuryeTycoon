@@ -38,7 +38,7 @@ namespace KuryeTycoon
         static readonly Dictionary<Kind, Texture2D> cache = new Dictionary<Kind, Texture2D>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() => cache.Clear();
+        static void ResetStatics() { cache.Clear(); renkli.Clear(); renkliYok.Clear(); }
 
         public static Texture2D Get(Kind k)
         {
@@ -48,13 +48,40 @@ namespace KuryeTycoon
             return t;
         }
 
-        /// <summary>Simgeyi verilen renkte çizer.</summary>
+        // Grease Pencil ile çizilmiş renkli simgeler (Blender: Tools/Blender/arayuz_gp.py → Resources/UI/Ikonlar/<Ad>.png)
+        static readonly Dictionary<Kind, Texture2D> renkli = new Dictionary<Kind, Texture2D>();
+        static readonly HashSet<Kind> renkliYok = new HashSet<Kind>();
+
+        /// <summary>Kâğıt temada elle çizilmiş renkli simge (yoksa null: eski tek renkli simge kullanılır).</summary>
+        public static Texture2D Renkli(Kind k)
+        {
+            if (!UITheme.Kagit || UITheme.Klasik) return null;
+            if (renkli.TryGetValue(k, out var t) && t != null) return t;
+            if (renkliYok.Contains(k)) return null;
+            t = Resources.Load<Texture2D>("UI/Ikonlar/" + k);
+            if (t == null) { renkliYok.Add(k); return null; }
+            renkli[k] = t;
+            return t;
+        }
+
+        /// <summary>Simgeyi verilen renkte çizer. Kâğıt temada elle çizilmiş renkli simge kendi renkleriyle çizilir (saydamlık korunur).</summary>
         public static void Draw(Rect r, Kind k, Color c)
         {
             if (Event.current.type != EventType.Repaint) return;
             var old = GUI.color;
-            GUI.color = c;
-            GUI.DrawTexture(r, Get(k), ScaleMode.ScaleToFit, true);
+            var gp = Renkli(k);
+            if (gp != null)
+            {
+                GUI.color = new Color(old.r, old.g, old.b, old.a * c.a);
+                // Çizim kenar boşluğu bırakır: biraz büyütülerek eski simgeyle aynı boyda görünür
+                float g = r.width * 0.08f;
+                GUI.DrawTexture(new Rect(r.x - g, r.y - g, r.width + 2 * g, r.height + 2 * g), gp, ScaleMode.ScaleToFit, true);
+            }
+            else
+            {
+                GUI.color = c;
+                GUI.DrawTexture(r, Get(k), ScaleMode.ScaleToFit, true);
+            }
             GUI.color = old;
         }
 

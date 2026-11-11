@@ -115,7 +115,9 @@ namespace KuryeTycoon
             DrawLegend(sh);
             DrawGoalTracker();
             DrawCityEventMarker(sw);
+            UITheme.Klasik = true;      // kurye telefonu: koyu ekran olarak kalır
             DrawCourierPopup(sw, sh);
+            UITheme.Klasik = false;
             DrawInfoMarker();
             DrawInfoPopup(sw, sh);
             DrawToasts(sw, sh);
@@ -523,7 +525,7 @@ namespace KuryeTycoon
         void DrawPillAt(Rect r, string text, Color color)
         {
             UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.72f), 9f);
-            worldLabel.normal.textColor = color;
+            worldLabel.normal.textColor = UITheme.Yazi(color);
             GUI.Label(new Rect(r.center.x - 120f, r.y - 1f, 240f, 20f), text, worldLabel);
         }
 
@@ -532,7 +534,7 @@ namespace KuryeTycoon
         {
             UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.72f), 9f);
             Icons.Draw(new Rect(r.x + 7f, r.center.y - 7f, 14f, 14f), icon, color);
-            worldLabel.normal.textColor = color;
+            worldLabel.normal.textColor = UITheme.Yazi(color);
             float cx = r.center.x + 9f;   // yazı simgenin sağındaki alanın ortasında
             GUI.Label(new Rect(cx - 120f, r.y - 1f, 240f, 20f), text, worldLabel);
         }
@@ -605,13 +607,13 @@ namespace KuryeTycoon
             var r = LegendRect(sh);
             float rowH = 19f, w = r.width;
             UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.92f), 12f, 4f);
-            small.normal.textColor = UITheme.Text;
+            small.normal.textColor = UITheme.Yazi(UITheme.Text);
             GUI.Label(new Rect(r.x + 12, r.y + 6, w - 24, 20), "Lejant", small);
             for (int i = 0; i < items.Count; i++)
             {
                 float yy = r.y + 28f + i * rowH;
                 UITheme.Box(new Rect(r.x + 12, yy + 3, 14, 13), items[i].c, 3f);
-                small.normal.textColor = UITheme.TextDim;
+                small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
                 GUI.Label(new Rect(r.x + 34, yy, w - 44, rowH), items[i].t, small);
             }
         }
@@ -764,7 +766,7 @@ namespace KuryeTycoon
             // Okunurluk için yarı saydam hap zemin
             float tw = worldLabel.CalcSize(new GUIContent(text)).x + 14f;
             UITheme.Box(new Rect(x - tw / 2f, y - 9f, tw, 18f), new Color(0.05f, 0.055f, 0.07f, 0.72f), 9f);
-            worldLabel.normal.textColor = color;
+            worldLabel.normal.textColor = UITheme.Yazi(color);
             GUI.Label(r, text, worldLabel);
         }
 
@@ -820,9 +822,9 @@ namespace KuryeTycoon
             var ic = new Rect(r.x + 7f, r.center.y - 14f, 28f, 28f);
             UITheme.Box(ic, UITheme.WithAlpha(tint, 0.18f), 14f);
             Icons.Draw(new Rect(ic.x + 6f, ic.y + 6f, 16f, 16f), icon, tint);
-            topCaption.normal.textColor = UITheme.TextDim;
+            topCaption.normal.textColor = UITheme.Yazi(UITheme.TextDim);
             GUI.Label(new Rect(r.x + 42f, r.y + 3f, textW + 10f, 14f), caption, topCaption);
-            topValue.normal.textColor = valueColor ?? UITheme.Text;
+            topValue.normal.textColor = UITheme.Yazi(valueColor ?? UITheme.Text);
             GUI.Label(new Rect(r.x + 42f, r.y + 16f, textW + 10f, 20f), value, topValue);
             return w;
         }
@@ -834,7 +836,7 @@ namespace KuryeTycoon
             var r = new Rect(x, 13f, w, TopBar - 26f);
             UITheme.Box(r, bg, 17f);
             Icons.Draw(new Rect(r.x + 11f, r.center.y - 8f, 16f, 16f), icon, fg);
-            topValue.normal.textColor = fg;
+            topValue.normal.textColor = UITheme.Yazi(fg);
             GUI.Label(new Rect(r.x + 32f, r.y, w - 36f, r.height), text, topValue);
             return w;
         }
@@ -866,7 +868,7 @@ namespace KuryeTycoon
             barText.fontSize = 19;
             GUI.Label(logo, CompanyProfile.Initial, barText);
             barText.fontSize = 12;
-            topName.normal.textColor = UITheme.Text;
+            topName.normal.textColor = UITheme.Yazi(UITheme.Text);
             float nameW = Mathf.Min(220f, topName.CalcSize(new GUIContent(CompanyProfile.Name)).x);
             GUI.Label(new Rect(66, 0, nameW + 4, TopBar), CompanyProfile.Name, topName);
 
@@ -979,7 +981,7 @@ namespace KuryeTycoon
                 bool hover = r.Contains(Event.current.mousePosition);
                 if (on) UITheme.Box(r, prim, 9f);
                 else if (hover) UITheme.Box(r, UITheme.WithAlpha(Color.white, 0.07f), 9f);
-                barText.normal.textColor = on ? sec : (paused ? UITheme.WithAlpha(UITheme.TextDim, 0.6f) : UITheme.TextDim);
+                barText.normal.textColor = on ? sec : UITheme.Yazi((paused ? UITheme.WithAlpha(UITheme.TextDim, 0.6f) : UITheme.TextDim));
                 GUI.Label(r, sp + "×", barText);
                 if (GUI.Button(r, GUIContent.none, GUIStyle.none)) SetSpeed(sp);
             }
@@ -1127,7 +1129,7 @@ namespace KuryeTycoon
             Section($"Bekleyen siparişler ({om.Pending.Count})");
             int shown = 0;
             if (orderIncomeStyle == null) orderIncomeStyle = UITheme.Semi(new GUIStyle(label) { fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleRight, wordWrap = false });
-            orderIncomeStyle.normal.textColor = UITheme.Good;
+            orderIncomeStyle.normal.textColor = UITheme.Yazi(UITheme.Good);
             foreach (var o in om.Pending)
             {
                 if (shown++ >= 12) break;
@@ -2615,10 +2617,10 @@ namespace KuryeTycoon
             {
                 var row = new Rect(r.x + 10, r.y + 6 + i * 22f, r.width - 20, 22f);
                 UITheme.Box(new Rect(row.x, row.y + 8, 5, 5), i == 0 ? UITheme.Accent : UITheme.WithAlpha(UITheme.TextDim, 0.5f), 2.5f);
-                small.normal.textColor = i == 0 ? UITheme.Text : UITheme.TextDim;
+                small.normal.textColor = UITheme.Yazi(i == 0 ? UITheme.Text : UITheme.TextDim);
                 GUI.Label(new Rect(row.x + 12, row.y, row.width - 12, row.height), feed[i], small);
             }
-            small.normal.textColor = UITheme.TextDim;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
         }
 
         // ---------------------------------------------------------------- olay kartı
@@ -2671,7 +2673,7 @@ namespace KuryeTycoon
         {
             if (Event.current.type != EventType.Repaint) return;
             var old = GUI.color;
-            GUI.color = c;
+            GUI.color = UITheme.Zemin(c);     // kâğıt tema: koyu zeminler kreme döner
             GUI.DrawTexture(r, Texture2D.whiteTexture);
             GUI.color = old;
         }
@@ -2689,8 +2691,9 @@ namespace KuryeTycoon
         void InitStyles()
         {
             // Şirket rengi değişince (kurulum, kayıt yükleme) düğmeler yeniden boyanır
-            if (stylesReady && themeColor == CompanyProfile.Primary) return;
+            if (stylesReady && themeColor == CompanyProfile.Primary && kagitTema == UITheme.Kagit) return;
             stylesReady = true;
+            kagitTema = UITheme.Kagit;
             themeColor = CompanyProfile.Primary;
 
             var font = UITheme.UIFont;
@@ -2698,19 +2701,19 @@ namespace KuryeTycoon
 
             label = new GUIStyle(GUI.skin.label) { fontSize = 14, wordWrap = true, richText = true };
             if (font != null) label.font = font;
-            label.normal.textColor = text;
+            label.normal.textColor = UITheme.Yazi(text);
 
             small = new GUIStyle(label) { fontSize = 12 };
-            small.normal.textColor = UITheme.TextDim;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
 
             warn = new GUIStyle(small);
-            warn.normal.textColor = UITheme.Warn;
+            warn.normal.textColor = UITheme.Yazi(UITheme.Warn);
 
             note = new GUIStyle(small) { fontStyle = FontStyle.Italic };
-            note.normal.textColor = new Color(0.78f, 0.84f, 0.96f);
+            note.normal.textColor = UITheme.Yazi(new Color(0.78f, 0.84f, 0.96f));
 
             header = new GUIStyle(label) { fontSize = 16, fontStyle = FontStyle.Bold, margin = new RectOffset(4, 4, 6, 3) };
-            header.normal.textColor = Color.white;
+            header.normal.textColor = UITheme.Yazi(Color.white);
 
             title = new GUIStyle(header) { fontSize = 24 };
 
@@ -2731,17 +2734,17 @@ namespace KuryeTycoon
 
             toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 14 };
             if (font != null) toggle.font = font;
-            toggle.normal.textColor = text;
-            toggle.onNormal.textColor = text;
-            toggle.hover.textColor = Color.white;
-            toggle.onHover.textColor = Color.white;
+            toggle.normal.textColor = UITheme.Yazi(text);
+            toggle.onNormal.textColor = UITheme.Yazi(text);
+            toggle.hover.textColor = UITheme.Yazi(Color.white);
+            toggle.onHover.textColor = UITheme.Yazi(Color.white);
 
             textField = new GUIStyle(GUI.skin.textField) { fontSize = 18, padding = new RectOffset(10, 10, 6, 6), border = new RectOffset(8, 8, 8, 8) };
             if (font != null) textField.font = font;
             UITheme.SetBg(textField.normal, new Color(0.06f, 0.065f, 0.08f), 8);
             UITheme.SetBg(textField.focused, new Color(0.05f, 0.055f, 0.07f), 8);
-            textField.normal.textColor = text;
-            textField.focused.textColor = Color.white;
+            textField.normal.textColor = UITheme.Yazi(text);
+            textField.focused.textColor = UITheme.Yazi(Color.white);
 
             worldLabel = new GUIStyle(GUI.skin.label)
             {
@@ -2771,7 +2774,7 @@ namespace KuryeTycoon
             phoneTitle = new GUIStyle(label) { fontSize = 16, fontStyle = FontStyle.Bold, wordWrap = false };
             phoneTitle.normal.textColor = Color.white;
             phoneSection = new GUIStyle(label) { fontSize = 11, fontStyle = FontStyle.Bold, margin = new RectOffset(6, 4, 10, 2) };
-            phoneSection.normal.textColor = UITheme.TextDim;
+            phoneSection.normal.textColor = new Color(0.62f, 0.65f, 0.71f);
             phoneBig = new GUIStyle(label) { fontSize = 20, fontStyle = FontStyle.Bold };
             phoneBig.normal.textColor = Color.white;
             phoneCard = new GUIStyle(box) { padding = new RectOffset(12, 12, 10, 10), margin = new RectOffset(2, 2, 4, 4), border = new RectOffset(14, 14, 14, 14) };
@@ -2789,10 +2792,18 @@ namespace KuryeTycoon
             // Kalın stiller: Unity'nin taklit kalınlığı yerine Inter SemiBold (sonradan kurulan stiller kendi yerinde çevrilir)
             foreach (var f in typeof(GameUI).GetFields(System.Reflection.BindingFlags.Instance |
                                                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public))
-                if (f.FieldType == typeof(GUIStyle)) UITheme.Semi(f.GetValue(this) as GUIStyle);
+                if (f.FieldType == typeof(GUIStyle))
+                {
+                    var gs = f.GetValue(this) as GUIStyle;
+                    UITheme.Semi(gs);
+                    // Kâğıt tema: açık renk yazılar krem zeminde okunur koyu tona (kurye telefonu stilleri hariç: o ekran koyu kalır)
+                    bool telefon = f.Name.StartsWith("phone") || (f.Name.Length > 1 && f.Name[0] == 'p' && char.IsUpper(f.Name[1]));
+                    if (!telefon) UITheme.KagitYazi(gs);
+                }
         }
 
         GUIStyle phoneTitle, phoneSection, phoneBig, phoneCard, phoneButton, accentButton;
+        bool kagitTema;
 
         /// <summary>Yuvarlak köşeli düz düğme stili. Seçili (on) hali şirket renginde.</summary>
         GUIStyle MakeButton(int fontSize, int radius)
@@ -2816,7 +2827,7 @@ namespace KuryeTycoon
             UITheme.SetBg(st.onHover, Color.Lerp(acc, Color.white, 0.15f), radius);
             UITheme.SetBg(st.onActive, Color.Lerp(acc, Color.black, 0.2f), radius);
             UITheme.SetBg(st.onFocused, acc, radius);
-            st.normal.textColor = st.hover.textColor = st.active.textColor = st.focused.textColor = UITheme.Text;
+            st.normal.textColor = UITheme.Yazi(st.hover.textColor = st.active.textColor = st.focused.textColor = UITheme.Text);
             st.onNormal.textColor = st.onHover.textColor = st.onActive.textColor = st.onFocused.textColor = UITheme.AccentText;
             return st;
         }

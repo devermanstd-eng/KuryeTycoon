@@ -104,9 +104,9 @@ namespace KuryeTycoon
                 UITheme.Box(new Rect(r.x, r.y, 5f, r.height), accent, 3f);
                 UITheme.Box(new Rect(r.x + 16f, r.y + h / 2f - 15f, 30f, 30f), UITheme.WithAlpha(accent, 0.2f), 15f);
                 Icons.Draw(new Rect(r.x + 23f, r.y + h / 2f - 8f, 16f, 16f), icon, UITheme.WithAlpha(accent, a));
-                small.normal.textColor = accent;
+                small.normal.textColor = UITheme.Yazi(accent);
                 GUI.Label(new Rect(r.x + 58f, r.y + 5f, w - 70f, 16f), head, small);
-                toastText.normal.textColor = UITheme.Text;
+                toastText.normal.textColor = UITheme.Yazi(UITheme.Text);
                 GUI.Label(new Rect(r.x + 58f, r.y + 18f, w - 74f, h - 22f), body, toastText);
                 GUI.color = oldColor;
 
@@ -118,7 +118,7 @@ namespace KuryeTycoon
                 }
                 y += h + 8f;
             }
-            small.normal.textColor = UITheme.TextDim;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
         }
 
         bool ToastAt(Vector2 m, float sw)
@@ -165,9 +165,9 @@ namespace KuryeTycoon
             bool hover = r.Contains(Event.current.mousePosition);
             UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, hover ? 0.95f : 0.85f), 12f, 4f);
             Icons.Draw(new Rect(r.x + 12f, r.y + 9f, 14f, 14f), Icons.Kind.Flag, UITheme.Accent);
-            small.normal.textColor = UITheme.Text;
+            small.normal.textColor = UITheme.Yazi(UITheme.Text);
             GUI.Label(new Rect(r.x + 32f, r.y + 6f, 160f, 20f), "Haftalık hedefler", small);
-            small.normal.textColor = UITheme.TextDim;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
             GUI.Label(new Rect(r.xMax - 92f, r.y + 6f, 82f, 20f), $"{gm.DaysLeft} gün kaldı", small);
 
             var shownGoals = TrackerGoals();
@@ -178,15 +178,15 @@ namespace KuryeTycoon
                 var dot = new Rect(r.x + 12f, yy + 4f, 14f, 14f);
                 if (g.done) { UITheme.Box(dot, UITheme.Good, 7f); }
                 else UITheme.Outline(dot, UITheme.TextDim, 1.5f, 7f);
-                small.normal.textColor = g.done ? UITheme.TextDim : UITheme.Text;
+                small.normal.textColor = UITheme.Yazi(g.done ? UITheme.TextDim : UITheme.Text);
                 GUI.Label(new Rect(r.x + 32f, yy, r.width - 130f, 20f), g.Title, small);
-                small.normal.textColor = g.done ? UITheme.Good : UITheme.TextDim;
+                small.normal.textColor = UITheme.Yazi(g.done ? UITheme.Good : UITheme.TextDim);
                 GUI.Label(new Rect(r.xMax - 92f, yy, 82f, 20f), g.done ? "✓" : g.ProgressText, small);
                 var bar = new Rect(r.x + 32f, yy + 21f, r.width - 44f, 4f);
                 UITheme.Box(bar, UITheme.WithAlpha(Color.white, 0.08f), 2f);
                 UITheme.Box(new Rect(bar.x, bar.y, bar.width * g.Progress01, bar.height), g.done ? UITheme.Good : UITheme.Accent, 2f);
             }
-            small.normal.textColor = UITheme.TextDim;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
             if (TrackerExtra > 0)
             {
                 int done = 0;

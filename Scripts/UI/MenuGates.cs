@@ -58,12 +58,12 @@ namespace KuryeTycoon
             string text = $"<b>{BaseTabNames[(int)dockTip.Value]}</b> kilitli\n{Guide.LockReason(f.Value)}";
             float w = 250f;
             var content = new GUIContent(text);
-            small.normal.textColor = UITheme.Text;
+            small.normal.textColor = UITheme.Yazi(UITheme.Text);
             float h = small.CalcHeight(content, w - 20f) + 14f;
             var r = new Rect(DockW + 6f, dockTipRect.center.y - h / 2f, w, h);
             UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.97f), 10f, 4f);
             GUI.Label(new Rect(r.x + 10f, r.y + 7f, w - 20f, h - 14f), content, small);
-            small.normal.textColor = UITheme.TextDim;   // paylaşılan stil: rengi geri al
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);   // paylaşılan stil: rengi geri al
         }
 
         /// <summary>Sekmenin bulunduğu menünün sol çubuktaki kutusu (rehber vurgusu için).</summary>
@@ -158,6 +158,8 @@ namespace KuryeTycoon
             }
             GUILayout.EndHorizontal();
             GUILayout.Space(4);
+            bool kagit = GUILayout.Toggle(UITheme.Kagit, " Kâğıt tema: krem paneller ve elle çizilmiş simgeler (kapalıyken eski koyu tema)", toggle);
+            if (kagit != UITheme.Kagit) deferred = () => { UITheme.Kagit = kagit; RefreshTheme(); };
             bool push = GUILayout.Toggle(PushMapSetting, " Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", toggle);
             if (push != PushMapSetting) PushMapSetting = push;
             DrawFeedbackSettings();

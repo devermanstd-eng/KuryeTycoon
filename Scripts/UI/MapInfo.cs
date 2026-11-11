@@ -125,9 +125,9 @@ namespace KuryeTycoon
             UITheme.Box(new Rect(r.x + 14f, r.y + 14f, 40f, 40f), accent, 12f);
             Icons.Draw(new Rect(r.x + 24f, r.y + 24f, 20f, 20f), icon, accent.grayscale > 0.7f ? new Color(0.1f, 0.1f, 0.12f) : Color.white);
             if (infoTitle == null) infoTitle = new GUIStyle(header) { fontSize = 16, wordWrap = false, clipping = TextClipping.Clip };
-            infoTitle.normal.textColor = UITheme.Text;
+            infoTitle.normal.textColor = UITheme.Yazi(UITheme.Text);
             GUI.Label(new Rect(r.x + 64f, r.y + 12f, r.width - 110f, 24f), title, infoTitle);
-            small.normal.textColor = UITheme.TextDim;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
             GUI.Label(new Rect(r.x + 64f, r.y + 34f, r.width - 110f, 20f), subtitle, small);
         }
 
@@ -268,7 +268,7 @@ namespace KuryeTycoon
         void MiniStat(string caption, string value)
         {
             GUILayout.BeginVertical(box, GUILayout.MinWidth(70));
-            small.normal.textColor = UITheme.TextDim;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
             GUILayout.Label(caption, small);
             GUILayout.Label(value, header);
             GUILayout.EndVertical();

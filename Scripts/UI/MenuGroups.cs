@@ -170,7 +170,7 @@ namespace KuryeTycoon
                 var iconCol = active ? UITheme.AccentText : (hover ? UITheme.Text : UITheme.TextDim);
                 float isz = Mathf.Clamp(r.height - 30f, 18f, 30f);
                 Icons.Draw(new Rect(r.center.x - isz / 2f, r.y + (r.height - isz - 18f) / 2f, isz, isz), def.icon, iconCol);
-                dockLabel.normal.textColor = iconCol;
+                dockLabel.normal.textColor = active ? iconCol : UITheme.Yazi(iconCol);
                 GUI.Label(new Rect(r.x - 4f, r.yMax - 19f, r.width + 8f, 16f), def.label, dockLabel);
 
                 int badge = GroupBadge(g);
@@ -211,7 +211,7 @@ namespace KuryeTycoon
 
             UITheme.Box(new Rect(w.x + 14f, w.y + 11f, 28f, 28f), UITheme.Accent, 8f);
             Icons.Draw(new Rect(w.x + 19f, w.y + 16f, 18f, 18f), def.icon, UITheme.AccentText);
-            windowTitle.normal.textColor = UITheme.Text;
+            windowTitle.normal.textColor = UITheme.Yazi(UITheme.Text);
             GUI.Label(new Rect(w.x + 52f, w.y, w.width - 110f, 50f), def.title, windowTitle);
 
             var close = new Rect(w.xMax - 42f, w.y + 11f, 28f, 28f);
@@ -243,7 +243,7 @@ namespace KuryeTycoon
                     else if (hov) UITheme.Box(pr, UITheme.WithAlpha(Color.white, 0.07f), 8f);
                     int badge = BadgeOf(t);
                     string txt = def.tabLabels[open[k]] + (badge > 0 ? $" ({badge})" : "");
-                    subTabStyle.normal.textColor = sel ? UITheme.AccentText : (hov ? UITheme.Text : UITheme.TextDim);
+                    subTabStyle.normal.textColor = UITheme.Yazi(sel ? UITheme.AccentText : (hov ? UITheme.Text : UITheme.TextDim));
                     GUI.Label(pr, txt, subTabStyle);
                     if (newTabs.Contains(t) && !sel) UITheme.Box(new Rect(pr.xMax - 12f, pr.y + 5f, 7f, 7f), new Color(1f, 0.82f, 0.25f), 3.5f);
                     if (GUI.Button(pr, GUIContent.none, GUIStyle.none)) { var tt = t; deferred = () => SelectSubTab(tt); }
