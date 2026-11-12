@@ -10,14 +10,9 @@ namespace KuryeTycoon
     public static class UITheme
     {
         // ---------- Kâğıt teması (CityRT tarzı): krem paneller, koyu kahve mürekkep çerçeve ve yazı ----------
-        // Ayarlar'dan kapatılabilir (KuryeTycoon.KagitTema = 0: eski koyu tema). Kurye telefonu her zaman koyu kalır (Klasik).
-        const string KagitKey = "KuryeTycoon.KagitTema";
-        static int kagitCache = -1;
-        public static bool Kagit
-        {
-            get { if (kagitCache < 0) kagitCache = PlayerPrefs.GetInt(KagitKey, 1); return kagitCache == 1; }
-            set { kagitCache = value ? 1 : 0; PlayerPrefs.SetInt(KagitKey, kagitCache); PlayerPrefs.Save(); }
-        }
+        // Oyunun tek teması (eski koyu tema seçeneği kaldırıldı: iki temayı birden bakımlı tutmak yerine biri seçildi).
+        // Kurye telefonu koyu ekran olarak kalır (Klasik).
+        public static bool Kagit => true;
         /// <summary>Bu kapsamda çizilenler eski koyu renklerinde kalır (kurye telefonu ekranı).</summary>
         public static bool Klasik;
         static bool KagitAcik => Kagit && !Klasik;

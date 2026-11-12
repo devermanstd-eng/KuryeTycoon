@@ -158,8 +158,6 @@ namespace KuryeTycoon
             }
             GUILayout.EndHorizontal();
             GUILayout.Space(4);
-            bool kagit = GUILayout.Toggle(UITheme.Kagit, " Kâğıt tema: krem paneller ve elle çizilmiş simgeler (kapalıyken eski koyu tema)", toggle);
-            if (kagit != UITheme.Kagit) deferred = () => { UITheme.Kagit = kagit; RefreshTheme(); };
             bool push = GUILayout.Toggle(PushMapSetting, " Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", toggle);
             if (push != PushMapSetting) PushMapSetting = push;
             DrawFeedbackSettings();
