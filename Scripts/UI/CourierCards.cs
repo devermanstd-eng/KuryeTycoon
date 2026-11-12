@@ -233,6 +233,7 @@ namespace KuryeTycoon
             GUILayout.BeginHorizontal();
             var courier = c;
             if (!forceOpen) DetailButton(c);
+            if (GUILayout.Button("Büyüt", smallButton, GUILayout.Width(80))) deferred = () => OpenBigCard(courier);   // CourierBigCard.cs
             if (GUILayout.Button("Ekipman", smallButton, GUILayout.Width(96)))
                 deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; panelOpen = true; scroll = Vector2.zero; };
             GUILayout.FlexibleSpace();
