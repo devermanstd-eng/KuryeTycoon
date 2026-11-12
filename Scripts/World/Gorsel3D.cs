@@ -130,7 +130,12 @@ namespace KuryeTycoon
         void CreateSun()
         {
             // Sahnedeki diğer yönlü ışıkları kapat (ör. karakterler için eklenen yedek güneş): iki güneş, iki gölge olmasın
-            foreach (var l in FindObjectsByType<Light>())
+#if UNITY_6000_4_OR_NEWER
+            var lights = FindObjectsByType<Light>();
+#else
+            var lights = FindObjectsByType<Light>(FindObjectsSortMode.None);   // Unity 6.3 ve öncesinde parametre şart
+#endif
+            foreach (var l in lights)
                 if (l.type == LightType.Directional) l.enabled = false;
 
             var go = new GameObject("Güneş");
