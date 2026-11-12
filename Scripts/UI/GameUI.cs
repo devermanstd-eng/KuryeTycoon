@@ -97,6 +97,7 @@ namespace KuryeTycoon
                 DrawSetup(sw, sh);
                 return;
             }
+            if (HandlePhotoMode(sw, sh)) return;   // F10: arayüz gizli, yalnızca şehir
 
             if (ConfirmOpen) HandleConfirmKey();
             else if (EventManager.I.Current == null) HandleMenuKey();
@@ -224,7 +225,7 @@ namespace KuryeTycoon
         SaveData setupSave;                 // herhangi bir yuvada kayıt var mı (pencere boyu için)
         readonly SaveData[] slotSaves = new SaveData[SaveSystem.SlotCount];
         bool setupSaveChecked;
-        int newGameSlot = -1, confirmDeleteSlot = -1;
+        int newGameSlot = -1, confirmDeleteSlot = -1, confirmOldSlot = -1;
         Vector2 setupScroll;
 
         void DrawSetup(float sw, float sh)
@@ -243,7 +244,7 @@ namespace KuryeTycoon
             bool hasError = !string.IsNullOrEmpty(GameBootstrap.LastLoadError);
 
             Fill(new Rect(0, 0, sw, sh), new Color(0.08f, 0.09f, 0.11f));
-            float w = 620f, h = 760f + (setupSave != null ? 70f + SaveSystem.SlotCount * 44f : 50f) + (hasError ? 40f : 0f);
+            float w = 620f, h = 950f + (setupSave != null ? 70f + SaveSystem.SlotCount * 44f : 50f) + (hasError ? 40f : 0f);
             h = Mathf.Min(h, sh - 20f);
             var r = new Rect((sw - w) / 2f, Mathf.Max(10f, (sh - h) / 2f), w, h);
             UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
@@ -268,7 +269,7 @@ namespace KuryeTycoon
                     }
                     else
                     {
-                        GUILayout.Label(SaveSystem.Summary(sd), small, GUILayout.Width(w - 48 - 58 - 190));
+                        GUILayout.Label((SaveSystem.IsOld(sd) ? "ESKİ SÜRÜM · " : "") + SaveSystem.Summary(sd), SaveSystem.IsOld(sd) ? warn : small, GUILayout.Width(w - 48 - 58 - 190));
                         GUILayout.FlexibleSpace();
                         if (confirmDeleteSlot == i)
                         {
@@ -278,12 +279,19 @@ namespace KuryeTycoon
                         }
                         else
                         {
-                            if (GUILayout.Button("Devam et", smallButton, GUILayout.Width(80)))
-                                deferred = () => { SaveSystem.Slot = slot; if (!GameBootstrap.I.LoadGame()) setupSaveChecked = false; };
+                            bool askOld = SaveSystem.IsOld(sd) && confirmOldSlot != i;
+                            if (GUILayout.Button(askOld || !SaveSystem.IsOld(sd) ? "Devam et" : "Yine de aç", smallButton, GUILayout.Width(80)))
+                            {
+                                if (askOld) deferred = () => confirmOldSlot = slot;
+                                else deferred = () => { confirmOldSlot = -1; SaveSystem.Slot = slot; if (!GameBootstrap.I.LoadGame()) setupSaveChecked = false; };
+                            }
                             if (GUILayout.Button("Sil", smallButton, GUILayout.Width(44))) deferred = () => confirmDeleteSlot = slot;
                         }
                     }
                     GUILayout.EndHorizontal();
+                    if (sd != null && confirmOldSlot == i)
+                        GUILayout.Label("Bu kayıt oyunun eski bir sürümünden: o zamandan beri şehir planı ve bazı kurallar değişti. Açılır ama dükkanlar ve kuryeler " +
+                                        "yanlış yerde çıkabilir, denge tutmayabilir. Yeni oyun önerilir; yine de açmak için \"Yine de aç\"a bas.", warn);
                 }
                 GUILayout.EndVertical();
                 GUILayout.Space(6);
@@ -302,6 +310,17 @@ namespace KuryeTycoon
             GUILayout.Label("Kurye Şirketini Kur", title);
             GUILayout.Label($"Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan {Ft(GameBootstrap.I.familyLoanAmount)} ile kendi kurye " +
                             "şirketini kuruyorsun. Bu parayı Temmuz sonuna kadar taksitlerle geri ödemen gerekiyor.", label);
+            GUILayout.Space(6);
+            GUILayout.BeginVertical(box);
+            GUILayout.Label("Bu oyunda ne yapacaksın?", header);
+            GUILayout.Label("•  Dükkanlarla anlaş, kurye al, siparişleri zamanında teslim ettir. Hızlı teslimat puanını ve pazar payını büyütür.", small);
+            GUILayout.Label("•  Gelirin: dükkan komisyonu ve teslimat ücreti. Giderin: kurye hakedişi, ekipman, geliştirmeler, personel.", small);
+            GUILayout.Label("•  Ekipmanı şirket verir, kurye ayrılırken geri getirir. Tek vergi yıl sonunda, kâr üzerinden.", small);
+            GUILayout.Label("•  Şehir yaşıyor: gündüz ve gece, hava, trafik ve şehir olayları siparişleri ve kuryeleri etkiler.", small);
+            GUILayout.Label("•  İlk hedef: aile borcunu zamanında ödemek. Sonrası: şehrin en büyük kurye şirketi olmak.", small);
+            GUILayout.Label("Boşluk: duraklat · 1–8: hız · H: sipariş yoğunluğu · F10: fotoğraf modu · Esc: menü. Oyun her gece kendini kaydeder.", bodyDim);
+            GUILayout.EndVertical();
+            GUILayout.Space(6);
             GUILayout.Label("Önce şirketine bir isim ve renk ver.", small);
             GUILayout.Space(12);
 
@@ -368,6 +387,38 @@ namespace KuryeTycoon
             }
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+        }
+
+        // ---------------------------------------------------------------- fotoğraf modu (F10)
+        bool fotoModu;
+        float fotoIpucuBitis;
+
+        /// <summary>
+        /// F10 arayüzü gizler (ekran görüntüsü, fragman): harita kısayolları ve fare çalışmaya devam eder.
+        /// F10 ya da Esc geri getirir; karar kartı çıkarsa kendiliğinden kapanır. true dönerse arayüz çizilmez.
+        /// </summary>
+        bool HandlePhotoMode(float sw, float sh)
+        {
+            var e = Event.current;
+            bool busy = pauseMenuOpen || ConfirmOpen || EventManager.I.Current != null;
+            if (e.type == EventType.KeyDown && (e.keyCode == KeyCode.F10 || (fotoModu && e.keyCode == KeyCode.Escape)) && (fotoModu || !busy))
+            {
+                fotoModu = !fotoModu;
+                fotoIpucuBitis = Time.unscaledTime + 3f;
+                e.Use();
+            }
+            if (fotoModu && busy) fotoModu = false;
+            if (!fotoModu) return false;
+            modalFree = true;
+            HandleKeys();
+            HandleMapMouse(sw, sh);
+            if (Time.unscaledTime < fotoIpucuBitis)
+            {
+                var hr = new Rect(sw / 2f - 190f, sh - 54f, 380f, 30f);
+                Fill(hr, new Color(0f, 0f, 0f, 0.55f));
+                GUI.Label(hr, "Fotoğraf modu · F10 ya da Esc: arayüzü geri getir", new GUIStyle(small) { alignment = TextAnchor.MiddleCenter, normal = { textColor = Color.white } });
+            }
+            return true;
         }
 
         // ---------------------------------------------------------------- klavye
@@ -744,7 +795,7 @@ namespace KuryeTycoon
             // Kısayollar ekranda yazı olarak durmasın: "?" üstüne gelince görünür. Yoğunluk açıkken onun açıklaması yazar.
             HelpBadgeAt(new Rect(x + 504, y + 5, 20, 20),
                 "Harita kısayolları\nTekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle ya da Q/E: döndür\n" +
-                "N: kuzey · M: düz harita · 0: tüm harita · H: sipariş yoğunluğu\nBoşluk: duraklat · 1–8: hız · Esc: menü");
+                "N: kuzey · M: düz harita · 0: tüm harita · H: sipariş yoğunluğu\nBoşluk: duraklat · 1–8: hız · Esc: menü · F10: fotoğraf modu (arayüzü gizler)");
             if (heatMode != HeatMode.Kapali)
             {
                 string hint = HeatCaption;
@@ -1333,7 +1384,7 @@ namespace KuryeTycoon
                 GUILayout.Label($"Üzerindeki nakit: {Ft(c.cashHeld)} / {Ft(Courier.CashLimit)}" +
                                 (c.cashBlocked ? " · HESABI KİLİTLİ (nakit borcunu kapatana kadar sipariş alamaz)" : " · ay sonuna kadar kapatmalı"),
                                 c.cashBlocked || c.cashHeld >= Courier.CashLimit * 0.7f ? warn : small);
-            if (c.depositGear != null && c.depositGear.Count > 0)
+            if (c.depositGear != null && c.depositGear.Count > 0 && (Sade.Depozito || c.depositPaidTotal > 0))
                 GUILayout.Label($"Depozitolu ekipman: {string.Join(", ", c.depositGear.ConvertAll(k => GameData.Equip(k).name))} · " +
                                 $"kesilen depozito {Ft(c.depositPaidTotal)}" + (c.depositOwed > 0 ? $", kesilecek {Ft(c.depositOwed)}" : "") +
                                 " (ayrılırken iade ederse geri ödenir)", small);
@@ -1361,15 +1412,18 @@ namespace KuryeTycoon
             // Çanta hijyeni
             Color hc = c.hygiene >= 0.8f ? new Color(0.3f, 0.85f, 0.4f)
                      : c.hygiene >= Courier.HygieneLimit ? new Color(0.95f, 0.8f, 0.3f) : new Color(0.95f, 0.35f, 0.3f);
-            Bar("Hijyen", c.hygiene, hc);
+            if (Sade.Hijyen) Bar("Hijyen", c.hygiene, hc);
             GUILayout.Label($"Teklif seçiciliği: {c.PickinessText} · Dükkanda sıra yüzünden iptal: bu ay {c.pickupCancelsThisMonth}/{Courier.MaxPickupCancels}",
                             c.pickupCancelsThisMonth >= Courier.MaxPickupCancels ? warn : small);
-            GUILayout.Label($"Çanta: {c.HygieneText} · kendisi {TidyWord(c.tidiness)} · çanta kullanımı {c.bagUses}/{Courier.BagWornUses}" +
-                            (c.cleanRequested ? " · Uyarıldı, paketi bitince temizleyecek" : ""), small);
+            if (Sade.Hijyen)
+                GUILayout.Label($"Çanta: {c.HygieneText} · kendisi {TidyWord(c.tidiness)} · çanta kullanımı {c.bagUses}/{Courier.BagWornUses}" +
+                                (c.cleanRequested ? " · Uyarıldı, paketi bitince temizleyecek" : ""), small);
+            else
+                GUILayout.Label($"Çanta kullanımı: {c.bagUses}/{Courier.BagWornUses}" + (c.BagWorn ? " · yıprandı, yenisi gerekiyor" : ""), c.BagWorn ? warn : small);
             GUILayout.BeginHorizontal();
             var hcour = c;
             GUI.enabled = modalFree && !c.cleanRequested && c.hygiene < c.MaxHygiene - 0.05f;
-            if (GUILayout.Button("Temizlik için uyar", smallButton)) deferred = () => cm.RequestCleaning(hcour);
+            if (Sade.Hijyen && GUILayout.Button("Temizlik için uyar", smallButton)) deferred = () => cm.RequestCleaning(hcour);
             GUI.enabled = modalFree && c.BagWorn;
             if (GUILayout.Button($"Yeni çanta (−{Ft(GameData.Equip(EquipmentKind.TermalCanta).price)})", smallButton)) deferred = () => cm.ReplaceBag(hcour);
             GUI.enabled = modalFree;
@@ -1571,30 +1625,45 @@ namespace KuryeTycoon
             }
             // Depozito sistemi (açıklama kısa, ayrıntısı "Ayrıntı"da)
             var eco = EconomyManager.I;
-            Intro("ekipman", "Kuryeler ekipmanı ihtiyaç duyunca kendileri ister; bedeli depozito olarak kazançlarından kesilir. Eksikleri Kuryeler penceresinde yazar.",
-                  "Ekipman kısa vadede kârı düşürür ama gider olarak vergiden düşülür; hız, moral, puan ve daha az hastalık/kaza olarak geri döner. " +
-                  "Kuryeler mevsime, yağmura ve dikkatlerine göre ister. Şirket depodan verir ya da depoda yoksa satın alır. " +
-                  "Kurye ayrılırken ekipmanı iade ederse depozitosu geri ödenir ve ekipman depoya döner; iade etmezse depozito sende kalır. " +
-                  $"Yeni kuryeler işe başlarken {GameData.StarterKitText} depozitoyla alır.");
+            if (Sade.Depozito)
+                Intro("ekipman", "Kuryeler ekipmanı ihtiyaç duyunca kendileri ister; bedeli depozito olarak kazançlarından kesilir. Eksikleri Kuryeler penceresinde yazar.",
+                      "Ekipman kısa vadede kârı düşürür ama gider olarak vergiden düşülür; hız, moral, puan ve daha az hastalık/kaza olarak geri döner. " +
+                      "Kuryeler mevsime, yağmura ve dikkatlerine göre ister. Şirket depodan verir ya da depoda yoksa satın alır. " +
+                      "Kurye ayrılırken ekipmanı iade ederse depozitosu geri ödenir ve ekipman depoya döner; iade etmezse depozito sende kalır. " +
+                      $"Yeni kuryeler işe başlarken {GameData.StarterKitText} depozitoyla alır.");
+            else
+                Intro("ekipman", "Ekipmanı şirket verir: kuryeler ihtiyaç duyunca ister, depoda varsa oradan çıkar, yoksa satın alınır. Eksikleri Kuryeler penceresinde yazar.",
+                      "Ekipman kısa vadede kârı düşürür ama gider olarak vergiden düşülür; hız, moral, puan ve daha az hastalık/kaza olarak geri döner. " +
+                      "Kuryeler mevsime, yağmura ve dikkatlerine göre ister. Ekipman şirketin malıdır: kurye ayrılırken çoğu zaman iade eder ve ekipman depoya döner, " +
+                      "sıradaki kuryeye bedavaya verilir; iade etmezse o ekipman kayıptır. " +
+                      $"Yeni kuryeler işe başlarken {GameData.StarterKitText} alır.");
             long owed = 0;
             foreach (var oc in cm.Couriers) owed += oc.depositOwed;
             var stockParts = new List<string>();
             foreach (var se in GameData.Equipment) if (cm.gearStock[(int)se.kind] > 0) stockParts.Add($"{cm.gearStock[(int)se.kind]}× {se.name}");
-            KV("Elindeki depozito (iade borcu)", Ft(eco.depositsHeld));
-            KV("Kuryelerden kesilecek", Ft(owed));
+            if (Sade.Depozito || eco.depositsHeld > 0) KV("Elindeki depozito (iade borcu)", Ft(eco.depositsHeld));
+            if (Sade.Depozito) KV("Kuryelerden kesilecek", Ft(owed));
             KV("Depo", stockParts.Count > 0 ? string.Join(", ", stockParts) : "boş");
             GUILayout.Label("\"Hatırlat\" ücretsizdir: kuryenin 2 gün boyunca o ekipmanı isteme ihtimali artar.", bodyDim);
 
             // Hijyen özeti
             int dirty = 0, worn = 0;
             foreach (var hc in cm.Couriers) { if (hc.hygiene < Courier.HygieneLimit) dirty++; if (hc.BagWorn) worn++; }
-            Section("Çanta hijyeni",
-                "Çanta temizliği kuryenin kendi sorumluluğu: her gece temizler, titiz olanlar gün içinde de temizler. " +
-                "Kirli çanta müşteri şikayeti ve düşük puan getirir; gün içinde kirlenenleri uyarabilirsin (ücretsiz, moral biraz düşer). " +
-                $"{Courier.BagWornUses} teslimattan sonra çanta yıpranır, yenisi gerekir.");
-            GUILayout.Label($"{dirty} kuryenin çantası kirli · {worn} çanta yıpranmış", dirty > 0 ? warn : body);
-            if (GUILayout.Button("Çantası kirli olanların hepsini uyar", smallButton))
-                deferred = () => cm.WarnAllDirty();
+            if (Sade.Hijyen)
+            {
+                Section("Çanta hijyeni",
+                    "Çanta temizliği kuryenin kendi sorumluluğu: her gece temizler, titiz olanlar gün içinde de temizler. " +
+                    "Kirli çanta müşteri şikayeti ve düşük puan getirir; gün içinde kirlenenleri uyarabilirsin (ücretsiz, moral biraz düşer). " +
+                    $"{Courier.BagWornUses} teslimattan sonra çanta yıpranır, yenisi gerekir.");
+                GUILayout.Label($"{dirty} kuryenin çantası kirli · {worn} çanta yıpranmış", dirty > 0 ? warn : body);
+                if (GUILayout.Button("Çantası kirli olanların hepsini uyar", smallButton))
+                    deferred = () => cm.WarnAllDirty();
+            }
+            else
+            {
+                Section("Çanta yıpranması", $"{Courier.BagWornUses} teslimattan sonra termal çanta yıpranır; yenisi Kuryeler penceresinden alınır.");
+                GUILayout.Label(worn > 0 ? $"{worn} çanta yıpranmış" : "Yıpranmış çanta yok", worn > 0 ? warn : body);
+            }
 
             if (selectedCourier == null || !cm.Couriers.Contains(selectedCourier))
                 selectedCourier = cm.Couriers.Count > 0 ? cm.Couriers[0] : null;
@@ -1634,7 +1703,7 @@ namespace KuryeTycoon
                 if (selectedCourier != null)
                 {
                     var sc = selectedCourier;
-                    if (sc.Has(kind)) GUILayout.Label($"{sc.ShortName}: var" + (sc.depositGear != null && sc.depositGear.Contains(kind) ? " (depozitolu)" : ""), small);
+                    if (sc.Has(kind)) GUILayout.Label($"{sc.ShortName}: var" + (Sade.Depozito && sc.depositGear != null && sc.depositGear.Contains(kind) ? " (depozitolu)" : ""), small);
                     else if (GameClock.I.TotalMinutes < sc.gearNudgeUntil) GUILayout.Label($"{sc.ShortName}'a hatırlatıldı", small);
                     else if (GUILayout.Button($"{sc.ShortName}'a hatırlat", smallButton)) deferred = () => cm.RemindGear(sc, kind);
                 }
@@ -1773,7 +1842,7 @@ namespace KuryeTycoon
             HelpOnLast("Giyecekleri sadece mevsimi gelince ya da yaklaşınca sorar (ör. montu sonbahar ve kışın); arabalı kuryelere giyecek ve kask sormaz.");
             ops.replaceWornBags = GUILayout.Toggle(ops.replaceWornBags,
                 $" Yıpranan çantayı yenile ({Ft(GameData.Equip(EquipmentKind.TermalCanta).price)}, şirket öder)", toggle);
-            ops.warnDirtyBags = GUILayout.Toggle(ops.warnDirtyBags, " Çantası kirlenen kuryeyi uyar (ücretsiz, moral biraz düşer)", toggle);
+            if (Sade.Hijyen) ops.warnDirtyBags = GUILayout.Toggle(ops.warnDirtyBags, " Çantası kirlenen kuryeyi uyar (ücretsiz, moral biraz düşer)", toggle);
 
             GUILayout.Label("Yeni kuryeye ekipman ne zaman sorulsun:", small);
             GUILayout.BeginHorizontal();
@@ -1831,6 +1900,7 @@ namespace KuryeTycoon
             {
                 var kind = d.kind;
                 int lv = up.Level(kind);
+                if (!Sade.Hijyen && kind == UpgradeKind.Hijyen && lv == 0) continue;   // hijyen sistemi kapalı: satın alınmamışsa gösterilmez
                 GUILayout.BeginVertical(box);
                 GUILayout.Label($"{d.name} · {d.levelNames[lv]} ({lv}/{d.MaxLevel})", header);
                 HelpOnLast(d.summary);   // ne işe yaradığı "?" balonunda
@@ -2037,7 +2107,7 @@ namespace KuryeTycoon
             var e = EconomyManager.I;
             GUILayout.BeginVertical(box);
             GUILayout.Label("Aile borcu", header);
-            HelpOnLast("Borç ödemesi gider değildir, vergiden düşülmez. Erken ödemek taksiti kapatır; ama kasada sürpriz vergiler için yedek bırak.");
+            HelpOnLast("Borç ödemesi gider değildir, vergiden düşülmez. Erken ödemek taksiti kapatır; ama kasada kötü günler için yedek bırak.");
             if (loan.Finished)
             {
                 GUILayout.Label($"Borç tamamen ödendi ({Ft(loan.principal)}). Ailen seninle gurur duyuyor.", label);
@@ -2241,14 +2311,16 @@ namespace KuryeTycoon
                     Section("Kurye ödemeleri");
                     Intro("finans.kurye", "Kurye kazançları hesaplarında birikir; ayın 15'i ve son günü kasandan ödenir.",
                           "Bahşişler dahildir. Hesap gece kesilir, 1–2 iş günü içinde kasadan ödenir. Kuryeler istedikleri gün hesaplarının %80'ini " +
-                          $"erken çekebilir (2–3 iş günü). Nakit siparişlerde kurye parayı şirkete borçlanır: üzerindeki nakit {Ft(Courier.CashLimit)}'ı geçemez, " +
-                          "ay sonuna kadar keep cash (hesabın en fazla %80'iyle mahsup) ya da offload (kartla ödeme) ile kapatılır.");
+                          "erken çekebilir (2–3 iş günü). " + (Sade.NakitBorcu
+                              ? $"Nakit siparişlerde kurye parayı şirkete borçlanır: üzerindeki nakit {Ft(Courier.CashLimit)}'ı geçemez, " +
+                                "ay sonuna kadar keep cash (hesabın en fazla %80'iyle mahsup) ya da offload (kartla ödeme) ile kapatılır."
+                              : "Nakit siparişlerin parası doğrudan kasana girer."));
                     KV("Kuryelerin hesaplarında", Ft(e.TotalCourierBalances));
                     KV("Sıradaki kesim", e.NextCutText);
                     KV("Yatmayı bekleyen ödemeler", Ft(e.TotalPendingPayouts));
                     foreach (var p in e.Payouts)
                         GUILayout.Label($"   {p.courierName}: {Ft(p.amount)}{(p.early ? " (erken)" : "")} → {GameClock.I.DateOf(p.payDay)}", small);
-                    KV("Kuryelerdeki nakit (şirkete borçları)", Ft(e.TotalCashHeld));
+                    if (Sade.NakitBorcu || e.TotalCashHeld > 0) KV("Kuryelerdeki nakit (şirkete borçları)", Ft(e.TotalCashHeld));
                     if (e.depositsHeld > 0)
                     {
                         KV("Tutulan ekipman depozitoları", Ft(e.depositsHeld));
@@ -2370,8 +2442,11 @@ namespace KuryeTycoon
                     KV("Şu anki bonus", $"{Ft(e.CurrentBonus)} (hava {Ft(WeatherSystem.I.WeatherBonus)} + saat {Ft(e.TimeBonus())})");
 
                     GUILayout.Space(8);
-                    Section("Vergi", "31 Aralık'ta (gelir − giderler) üzerinden ödenir; giderler vergiden düşülür. Yıl içinde de habersiz vergi ve harçlar çıkar: " +
-                        "yerel işletme vergisi, KDV farkı, vergi denetimi, belediye harcı, iş güvenliği fonu. Bazen de vergi iadesi gelir. Kasanda her zaman biraz yedek para tut.");
+                    Section("Vergi", Sade.SurprizVergi
+                        ? "31 Aralık'ta (gelir − giderler) üzerinden ödenir; giderler vergiden düşülür. Yıl içinde de habersiz vergi ve harçlar çıkar: " +
+                          "yerel işletme vergisi, KDV farkı, vergi denetimi, belediye harcı, iş güvenliği fonu. Bazen de vergi iadesi gelir. Kasanda her zaman biraz yedek para tut."
+                        : "Tek vergi var: 31 Aralık'ta yılın kârı (gelir − giderler) üzerinden ödenir; giderler vergiden düşülür. " +
+                          "Yıl içinde başka vergi ya da harç çıkmaz; yıl sonu için kasanda para ayır.");
                     KV("Yıl sonu vergisi (kâr üzerinden)", "kademeli");
                     GUILayout.Label(EconomyManager.TaxBracketText, small);
                     HelpOnLast("Kârın her dilimi kendi oranıyla vergilenir: şirket büyüdükçe kârın üst kısmından daha yüksek oranda vergi ödenir.");

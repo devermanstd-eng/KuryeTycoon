@@ -261,8 +261,16 @@ namespace KuryeTycoon
             c.NoteGear(k);
             if (c.depositGear == null) c.depositGear = new List<EquipmentKind>();
             c.depositGear.Add(k);
-            c.depositOwed += price;
             c.equipRefusedUntil.Remove(k);
+            if (!Sade.Depozito)
+            {
+                // Sade: ekipman şirketin malı, depozito kesilmez; kurye ayrılırken geri getirir (HandleLeaving)
+                c.AddInbox($"{e.name} teslim aldın ({(fromStock ? "depodan" : "yeni")}). Şirket ekipmanı: ayrılırken iade etmelisin.");
+                if (notify)
+                    EventManager.I.Notify($"{c.ShortName} {e.name} istedi ve aldı ({(fromStock ? "depodan" : $"şirket satın aldı, {Ft(price)}")}).");
+                return true;
+            }
+            c.depositOwed += price;
             EconomyManager.I.CollectGearDeposit(c);
             c.AddInbox($"{e.name} teslim aldın ({(fromStock ? "depodan" : "yeni")}). Depozito {Ft(price)}: ayrılırken iade edersen geri ödenir.");
             if (notify)
@@ -335,20 +343,21 @@ namespace KuryeTycoon
             if (c.depositGear == null || c.depositGear.Count == 0) return;
             string gear = string.Join(", ", c.depositGear.ConvertAll(k => GameData.Equip(k).name));
             // Depozitosu tamamen kesilmiş kurye ekipmanı daha çok iade eder (parasını geri almak ister)
+            if (!Sade.Depozito) c.depositOwed = 0;   // sade: kesilecek depozito yok
             bool returns = Random.value < (c.depositOwed <= 0 ? 0.85f : 0.55f);
             long paid = c.depositPaidTotal;
             if (returns)
             {
                 foreach (var k in c.depositGear) gearStock[(int)k]++;
                 EconomyManager.I.RefundGearDeposit(c);
-                EventManager.I.Notify($"{c.courierName} ekipmanını iade etti ({gear}); " +
-                                      (paid > 0 ? $"{GameData.Ft(paid)} depozitosu geri ödendi." : "depozitosu henüz kesilmemişti.") + " Ekipman depoya döndü.");
+                EventManager.I.Notify($"{c.courierName} ekipmanını iade etti ({gear})" +
+                                      (paid > 0 ? $"; {GameData.Ft(paid)} depozitosu geri ödendi." : Sade.Depozito ? "; depozitosu henüz kesilmemişti." : ".") + " Ekipman depoya döndü.");
             }
             else
             {
                 EconomyManager.I.KeepGearDeposit(c);
                 EventManager.I.Notify($"{c.courierName} ekipmanını iade etmedi ({gear}); " +
-                                      (paid > 0 ? $"{GameData.Ft(paid)} depozito şirkette kaldı." : "depozito kesilmemişti, ekipman kayıp.") +
+                                      (paid > 0 ? $"{GameData.Ft(paid)} depozito şirkette kaldı." : Sade.Depozito ? "depozito kesilmemişti, ekipman kayıp." : "ekipman kayıp.") +
                                       (c.depositOwed > 0 ? $" Kesilemeyen {GameData.Ft(c.depositOwed)} kayıp." : ""));
             }
             c.depositGear.Clear();

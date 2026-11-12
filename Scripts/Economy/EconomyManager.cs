@@ -255,7 +255,18 @@ namespace KuryeTycoon
         public void RegisterDelivery(Order o)
         {
             // Kurye ücreti hemen ödenmez, kuryenin hesabına yazılır (kesim gününde ödenir).
-            if (o.cashPay)
+            if (o.cashPay && !Sade.NakitBorcu)
+            {
+                // Sade: nakit doğrudan şirket kasasına sayılır. Müşteriye ulaşılamadıysa para alınamamıştır.
+                money += o.keptByCourier ? o.CompanyIncome - o.CashAmount : o.CompanyIncome;
+                if (!o.keptByCourier)
+                {
+                    o.courier.cashOrders++;
+                    o.courier.cashTakenTotal += o.CashAmount;
+                }
+                Today.cashOrders++;
+            }
+            else if (o.cashPay)
             {
                 // Nakit: müşteri parayı kuryeye verdi. Şirket dükkana sepeti kendi cebinden öder,
                 // kuryeden nakdi sonra (keep cash / offload) tahsil eder.
@@ -770,7 +781,7 @@ namespace KuryeTycoon
             ProcessPayouts();
 
             if (nextSurpriseDay == 0) ScheduleSurprise();
-            else if (GameClock.I.CompanyDay >= nextSurpriseDay)
+            else if (Sade.SurprizVergi && GameClock.I.CompanyDay >= nextSurpriseDay)
             {
                 RollSurpriseTax();
                 ScheduleSurprise();
