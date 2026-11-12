@@ -28,19 +28,19 @@ namespace KuryeTycoon
         void InitKit()
         {
             body = new GUIStyle(label) { fontSize = 14 };
-            body.normal.textColor = new Color(0.86f, 0.88f, 0.92f);
+            body.normal.textColor = UITheme.Yazi(new Color(0.86f, 0.88f, 0.92f));
             bodyDim = new GUIStyle(body) { fontSize = 12 };
-            bodyDim.normal.textColor = UITheme.TextDim;
+            bodyDim.normal.textColor = UITheme.Yazi(UITheme.TextDim);
 
             kitSection = new GUIStyle(header) { fontSize = 16, margin = new RectOffset(4, 4, 16, 6) };
-            kitSection.normal.textColor = UITheme.Text;
+            kitSection.normal.textColor = UITheme.Yazi(UITheme.Text);
 
             kitIntro = new GUIStyle(body) { padding = new RectOffset(0, 26, 1, 3) };
-            kitIntro.normal.textColor = new Color(0.78f, 0.80f, 0.86f);
+            kitIntro.normal.textColor = UITheme.Yazi(new Color(0.78f, 0.80f, 0.86f));
 
             kitHelp = new GUIStyle(label) { fontSize = 12, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false, padding = new RectOffset(0, 0, 0, 1) };
             kitTip = new GUIStyle(body) { fontSize = 13 };
-            kitTip.normal.textColor = UITheme.Text;
+            kitTip.normal.textColor = UITheme.Yazi(UITheme.Text);
 
             kitChip = new GUIStyle(label)
             {
@@ -51,9 +51,9 @@ namespace KuryeTycoon
             UITheme.SetBg(kitChip.normal, Color.white, 8);
 
             kitKey = new GUIStyle(body) { wordWrap = false };
-            kitKey.normal.textColor = UITheme.TextDim;
+            kitKey.normal.textColor = UITheme.Yazi(UITheme.TextDim);
             kitVal = new GUIStyle(body) { wordWrap = false, alignment = TextAnchor.UpperRight, fontStyle = FontStyle.Bold };
-            kitVal.normal.textColor = UITheme.Text;
+            kitVal.normal.textColor = UITheme.Yazi(UITheme.Text);
 
             // Uyarılar: düz turuncu yazı yerine zeminli kutu (göz hemen bulur)
             warn = new GUIStyle(small)
@@ -63,16 +63,16 @@ namespace KuryeTycoon
                 margin = new RectOffset(4, 4, 3, 3),
                 border = new RectOffset(6, 6, 6, 6)
             };
-            warn.normal.textColor = new Color(1f, 0.82f, 0.58f);
+            warn.normal.textColor = UITheme.Yazi(new Color(1f, 0.82f, 0.58f));
             UITheme.SetBg(warn.normal, new Color(1f, 0.6f, 0.2f, 0.14f), 6);
         }
 
         /// <summary>Paylaşılan stillerin rengini sıfırlar (haritadaki kartlar ve bildirimler değiştirebiliyor).</summary>
         void ResetTextColors()
         {
-            small.normal.textColor = UITheme.TextDim;
-            label.normal.textColor = UITheme.Text;
-            header.normal.textColor = Color.white;
+            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
+            label.normal.textColor = UITheme.Yazi(UITheme.Text);
+            header.normal.textColor = UITheme.Yazi(Color.white);
         }
 
         // ---------------------------------------------------------------- bölüm başlığı
@@ -98,7 +98,7 @@ namespace KuryeTycoon
             if (Event.current.type != EventType.Repaint || string.IsNullOrEmpty(text)) return;
             bool hover = r.Contains(Event.current.mousePosition) && modalFree;
             UITheme.Box(r, hover ? HelpBgHover : HelpBg, r.height / 2f);
-            kitHelp.normal.textColor = hover ? Color.white : UITheme.TextDim;
+            kitHelp.normal.textColor = UITheme.Yazi(hover ? Color.white : UITheme.TextDim);
             GUI.Label(r, "?", kitHelp);
             if (hover)
             {
@@ -166,7 +166,7 @@ namespace KuryeTycoon
                     used = 0f;
                 }
                 GUI.backgroundColor = new Color(color.r, color.g, color.b, 0.2f);
-                kitChip.normal.textColor = Color.Lerp(color, Color.white, 0.3f);
+                kitChip.normal.textColor = UITheme.Yazi(Color.Lerp(color, Color.white, 0.3f));
                 GUILayout.Label(content, kitChip);
                 used += cw;
             }
@@ -191,7 +191,7 @@ namespace KuryeTycoon
             GUILayout.BeginHorizontal();
             GUILayout.Label(key, kitKey);
             GUILayout.FlexibleSpace();
-            kitVal.normal.textColor = valueColor ?? UITheme.Text;
+            kitVal.normal.textColor = UITheme.Yazi(valueColor ?? UITheme.Text);
             GUILayout.Label(value, kitVal);
             GUILayout.EndHorizontal();
         }

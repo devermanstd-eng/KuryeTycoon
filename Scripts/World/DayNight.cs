@@ -34,51 +34,63 @@ namespace KuryeTycoon
 
         public static float HourF => GameClock.I == null ? 12f : (GameClock.I.TotalMinutes % 1440f) / 60f;
 
-        static float SeasonCos
+        // ---------------------------------------------------------------- günün dört bölümü (referanstaki gibi sabit saatler)
+        // Sabah 06–11 · Gündüz 11–17 · Akşam 17–21 · Gece 21–06. Işık (Gorsel3D) ve gece ışıkları bu saatlere göre ayarlanır.
+        public const float SabahBaslar = 6f, GunduzBaslar = 11f, AksamBaslar = 17f, GeceBaslar = 21f;
+
+        public enum Bolum { Sabah, Gunduz, Aksam, Gece }
+
+        public static Bolum BolumOf(float h)
         {
-            get
-            {
-                if (GameClock.I == null) return 0f;
-                // Yılın günü → ay (kesirli). En uzun gün ~21 Haziran (6,7)
-                float m = GameClock.I.Month + (GameClock.I.DayOfMonth - 1) / 30f;
-                return Mathf.Cos(2f * Mathf.PI * (m - 6.7f) / 12f);
-            }
+            h = ((h % 24f) + 24f) % 24f;
+            if (h >= SabahBaslar && h < GunduzBaslar) return Bolum.Sabah;
+            if (h >= GunduzBaslar && h < AksamBaslar) return Bolum.Gunduz;
+            if (h >= AksamBaslar && h < GeceBaslar) return Bolum.Aksam;
+            return Bolum.Gece;
         }
 
-        public static float Sunrise => 6.1f - 1.4f * SeasonCos;
-        public static float Sunset => 18.3f + 2.45f * SeasonCos;
+        public static Bolum CurrentBolum => BolumOf(HourF);
 
-        /// <summary>0 = gündüz, 1 = tam gece.</summary>
+        public static string BolumAdi(Bolum b) =>
+            b == Bolum.Sabah ? "Sabah" : b == Bolum.Gunduz ? "Gündüz" : b == Bolum.Aksam ? "Akşam" : "Gece";
+
+        /// <summary>Güneş sabahın başında doğar, akşamın ortasında batar (gece 21'de tam karanlık).</summary>
+        public static float Sunrise => SabahBaslar;
+        public static float Sunset => 19.6f;
+
+        /// <summary>0 = gündüz, 1 = tam gece. Akşam 19:20'den sonra kararır, 21:00'de tam gece; sabah 05:15–06:50 arası aydınlanır.</summary>
         public static float Night01
         {
             get
             {
                 float h = HourF;
-                if (h >= 12f) return Smooth(Sunset - 0.3f, Sunset + 1.4f, h);
-                return 1f - Smooth(Sunrise - 0.8f, Sunrise + 0.6f, h);
+                if (h >= 12f) return Smooth(19.3f, GeceBaslar, h);
+                return 1f - Smooth(5.25f, 6.8f, h);
             }
         }
 
         /// <summary>Güneşin görünürlüğü (hava efektlerindeki güneş parlaması bununla çarpılır).</summary>
         public static float Daylight01 => Enabled ? 1f - Night01 : 1f;
 
+        /// <summary>Gün batımı renkleri: akşamın ortasında (19:00) en güçlü.</summary>
         public static float Dusk01
         {
             get
             {
                 float h = HourF;
                 if (h < 12f) return 0f;
-                return Mathf.Clamp01(1f - Mathf.Abs(h - (Sunset - 0.1f)) / 1.3f);
+                return Mathf.Clamp01(1f - Mathf.Abs(h - 19f) / 1.6f);
             }
         }
 
+        /// <summary>Şafak renkleri: sabahın başında (06:00) en güçlü.</summary>
         public static float Dawn01
         {
             get
             {
                 float h = HourF;
                 if (h >= 12f) return 0f;
-                return Mathf.Clamp01(1f - Mathf.Abs(h - (Sunrise + 0.2f)) / 1.1f);
+                return Mathf.Clamp01(1f - Mathf.Abs(h - 6f) / 1.1f);
             }
         }
 
@@ -96,16 +108,7 @@ namespace KuryeTycoon
 
         static float Smooth(float a, float b, float x) => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(a, b, x));
 
-        public static string PhaseName
-        {
-            get
-            {
-                float n = Night01;
-                if (Dusk01 > 0.4f) return "Gün batımı";
-                if (Dawn01 > 0.4f) return "Şafak";
-                return n > 0.6f ? "Gece" : "Gündüz";
-            }
-        }
+        public static string PhaseName => BolumAdi(CurrentBolum);
 
         // ---------------------------------------------------------------- çizim
 

@@ -24,7 +24,7 @@ namespace KuryeTycoon
         {
             if (cardName != null) return;
             cardName = UITheme.Semi(new GUIStyle(label) { fontSize = 16, fontStyle = FontStyle.Bold, wordWrap = false, margin = new RectOffset(0, 4, 0, 2) });
-            cardName.normal.textColor = Color.white;
+            cardName.normal.textColor = UITheme.Yazi(Color.white);
             tableHead = UITheme.Semi(new GUIStyle(label) { fontSize = 12, fontStyle = FontStyle.Bold, wordWrap = false, alignment = TextAnchor.MiddleLeft, clipping = TextClipping.Clip });
             tableCell = new GUIStyle(label) { fontSize = 13, wordWrap = false, alignment = TextAnchor.MiddleLeft, clipping = TextClipping.Clip };
         }
@@ -137,7 +137,7 @@ namespace KuryeTycoon
             UITheme.Box(r, new Color(0.07f, 0.075f, 0.09f, 0.96f), 7f);
             UITheme.Outline(r, UITheme.WithAlpha(StarOn, 0.55f), 1f, 7f);
             Icons.Draw(new Rect(r.x + 4f, r.y + 4.5f, 11f, 11f), Icons.Kind.Star, StarOn);
-            kitHelp.normal.textColor = Color.white;
+            kitHelp.normal.textColor = UITheme.Yazi(Color.white);
             GUI.Label(new Rect(r.x + 14f, r.y, r.width - 15f, r.height), level.ToString(), kitHelp);
             HoverTip(r, $"<b>Tecrübe {level}</b>: teslimat yaptıkça artar; her seviye biraz daha hızlı.");
         }
@@ -153,9 +153,9 @@ namespace KuryeTycoon
             UITheme.Box(r, tint.HasValue ? UITheme.WithAlpha(col, 0.16f) : new Color(1f, 1f, 1f, 0.07f), 12f);
             Icons.Draw(new Rect(r.x + 8f, r.y + 4f, 16f, 16f), icon, col);
             var old = bodyDim.normal.textColor;
-            if (tint.HasValue) bodyDim.normal.textColor = Color.Lerp(col, Color.white, 0.3f);
+            if (tint.HasValue) bodyDim.normal.textColor = UITheme.Yazi(Color.Lerp(col, Color.white, 0.3f));
             GUI.Label(new Rect(r.x + 27f, r.y + (r.height - sz.y) / 2f, sz.x + 4f, sz.y), content, bodyDim);
-            bodyDim.normal.textColor = old;
+            bodyDim.normal.textColor = UITheme.Yazi(old);
         }
 
         /// <summary>Moral (yüz simgesiyle) ve yorgunluk çubukları tek satırda.</summary>
@@ -416,7 +416,7 @@ namespace KuryeTycoon
                 if (repaint)
                 {
                     if (hov) UITheme.Box(cr, UITheme.WithAlpha(Color.white, 0.06f), 6f);
-                    tableHead.normal.textColor = sel ? UITheme.Text : UITheme.TextDim;
+                    tableHead.normal.textColor = UITheme.Yazi(sel ? UITheme.Text : UITheme.TextDim);
                     string t = SortNames[i] + (sel ? (courierSortDesc ? " ↓" : " ↑") : "");
                     GUI.Label(new Rect(cr.x + (i == 0 ? 36f : 4f), cr.y, cr.width - 6f, cr.height), t, tableHead);
                 }
@@ -472,7 +472,7 @@ namespace KuryeTycoon
             // İsim (profil resmiyle) ve eksik uyarısı
             var nc = cols[0];
             Portraits.Draw(new Rect(nc.x + 3f, cy - 13f, 26f, 26f), c.courierName, Portraits.MoodOf(c.morale), CompanyProfile.Primary);
-            tableCell.normal.textColor = Color.white;
+            tableCell.normal.textColor = UITheme.Yazi(Color.white);
             string nm = c.ShortName;
             float nw = Mathf.Min(tableCell.CalcSize(new GUIContent(nm)).x, nc.width - 58f);
             GUI.Label(new Rect(nc.x + 36f, rr.y, nw + 2f, rr.height), nm, tableCell);
@@ -493,7 +493,7 @@ namespace KuryeTycoon
             var sc = cols[2];
             var stc = CourierStateColor(c);
             UITheme.Box(new Rect(sc.x + 4f, cy - 4f, 8f, 8f), stc, 4f);
-            tableCell.normal.textColor = Color.Lerp(stc, Color.white, 0.35f);
+            tableCell.normal.textColor = UITheme.Yazi(Color.Lerp(stc, Color.white, 0.35f));
             GUI.Label(new Rect(sc.x + 16f, rr.y, sc.width - 18f, rr.height), ShortState(c), tableCell);
             HoverTip(sc, c.StateName);
 
@@ -511,9 +511,9 @@ namespace KuryeTycoon
             HoverTip(fc, $"Yorgunluk %{c.fatigue * 100f:0}");
 
             // Bugünkü paket ve kazanç
-            tableCell.normal.textColor = UITheme.Text;
+            tableCell.normal.textColor = UITheme.Yazi(UITheme.Text);
             GUI.Label(new Rect(cols[5].x + 4f, rr.y, cols[5].width - 6f, rr.height), c.deliveriesToday.ToString(), tableCell);
-            tableCell.normal.textColor = c.earnedToday > 0 ? UITheme.Text : UITheme.TextDim;
+            tableCell.normal.textColor = UITheme.Yazi(c.earnedToday > 0 ? UITheme.Text : UITheme.TextDim);
             GUI.Label(new Rect(cols[6].x + 4f, rr.y, cols[6].width - 6f, rr.height), Ft(c.earnedToday), tableCell);
             HoverTip(new Rect(cols[5].x, rr.y, cols[5].width + cols[6].width, rr.height), "Bugün teslim ettiği paket ve kazandığı para");
         }

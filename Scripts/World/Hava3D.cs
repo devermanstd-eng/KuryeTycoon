@@ -31,7 +31,28 @@ namespace KuryeTycoon
         ParticleSystem rainPs, splashPs, snowPs;
         readonly List<ParticleSystem> leafPs = new List<ParticleSystem>();
 
-        class Cloud { public Transform t; public Renderer[] rs; public bool storm; public float speed; public float grow; public bool leaving; public float baseScale; public Vector3 shape; }
+        class Cloud { public Transform t; public Renderer[] rs; public bool storm; public float speed; public float grow; public bool leaving; public float baseScale; public Vector3 shape; public float radius; public float tone = 1f; }
+
+        /// <summary>Diğer bulutlardan uzak bir nokta (en çok 16 deneme; bulamazsa en uzak olanı).</summary>
+        Vector2 FreeSpot(float radius, float minX, float maxX)
+        {
+            Vector2 best = Vector2.zero;
+            float bestGap = float.MinValue;
+            for (int k = 0; k < 16; k++)
+            {
+                var p = new Vector2(Random.Range(minX, maxX), Random.Range(-6f, CityMap.Height + 6f));
+                float gap = float.MaxValue;
+                foreach (var o in clouds)
+                {
+                    if (o.t == null || o.leaving) continue;
+                    float d = Vector2.Distance(p, o.t.position) - (radius + o.radius) * 1.1f;
+                    if (d < gap) gap = d;
+                }
+                if (gap > 0f) return p;
+                if (gap > bestGap) { bestGap = gap; best = p; }
+            }
+            return best;
+        }
         readonly List<Cloud> clouds = new List<Cloud>();
         MaterialPropertyBlock mpb;   // Awake'te oluşturulur (alan başlatıcısında Unity izin vermiyor)
 
@@ -396,7 +417,12 @@ namespace KuryeTycoon
                 if (c.leaving && c.grow <= 0f) { Destroy(c.t.gameObject); clouds.RemoveAt(i); continue; }
                 var p = c.t.position;
                 p.x += (c.speed + wind * 0.9f) * dt;
-                if (p.x > maxX) { p.x = minX; p.y = Random.Range(-6f, CityMap.Height + 6f); }
+                if (p.x > maxX)
+                {
+                    // Batıdan yeniden girer; girdiği yer boş olsun
+                    var np = FreeSpot(c.radius, minX - 4f, minX + 2f);
+                    p.x = np.x; p.y = np.y;
+                }
                 c.t.position = p;
                 c.t.localScale = c.shape * c.baseScale * Mathf.SmoothStep(0f, 1f, c.grow);
                 bool near = cam != null && Vector3.Distance(cam.transform.position, p) < camGround * 0.6f;
@@ -404,7 +430,7 @@ namespace KuryeTycoon
                 foreach (var r in c.rs)
                 {
                     if (r.shadowCastingMode != mode) r.shadowCastingMode = mode;
-                    if (!c.storm) Darken(r, gray);
+                    if (!c.storm) Darken(r, gray, c.tone);
                 }
             }
         }
@@ -429,18 +455,23 @@ namespace KuryeTycoon
             var shape = new Vector3(Random.Range(0.8f, 1.35f), Random.Range(0.6f, 1.15f), Random.Range(0.75f, 1.3f));
             var c = new Cloud
             {
-                t = go.transform, rs = rs, storm = storm, speed = Random.Range(0.25f, 0.55f),
+                // Hepsi aynı rüzgârla, neredeyse aynı hızda kayar: biri ötekinin üstüne binmesin
+                t = go.transform, rs = rs, storm = storm, speed = 0.38f + Random.Range(-0.03f, 0.03f),
                 baseScale = target / w, grow = 0f, shape = shape
             };
             go.transform.rotation = Quaternion.Euler(0f, 0f, Random.Range(-35f, 35f)) * Quaternion.Euler(-90f, 0f, 0f);
-            go.transform.position = new Vector3(Random.Range(-14f, CityMap.Width + 14f), Random.Range(-6f, CityMap.Height + 6f),
-                                                -Random.Range(CloudHeightMin, CloudHeightMax));
+            // Diğer bulutlarla üst üste binmesin: boş bir yer ara
+            go.transform.position = new Vector3(0f, 0f, -Random.Range(CloudHeightMin, CloudHeightMax));
+            c.radius = target * Mathf.Max(shape.x, shape.z) * 0.5f;
+            var pos = FreeSpot(c.radius, -14f, CityMap.Width + 14f);
+            go.transform.position = new Vector3(pos.x, pos.y, go.transform.position.z);
+            c.tone = Random.Range(0.86f, 1.0f);
             go.transform.localScale = Vector3.zero;
             clouds.Add(c);
         }
 
         /// <summary>Beyaz bulutlar yağmur ve karda griye döner (çizgi siyah kalır).</summary>
-        void Darken(Renderer r, float gray)
+        void Darken(Renderer r, float gray, float tone)
         {
             var mats = r.sharedMaterials;
             for (int i = 0; i < mats.Length; i++)
@@ -448,7 +479,8 @@ namespace KuryeTycoon
                 var m = mats[i];
                 if (m == null || m.name.StartsWith("Cizgi")) continue;
                 Color baseC = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color;
-                var c = Color.Lerp(baseC, new Color(0.55f, 0.58f, 0.63f), gray);
+                var c = Color.Lerp(baseC * tone, new Color(0.55f, 0.58f, 0.63f), gray);
+                c.a = 1f;
                 mpb.Clear();
                 mpb.SetColor("_BaseColor", c);
                 mpb.SetColor("_Color", c);

@@ -47,7 +47,7 @@ namespace KuryeTycoon
         static GameObject[] ownHouses, ownTown, ownAll;
         static Dictionary<string, List<GameObject>> ownByKey;
         static readonly string[] OwnPrefixes = { "MustakilEv_", "SiraEv_", "OfisKulesi_", "Market_", "FastFood_", "Apartman_", "Dukkan_",
-                                                            "Konut_", "Buro_", "Sanayi_", "Kamu_" };
+                                                            "Konut_", "Buro_", "Sanayi_", "Kamu_", "Blok_", "Simge_" };
         /// <summary>Dükkan adı → kendi binasının ad parçası (FastFood_burger_queen_1_1 gibi).</summary>
         static readonly Dictionary<string, string> ShopModel = new Dictionary<string, string>
         {
@@ -71,6 +71,15 @@ namespace KuryeTycoon
         List<GameObject> kamuKalan;                         // bu kurulumda henüz yerleşmemiş kamu binaları (her biri bir kez)
         static GameObject parkPond, parkMonument, plazaFountain;
         static GameObject roadStraight, roadCorner, roadT, roadCross, groundBlock, groundGrass;
+        static GameObject roadStraightTrees;   // ağaçlı düz yol (Blender: Yol_lane_agacli)
+        // Geniş caddeler (Blender: Yol_cadde_*, Yol_kavsak_ca/cc, Yol_t_XY, Yol_kose_XY) — yoksa normal yol parçaları
+        static GameObject avenueStraight, avenueStraightTrees;
+        static Dictionary<string, GameObject> avenueJunction;
+        // Bitişik blok binaları (Blender: MODEL = "blok"): kat sayısı → modeller
+        static Dictionary<int, List<GameObject>> blokDuz, blokKose;
+        // Referans (CityRT) binaları: tek tek şehir binaları ve dükkânlar; simge yapılar bir bloğun tamamını kaplar
+        static GameObject[] ownRef, ownSimge;
+        Dictionary<Vector2Int, GameObject> simgeBlok;   // blok merkezi → o bloğa konan simge yapı
         public static int PackBuildingCount { get { LoadPack(); return packBuildings.Length; } }
         public static int PackTreeCount { get { LoadPack(); return packTrees.Length; } }
         public static bool PackRoadsOk { get { LoadPack(); return roadStraight != null && roadCross != null; } }
@@ -89,14 +98,31 @@ namespace KuryeTycoon
             var town = new List<GameObject>();
             ownByKey = new Dictionary<string, List<GameObject>>();
             var industry = new List<GameObject>(); var farm = new List<GameObject>(); var kamu = new List<GameObject>();
+            var refs = new List<GameObject>(); var simge = new List<GameObject>();
+            blokDuz = new Dictionary<int, List<GameObject>>();
+            blokKose = new Dictionary<int, List<GameObject>>();
             foreach (var p in loaded)
             {
                 if (!IsOwn(p.name)) { all.Add(p); continue; }
                 own.Add(p);
+                if (p.name.StartsWith("Simge_")) { simge.Add(p); continue; }
+                if (p.name.StartsWith("Konut_ref") || p.name.StartsWith("Dukkan_cadde") || p.name.StartsWith("Buro_klinker")) refs.Add(p);
+                if (p.name.StartsWith("Blok_"))
+                {
+                    // Blok_duz_5k_2 → tür "duz", 5 kat
+                    var parca = p.name.Split('_');
+                    if (parca.Length >= 3 && int.TryParse(parca[2].TrimEnd('k'), out int kat))
+                    {
+                        var d = parca[1] == "kose" ? blokKose : blokDuz;
+                        if (!d.TryGetValue(kat, out var bl)) d[kat] = bl = new List<GameObject>();
+                        bl.Add(p);
+                    }
+                    continue;
+                }
                 if (p.name.StartsWith("MustakilEv_") || p.name.StartsWith("Konut_villa") || p.name.StartsWith("Konut_konak") ||
                     p.name.StartsWith("Konut_sale")) houses.Add(p);
                 else if (p.name.StartsWith("Apartman_") || p.name.StartsWith("SiraEv_") || p.name.StartsWith("OfisKulesi_") ||
-                         p.name.StartsWith("Dukkan_genel") || p.name.StartsWith("Konut_") || p.name.StartsWith("Buro_")) town.Add(p);
+                         p.name.StartsWith("Dukkan_genel") || p.name.StartsWith("Dukkan_cadde") || p.name.StartsWith("Konut_") || p.name.StartsWith("Buro_")) town.Add(p);
                 else if (p.name.StartsWith("Sanayi_fabrika") || p.name.StartsWith("Sanayi_depo") || p.name.StartsWith("Sanayi_garaj")) industry.Add(p);
                 else if (p.name.StartsWith("Sanayi_")) farm.Add(p);
                 else if (p.name.StartsWith("Kamu_")) kamu.Add(p);
@@ -113,12 +139,14 @@ namespace KuryeTycoon
             ownIndustry = industry.ToArray();
             ownFarm = farm.ToArray();
             ownKamu = kamu.ToArray();
+            ownRef = refs.ToArray();
+            ownSimge = simge.ToArray();
             // Bölgeye göre bina havuzları: eski şehirde sıra evler, kule bloklarda ofis kuleleri, çarşıda karışık
             var old = new List<GameObject>(); var high = new List<GameObject>(); var mixed = new List<GameObject>();
             foreach (var p in town)
             {
                 bool apt = p.name.StartsWith("Apartman_"), sira = p.name.StartsWith("SiraEv_"), ofis = p.name.StartsWith("OfisKulesi_");
-                bool dukkan = p.name.StartsWith("Dukkan_genel");
+                bool dukkan = p.name.StartsWith("Dukkan_genel") || p.name.StartsWith("Dukkan_cadde");
                 bool eskiKonut = p.name.StartsWith("Konut_sira_evler") || p.name.StartsWith("Konut_tugla_apt") || p.name.StartsWith("Konut_avlulu");
                 bool yeniBlok = p.name.StartsWith("Konut_balkonlu") || p.name.StartsWith("Buro_");
                 if (sira || apt || dukkan || eskiKonut || p.name.StartsWith("Buro_saat")) old.Add(p);
@@ -168,6 +196,18 @@ namespace KuryeTycoon
             packBuildings = keep.ToArray();
 
             roadStraight = FindRoad("lane_01", "lane_02", "road lane", "road tile");
+            roadStraightTrees = null;
+            foreach (var p in packRoads) if (p != null && p.name == "Yol_lane_agacli") roadStraightTrees = p;
+            avenueStraight = avenueStraightTrees = null;
+            avenueJunction = new Dictionary<string, GameObject>();
+            foreach (var p in packRoads)
+            {
+                if (p == null) continue;
+                if (p.name == "Yol_cadde_01") avenueStraight = p;
+                else if (p.name == "Yol_cadde_agacli") avenueStraightTrees = p;
+                else if (p.name.StartsWith("Yol_kavsak_") || p.name.StartsWith("Yol_t_") && p.name.Length == 8 || p.name.StartsWith("Yol_kose_"))
+                    avenueJunction[p.name] = p;
+            }
             roadCorner = FindRoad("corner_01", "corner");
             roadT = FindRoad("t_intersection_01", "t_intersection", "t intersection");
             roadCross = FindRoadExcept("intersection", "t_", "t intersection");
@@ -304,6 +344,7 @@ namespace KuryeTycoon
             foreach (var s in map.Shops) shopTiles[s.tile] = s;
 
             var rng = new System.Random(12345);
+            SimgeBloklariniSec(map, shopTiles);
             for (int x = 0; x < CityMap.Width; x++)
             {
                 for (int y = 0; y < CityMap.Height; y++)
@@ -355,6 +396,23 @@ namespace KuryeTycoon
                             AddPrefab(countryExtras[rng.Next(countryExtras.Length)], tile, 0f, (float)rng.NextDouble() * 360f, null,
                                       new Vector2((float)rng.NextDouble() * 0.5f - 0.25f, (float)rng.NextDouble() * 0.5f - 0.25f), 0.06f, false);
                         continue;
+                    }
+
+                    if (simgeBlok != null && simgeBlok.Count > 0 && !frontageRoadOnly(map, x, y))
+                    {
+                        var bm = CityMap.BlockCenterOf(x, y);
+                        if (simgeBlok.TryGetValue(bm, out var sp))
+                        {
+                            if (tile == bm)
+                            {
+                                // Simge yapı bloğun dokuz karesini kaplar (opera, gar, pazar …), önü güneydeki yola bakar
+                                AddPrefab(sp, tile, 2.95f, 180f, null, default, 0f, true, true);
+                                float hh = heightByTile.TryGetValue(tile, out var h0) ? h0 : 1f;
+                                for (int dx = -1; dx <= 1; dx++)
+                                    for (int dy = -1; dy <= 1; dy++) heightByTile[new Vector2Int(x + dx, y + dy)] = hh;
+                            }
+                            continue;
+                        }
                     }
 
                     if (tile == map.HQTile)
@@ -481,10 +539,10 @@ namespace KuryeTycoon
                             {
                                 if (UsePack && courtTiles.Length > 0)
                                 {
-                                    // İç avlu: otopark, havuz ya da bahçe; bir köşesinde ağaç
-                                    // Avlular çoğunlukla yeşil (bahçe, havuz): otopark seyrek, şehir griye boğulmasın
+                                    // İç avlu: otopark (park etmiş arabalar), bahçe, oyun alanı, havuz; bir köşesinde ağaç.
+                                    // Referanstaki gibi avluların çoğu dolu otopark ya da yarı otopark yarı bahçe.
                                     var avlu = courtTiles[rng.Next(courtTiles.Length)];
-                                    if (avlu.name.Contains("otopark") && rng.NextDouble() < 0.65) avlu = courtTiles[rng.Next(courtTiles.Length)];
+                                    if (avlu.name.Contains("havuz") && rng.NextDouble() < 0.6) avlu = courtTiles[rng.Next(courtTiles.Length)];
                                     AddFlat(avlu, tile, 90f * rng.Next(4), 2);
                                     AddTrees(tile, rng, 1, packTreesOk, new Vector2(rng.Next(2) == 0 ? -0.36f : 0.36f, rng.Next(2) == 0 ? -0.36f : 0.36f), 0.04f);
                                 }
@@ -499,6 +557,19 @@ namespace KuryeTycoon
                                 var kb = kamuKalan[ki];
                                 kamuKalan.RemoveAt(ki);
                                 AddPrefab(kb, tile, OwnFootprint(kb, 0.97f), face, null, default, 0f, true, true);
+                            }
+                            else if (own && ownRef != null && ownRef.Length > 0 && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise) &&
+                                     rng.NextDouble() < 0.28)
+                            {
+                                // Referans binaları (Haussmann, Altbau, pasajlı bina, pub, fırın, benzinlik …)
+                                var rb = ownRef[rng.Next(ownRef.Length)];
+                                AddPrefab(rb, tile, OwnFootprint(rb, 0.97f), face, null, default, 0f, true, true);
+                            }
+                            else if (BlokVar && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise) &&
+                                     !(zone == Zone.HighRise && floors >= 10 && rng.NextDouble() < 0.5) && rng.NextDouble() < 0.88)
+                            {
+                                // Kapalı blok: bitişik binalar kaldırıma yaslanır, köşede L biçimli köşe binası
+                                AddBlok(map, tile, floors, rng);
                             }
                             else if (own && ownTown.Length > 0)
                             {
@@ -552,6 +623,94 @@ namespace KuryeTycoon
             const float RefWidth = 14f;   // metre: tipik müstakil ev arsası
             float w = Width(prefab);
             return Mathf.Min(0.99f, baseFoot * Mathf.Clamp(w / RefWidth, 0.95f, 1.3f));
+        }
+
+        /// <summary>Karenin bloğu bir simge yapıya ayrıldıysa (yollar hariç) true. Yol karesi değilse çağrılır.</summary>
+        static bool frontageRoadOnly(CityMap map, int x, int y) => map.IsRoad(x, y);
+
+        /// <summary>
+        /// Simge yapılar için bloklar seç: eski şehir, çarşı ve kule bloklarından içinde yol, su, dükkân, merkez ofis ya da
+        /// meydan çeşmesi olmayan 3×3 bloklar. Her simge bir kez, bloklar birbirine bitişik değil.
+        /// </summary>
+        void SimgeBloklariniSec(CityMap map, Dictionary<Vector2Int, Shop> shopTiles)
+        {
+            simgeBlok = new Dictionary<Vector2Int, GameObject>();
+            if (!UsePack || ownSimge == null || ownSimge.Length == 0) return;
+            var aday = new List<Vector2Int>();
+            for (int bx = 0; bx * CityMap.Block + 3 < CityMap.Width; bx++)
+                for (int by = 0; by * CityMap.Block + 3 < CityMap.Height; by++)
+                {
+                    var c = new Vector2Int(bx * CityMap.Block + 2, by * CityMap.Block + 2);
+                    var z = CityMap.ZoneOf(c);
+                    if (z != Zone.OldTown && z != Zone.Mixed && z != Zone.HighRise && z != Zone.Campus) continue;
+                    bool ok = true;
+                    for (int dx = -1; dx <= 1 && ok; dx++)
+                        for (int dy = -1; dy <= 1 && ok; dy++)
+                        {
+                            var t = new Vector2Int(c.x + dx, c.y + dy);
+                            if (map.IsRoad(t.x, t.y) || CityMap.WaterAt(t.x, t.y) || CityMap.RailAt(t.x, t.y) || shopTiles.ContainsKey(t) ||
+                                t == map.HQTile || t == CityMap.PlazaCenter || CityMap.ZoneOf(t) != z) ok = false;
+                        }
+                    if (ok) aday.Add(c);
+                }
+            var rng = new System.Random(4242);
+            var simgeler = new List<GameObject>(ownSimge);
+            while (simgeler.Count > 0 && aday.Count > 0)
+            {
+                var c = aday[rng.Next(aday.Count)];
+                aday.Remove(c);
+                bool komsu = false;
+                foreach (var k in simgeBlok.Keys)
+                    if (Mathf.Abs(k.x - c.x) <= CityMap.Block && Mathf.Abs(k.y - c.y) <= CityMap.Block) komsu = true;
+                if (komsu) continue;
+                int i = rng.Next(simgeler.Count);
+                simgeBlok[c] = simgeler[i];
+                simgeler.RemoveAt(i);
+            }
+        }
+
+        static bool BlokVar => UsePack && blokDuz != null && blokDuz.Count > 0;
+
+        /// <summary>İstenen kata en yakın blok modeli (aynı kattan rastgele varyant).</summary>
+        static GameObject BlokSec(Dictionary<int, List<GameObject>> d, int floors, System.Random rng)
+        {
+            if (d == null || d.Count == 0) return null;
+            int best = -1, bestFark = int.MaxValue;
+            foreach (var k in d.Keys)
+            {
+                int f = Mathf.Abs(k - floors);
+                if (f < bestFark || (f == bestFark && rng.Next(2) == 0)) { bestFark = f; best = k; }
+            }
+            var l = d[best];
+            return l[rng.Next(l.Count)];
+        }
+
+        /// <summary>
+        /// Blok binası: tek yola bakan kare ara bina, iki dik yola bakan kare köşe binası (L).
+        /// Kanonik köşe modeli kuzey ve doğu yollarına bakar (yol köşesiyle aynı dönüş kuralı).
+        /// </summary>
+        void AddBlok(CityMap map, Vector2Int t, int floors, System.Random rng)
+        {
+            bool n = t.y < CityMap.Height - 1 && map.IsRoad(t.x, t.y + 1);
+            bool s = t.y > 0 && map.IsRoad(t.x, t.y - 1);
+            bool e = t.x < CityMap.Width - 1 && map.IsRoad(t.x + 1, t.y);
+            bool w = t.x > 0 && map.IsRoad(t.x - 1, t.y);
+            bool kose = (n || s) && (e || w) && blokKose != null && blokKose.Count > 0;
+            GameObject p;
+            float aci;
+            if (kose)
+            {
+                // İki dik yol: güneydeki ve doğudaki yol öncelikli (üç yola bakan karede)
+                bool kn = !s && n, ke = e;
+                aci = (kn && ke) ? 0f : kn ? 90f : !ke ? 180f : 270f;
+                p = BlokSec(blokKose, floors, rng);
+            }
+            else
+            {
+                aci = FaceAngle(map, t);
+                p = BlokSec(blokDuz, floors, rng);
+            }
+            AddPrefab(p, t, 1.003f, aci, null, default, 0f, true, true);
         }
 
         GameObject Pick(GameObject[] list, System.Random rng, int floors, bool shop)
@@ -621,9 +780,31 @@ namespace KuryeTycoon
         /// Şehir dışı: ormanlar ve çiftlikler 3D (tarla, çayır, nehir ve kır yolları 2D haritadan görünür).
         /// Parçalar merkez ofisin karesine bağlanır (o kare hep açık): kilitli bölge gibi kararmazlar.
         /// </summary>
+        /// <summary>Kır yolları şehir yollarıyla aynı 3D parçalarla döşenir (şehirden ne kadar uzağa).</summary>
+        const int KirYoluUzunluk = 30;
+
         void BuildCountryside(CityMap map, bool pack, bool packTreesOk, System.Random rng)
         {
             var anchor = map.HQTile;
+            if (UsePack && UseRoads && roadStraight != null)
+            {
+                foreach (var r in CityMap.CountryRoads)
+                {
+                    bool yatay = Mathf.Approximately(r.a.y, r.b.y);
+                    int sabit = Mathf.RoundToInt(yatay ? r.a.y : r.a.x);
+                    float bas = yatay ? Mathf.Min(r.a.x, r.b.x) : Mathf.Min(r.a.y, r.b.y);
+                    float son = yatay ? Mathf.Max(r.a.x, r.b.x) : Mathf.Max(r.a.y, r.b.y);
+                    int lim = yatay ? CityMap.Width : CityMap.Height;
+                    for (int k = Mathf.CeilToInt(bas); k <= Mathf.FloorToInt(son); k++)
+                    {
+                        if (k >= 0 && k < lim) continue;                                   // şehrin içi: zaten yol karesi
+                        if ((k < 0 ? -k : k - lim + 1) > KirYoluUzunluk) continue;
+                        var t = yatay ? new Vector2Int(k, sabit) : new Vector2Int(sabit, k);
+                        // Parçalar merkez ofisin karesine bağlanır: kilitli bölge gibi kararmasın
+                        AddFlat(roadStraight, anchor, yatay ? 90f : 0f, 1, new Vector2(t.x - anchor.x, t.y - anchor.y));
+                    }
+                }
+            }
             int sira = 0;
             bool extras = UsePack && countryExtras != null && countryExtras.Length > 0;
             foreach (var t in map.CountryTrees)
@@ -725,7 +906,9 @@ namespace KuryeTycoon
 
             var b = CombinedBounds(renderers);
             float horiz = Mathf.Max(b.size.x, b.size.y);
-            float s = targetHeight > 0f ? targetHeight / Mathf.Max(0.001f, b.size.z) : footprint / Mathf.Max(0.001f, horiz);
+            // Blok binaları tam 10 m kare: ölçek sabit (1 m = 0,1 kare), çizgi kabuğu yüzünden küçülüp aralarında boşluk kalmasın
+            float s = targetHeight > 0f ? targetHeight / Mathf.Max(0.001f, b.size.z)
+                    : prefab.name.StartsWith("Blok_") ? footprint * 0.1f : footprint / Mathf.Max(0.001f, horiz);
             inst.transform.localScale = Vector3.one * s;
             b = CombinedBounds(renderers);
             inst.transform.position += new Vector3(holder.position.x - b.center.x, holder.position.y - b.center.y, -b.max.z);
@@ -743,7 +926,6 @@ namespace KuryeTycoon
 
         static void TintVaried(Renderer[] rs, bool dark, int seed)
         {
-            var locked = new Color(0.3f, 0.3f, 0.33f);
             foreach (var r in rs)
             {
                 r.SetPropertyBlock(null);
@@ -753,7 +935,8 @@ namespace KuryeTycoon
                     var m = mats[i];
                     if (m == null || m.name.StartsWith("Cizgi")) continue;   // siyah çizgi hep siyah
                     Color c = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color;
-                    c = dark ? locked : Vary(c, m.name, seed);
+                    c = Vary(c, m.name, seed);
+                    if (dark) c = CityMap.LockedTint(c);
                     var mpb = new MaterialPropertyBlock();
                     mpb.SetColor("_BaseColor", c);
                     mpb.SetColor("_Color", c);
@@ -797,52 +980,108 @@ namespace KuryeTycoon
             if (seed >= 0) { TintVaried(rs, dark, seed); return; }
             foreach (var r in rs)
             {
-                if (!dark) { r.SetPropertyBlock(null); continue; } // malzemenin kendi rengi
-                var mpb = new MaterialPropertyBlock();
-                var c = new Color(0.3f, 0.3f, 0.33f);
-                mpb.SetColor("_BaseColor", c);
-                mpb.SetColor("_Color", c);
-                r.SetPropertyBlock(mpb);
+                r.SetPropertyBlock(null);
+                if (!dark) continue; // malzemenin kendi rengi
+                // Kilitli bölge: her malzeme kendi renginin soluk hâli (düz gri değil)
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var m = mats[i];
+                    if (m == null || m.name.StartsWith("Cizgi") || m.name.StartsWith("IsikHavuz")) continue;
+                    var c = CityMap.LockedTint(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color);
+                    var mpb = new MaterialPropertyBlock();
+                    mpb.SetColor("_BaseColor", c);
+                    mpb.SetColor("_Color", c);
+                    r.SetPropertyBlock(mpb, i);
+                }
             }
         }
 
         // ---------- Yollar ve zemin ----------
 
-        /// <summary>Komşu yollara göre parça seçer: düz, köşe, T, dörtlü kavşak.</summary>
+        /// <summary>Ana cadde çizgileri: her ikinci blok yolu (dikeyde x = 8, 16 …; yatayda y = 4, 12 …), harita kenarı hariç.</summary>
+        public static bool AvenueColumn(int x) => x % (CityMap.Block * 2) == 0 && x > 0 && x < CityMap.Width - 1;
+        public static bool AvenueRow(int y) => y % (CityMap.Block * 2) == CityMap.Block && y > 0 && y < CityMap.Height - 1;
+        bool AvenuesOn => avenueStraight != null && avenueJunction != null && avenueJunction.Count >= 8;
+
+        /// <summary>Yön (0 kuzey, 1 batı, 2 güney, 3 doğu) kolunda cadde mi? Kuzey-güney kolu sütuna, doğu-batı satıra bağlı.</summary>
+        static bool ArmAvenue(Vector2Int t, int dir) => (dir % 2 == 0) ? AvenueColumn(t.x) : AvenueRow(t.y);
+
+        GameObject Junction(string ad) => avenueJunction != null && avenueJunction.TryGetValue(ad, out var p) ? p : null;
+
+        /// <summary>Komşu yollara göre parça seçer: düz, köşe, T, dörtlü kavşak (ana caddelerde geniş sürümleri).</summary>
         void AddRoad(CityMap map, Vector2Int t, int order = 1)
         {
-            bool n = t.y < CityMap.Height - 1 && map.IsRoad(t.x, t.y + 1);
-            bool s = t.y > 0 && map.IsRoad(t.x, t.y - 1);
-            bool e = t.x < CityMap.Width - 1 && map.IsRoad(t.x + 1, t.y);
-            bool w = t.x > 0 && map.IsRoad(t.x - 1, t.y);
+            // Harita kenarındaki yol karesi: şehir dışına devam eden kır yolu da komşu sayılır (kavşak doğru seçilsin)
+            bool n = t.y < CityMap.Height - 1 ? map.IsRoad(t.x, t.y + 1) : CityMap.CountryRoadAt(t.x, t.y + 1);
+            bool s = t.y > 0 ? map.IsRoad(t.x, t.y - 1) : CityMap.CountryRoadAt(t.x, t.y - 1);
+            bool e = t.x < CityMap.Width - 1 ? map.IsRoad(t.x + 1, t.y) : CityMap.CountryRoadAt(t.x + 1, t.y);
+            bool w = t.x > 0 ? map.IsRoad(t.x - 1, t.y) : CityMap.CountryRoadAt(t.x - 1, t.y);
             int count = (n ? 1 : 0) + (s ? 1 : 0) + (e ? 1 : 0) + (w ? 1 : 0);
-            // Açılar Z ekseninde, saat yönünün tersine: 0 = kuzey, 90 = batı, 180 = güney, 270 = doğu
-            if (count >= 4) { AddFlat(roadCross, t, 0f, order); return; }
+            bool av = AvenuesOn;
+            // Açılar Z ekseninde, saat yönünün tersine: 0 = kuzey, 90 = batı, 180 = güney, 270 = doğu.
+            // k adım (90°) döndürünce kanonik yön d dünyada (d + k) % 4 olur.
+            if (count >= 4)
+            {
+                bool cv = ArmAvenue(t, 0), ch = ArmAvenue(t, 1);
+                if (av && cv && ch && Junction("Yol_kavsak_cc") != null) { AddFlat(Junction("Yol_kavsak_cc"), t, 0f, order); return; }
+                if (av && (cv || ch) && Junction("Yol_kavsak_ca") != null) { AddFlat(Junction("Yol_kavsak_ca"), t, cv ? 0f : 90f, order); return; }
+                AddFlat(roadCross, t, 0f, order);
+                return;
+            }
             if (count == 3 && roadT != null)
             {
                 // Kanonik T: batı-kuzey-doğu (güney yok)
-                float a = !s ? 0f : !e ? 90f : !n ? 180f : 270f;
-                AddFlat(roadT, t, a + RoadOffset(2), order);
+                int k = !s ? 0 : !e ? 1 : !n ? 2 : 3;
+                if (av)
+                {
+                    bool bar = ArmAvenue(t, (1 + k) % 4), govde = ArmAvenue(t, k % 4);
+                    var jp = (bar || govde) ? Junction("Yol_t_" + (bar ? "c" : "s") + (govde ? "c" : "s")) : null;
+                    if (jp != null) { AddFlat(jp, t, k * 90f, order); return; }
+                }
+                AddFlat(roadT, t, k * 90f + RoadOffset(2), order);
                 return;
             }
             if (count == 2 && !(n && s) && !(e && w) && roadCorner != null)
             {
                 // Kanonik köşe: kuzey-doğu
-                float a = (n && e) ? 0f : (n && w) ? 90f : (s && w) ? 180f : 270f;
-                AddFlat(roadCorner, t, a + RoadOffset(1), order);
+                int k = (n && e) ? 0 : (n && w) ? 1 : (s && w) ? 2 : 3;
+                if (av)
+                {
+                    bool ku = ArmAvenue(t, k % 4), do_ = ArmAvenue(t, (3 + k) % 4);
+                    var jp = (ku || do_) ? Junction("Yol_kose_" + (ku ? "c" : "s") + (do_ ? "c" : "s")) : null;
+                    if (jp != null) { AddFlat(jp, t, k * 90f, order); return; }
+                }
+                AddFlat(roadCorner, t, k * 90f + RoadOffset(1), order);
                 return;
             }
             if (count >= 3) { AddFlat(roadCross, t, 0f, order); return; }
             // Düz: kanonik kuzey-güney
             float st = (e || w) && !(n || s) ? 90f : 0f;
-            AddFlat(roadStraight, t, st + RoadOffset(0), order);
+            bool cadde = st == 0f ? AvenueColumn(t.x) : AvenueRow(t.y);
+            if (av && cadde)
+            {
+                // Ana cadde: geniş, çoğu ağaçlı (referanstaki bulvarlar)
+                var c = avenueStraightTrees != null && ((t.x * 7 + t.y * 13) % 5) != 0 ? avenueStraightTrees : avenueStraight;
+                AddFlat(c, t, st, order);
+                return;
+            }
+            var straight = roadStraight;
+            if (roadStraightTrees != null && CityMap.InCity(t.x, t.y))
+            {
+                // Caddeler yoksa eski davranış (ana yollar ağaçlı); varsa sokakların küçük bir kısmı ağaçlı
+                bool avenue = st == 0f ? (t.x / CityMap.Block) % 2 == 0 : (t.y / CityMap.Block) % 2 == 1;
+                if (!av && avenue && ((t.x * 7 + t.y * 13) % 5) != 0) straight = roadStraightTrees;
+                else if (av && ((t.x * 11 + t.y * 5) % 4) == 0) straight = roadStraightTrees;
+            }
+            AddFlat(straight, t, st + RoadOffset(0), order);
         }
 
         /// <summary>Düz parça: kareyi tam kaplar, yüzeyi zeminin hemen üstünde, yükselmez.</summary>
-        void AddFlat(GameObject prefab, Vector2Int tile, float angle, int order = 1)
+        void AddFlat(GameObject prefab, Vector2Int tile, float angle, int order = 1, Vector2 offset = default)
         {
             if (prefab == null) return;
-            var holder = Holder(prefab.name, tile, Vector2.zero);
+            var holder = Holder(prefab.name, tile, offset);
             var inst = Instantiate(prefab, holder, false);
             inst.transform.localPosition = Vector3.zero;
             inst.transform.localScale = Vector3.one;

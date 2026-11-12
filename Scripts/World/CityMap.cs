@@ -67,32 +67,34 @@ namespace KuryeTycoon
         /// . kır (şehir dışı: yol yok, orman ve çayır; şehrin sınırı girintili çıkıntılı olsun diye)
         /// Sütunlar: bx 0–2 Batı Liman · 3–5 Merkez · 6–8 Doğu · 9–11 Sanayi; by 6–7 Yeşil Tepe.
         /// </summary>
+        // Budapeşte gibi: merkez nehrin iki yakasında (Pest ve Buda iç semtleri) bitişik nizam, avlulu yoğun bloklar ve kuleler;
+        // dışa doğru çarşı (karışık), en dışta müstakil ev mahalleleri (Yeşil Tepe = Buda tepeleri); sanayi ve liman doğuda.
         static readonly string[] Layout =
         {
-            ".MMOOOEEEACC",   // by 0
-            "WAMOZPMEEMAM",   // by 1  (otogar, meydan + HQ, Belediye Parkı, Nyír Plaza AVM)
-            "WPMMOMMPMMWW",   // by 2  (liman, nehir kıyısı)
+            ".EEOOMMEEACC",   // by 0  dış güney: bahçeli evler, eski şehrin ucu, Tepe AVM, kampüs
+            "WAMOZPOMMEAE",   // by 1  (otogar, meydan + HQ, Belediye Parkı, Nyír Plaza AVM)
+            "WMOOHOOPMMEE",   // by 2  güney yakası: yoğun merkez (Buda iç semtleri), Nehir Parkı
             "RRRRRRRRRRRR",   // by 3  Tisza
-            "MHMHHMMHMWWW",   // by 4
-            ".MOHHHEMEWWW",   // by 5  (tren yolu sanayide)
-            ".EEEMEEPEEM.",   // by 6  Yeşil Tepe
-            "..PEEEPEEE..",   // by 7  Yeşil Tepe
+            "MMOOHHOOMMWW",   // by 4  kuzey yakası: yoğun merkez (Pest iç semtleri), doğuda sanayi
+            ".EMOHHMMEWWW",   // by 5  kule bloklar, dışa doğru çarşı ve evler (tren yolu sanayide)
+            ".EEEEPEEEEE.",   // by 6  Yeşil Tepe: müstakil evler
+            "..EEEPEEEE..",   // by 7  Yeşil Tepe
         };
 
         /// <summary>
         /// Blokların içinden geçen ara sokaklar: - doğu-batı (bloğun ortasından), | kuzey-güney, . yok.
-        /// Eski şehir, çarşı ve bahçeli evler küçük parsellere bölünür (daha sık, daha karışık şehir).
+        /// Merkezdeki bloklar bölünmez (avlulu kapalı bloklar); müstakil ev mahalleleri küçük parsellere bölünür (çok sokaklı).
         /// </summary>
         static readonly string[] Alleys =
         {
-            "..|-|-|.|...",   // by 0
-            "...|...-....",   // by 1
-            "..|.-.-.....",   // by 2
+            ".|-..-.|-...",   // by 0
+            ".........-.|",   // by 1
+            "..........-|",   // by 2
             "............",   // by 3  nehir
-            "|....-......",   // by 4
-            "..|...|.-...",   // by 5
-            ".-.|.-.|-|..",   // by 6
-            "...|-.-|-...",   // by 7
+            "............",   // by 4
+            ".|......-...",   // by 5
+            ".-|-|.-|-|-.",   // by 6
+            "..|-|.-|-|..",   // by 7
         };
 
         /// <summary>Kaldırılan yol parçaları (iki blok birleşip büyük ada olur): (x, y başı, y sonu) dikey parçalar.</summary>
@@ -255,7 +257,7 @@ namespace KuryeTycoon
 
         public static readonly Color RoadColor = new Color(0.25f, 0.26f, 0.30f);
         public static readonly Color BridgeColor = new Color(0.42f, 0.40f, 0.38f);
-        public static readonly Color WaterColor = new Color(0.22f, 0.50f, 0.72f);
+        public static readonly Color WaterColor = new Color(0.36f, 0.62f, 0.84f);   // açık, canlı nehir mavisi
         public static readonly Color GrassColor = new Color(0.40f, 0.62f, 0.33f);
         public static readonly Color RiverBankColor = new Color(0.44f, 0.64f, 0.35f);
         public static readonly Color PlazaColor = new Color(0.82f, 0.76f, 0.64f);
@@ -390,6 +392,21 @@ namespace KuryeTycoon
             return false;
         }
 
+        /// <summary>Harita dışındaki (x, y) karesi bir kır yolunun üstünde mi?</summary>
+        public static bool CountryRoadAt(int x, int y)
+        {
+            if (x >= 0 && y >= 0 && x < Width && y < Height) return false;
+            foreach (var r in CountryRoads)
+            {
+                if (Mathf.Approximately(r.a.y, r.b.y))
+                {
+                    if (Mathf.RoundToInt(r.a.y) == y && x >= Mathf.Min(r.a.x, r.b.x) - 0.5f && x <= Mathf.Max(r.a.x, r.b.x) + 0.5f) return true;
+                }
+                else if (Mathf.RoundToInt(r.a.x) == x && y >= Mathf.Min(r.a.y, r.b.y) - 0.5f && y <= Mathf.Max(r.a.y, r.b.y) + 0.5f) return true;
+            }
+            return false;
+        }
+
         static bool NearCountryRoad(Vector2 p, float margin)
         {
             foreach (var r in CountryRoads)
@@ -425,7 +442,7 @@ namespace KuryeTycoon
             for (float x = -ring; x < Width + ring; x += 6f)
                 for (float y = -ring; y < Height + ring; y += 5f)
                 {
-                    if (rng.NextDouble() < 0.25) continue;          // arada çayır kalsın
+                    if (rng.NextDouble() < 0.6) continue;           // çoğu yer çayır ve ağaç kümesi (referanstaki gibi), tarla seyrek
                     float w = 4f + (float)rng.NextDouble() * 2f, h = 3f + (float)rng.NextDouble() * 2f;
                     var r = new Rect(x + 0.4f, y + 0.4f, w, h);
                     if (!RectClear(r, 0.6f)) continue;
@@ -892,7 +909,8 @@ namespace KuryeTycoon
         public static Color LockedTint(Color c)
         {
             float g = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
-            return Color.Lerp(Color.Lerp(c, new Color(g, g, g), 0.55f), Color.black, 0.38f);
+            // Kilitli bölge: düz koyu gri değil, rengi solmuş ama seçilebilen şehir (referanstaki gibi canlı görünsün)
+            return Color.Lerp(Color.Lerp(c, new Color(g, g, g), 0.5f), Color.black, 0.16f);
         }
 
         void LateUpdate()
