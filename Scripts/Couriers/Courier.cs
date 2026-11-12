@@ -346,6 +346,13 @@ namespace KuryeTycoon
             return string.Join(" · ", parts);
         }
 
+        /// <summary>Öğrenci bu gün (0 = Pzt) bu saatte derste mi (bu dönemin programına göre).</summary>
+        static bool InClassAt(int seed, GameClock c, int dow, int h)
+        {
+            ClassesFor(seed, SemesterIndex(c), dow, out int s1, out int e1, out int s2, out int e2);
+            return (s1 >= 0 && h >= s1 && h < e1) || (s2 >= 0 && h >= s2 && h < e2);
+        }
+
         bool InClass(GameClock c, int hourOffset)
         {
             int h = c.Hour + hourOffset;
@@ -403,8 +410,17 @@ namespace KuryeTycoon
         public float Preference()
         {
             var c = GameClock.I;
-            int h = c.Hour;
-            bool we = c.IsWeekend;
+            return PreferenceAt(occupation, scheduleSeed, c, c.DayOfWeek, c.Hour);
+        }
+
+        /// <summary>
+        /// Bu meslekteki biri haftanın bu gününde (0 = Pzt) bu saatte kuryelik yapmayı ne kadar ister (0–1).
+        /// Kuryenin çevrimiçi olma kararı da İşe Alım'daki "Çalışma saatleri" şeridi de bunu kullanır (ikisi hep aynı).
+        /// weekOffset: vardiyalı işçi için 0 = bu hafta, 1 = gelecek hafta. Sınav ve tatil dönemleri bugünün tarihine göre.
+        /// </summary>
+        public static float PreferenceAt(Occupation occupation, int scheduleSeed, GameClock c, int dow, int h, int weekOffset = 0)
+        {
+            bool we = dow >= 5;
             switch (occupation)
             {
                 case Occupation.OfisCalisani:
@@ -418,14 +434,14 @@ namespace KuryeTycoon
                     if (IsExamPeriod(c)) return (h >= 20 && h < 23) ? 0.2f : 0.03f;
                     if (IsSchoolHoliday(c) || we) return (h >= 10 && h < 23) ? 0.85f : 0.05f;
                     // Kendi ders programı: derste ve derse gitmeden önceki saatte çalışmaz
-                    if (InClass(c, 0)) return 0.03f;
-                    if (InClass(c, 1)) return 0.1f;
+                    if (InClassAt(scheduleSeed, c, dow, h)) return 0.03f;
+                    if (InClassAt(scheduleSeed, c, dow, h + 1)) return 0.1f;
                     if (h >= 10 && h < 23) return 0.8f;
                     return (h >= 8 && h < 10) ? 0.4f : 0.05f;
 
                 case Occupation.Vardiyali:
                     if (we) return (h >= 10 && h < 20) ? 0.6f : 0.05f;
-                    if (FactoryMorningWeek(c)) return (h >= 15 && h < 23) ? 0.85f : 0.03f;
+                    if (FactoryMorningWeek(c) == (weekOffset % 2 == 0)) return (h >= 15 && h < 23) ? 0.85f : 0.03f;
                     return (h >= 7 && h < 13) ? 0.85f : 0.03f;
 
                 case Occupation.Emekli:

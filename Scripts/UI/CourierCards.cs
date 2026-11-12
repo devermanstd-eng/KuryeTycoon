@@ -263,6 +263,7 @@ namespace KuryeTycoon
 
             GUILayout.Space(2);
             SkillGrid(cand.speedSkill, cand.care, cand.politeness, cand.stamina);
+            WorkHoursSection(cand.occupation, cand.scheduleSeed);   // Çalışma saatleri (WorkHoursView.cs)
 
             if (open)
             {

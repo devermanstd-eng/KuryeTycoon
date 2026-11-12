@@ -1418,10 +1418,11 @@ namespace KuryeTycoon
                 else applicationFilter = -1;
                 if (applicationFilter >= 0 && ApplicationCountByVehicle((VehicleKind)applicationFilter) == 0)
                     GUILayout.Label($"{GameData.Vehicle((VehicleKind)applicationFilter).name} ile başvuran yok.", small);
+                WorkPartFilterBar(cm.Applications);   // saat filtresi (WorkHoursView.cs)
             }
 
             foreach (var cand in cm.Applications)
-                if (PassesFilter(applicationFilter, cand.vehicle)) DrawCandidateCard(cand, now);
+                if (PassesFilter(applicationFilter, cand.vehicle) && PassesWorkFilter(cand)) DrawCandidateCard(cand, now);
 
             // Destek personeli de buradan işe alınabilir (Destek menüsü açıldıktan sonra)
             if (!TabOpen(Tab.Destek)) return;
