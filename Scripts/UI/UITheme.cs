@@ -10,9 +10,9 @@ namespace KuryeTycoon
     public static class UITheme
     {
         // ---------- Kâğıt teması (CityRT tarzı): krem paneller, koyu kahve mürekkep çerçeve ve yazı ----------
-        // Oyunun tek teması (eski koyu tema seçeneği kaldırıldı: iki temayı birden bakımlı tutmak yerine biri seçildi).
-        // Kurye telefonu koyu ekran olarak kalır (Klasik).
-        public static bool Kagit => true;
+        // Oyunun tek teması koyu tema (iki temayı birden bakımlı tutmak yerine biri seçildi). Kâğıt temasının kodu duruyor:
+        // burayı true yapınca krem paneller ve elle çizilmiş simgeler geri gelir.
+        public static bool Kagit => false;
         /// <summary>Bu kapsamda çizilenler eski koyu renklerinde kalır (kurye telefonu ekranı).</summary>
         public static bool Klasik;
         static bool KagitAcik => Kagit && !Klasik;
