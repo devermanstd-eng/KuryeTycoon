@@ -31,6 +31,7 @@ namespace KuryeTycoon
             otoCache = -2;
             orijinalAlindi = false;
             uygulandi = false;
+            lodAlindi = false;
         }
 
         /// <summary>Oyuncunun seçimi: −1 otomatik, 0–2 sabit.</summary>
@@ -84,6 +85,12 @@ namespace KuryeTycoon
           : AntialiasingMode.None;
 
         public static bool YumusakGolge => Seviye >= Orta;
+
+        /// <summary>Yol, kaldırım ve park zeminleri gölge düşürsün mü (üstlerindeki lamba ve ağaçlar dahil).</summary>
+        public static bool ZeminGolgesi => Seviye >= Orta;
+
+        /// <summary>Uzak binalarda hafif modele geçiş: düşük kalitede daha erken.</summary>
+        public static float LodCarpani => Seviye == Yuksek ? 1f : Seviye == Orta ? 0.8f : 0.55f;
         public static bool Isima => Seviye >= Orta;
 
         // ---------------------------------------------------------------- render ayarı
@@ -160,6 +167,23 @@ namespace KuryeTycoon
                 uygulandi = true;
             }
             if (Gorsel3D.I != null) Gorsel3D.I.KaliteyeUy();
+            if (City3D.I != null) City3D.I.ApplyQuality();
+            if (!lodAlindi) { lodAlindi = true; oLodBias = QualitySettings.lodBias; Application.quitting += () => QualitySettings.lodBias = oLodBias; }
+            QualitySettings.lodBias = oLodBias * LodCarpani;
+        }
+
+        static bool lodAlindi;
+        static float oLodBias = 1f;
+
+        /// <summary>
+        /// Kare hızı sınırı: ekranın yenileme hızı (en çok 60). Sınırsızken ekran kartı boşuna tam güçte çalışır,
+        /// dizüstü ısınır ve fan döner; tycoon oyununda 60 kare yeter.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        static void KareSiniri()
+        {
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = 60;
         }
 
         /// <summary>Oyundan çıkarken render ayarını diskteki hâline döndür (editörde dosya değişmiş görünmesin).</summary>

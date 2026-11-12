@@ -287,7 +287,8 @@ namespace KuryeTycoon
             }
             active = true;
             // Şehir yeniden boyandıysa (bölge açıldı, sözleşme değişti) camların rengi sıfırlandı: hepsini yeniden uygula
-            if (tintVersion != City3D.TintVersion) { tintVersion = City3D.TintVersion; foreach (var e in entries) e.state = -1; timer = 0f; }
+            // (City3D boyarken bütün parçaları gündüz malzemesine döndürür: gündüz malzemeleri ve kilit durumu baştan okunur)
+            if (tintVersion != City3D.TintVersion) { tintVersion = City3D.TintVersion; Collect(); timer = 0f; }
 
             // Televizyonlar ve arızalı lambalar titrer (ortak malzemeler: tek tek boyamaya gerek yok)
             float t = Time.unscaledTime;
@@ -331,15 +332,7 @@ namespace KuryeTycoon
                 var nm = lit ? Night(e.day, e.variant, e.locked) : e.day;
                 mats[e.index] = nm;
                 e.r.sharedMaterials = mats;
-                // Bina renk çeşitliliği (City3D) camın rengini property block ile sabitliyor: yanınca sıcak renge geçir
-                if (e.kind != Kind.Lamp && e.kind != Kind.Sign && !e.locked)
-                {
-                    e.r.GetPropertyBlock(mpb, e.index);
-                    var bc = nm.HasProperty("_BaseColor") ? nm.GetColor("_BaseColor") : nm.color;
-                    mpb.SetColor("_BaseColor", bc);
-                    mpb.SetColor("_Color", bc);
-                    e.r.SetPropertyBlock(mpb, e.index);
-                }
+                // (City3D artık property block kullanmıyor: gece malzemesinin kendi rengi görünür, parça toplu çizime girer)
             }
         }
 
