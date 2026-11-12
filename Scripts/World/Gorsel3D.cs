@@ -32,6 +32,7 @@ namespace KuryeTycoon
 
         Light sun;
         Volume volume;
+        Bloom bloom;
         bool pipelineOk;
         Camera lastCam;
 
@@ -110,6 +111,15 @@ namespace KuryeTycoon
             CreateSun();
             CreateVolume();
             UpdateLighting();
+            GrafikKalitesi.Uygula();      // grafik kalitesi ayarı (Ayarlar > Harita): gölge, kenar yumuşatma, SSAO, ışıma
+        }
+
+        /// <summary>Grafik kalitesi değişince: güneş gölgesi yumuşak/sert, ışıma açık/kapalı, kamera ayarı yeniden.</summary>
+        public void KaliteyeUy()
+        {
+            if (sun != null) sun.shadows = GrafikKalitesi.YumusakGolge ? LightShadows.Soft : LightShadows.Hard;
+            if (bloom != null) bloom.active = GrafikKalitesi.Isima;
+            lastCam = null;
         }
 
         void OnDestroy()
@@ -166,7 +176,7 @@ namespace KuryeTycoon
             var wb = p.Add<WhiteBalance>(true);
             wb.temperature.Override(7f);          // hafif sıcak (öğleden sonra güneşi)
 
-            var bloom = p.Add<Bloom>(true);
+            bloom = p.Add<Bloom>(true);
             bloom.intensity.Override(0.25f);
             bloom.threshold.Override(1.05f);
             bloom.scatter.Override(0.6f);
@@ -190,7 +200,7 @@ namespace KuryeTycoon
                 {
                     data.renderPostProcessing = true;
                     data.renderShadows = true;
-                    data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+                    data.antialiasing = GrafikKalitesi.KenarYumusatma;
                 }
             }
             UpdateLighting();
