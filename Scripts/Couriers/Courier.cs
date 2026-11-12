@@ -645,7 +645,7 @@ namespace KuryeTycoon
             balance += amount;
 
             // Kesilmemiş ekipman depozitosu varsa kazancından kesilir
-            if (depositOwed > 0 && balance > 0) EconomyManager.I.CollectGearDeposit(this);
+            if (Sade.Depozito && depositOwed > 0 && balance > 0) EconomyManager.I.CollectGearDeposit(this);
         }
 
         /// <summary>Nakit bahşiş: doğrudan kuryenin cebine gider.</summary>
@@ -667,7 +667,7 @@ namespace KuryeTycoon
             AddInbox($"Hesabına {GameData.Ft(amount)} yattı.");
         }
 
-        public bool CanTakeCash(long amount) => !cashBlocked && cashHeld + amount <= CashLimit;
+        public bool CanTakeCash(long amount) => !Sade.NakitBorcu || (!cashBlocked && cashHeld + amount <= CashLimit);
         public long KeepCashCapacity => (long)(balance * KeepCashShare) / 10 * 10;
 
         /// <summary>
@@ -676,6 +676,13 @@ namespace KuryeTycoon
         /// </summary>
         public void SettleCash(bool monthEnd)
         {
+            if (!Sade.NakitBorcu)
+            {
+                // Sade: nakit borcu yok. Eski kayıttan kalan nakit kasaya aktarılır, kilit kalkar.
+                if (cashHeld > 0) EconomyManager.I.Offload(this, cashHeld);
+                cashHeld = 0; cashBlocked = false;
+                return;
+            }
             if (cashHeld <= 0) { cashHeld = 0; cashBlocked = false; return; }
 
             long keep = System.Math.Min(cashHeld, KeepCashCapacity);
@@ -1439,6 +1446,7 @@ namespace KuryeTycoon
         void DirtyBag(Order o)
         {
             bagUses++;
+            if (!Sade.Hijyen) { hygiene = MaxHygiene; return; }   // sade: çanta kirlenmez, yalnızca yıpranır
             float d = 0.008f;
             if (o.shop.def.hotFood) d *= 1.3f;              // yağ, sos
             if (o.IsHeavy || o.weightKg > 10f) d *= 1.3f;
@@ -1461,6 +1469,7 @@ namespace KuryeTycoon
         /// </summary>
         void HourlyHygiene()
         {
+            if (!Sade.Hijyen) { hygiene = MaxHygiene; cleanRequested = false; return; }
             if (OrderCount > 0 || hygiene >= MaxHygiene - 0.01f) return;
             if (cleanRequested) { CleanBag(); return; }
             // Herkesin kendi eşiği var: titiz kurye çanta biraz kirlenince, dağınık kurye ancak iyice kirlenince temizler

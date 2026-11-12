@@ -142,6 +142,30 @@ namespace KuryeTycoon
 
         static float UiSizeFactor => UiSizeFactors[UiSizeSetting];
 
+        // ---------------------------------------------------------------- Ayarlar > Harita > Grafik
+
+        void DrawGraphicsSettings()
+        {
+            Section("Grafik", "Oyun kasıyorsa kaliteyi düşür. Otomatik: oyun kare hızına bakıp kendisi ayarlar. " +
+                              "Yüksek: yumuşak gölgeler, ortam gölgesi, ışıma. Düşük: sert gölgeler, daha düşük çözünürlük, gece daha az lamba ışığı.");
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Kalite", body, GUILayout.Width(70));
+            if (SelectButton(GrafikKalitesi.Ayar == GrafikKalitesi.Otomatik, "Otomatik", smallButton))
+                deferred = () => GrafikKalitesi.Ayar = GrafikKalitesi.Otomatik;
+            for (int i = 0; i < GrafikKalitesi.Adlar.Length; i++)
+            {
+                int k = i;
+                if (SelectButton(GrafikKalitesi.Ayar == i, GrafikKalitesi.Adlar[i], smallButton)) deferred = () => GrafikKalitesi.Ayar = k;
+            }
+            GUILayout.EndHorizontal();
+            string fps = GrafikOlcer.I != null && GrafikOlcer.I.Fps > 0f ? $" · şu an ~{GrafikOlcer.I.Fps:0} FPS" : "";
+            string oto = GrafikKalitesi.Ayar == GrafikKalitesi.Otomatik ? $"Otomatik → {GrafikKalitesi.Adlar[GrafikKalitesi.Seviye]}" : GrafikKalitesi.Adlar[GrafikKalitesi.Seviye];
+            GUILayout.Label(Gorsel3D.Active ? $"Geçerli: {oto}{fps}" : $"3D ışık kapalı (eski düz görünüm){fps}", small);
+            bool isik = GUILayout.Toggle(Gorsel3D.Enabled, " Gerçek ışık ve gölge (3D). Kapatınca eski düz görünüm; oyunu yeniden başlatınca uygulanır", toggle);
+            if (isik != Gorsel3D.Enabled) Gorsel3D.Enabled = isik;
+            GUILayout.Space(8);
+        }
+
         // ---------------------------------------------------------------- Ayarlar > Arayüz
 
         void DrawInterfaceSettings()
@@ -158,8 +182,6 @@ namespace KuryeTycoon
             }
             GUILayout.EndHorizontal();
             GUILayout.Space(4);
-            bool kagit = GUILayout.Toggle(UITheme.Kagit, " Kâğıt tema: krem paneller ve elle çizilmiş simgeler (kapalıyken eski koyu tema)", toggle);
-            if (kagit != UITheme.Kagit) deferred = () => { UITheme.Kagit = kagit; RefreshTheme(); };
             bool push = GUILayout.Toggle(PushMapSetting, " Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", toggle);
             if (push != PushMapSetting) PushMapSetting = push;
             DrawFeedbackSettings();

@@ -294,7 +294,7 @@ namespace KuryeTycoon
         int lastUnlock = -1;
         int lastContracts = -1;
 
-        void Awake() { I = this; }
+        void Awake() { I = this; ClearTintCache(); }
 
         /// <summary>Karedeki binanın şu anki boyu (yükselme oranı dahil). Etiketler ve müşteri noktaları çatıya oturur.</summary>
         /// <summary>Binaların tam boyları (kare birimi, yükselme oranı hariç). Gece pencere ışıkları kullanır.</summary>
@@ -315,6 +315,7 @@ namespace KuryeTycoon
             if (root != null) Destroy(root.gameObject);
             pieces.Clear();
             heightByTile.Clear();
+            ClearTintCache();
             lastGrow = -1f;
             Build();
             if (Traffic.I != null) Traffic.I.Build();   // trafik de paketin araçlarını kullanır
@@ -924,24 +925,60 @@ namespace KuryeTycoon
             Tint(renderers, !CityMap.I.IsUnlocked(tile), seed);
         }
 
+        // ---------- Renk: ortak malzeme kopyaları (performans) ----------
+        // Eskiden her binanın her malzemesine ayrı "property block" veriliyordu. Property block'lu parçalar SRP Batcher'a
+        // giremez: binlerce parça tek tek çiziliyordu (gölge geçişlerinde bir kez daha). Artık aynı renge boyanan bütün
+        // parçalar aynı malzeme kopyasını paylaşır; renk çeşitliliği 16 tohumla sınırlı, kopya sayısı az kalır.
+        const int VaryCount = 16;
+        static readonly Dictionary<(Material, int), Material> tintCache = new Dictionary<(Material, int), Material>();
+        static readonly Dictionary<Renderer, Material[]> origMats = new Dictionary<Renderer, Material[]>();
+
+        /// <summary>Parçanın özgün (gündüz, boyanmamış) malzemeleri. Gece ışıkları ve boyama aynı listeden başlar.</summary>
+        static Material[] Originals(Renderer r)
+        {
+            if (!origMats.TryGetValue(r, out var o)) { o = r.sharedMaterials; origMats[r] = o; }
+            return o;
+        }
+
+        /// <summary>Malzemenin belirli renkteki ortak kopyası (anahtar: özgün malzeme + tohum/karartma).</summary>
+        static Material Tinted(Material m, int key, Color c)
+        {
+            if (tintCache.TryGetValue((m, key), out var t) && t != null) return t;
+            t = new Material(m) { name = m.name };   // ad aynı kalır: gece ışıkları ve vurgu ada bakar
+            if (t.HasProperty("_BaseColor")) t.SetColor("_BaseColor", c);
+            if (t.HasProperty("_Color")) t.SetColor("_Color", c);
+            tintCache[(m, key)] = t;
+            return t;
+        }
+
+        static void ClearTintCache()
+        {
+            foreach (var t in tintCache.Values) if (t != null) Destroy(t);
+            tintCache.Clear();
+            origMats.Clear();
+        }
+
         static void TintVaried(Renderer[] rs, bool dark, int seed)
         {
+            int vs = seed % VaryCount;
             foreach (var r in rs)
             {
                 r.SetPropertyBlock(null);
-                var mats = r.sharedMaterials;
-                for (int i = 0; i < mats.Length; i++)
+                var orig = Originals(r);
+                var mats = new Material[orig.Length];
+                for (int i = 0; i < orig.Length; i++)
                 {
-                    var m = mats[i];
+                    var m = orig[i];
+                    mats[i] = m;
                     if (m == null || m.name.StartsWith("Cizgi")) continue;   // siyah çizgi hep siyah
-                    Color c = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color;
-                    c = Vary(c, m.name, seed);
+                    Color c0 = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color;
+                    Color c = Vary(c0, m.name, vs);
+                    bool varied = c != c0;
+                    if (!varied && !dark) continue;                           // rengi değişmeyen: özgün malzeme
                     if (dark) c = CityMap.LockedTint(c);
-                    var mpb = new MaterialPropertyBlock();
-                    mpb.SetColor("_BaseColor", c);
-                    mpb.SetColor("_Color", c);
-                    r.SetPropertyBlock(mpb, i);
+                    mats[i] = Tinted(m, (varied ? vs + 1 : 0) + (dark ? 100 : 0), c);
                 }
+                r.sharedMaterials = mats;
             }
         }
 
@@ -981,19 +1018,31 @@ namespace KuryeTycoon
             foreach (var r in rs)
             {
                 r.SetPropertyBlock(null);
-                if (!dark) continue; // malzemenin kendi rengi
+                var orig = Originals(r);
+                if (!dark) { r.sharedMaterials = orig; continue; } // malzemenin kendi rengi
                 // Kilitli bölge: her malzeme kendi renginin soluk hâli (düz gri değil)
-                var mats = r.sharedMaterials;
-                for (int i = 0; i < mats.Length; i++)
+                var mats = new Material[orig.Length];
+                for (int i = 0; i < orig.Length; i++)
                 {
-                    var m = mats[i];
+                    var m = orig[i];
+                    mats[i] = m;
                     if (m == null || m.name.StartsWith("Cizgi") || m.name.StartsWith("IsikHavuz")) continue;
                     var c = CityMap.LockedTint(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color);
-                    var mpb = new MaterialPropertyBlock();
-                    mpb.SetColor("_BaseColor", c);
-                    mpb.SetColor("_Color", c);
-                    r.SetPropertyBlock(mpb, i);
+                    mats[i] = Tinted(m, 100, c);
                 }
+                r.sharedMaterials = mats;
+            }
+        }
+
+        /// <summary>Grafik kalitesi: Düşük'te yol ve zemin parçaları gölge düşürmez (gölge geçişindeki çizim sayısı azalır).</summary>
+        public void ApplyQuality()
+        {
+            var mode = GrafikKalitesi.ZeminGolgesi ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+            foreach (var p in pieces)
+            {
+                if (!p.flat || p.t == null) continue;
+                foreach (var r in p.t.GetComponentsInChildren<Renderer>(true))
+                    if (r.shadowCastingMode != mode) r.shadowCastingMode = mode;
             }
         }
 
@@ -1092,7 +1141,7 @@ namespace KuryeTycoon
             foreach (var r in renderers)
             {
                 // Yol ve park parçaları binaların gölgesini alır; üstlerindeki lamba, ağaç, bank da gölge düşürür
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                r.shadowCastingMode = GrafikKalitesi.ZeminGolgesi ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.receiveShadows = true;
                 r.sortingOrder = order; // zemin karelerinin üstünde, binaların altında
             }

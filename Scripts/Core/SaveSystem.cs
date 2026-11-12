@@ -177,7 +177,11 @@ namespace KuryeTycoon
     {
         public static SaveSystem I { get; private set; }
 
-        public const int Version = 1;
+        // 2: yeni şehir planı (Budapeşte düzeni) ve sadeleştirilmiş kurallar (depozito, nakit borcu, hijyen, habersiz vergi yok)
+        public const int Version = 2;
+
+        /// <summary>Kayıt oyunun eski bir sürümünden mi? (Açılır ama dükkan/kurye yerleri ve denge tutmayabilir.)</summary>
+        public static bool IsOld(SaveData d) => d != null && d.version < Version;
         [Tooltip("Her gece gün sonundan sonra otomatik kaydet")]
         public bool autoSave = true;
 

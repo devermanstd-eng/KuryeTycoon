@@ -809,9 +809,12 @@ namespace KuryeTycoon
             PRow("Bugüne kadar yatan", Ft(c.receivedTotal));
             PRow("Erken ödeme", c.earlyPayouts > 0 ? $"{c.earlyPayouts} kez · {Ft(c.earlyPayoutTotal)}" : "—");
             PHeader("Nakit");
-            PRow("Üzerindeki nakit", $"{Ft(c.cashHeld)} / {Ft(Courier.CashLimit)}", c.cashHeld >= Courier.CashLimit * 0.7f ? PRed : (Color?)null);
-            if (c.cashBlocked) GUILayout.Label("Hesabın kilitli: nakit borcunu kapatana kadar sipariş alamazsın.", new GUIStyle(pBody) { normal = { textColor = PRed } });
-            PRow("Keep cash ile kapatılabilir", Ft(System.Math.Min(c.cashHeld, c.KeepCashCapacity)));
+            if (Sade.NakitBorcu)
+            {
+                PRow("Üzerindeki nakit", $"{Ft(c.cashHeld)} / {Ft(Courier.CashLimit)}", c.cashHeld >= Courier.CashLimit * 0.7f ? PRed : (Color?)null);
+                if (c.cashBlocked) GUILayout.Label("Hesabın kilitli: nakit borcunu kapatana kadar sipariş alamazsın.", new GUIStyle(pBody) { normal = { textColor = PRed } });
+                PRow("Keep cash ile kapatılabilir", Ft(System.Math.Min(c.cashHeld, c.KeepCashCapacity)));
+            }
             PRow("Nakit teslimat", $"{c.cashOrders} paket");
             PRow("Müşterilerden alınan", Ft(c.cashTakenTotal));
             PRow("Keep cash ile mahsup", Ft(c.keepCashTotal));
@@ -913,9 +916,13 @@ namespace KuryeTycoon
             else if (DemandLevel() == 0) why = "Şu an sipariş yoğunluğu düşük. Boost saatlerinde ve öğle/akşam yoğunluğunda daha çok teklif gelir.";
             else why = "Yakındaki kuryeler teklifleri senden önce alıyor olabilir. Dükkanlara yakın beklemek işe yarar.";
             SupportTopic(0, "Bir süredir sipariş gelmiyor, neden?", why);
-            SupportTopic(1, "Nakit siparişler", $"Müşteriden aldığın nakit şirkete borcundur. Üzerinde en fazla {Ft(Courier.CashLimit)} olabilir. Ay sonuna kadar keep cash (hesabının en fazla %80'iyle mahsup) ya da offload (kartla ödeme) ile kapatmalısın, yoksa hesabın kilitlenir.");
+            SupportTopic(1, "Nakit siparişler", Sade.NakitBorcu
+                ? $"Müşteriden aldığın nakit şirkete borcundur. Üzerinde en fazla {Ft(Courier.CashLimit)} olabilir. Ay sonuna kadar keep cash (hesabının en fazla %80'iyle mahsup) ya da offload (kartla ödeme) ile kapatmalısın, yoksa hesabın kilitlenir."
+                : "Müşteriden aldığın nakit şirketindir; gün sonunda uygulama üzerinden şirkete aktarılır. Para üstünü doğru vermeye dikkat et.");
             SupportTopic(2, "Ödemeler", "Kazancın hesabında birikir. Ayın 15'i ve son günü kesilir, 1–2 iş günü içinde yatar. İstersen hesabının %80'ini erken çekebilirsin (2–3 iş günü).");
-            SupportTopic(3, "Ekipman", "İhtiyacın olan ekipmanı (termal çanta, mont, yağmurluk, kask…) ofisten depozitoyla alırsın; bedeli kazancından kesilir. Ayrılırken ekipmanı iade edersen depozitonun tamamı geri ödenir, etmezsen şirkette kalır.");
+            SupportTopic(3, "Ekipman", Sade.Depozito
+                ? "İhtiyacın olan ekipmanı (termal çanta, mont, yağmurluk, kask…) ofisten depozitoyla alırsın; bedeli kazancından kesilir. Ayrılırken ekipmanı iade edersen depozitonun tamamı geri ödenir, etmezsen şirkette kalır."
+                : "İhtiyacın olan ekipmanı (termal çanta, mont, yağmurluk, kask…) ofisten ücretsiz alırsın. Ekipman şirketindir: ayrılırken iade etmelisin.");
             SupportTopic(4, "Sözleşme ve çalışma", "Serbest kuryesin: ne zaman çevrimiçi olacağına sen karar verirsin. Aracını ve sigortanı kendin karşılarsın. Teklifleri reddedebilirsin; dükkanda sıra varsa ayda en fazla 10 kez teslim almayı iptal edebilirsin.");
             SupportTopic(5, "Kat ve teslimat", "Adrese varınca binaya girip kata çıkarsın. Asansörlü binada bekleme + kat başı kısa süre, asansörsüz binada her kat merdivenle; ağır paketlerde daha uzun sürer ve yorar.");
         }
