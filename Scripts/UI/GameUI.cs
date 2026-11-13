@@ -244,7 +244,7 @@ namespace KuryeTycoon
             bool hasError = !string.IsNullOrEmpty(GameBootstrap.LastLoadError);
 
             Fill(new Rect(0, 0, sw, sh), new Color(0.08f, 0.09f, 0.11f));
-            float w = 620f, h = 950f + (setupSave != null ? 70f + SaveSystem.SlotCount * 44f : 50f) + (hasError ? 40f : 0f);
+            float w = 620f, h = 950f + (Application.isEditor || Debug.isDebugBuild ? 60f : 0f) + (setupSave != null ? 70f + SaveSystem.SlotCount * 44f : 50f) + (hasError ? 40f : 0f);
             h = Mathf.Min(h, sh - 20f);
             var r = new Rect((sw - w) / 2f, Mathf.Max(10f, (sh - h) / 2f), w, h);
             UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
@@ -385,6 +385,7 @@ namespace KuryeTycoon
                 if (newGameSlot >= 0) SaveSystem.Slot = newGameSlot;
                 deferred = () => GameBootstrap.I.StartGame();
             }
+            DrawTestSetup();   // geliştirici: otomatik test (TestModuUI.cs)
             GUILayout.EndScrollView();
             GUILayout.EndArea();
         }

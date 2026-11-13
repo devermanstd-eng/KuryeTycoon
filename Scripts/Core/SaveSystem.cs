@@ -282,6 +282,12 @@ namespace KuryeTycoon
 
         public bool Save(bool auto)
         {
+            if (TestModu.Aktif)
+            {
+                // Otomatik test oyuncunun kayıtlarının üstüne yazmasın
+                if (!auto && EventManager.I != null) EventManager.I.Notify("Otomatik test sırasında kayıt kapalı.");
+                return false;
+            }
             if (!CanSaveNow)
             {
                 EventManager.I.Notify("Kaydetmek için önce açık kartı kapat.");
