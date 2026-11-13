@@ -244,7 +244,7 @@ namespace KuryeTycoon
             bool hasError = !string.IsNullOrEmpty(GameBootstrap.LastLoadError);
 
             Fill(new Rect(0, 0, sw, sh), new Color(0.08f, 0.09f, 0.11f));
-            float w = 620f, h = 950f + (Application.isEditor || Debug.isDebugBuild ? 60f : 0f) + (setupSave != null ? 70f + SaveSystem.SlotCount * 44f : 50f) + (hasError ? 40f : 0f);
+            float w = 620f, h = 990f + (Application.isEditor || Debug.isDebugBuild ? 60f : 0f) + (setupSave != null ? 70f + SaveSystem.SlotCount * 44f : 50f) + (hasError ? 40f : 0f);
             h = Mathf.Min(h, sh - 20f);
             var r = new Rect((sw - w) / 2f, Mathf.Max(10f, (sh - h) / 2f), w, h);
             UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
@@ -315,7 +315,8 @@ namespace KuryeTycoon
             GUILayout.Label("Bu oyunda ne yapacaksın?", header);
             GUILayout.Label("•  Dükkanlarla anlaş, kurye al, siparişleri zamanında teslim ettir. Hızlı teslimat puanını ve pazar payını büyütür.", small);
             GUILayout.Label("•  Gelirin: dükkan komisyonu ve teslimat ücreti. Giderin: kurye hakedişi, ekipman, geliştirmeler, personel.", small);
-            GUILayout.Label("•  Ekipmanı şirket verir, kurye ayrılırken geri getirir. Tek vergi yıl sonunda, kâr üzerinden.", small);
+            GUILayout.Label("•  Kuryeler serbest çalışır: saatte iyi kazanırsa mutlu olur, uzun günler biriktikçe yorulur. Çok kurye alırsan iş başına düşen kazanç azalır.", small);
+            GUILayout.Label("•  İtibar son iki haftanın müşteri puanıdır; iptal edilen sipariş 1 yıldız sayılır. Şirket büyüdükçe yatırımlar da pahalanır.", small);
             GUILayout.Label("•  Şehir yaşıyor: gündüz ve gece, hava, trafik ve şehir olayları siparişleri ve kuryeleri etkiler.", small);
             GUILayout.Label("•  İlk hedef: aile borcunu zamanında ödemek. Sonrası: şehrin en büyük kurye şirketi olmak.", small);
             GUILayout.Label("Boşluk: duraklat · 1–8: hız · H: sipariş yoğunluğu · F10: fotoğraf modu · Esc: menü. Oyun her gece kendini kaydeder.", bodyDim);
@@ -865,7 +866,7 @@ namespace KuryeTycoon
         }
 
         /// <summary>Üst bardaki bilgi kartı: renkli simge dairesi, küçük başlık, kalın değer. Genişliğini döndürür.</summary>
-        float StatCard(float x, Icons.Kind icon, Color tint, string caption, string value, Color? bg = null, Color? valueColor = null)
+        float StatCard(float x, Icons.Kind icon, Color tint, string caption, string value, Color? bg = null, Color? valueColor = null, string tip = null)
         {
             float textW = Mathf.Max(topCaption.CalcSize(new GUIContent(caption)).x, topValue.CalcSize(new GUIContent(value)).x);
             float w = 44f + textW + 14f;
@@ -878,6 +879,7 @@ namespace KuryeTycoon
             GUI.Label(new Rect(r.x + 42f, r.y + 3f, textW + 10f, 14f), caption, topCaption);
             topValue.normal.textColor = UITheme.Yazi(valueColor ?? UITheme.Text);
             GUI.Label(new Rect(r.x + 42f, r.y + 16f, textW + 10f, 20f), value, topValue);
+            if (tip != null) HoverTip(r, tip);
             return w;
         }
 
@@ -924,9 +926,10 @@ namespace KuryeTycoon
             float nameW = Mathf.Min(220f, topName.CalcSize(new GUIContent(CompanyProfile.Name)).x);
             GUI.Label(new Rect(66, 0, nameW + 4, TopBar), CompanyProfile.Name, topName);
 
-            // Hız seçici genişliği (sağda)
-            float[] speeds = { 1f, 2f, 4f, 8f, 16f, 32f, 64f, 128f };
-            float segW = 40f, speedW = 46f + 8f + speeds.Length * segW + 8f;
+            // Hız seçici genişliği (sağda). 64× ve 128× klavyeden (7, 8); seçiliyse ayrı bir kutuda görünür.
+            float[] speeds = { 1f, 2f, 4f, 8f, 16f, 32f };
+            bool ekHiz = !clock.Paused && clock.SpeedMultiplier > 32.5f;
+            float segW = 40f, speedW = 46f + 8f + (speeds.Length + (ekHiz ? 1 : 0)) * segW + 8f;
             float maxX = sw - speedW - 20f;
 
             // Bilgi kartları
@@ -938,22 +941,49 @@ namespace KuryeTycoon
             }
             float Est(string cap, string val) => 58f + Mathf.Max(topCaption.CalcSize(new GUIContent(cap)).x, topValue.CalcSize(new GUIContent(val)).x);
 
+            // Ana bilgiler: kasa, harcanabilir para, itibar (eğilimiyle), çevrimiçi kurye, tarih+saat+hava (tek kutu)
             string money = Ft(eco.money), free = Ft(eco.FreeCash);
-            Add(px => StatCard(px, Icons.Kind.Wallet, new Color(0.40f, 0.85f, 0.55f), "KASA", money), Est("KASA", money));
+            Add(px => StatCard(px, Icons.Kind.Wallet, new Color(0.40f, 0.85f, 0.55f), "KASA", money, null, null,
+                               "Şirketin bütün parası. Kuryelerin hesaplarındaki hakedişler ayın 15'inde ve son günü bu paradan ödenir."), Est("KASA", money));
             bool freeNeg = eco.FreeCash < 0;
-            Add(px => StatCard(px, Icons.Kind.Coins, freeNeg ? UITheme.Bad : new Color(0.45f, 0.75f, 1f), "SERBEST", free,
-                               freeNeg ? UITheme.WithAlpha(UITheme.Bad, 0.18f) : (Color?)null, freeNeg ? UITheme.Bad : (Color?)null), Est("SERBEST", free));
-            string rep = $"{CompanyProfile.Reputation:0.0} / 5";
-            Add(px => StatCard(px, Icons.Kind.Star, new Color(1f, 0.80f, 0.25f), "İTİBAR", rep), Est("İTİBAR", rep));
+            Add(px => StatCard(px, Icons.Kind.Coins, freeNeg ? UITheme.Bad : new Color(0.45f, 0.75f, 1f), "HARCANABİLİR", free,
+                               freeNeg ? UITheme.WithAlpha(UITheme.Bad, 0.18f) : (Color?)null, freeNeg ? UITheme.Bad : (Color?)null,
+                               "Kuryelere ödenecek hakedişler düşülünce kalan para. Harcamalarını buna göre yap."), Est("HARCANABİLİR", free));
+            var omr = OrderManager.I;
+            float repFark = omr != null && omr.reputationAtDayStart >= 0f ? CompanyProfile.Reputation - omr.reputationAtDayStart : 0f;
+            string rep = $"{CompanyProfile.Reputation:0.0} / 5" + (repFark > 0.01f ? " ▲" : repFark < -0.01f ? " ▼" : "");
+            Add(px => StatCard(px, Icons.Kind.Star, new Color(1f, 0.80f, 0.25f), "İTİBAR", rep, null, null,
+                               $"Son 14 günün müşteri puanı ortalaması (iptal 1 yıldız sayılır). Bugün {(repFark >= 0 ? "+" : "−")}{Mathf.Abs(repFark):0.00}. " +
+                               "İtibar yükseldikçe sipariş artar."), Est("İTİBAR", rep));
             string cour = $"{CourierManager.I.OnlineCount} / {CourierManager.I.Couriers.Count}";
-            Add(px => StatCard(px, Icons.Kind.Couriers, prim, "ÇEVRİMİÇİ", cour), Est("ÇEVRİMİÇİ", cour));
-            string time = $"{clock.Hour:00}:{clock.Minute:00} · {DayNight.PhaseName}";   // günün bölümü: Sabah, Gündüz, Akşam, Gece
-            string date = $"{clock.DayName.ToUpperInvariant()} · {clock.DateText.ToUpperInvariant()}";
-            Add(px => StatCard(px, Icons.Kind.Clock, new Color(0.85f, 0.85f, 0.95f), date, time), Est(date, time));
-            string season = clock.SeasonName.ToUpperInvariant();
-            Add(px => StatCard(px, WeatherIcon(weather.Current), WeatherTint(weather.Current), season, weather.Name), Est(season, weather.Name));
+            Add(px => StatCard(px, Icons.Kind.Couriers, prim, "ÇEVRİMİÇİ", cour, null, null, "Şu an çevrimiçi kurye / toplam kurye."), Est("ÇEVRİMİÇİ", cour));
+            string time = $"{clock.Hour:00}:{clock.Minute:00} · {weather.Name}";
+            string date = $"{clock.DayName.ToUpperInvariant()} · {clock.DayOfMonth} {clock.MonthName.ToUpperInvariant()}";
+            Add(px => StatCard(px, WeatherIcon(weather.Current), WeatherTint(weather.Current), date, time, null, null,
+                               $"{DayNight.PhaseName} · {clock.SeasonName} · Yıl {clock.Year} · şirketin {clock.CompanyDay}. günü"), Est(date, time));
 
-            // Uyarılar
+            // Uyarılar: önce acil olanlar (çökme, vergi borcu, kriz, fiyat savaşı), sonra boost, aile borcu, pazar payı
+            if (CrisisManager.OrdersBlocked)
+            {
+                string t = $"Uygulama çöktü · {CrisisManager.OutageMinutesLeft:0} dk";
+                Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.Bad, Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
+            if (eco.taxDebt > 0)
+            {
+                string t = $"Vergi borcu {Ft(eco.taxDebt)}";
+                Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.Bad, Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
+            if (CrisisManager.I != null)
+                foreach (var ce in CrisisManager.I.Effects)
+                {
+                    string t = $"{ce.title} · {CrisisManager.I.DaysLeft(ce)} g";
+                    Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.WithAlpha(new Color(1f, 0.62f, 0.20f), 0.35f), UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
+                }
+            if (RivalCompany.I != null && RivalCompany.I.priceWarDays > 0 && RivalCompany.I.warDistrict > 0)
+            {
+                string t = $"Fiyat savaşı: {CityMap.DistrictNames[RivalCompany.I.warDistrict]} · {RivalCompany.I.priceWarDays} g";
+                Add(px => AlertPill(px, Icons.Kind.Flag, t, UITheme.WithAlpha(UITheme.Bad, 0.6f), Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
             var boost = CampaignManager.I.ActiveWindow;
             float wBoost = CampaignManager.I.WeatherBoostPercent;
             var orange = new Color(1f, 0.62f, 0.20f);
@@ -967,12 +997,17 @@ namespace KuryeTycoon
                 string t = $"Hava boostu %{wBoost * 100f:0}";
                 Add(px => AlertPill(px, Icons.Kind.Bolt, t, orange, new Color(0.12f, 0.08f, 0.02f)), topValue.CalcSize(new GUIContent(t)).x + 44f);
             }
+            if (FamilyLoan.I != null && !FamilyLoan.I.Finished)
+            {
+                string t = FamilyLoan.I.TopBarText;
+                Add(px => AlertPill(px, Icons.Kind.Heart, t, UITheme.WithAlpha(Color.white, 0.08f), UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
+            }
             if (GameClock.I.NightFastActive && !GameClock.I.Paused)
             {
                 string t = $"Gece hızlı · {GameClock.I.EffectiveSpeed:0}×";
                 Add(px => AlertPill(px, Icons.Kind.Moon, t, new Color(0.22f, 0.26f, 0.45f), Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
             }
-            // Pazar payı (rakibe karşı) ve süren krizler
+            // Pazar payı (rakibe karşı)
             if (RivalCompany.I != null)
             {
                 var rvc = RivalCompany.I;
@@ -984,32 +1019,6 @@ namespace KuryeTycoon
                 Color bg = sh >= 0.55f ? UITheme.WithAlpha(new Color(0.40f, 0.85f, 0.55f), 0.22f)
                          : sh >= 0.42f ? UITheme.WithAlpha(orange, 0.30f) : UITheme.Bad;
                 Add(px => AlertPill(px, Icons.Kind.Chart, t, bg, UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
-            }
-            if (CrisisManager.OrdersBlocked)
-            {
-                string t = $"Uygulama çöktü · {CrisisManager.OutageMinutesLeft:0} dk";
-                Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.Bad, Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
-            }
-            if (CrisisManager.I != null)
-                foreach (var ce in CrisisManager.I.Effects)
-                {
-                    string t = $"{ce.title} · {CrisisManager.I.DaysLeft(ce)} g";
-                    Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.WithAlpha(orange, 0.35f), UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
-                }
-            if (RivalCompany.I != null && RivalCompany.I.priceWarDays > 0 && RivalCompany.I.warDistrict > 0)
-            {
-                string t = $"Fiyat savaşı: {CityMap.DistrictNames[RivalCompany.I.warDistrict]} · {RivalCompany.I.priceWarDays} g";
-                Add(px => AlertPill(px, Icons.Kind.Flag, t, UITheme.WithAlpha(UITheme.Bad, 0.6f), Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
-            }
-            if (eco.taxDebt > 0)
-            {
-                string t = $"Vergi borcu {Ft(eco.taxDebt)}";
-                Add(px => AlertPill(px, Icons.Kind.Warning, t, UITheme.Bad, Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
-            }
-            if (FamilyLoan.I != null && !FamilyLoan.I.Finished)
-            {
-                string t = FamilyLoan.I.TopBarText;
-                Add(px => AlertPill(px, Icons.Kind.Heart, t, UITheme.WithAlpha(Color.white, 0.08f), UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
             }
 
             // Hız seçici: oynat/duraklat düğmesi + hız segmentleri
@@ -1036,6 +1045,14 @@ namespace KuryeTycoon
                 barText.normal.textColor = on ? sec : UITheme.Yazi((paused ? UITheme.WithAlpha(UITheme.TextDim, 0.6f) : UITheme.TextDim));
                 GUI.Label(r, sp + "×", barText);
                 if (GUI.Button(r, GUIContent.none, GUIStyle.none)) SetSpeed(sp);
+            }
+            if (ekHiz)
+            {
+                var r = new Rect(sx + speeds.Length * segW, group.y + 4f, segW - 2f, group.height - 8f);
+                UITheme.Box(r, prim, 9f);
+                barText.normal.textColor = sec;
+                GUI.Label(r, clock.SpeedMultiplier.ToString("0") + "×", barText);
+                HoverTip(r, "Klavyeden seçilen hız (6–8). Normal hızlar için soldakilerden birine bas.");
             }
         }
 
@@ -1125,7 +1142,7 @@ namespace KuryeTycoon
             float headH = WindowHeaderHeight();
 
             GUILayout.BeginArea(new Rect(w.x + 12f, w.y + headH + 8f, w.width - 24f, w.height - headH - 16f));
-            scroll = GUILayout.BeginScrollView(scroll);
+            scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);   // yatay çubuk yok
             ResetTextColors();
             drawingWindow = true;
 
@@ -1311,8 +1328,23 @@ namespace KuryeTycoon
             var cm = CourierManager.I;
             Chip($"{cm.Couriers.Count}/{UpgradeManager.I.CourierCap} hesap", UpgradeManager.I.CourierCapFull ? UITheme.Warn : NeutralTone);
             Chip($"{cm.OnlineCount} çevrimiçi", cm.OnlineCount > 0 ? UITheme.Good : NeutralTone);
+            if (cm.Couriers.Count > 0)
+            {
+                // Ekibin hali tek bakışta: ortalama moral, yorgunluğu birikmiş ve bırakmayı düşünen kurye
+                float om = 0f; int yorgun = 0, birakacak = 0;
+                foreach (var c in cm.Couriers)
+                {
+                    om += c.morale;
+                    if (c.burnout >= 0.5f) yorgun++;
+                    if (c.morale < Denge.BirakmaMoralSiniri) birakacak++;
+                }
+                om /= cm.Couriers.Count;
+                Chip($"ort. moral %{om * 100f:0}", om >= 0.6f ? UITheme.Good : om >= 0.4f ? UITheme.Warn : UITheme.Bad);
+                if (yorgun > 0) Chip($"{yorgun} kurye yorgun", UITheme.Warn);
+                if (birakacak > 0) Chip($"{birakacak} kurye bırakabilir", UITheme.Bad);
+            }
             ChipRow();
-            Intro("kuryeler", "Kuryeler serbest çalışır, istedikleri saatte çevrimiçi olurlar. Boost ve iyi moral onları çevrimiçi tutar.",
+            Intro("kuryeler", "Kuryeler serbest çalışır, istedikleri saatte çevrimiçi olurlar. Saatte iyi kazanınca mutlu olurlar; uzun günler yorgunluk biriktirir.",
                   "Asıl mesleklerine (öğrenci, ofis çalışanı, vardiyalı işçi...), yorgunluklarına ve günlük hayatlarına göre " +
                   "çevrimiçi/çevrimdışı olurlar; onları zorlayamazsın. Kendi araçlarını ve sigortalarını kendi kazançlarından öderler; " +
                   "para biriktirince daha iyi araç alırlar. Kartlar kısa görünür: her şeyi görmek için \"Detay\".");
@@ -1697,7 +1729,7 @@ namespace KuryeTycoon
                 int have = 0, need = 0;
                 foreach (var ec in cm.Couriers) { if (ec.Has(kind)) have++; else if (CourierManager.Usefulness(ec, kind) >= 0.5f) need++; }
                 GUILayout.BeginVertical(box);
-                GUILayout.Label($"{e.name} — depozito {Ft(e.price)}", header);
+                GUILayout.Label($"{e.name} — {(Sade.Depozito ? "depozito" : "fiyatı")} {Ft(e.price)}", header);
                 GUILayout.Label(e.effect, small);
                 GUILayout.Label($"{have} kuryede var · şu an işine yarayıp eksik olan: {need} · depoda {cm.gearStock[(int)kind]}", need > 0 ? warn : small);
                 GUILayout.BeginHorizontal();
@@ -2718,9 +2750,12 @@ namespace KuryeTycoon
             if (ev == null) return;
 
             Fill(new Rect(0, 0, sw, sh), new Color(0.02f, 0.025f, 0.035f, 0.62f));
-            float w = 580f;
-            float bodyH = label.CalcHeight(new GUIContent(ev.body), w - 56f);
-            float h = Mathf.Min(sh - 40f, 118f + bodyH + ev.choices.Count * 46f);
+            bool ozetli = ev.ozet != null && ev.ozet.Count > 0;
+            float w = ozetli ? 640f : 580f;
+            var govdeStil = ozetli ? small : label;   // özetli kartta metin ayrıntıdır: küçük yazılır
+            float bodyH = govdeStil.CalcHeight(new GUIContent(ev.body), w - 56f);
+            float ozetH = ozetli ? 74f : 0f;
+            float h = Mathf.Min(sh - 40f, 118f + ozetH + bodyH + ev.choices.Count * 46f);
             var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
             UITheme.Shadowed(r, new Color(0.115f, 0.125f, 0.155f), 18f, 10f);
             UITheme.Box(new Rect(r.x, r.y, r.width, 54f), UITheme.WithAlpha(UITheme.Accent, 0.16f), 18f);
@@ -2732,16 +2767,17 @@ namespace KuryeTycoon
             GUILayout.Label(ev.title, title);
             GUILayout.EndHorizontal();
             GUILayout.Space(10);
+            if (ozetli) KartOzetSatiri(ev.ozet, w - 56f);
             // Uzun kart (ör. haftalık rapor) ekrana sığmazsa metin kayar; seçenek düğmeleri her zaman görünür kalır
-            float bodyRoom = h - 118f - ev.choices.Count * 46f;
+            float bodyRoom = h - 118f - ozetH - ev.choices.Count * 46f;
             if (bodyH > bodyRoom + 1f)
             {
                 if (eventScrollFor != ev) { eventScrollFor = ev; eventScroll = Vector2.zero; }
                 eventScroll = GUILayout.BeginScrollView(eventScroll, GUILayout.Height(Mathf.Max(60f, bodyRoom)));
-                GUILayout.Label(ev.body, label);
+                GUILayout.Label(ev.body, govdeStil);
                 GUILayout.EndScrollView();
             }
-            else GUILayout.Label(ev.body, label);
+            else GUILayout.Label(ev.body, govdeStil);
             GUILayout.Space(12);
             for (int i = 0; i < ev.choices.Count; i++)
             {
@@ -2751,6 +2787,33 @@ namespace KuryeTycoon
                     deferred = () => EventManager.I.Choose(idx);
             }
             GUILayout.EndArea();
+        }
+
+        GUIStyle ozetBaslik, ozetDeger;
+
+        /// <summary>Rapor kartının üstündeki büyük sayılar: yan yana kutular (iyi yeşil, kötü kırmızı, dikkat turuncu).</summary>
+        void KartOzetSatiri(List<KartOzeti> ozet, float genislik)
+        {
+            if (ozetBaslik == null)
+            {
+                ozetBaslik = UITheme.Semi(new GUIStyle(small) { fontSize = 11, fontStyle = FontStyle.Bold, alignment = TextAnchor.UpperCenter, wordWrap = false });
+                ozetDeger = UITheme.Semi(new GUIStyle(label) { fontSize = 17, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false });
+            }
+            var satir = GUILayoutUtility.GetRect(genislik, 62f, GUILayout.Height(62f));
+            int n = ozet.Count;
+            float gap = 8f, kw = (satir.width - gap * (n - 1)) / n;
+            for (int i = 0; i < n; i++)
+            {
+                var o = ozet[i];
+                var r = new Rect(satir.x + i * (kw + gap), satir.y, kw, satir.height);
+                Color ton = o.ton == 1 ? UITheme.Good : o.ton == 2 ? UITheme.Bad : o.ton == 3 ? UITheme.Warn : UITheme.Text;
+                UITheme.Box(r, o.ton == 0 ? UITheme.WithAlpha(Color.white, 0.05f) : UITheme.WithAlpha(ton, 0.13f), 10f);
+                ozetBaslik.normal.textColor = UITheme.Yazi(UITheme.TextDim);
+                GUI.Label(new Rect(r.x, r.y + 8f, r.width, 16f), o.baslik.ToUpperInvariant(), ozetBaslik);
+                ozetDeger.normal.textColor = UITheme.Yazi(ton);
+                GUI.Label(new Rect(r.x + 4f, r.y + 24f, r.width - 8f, 30f), o.deger, ozetDeger);
+            }
+            GUILayout.Space(10);
         }
 
         // ---------------------------------------------------------------- yardımcılar
@@ -2817,8 +2880,24 @@ namespace KuryeTycoon
             bigButton = MakeButton(18, 12);
             bigButton.fontStyle = FontStyle.Bold;
 
-            toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 14 };
+            toggle = new GUIStyle(GUI.skin.toggle) { fontSize = 14, wordWrap = true };
             if (font != null) toggle.font = font;
+            // Belirgin onay kutusu: dolu = şirket rengi + tik, boş = açık çerçeve (UITheme.KutuTex)
+            var acc = CompanyProfile.Primary;
+            toggle.normal.background = UITheme.KutuTex(false, false, acc);
+            toggle.hover.background = UITheme.KutuTex(false, true, acc);
+            toggle.active.background = UITheme.KutuTex(false, true, acc);
+            toggle.focused.background = UITheme.KutuTex(false, false, acc);
+            toggle.onNormal.background = UITheme.KutuTex(true, false, acc);
+            toggle.onHover.background = UITheme.KutuTex(true, true, acc);
+            toggle.onActive.background = UITheme.KutuTex(true, true, acc);
+            toggle.onFocused.background = UITheme.KutuTex(true, false, acc);
+            toggle.border = new RectOffset(UITheme.KutuW, 0, 0, 0);
+            toggle.overflow = new RectOffset(0, 0, 0, 0);
+            toggle.padding = new RectOffset(UITheme.KutuW + 4, 4, 4, 4);
+            toggle.margin = new RectOffset(2, 2, 3, 3);
+            toggle.fixedHeight = 0f;
+            toggle.alignment = TextAnchor.MiddleLeft;
             toggle.normal.textColor = UITheme.Yazi(text);
             toggle.onNormal.textColor = UITheme.Yazi(text);
             toggle.hover.textColor = UITheme.Yazi(Color.white);

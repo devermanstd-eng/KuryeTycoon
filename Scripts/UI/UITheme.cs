@@ -189,6 +189,58 @@ namespace KuryeTycoon
 
         public static void SetBg(GUIStyleState s, Color c, int radius) => s.background = RoundTex(c, radius);
 
+        // ---------- Onay kutusu ----------
+        public const int KutuW = 26, KutuH = 24;
+
+        /// <summary>
+        /// Açık/kapalı belli olan onay kutusu dokusu (varsayılan IMGUI kutusu koyu zeminde neredeyse görünmüyordu).
+        /// Sol tarafta 16×16 yuvarlak kutu, sağı saydam; GUIStyle.border.left = KutuW ile yalnızca kutu çizilir.
+        /// Dolu: şirket rengi + beyaz tik. Boş: ince açık çerçeve.
+        /// </summary>
+        public static Texture2D KutuTex(bool dolu, bool ustunde, Color renk)
+        {
+            string key = $"kutu{dolu}{ustunde}{renk}";
+            if (cache.TryGetValue(key, out var cached) && cached != null) return cached;
+            var t = new Texture2D(KutuW, KutuH, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+            var px = new Color[KutuW * KutuH];
+            const float x0 = 3f, y0 = 4f, s = 16f, r = 4f;
+            var cerceve = ustunde ? new Color(0.85f, 0.88f, 0.95f) : new Color(0.62f, 0.66f, 0.74f);
+            var ic = dolu ? renk : new Color(1f, 1f, 1f, ustunde ? 0.10f : 0.05f);
+            for (int y = 0; y < KutuH; y++)
+                for (int x = 0; x < KutuW; x++)
+                {
+                    float px0 = x + 0.5f, py0 = y + 0.5f;
+                    float cx = Mathf.Clamp(px0, x0 + r, x0 + s - r), cy = Mathf.Clamp(py0, y0 + r, y0 + s - r);
+                    float d = Vector2.Distance(new Vector2(px0, py0), new Vector2(cx, cy));
+                    float a = Mathf.Clamp01(r - d + 0.5f);
+                    if (a <= 0f) { px[y * KutuW + x] = Color.clear; continue; }
+                    Color c = (!dolu && d > r - 1.6f) ? cerceve : ic;
+                    if (dolu)
+                    {
+                        // Tik: (6,9) → (9,6) → (14,13) kutu içinde, y yukarı
+                        float lx = px0 - x0, ly = py0 - y0;
+                        float d1 = UzaklikDogru(lx, ly, 4f, 8.5f, 7f, 5.5f), d2 = UzaklikDogru(lx, ly, 7f, 5.5f, 12.5f, 11f);
+                        float tik = Mathf.Clamp01(1.4f - Mathf.Min(d1, d2));
+                        c = Color.Lerp(c, Color.white, tik);
+                    }
+                    c.a *= a;
+                    px[y * KutuW + x] = c;
+                }
+            t.SetPixels(px);
+            t.Apply();
+            t.hideFlags = HideFlags.HideAndDontSave;
+            cache[key] = t;
+            return t;
+        }
+
+        static float UzaklikDogru(float x, float y, float ax, float ay, float bx, float by)
+        {
+            var p = new Vector2(x, y); var a = new Vector2(ax, ay); var b = new Vector2(bx, by);
+            var ab = b - a;
+            float k = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+            return Vector2.Distance(p, a + ab * k);
+        }
+
         // ---------- Yazı tipi ----------
 
         static Font font;
