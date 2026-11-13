@@ -702,6 +702,12 @@ namespace KuryeTycoon
             if (iptal < 0.03f && kuryeBasi < 12f && cm.Couriers.Count >= 5) adaylar.Add((UpgradeKind.Reklam, $"servis iyi, kurye başı {kuryeBasi:0} teslimat: talep lazım"));
             if (SupportManager.I != null && SupportManager.I.Agents.Count >= up.SupportCap && cm.Couriers.Count >= 15) adaylar.Add((UpgradeKind.Ofis, "destek ekibi sınırda"));
             if (cm.Couriers.Count >= 15) adaylar.Add((UpgradeKind.Hub, $"{cm.Couriers.Count} kurye: dağıtım merkezi"));
+            // Geç oyun: kargo bisikleti (bisikletli kurye çoksa), paket dolabı (adres sorunu), robot (büyük ekip, kısa siparişler)
+            int bisikletli = 0;
+            foreach (var c in cm.Couriers) if (c.vehicle == VehicleKind.Bisiklet) bisikletli++;
+            if (bisikletli >= 3 && (iptal > 0.03f || kuryeBasi > 14f)) adaylar.Add((UpgradeKind.KargoBisikleti, $"{bisikletli} bisikletli kurye, iptal %{iptal * 100f:0}, kurye başı {kuryeBasi:0}"));
+            if (dunAdres >= 2 || cm.Couriers.Count >= 10) adaylar.Add((UpgradeKind.PaketDolabi, $"dün {dunAdres} adres sorunu, {cm.Couriers.Count} kurye"));
+            if (cm.Couriers.Count >= 12 && iptal < 0.08f) adaylar.Add((UpgradeKind.Robot, $"{cm.Couriers.Count} kurye: kısa siparişleri robotlar alsın"));
 
             foreach (var a in adaylar)
             {

@@ -823,6 +823,7 @@ namespace KuryeTycoon
             {
                 // Araç kapasitesi üst sınır (gerçekte kurye aynı anda en fazla 2–4 paket taşır); moral/boost sınırı aşmaz
                 int cap = V.capacity;
+                if (UpgradeManager.I != null && UpgradeManager.I.KargoBisikletiVar(this)) cap += 2;   // şirketin kargo bisikleti
                 if (morale < 0.35f) cap -= 1;
                 if (fatigue >= 0.6f) cap -= 1;
                 return Mathf.Max(1, cap);
