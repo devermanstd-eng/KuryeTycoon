@@ -338,7 +338,7 @@ namespace KuryeTycoon
             if (t == "Kuryeler paket başı ücret artışı istiyor")
             {
                 float moral = OrtMoral;
-                if (moral < 0.65f || IptalOrani(3) > 0.06f) { neden = $"ort. moral {moral:0.00}, kurye kaybı göze alınamaz"; return Bul(ev, izinli, "kabul"); }
+                if (moral < 0.65f || IptalOrani(3) > 0.06f) { neden = moral < 0.65f ? $"ort. moral {moral:0.00}, kurye kaybı göze alınamaz" : $"iptal %{IptalOrani(3) * 100f:0}, kurye açığı var: moral düşürülmez"; return Bul(ev, izinli, "kabul"); }
                 neden = $"ort. moral {moral:0.00}, −12 kaldırılabilir"; return Bul(ev, izinli, "reddet");
             }
 
@@ -552,6 +552,7 @@ namespace KuryeTycoon
                 float kapsama = 0f;
                 for (int h = 0; h < 24; h++) kapsama += prof[h] * SaatUygunlugu(a.occupation, h);
                 kapsama /= Mathf.Max(0.01f, profMax);
+                if (kapsama < 0.25f && (acilMi || cm.Applications.Count > 2)) continue;   // iptal saatlerinde çalışmayacak
                 float hiz = a.vehicle == VehicleKind.Motosiklet ? 0.25f : a.vehicle == VehicleKind.Araba ? 0.15f : a.vehicle == VehicleKind.EScooter ? 0.1f : 0f;
                 float p = kapsama * 3f + a.speedSkill + a.care + a.stamina * 0.5f - a.pickiness * 1.2f + a.level * 0.1f + hiz;
                 if (p > enPuan) { enPuan = p; en = a; enKapsama = kapsama; }
@@ -592,7 +593,7 @@ namespace KuryeTycoon
             bool servisIyi = iptal < 0.04f && son.avgAssignWait < 5f;
             bool kuryeBos = kuryeBasi < 14f && iptal < 0.06f;   // kuryeler boş kalıyor: iş lazım
             if (!servisIyi && !kuryeBos) return;
-            if (kurye < Mathf.CeilToInt((dukkan + 1) * 2f)) return;   // yeni dükkana yetecek kurye yok
+            if (kurye < Mathf.CeilToInt((dukkan + 1) * 2f) && !(UpgradeManager.I.CourierCapFull && servisIyi)) return;   // yeni dükkana yetecek kurye yok
 
             Shop en = null;
             float enDeger = 0f;
@@ -626,14 +627,17 @@ namespace KuryeTycoon
                 else if (d > enIyiKalan) enIyiKalan = d;
             }
             ortalama = n > 0 ? ortalama / n : 0f;
-            if (enIyiKalan > ortalama * 0.5f) return;
-            if (IptalOrani(3) > 0.05f) return;   // servis oturmadan büyüme yok
+            var up = UpgradeManager.I;
+            bool platformBolgeBekliyor = up.CourierCapFull && up.IsLocked(UpgradeKind.Platform) && up.LockReason(UpgradeKind.Platform).Contains("bölge");
+            if (enIyiKalan > ortalama * 0.5f && !platformBolgeBekliyor) return;
+            if (IptalOrani(3) > 0.05f && !platformBolgeBekliyor) return;   // servis oturmadan büyüme yok
             long bedel = CityMap.UnlockCost[map.UnlockLevel + 1];
             if (bedel > Bos / 2) return;
             if (map.TryUnlockNext())
             {
                 sonBolgeAcmaGun = clk.Day;
-                Eylem("Bölge", $"{CityMap.DistrictNames[map.UnlockLevel]} açıldı ({Ft(bedel)}) · açık bölgede değerli dükkan kalmadı, servis iyi");
+                Eylem("Bölge", $"{CityMap.DistrictNames[map.UnlockLevel]} açıldı ({Ft(bedel)}) · " +
+                               (platformBolgeBekliyor ? "kurye hesapları dolu, bir sonraki platform paketi bu bölgeyi istiyor" : "açık bölgede değerli dükkan kalmadı, servis iyi"));
             }
         }
 
@@ -799,7 +803,7 @@ namespace KuryeTycoon
             var loan = FamilyLoan.I;
             bool borcBitti = loan == null || loan.Finished;
             long bedel = DarkStore.SizeCost[1];
-            if (clk.CompanyDay < 21 || !borcBitti || IptalOrani(3) > 0.04f) return;
+            if (clk.CompanyDay < 21 || !borcBitti || IptalOrani(7) > 0.07f) return;
             if (Bos < bedel * 2) return;   // açılış + ilk stok + birkaç günlük gider
             if (ds.Open())
             {
