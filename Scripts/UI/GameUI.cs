@@ -6,6 +6,9 @@ namespace KuryeTycoon
     /// <summary>
     /// Prototip arayüzü (Unity IMGUI). Kurulum ekranı, üst bar, sol panel sekmeleri,
     /// haber akışı ve olay kartları. Hiçbir Canvas / prefab gerektirmez.
+    /// GEÇİŞ: arayüz UI Toolkit'e taşınıyor (Scripts/UI/Arayuz, Resources/UI/Arayuz). Üst çubuk, sol menü, pencere çerçevesi,
+    /// harita araçları, olaylar, hedef kutusu ve Siparişler/Kuryeler/Gelişim/Hedefler pencereleri orada. Yeni arayüz OnGUI'ye
+    /// yazılmaz. Buradaki eski çizimler F8 ile (eski arayüz) ve henüz taşınmayan pencereler için duruyor.
     /// </summary>
     public partial class GameUI : MonoBehaviour
     {
@@ -68,6 +71,7 @@ namespace KuryeTycoon
                 deferred = null;
                 a();
             }
+            UiGuncelle();   // UI Toolkit arayüzü (Arayuz/UiKok.cs)
         }
 
         void LateUpdate()
@@ -84,7 +88,7 @@ namespace KuryeTycoon
         void OnGUI()
         {
             // Ekran yüksekliğine göre ölçek × oyuncunun seçtiği arayüz boyutu (Ayarlar > Arayüz)
-            uiScale = Mathf.Clamp(Mathf.Clamp(Screen.height / 900f, 0.8f, 2f) * UiSizeFactor, 0.7f, 2.4f);
+            uiScale = UiOlcek();
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(uiScale, uiScale, 1f));
             float sw = Screen.width / uiScale;
             float sh = Screen.height / uiScale;
@@ -107,17 +111,23 @@ namespace KuryeTycoon
             if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
 
             GUI.enabled = modalFree;
-            DrawHeat();          // sipariş yoğunluğu katmanı (etiketlerin altında)
+            // Yeni arayüz (UI Toolkit) açıksa üst çubuk, sol menü, pencere başlığı, harita araçları, olaylar ve hedef kutusu orada çizilir.
+            // Haritanın üstüne çizilen IMGUI parçaları (katman, etiketler, uçan yazılar) harita alanına kırpılır: UI Toolkit'in altına taşmasın.
+            bool eskiArayuz = !UiAktif;
+            var haritaAlani = new Rect(MapLeftGui, TopBar, Mathf.Max(0f, sw - MapLeftGui), Mathf.Max(0f, sh - TopBar));
+            if (!eskiArayuz) GUI.BeginClip(haritaAlani, -haritaAlani.position, Vector2.zero, false);
+            DrawHeat();          // harita katmanı (etiketlerin altında)
             DrawWorldLabels();
             DrawMapPops();       // uçan "+350 Ft" yazıları
-            DrawTopBar(sw);
+            if (!eskiArayuz) GUI.EndClip();
+            if (eskiArayuz) DrawTopBar(sw);
             DrawPanel(sh);
-            DrawFeed(sw, sh);
-            DrawZoomButtons(sh);
+            if (eskiArayuz) DrawFeed(sw, sh);
+            if (eskiArayuz) DrawZoomButtons(sh);
             DrawLegend(sh);
-            DrawHeatMenu(sh);    // harita katmanı menüsü (HeatMap.cs)
-            DrawGoalTracker();
-            DrawUyarilar(sw);    // sağ üstte "Dikkat" listesi (UyariListesi.cs)
+            if (eskiArayuz) DrawHeatMenu(sh);    // harita katmanı menüsü (HeatMap.cs)
+            if (eskiArayuz) DrawGoalTracker();
+            if (eskiArayuz) DrawUyarilar(sw);    // "Dikkat" listesi (UyariListesi.cs)
             DrawCityEventMarker(sw);
             UITheme.Klasik = true;      // kurye telefonu: koyu ekran olarak kalır
             DrawCourierPopup(sw, sh);
@@ -435,9 +445,11 @@ namespace KuryeTycoon
         {
             var e = Event.current;
             if (e.type != EventType.KeyDown) return;
+            if (UiYaziOdakta) return;   // UI Toolkit yazı kutusuna yazılıyor
             var clk = GameClock.I;
             switch (e.keyCode)
             {
+                case KeyCode.F8: YeniArayuz = !YeniArayuz; e.Use(); return;   // geçiş döneminde eski arayüze dönüş
                 case KeyCode.Space: clk.Paused = !clk.Paused; e.Use(); break;
                 case KeyCode.Alpha1: SetSpeed(1f); e.Use(); break;
                 case KeyCode.Alpha2: SetSpeed(2f); e.Use(); break;
@@ -749,8 +761,11 @@ namespace KuryeTycoon
                            !(TrackerVisible && GoalTrackerRect().Contains(m)) &&
                            !ToastAt(m, sw) &&
                            !(heatMenuOpen && HeatMenuRect(sh).Contains(m)) &&
-                           !(UyariGorunur && UyariRect(sw).Contains(m)) &&
-                           !new Rect(DockW + 10f, sh - 44f, 560f, 30f).Contains(m);
+                           !(!UiAktif && UyariGorunur && UyariRect(sw).Contains(m)) &&
+                           !new Rect(DockW + 10f, sh - 44f, 560f, 30f).Contains(m) &&
+                           !UiUzerinde(m);   // UI Toolkit elemanı (üst çubuk, menü, pencere, olaylar...)
+            // Haritaya tıklayınca açık katman menüsü kapanır (UI Toolkit menüsü dışarı tıklamayı göremez)
+            if (UiAktif && heatMenuOpen && e.type == EventType.MouseDown && overMap) heatMenuOpen = false;
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
 
@@ -1142,26 +1157,42 @@ namespace KuryeTycoon
                 windowTitle = new GUIStyle(header) { fontSize = 19, alignment = TextAnchor.MiddleLeft };
             }
 
-            // Çubuk
-            var bar = new Rect(0, TopBar, DockW, sh - TopBar);
-            Fill(bar, UITheme.Bg);
-            Fill(new Rect(bar.xMax - 1, bar.y, 1, bar.height), UITheme.Line);
-            DrawMapGap(sh);   // harita pencerenin sağına kaydıysa aradaki şerit
-
-            // Sol çubuk: 6 ana menü + Ayarlar (bkz. MenuGroups.cs)
+            bool eski = !UiAktif;
             dockTip = null;
-            DrawGroupDock(sh);
+            if (eski)
+            {
+                // Çubuk
+                var bar = new Rect(0, TopBar, DockW, sh - TopBar);
+                Fill(bar, UITheme.Bg);
+                Fill(new Rect(bar.xMax - 1, bar.y, 1, bar.height), UITheme.Line);
+                DrawMapGap(sh);   // harita pencerenin sağına kaydıysa aradaki şerit
+
+                // Sol çubuk: 6 ana menü + Ayarlar (bkz. MenuGroups.cs)
+                dockTip = null;
+                DrawGroupDock(sh);
+            }
 
             if (!panelOpen) return;
 
             // Pencere
             var w = WindowRect(sh);
-            UITheme.Shadowed(w, UITheme.Bg, 14f, 8f);
-            UITheme.Outline(w, UITheme.Line, 1f, 14f);
-
-            // Başlık: menü adı, kapat ve sekme şeridi (bkz. MenuGroups.cs)
-            DrawWindowHeader(w);
             float headH = WindowHeaderHeight();
+            if (eski)
+            {
+                UITheme.Shadowed(w, UITheme.Bg, 14f, 8f);
+                UITheme.Outline(w, UITheme.Line, 1f, 14f);
+                // Başlık: menü adı, kapat ve sekme şeridi (bkz. MenuGroups.cs)
+                DrawWindowHeader(w);
+            }
+            else
+            {
+                // Yeni arayüz: başlık ve sekmeler UI Toolkit'te. Sekme taşındıysa içerik de orada; taşınmadıysa
+                // gövdenin zemini ve içeriği burada (IMGUI) çizilir, başlıkla üst üste binmez.
+                if (UiSekmeVar(tab)) return;
+                var govde = new Rect(w.x, w.y + headH + 1f, w.width, w.height - headH - 1f);
+                Fill(new Rect(govde.x, govde.y, govde.width, Mathf.Max(0f, govde.height - 14f)), UITheme.Bg);
+                UITheme.Box(new Rect(govde.x, govde.yMax - 28f, govde.width, 28f), UITheme.Bg, 14f);
+            }
 
             GUILayout.BeginArea(new Rect(w.x + 12f, w.y + headH + 8f, w.width - 24f, w.height - headH - 16f));
             scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);   // yatay çubuk yok

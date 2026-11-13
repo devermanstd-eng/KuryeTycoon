@@ -76,6 +76,9 @@ namespace KuryeTycoon
             GUI.color = old;
         }
 
+        /// <summary>Profil resmi dokusu (UI Toolkit için). Bu karede üretim sınırı dolduysa null: bir sonraki yenilemede gelir.</summary>
+        public static Texture2D Doku(string seed, int mood, Color? shirt = null) => Get(seed ?? "", mood, shirt);
+
         static Texture2D Get(string seed, int mood, Color? shirt)
         {
             uint h = Hash(seed);
