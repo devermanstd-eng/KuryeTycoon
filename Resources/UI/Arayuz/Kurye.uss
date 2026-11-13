@@ -742,3 +742,62 @@ Button.dg.olay-secim {
     justify-content: center;
 }
 .rehber-tikla-yazi { font-size: 12px; color: rgb(26, 26, 31); }
+
+/* ---------------------------------------------------------------- yazıcı (UiYazici.cs: metin ağırlıklı pencereler) */
+
+.yz-satir { flex-direction: row; align-items: flex-start; margin-bottom: 3px; }
+.yz-metin { flex-grow: 1; flex-shrink: 1; white-space: normal; font-size: 13px; }
+.yz-metin.kucuk { font-size: 12px; }
+.yz-baslik { font-size: 15px; -unity-font-style: bold; margin-bottom: 2px; }
+.not-renk { color: rgb(199, 214, 245); }
+.yz-nokta { width: 9px; height: 9px; border-radius: 3px; margin: 4px 8px 0 0; flex-shrink: 0; }
+.yz-kv { flex-direction: row; align-items: center; min-height: 22px; margin-bottom: 1px; }
+.yz-kv-ad { flex-grow: 1; flex-shrink: 1; font-size: 13px; color: var(--soluk); white-space: normal; }
+.yz-kv-deger { font-size: 13px; margin-left: 10px; -unity-text-align: middle-right; white-space: nowrap; }
+.yardim-rozet {
+    width: 17px;
+    height: 17px;
+    border-radius: 9px;
+    margin-left: 6px;
+    flex-shrink: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    font-size: 11px;
+    color: var(--soluk);
+    -unity-text-align: middle-center;
+}
+.yardim-rozet:hover { background-color: rgba(255, 255, 255, 0.2); color: var(--yazi); }
+.bolum .yardim-rozet { margin-left: 8px; }
+.yz-kart { margin-top: 4px; }
+.yz-dugmeler { flex-direction: row; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+.yz-dugmeler > .yz-satir { margin: 0 8px 6px 0; flex-grow: 0; }
+Button.dg.yz-dugme {
+    height: auto;
+    min-height: 30px;
+    margin: 4px 0 4px 0;
+    padding: 5px 12px 5px 12px;
+    font-size: 13px;
+    white-space: normal;
+}
+Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font-size: 12px; }
+.yz-dugmeler > Button.dg.yz-dugme { margin: 0 6px 6px 0; }
+.yz-cipler { flex-direction: row; flex-wrap: wrap; }
+.yz-cip {
+    height: 26px;
+    border-radius: 13px;
+    padding: 0 11px 0 11px;
+    margin: 0 6px 6px 0;
+    font-size: 12px;
+    -unity-text-align: middle-center;
+}
+.yz-acilir {
+    flex-direction: row;
+    align-items: center;
+    min-height: 28px;
+    margin: -4px -6px 2px -6px;
+    padding: 4px 6px 4px 6px;
+    border-radius: 8px;
+}
+.yz-acilir:hover { background-color: rgba(255, 255, 255, 0.05); }
+.yz-acilir-ad { font-size: 15px; flex-grow: 1; flex-shrink: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yz-acilir-sag { font-size: 12px; margin-left: 8px; white-space: nowrap; }
+.yz .olcu-deger { width: auto; min-width: 44px; margin-left: 8px; }
