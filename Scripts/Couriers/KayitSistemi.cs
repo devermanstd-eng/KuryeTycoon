@@ -212,9 +212,12 @@ namespace KuryeTycoon
         public int HesapBekleyen { get { int n = 0; foreach (var a in Adaylar) if (a.hesapBekliyor) n++; return n; } }
         public int BeklemeListesi { get { int n = 0; foreach (var b in bekleme) n += b; return n; } }
 
-        /// <summary>Hesap sınırı dolu ve hesap bekleyen yeterince kişi var: yeni kayıtlar kendiliğinden bekleme listesine yazılır.</summary>
-        public bool Dolu => UpgradeManager.I != null && UpgradeManager.I.CourierCapFull && HesapBekleyen >= DoluEsigi;
-        public const int DoluEsigi = 4;
+        /// <summary>
+        /// Hesap sınırı dolu ve süreçte yeterince kişi var: yeni kayıtlar kendiliğinden bekleme listesine yazılır, listeden sürece
+        /// giriş durur. (Süreçtekilerin hepsi sayılır: yoksa sınır doluyken liste boşalıp herkes hesap beklemeye düşüyordu.)
+        /// </summary>
+        public bool Dolu => UpgradeManager.I != null && UpgradeManager.I.CourierCapFull && Adaylar.Count >= DoluEsigi;
+        public const int DoluEsigi = 6;
 
         public int AsamadakiSayi(KayitAsamasi s)
         {

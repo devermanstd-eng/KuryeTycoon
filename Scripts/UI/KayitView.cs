@@ -68,7 +68,7 @@ namespace KuryeTycoon
             GUILayout.EndHorizontal();
             GUILayout.Label($"Tahmini kayıt hızı: günde ~{24f * 60f / 210f * ks.KayitCarpani:0.#} kişi (itibar, bonus çarpanı ve kampanyalara göre).", small);
             if (ks.Dolu)
-                GUILayout.Label($"Kurye hesapları dolu ve {ks.HesapBekleyen} kişi hesap bekliyor: yeni kayıtlar kendiliğinden bekleme listesine yazılıyor " +
+                GUILayout.Label($"Kurye hesapları dolu ve süreçte {ks.Adaylar.Count} kişi var: yeni kayıtlar kendiliğinden bekleme listesine yazılıyor " +
                                 $"({ks.BeklemeListesi} kişi). Gelişim'den kurye hesabı sınırını artırınca sürece girerler.", warn);
 
             // ---------- Kontrol ----------
