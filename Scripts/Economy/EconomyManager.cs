@@ -894,9 +894,25 @@ namespace KuryeTycoon
             LastDailyReport = sb.ToString();
 
             if (showDailyReport)
-                EventManager.I.Push(new GameEvent(LastDailyReportTitle, LastDailyReport)
+            {
+                var kart = new GameEvent(LastDailyReportTitle, LastDailyReport)
                     .Add("Tamam", null)
-                    .Add("Gün sonu raporlarını kapat (Ayarlar'dan açılabilir)", () => showDailyReport = false));
+                    .Add("Gün sonu raporlarını kapat (Ayarlar'dan açılabilir)", () => showDailyReport = false);
+                // Kartın üstünde tek bakışta: teslimat, iptal, net kâr, harcanabilir para, itibar
+                int iptal = om != null ? om.cancelledToday : 0;
+                float oran = s.deliveries + iptal > 0 ? iptal / (float)(s.deliveries + iptal) : 0f;
+                long net = s.Profit - s.penalties;
+                kart.Ozet("Teslimat", s.deliveries.ToString())
+                    .Ozet("İptal", iptal > 0 ? $"{iptal} · %{oran * 100f:0}" : "0", oran > 0.05f ? 2 : oran > 0.02f ? 3 : 1)
+                    .Ozet("Net kâr", Signed(net), net >= 0 ? 1 : 2)
+                    .Ozet("Harcanabilir", Ft(FreeCash), FreeCash < 0 ? 2 : 0);
+                if (om != null && om.reputationAtDayStart >= 0f)
+                {
+                    float dr = CompanyProfile.Reputation - om.reputationAtDayStart;
+                    kart.Ozet("İtibar", $"{CompanyProfile.Reputation:0.00} {(dr > 0.005f ? "▲" : dr < -0.005f ? "▼" : "")}", dr < -0.02f ? 2 : dr > 0.02f ? 1 : 0);
+                }
+                EventManager.I.Push(kart);
+            }
         }
 
         /// <summary>İptallerin en yoğun olduğu 3 saatlik dilimi ve o saatlere uygun kurye tipini söyler.</summary>
@@ -1049,6 +1065,13 @@ namespace KuryeTycoon
                 haftalikKart = new GameEvent(LastWeeklyReportTitle, LastWeeklyReport)
                     .Add("Tamam", null)
                     .Add("Haftalık raporları kapat (Ayarlar'dan açılabilir)", () => showWeeklyReport = false);
+                float hOran = s.deliveries + weekCancelled > 0 ? weekCancelled / (float)(s.deliveries + weekCancelled) : 0f;
+                haftalikKart.Ozet("Teslimat", s.deliveries.ToString())
+                    .Ozet("İptal", $"%{hOran * 100f:0}", hOran > 0.05f ? 2 : hOran > 0.02f ? 3 : 1)
+                    .Ozet("Net kâr", Signed(net), net >= 0 ? 1 : 2);
+                if (cashAtWeekStart != long.MinValue) haftalikKart.Ozet("Kasa", Signed(money - cashAtWeekStart), money >= cashAtWeekStart ? 1 : 2);
+                if (RivalCompany.I != null && RivalCompany.I.myDeliveriesLastWeek + RivalCompany.I.deliveriesLastWeek > 0)
+                    haftalikKart.Ozet("Pazar payı", $"%{RivalCompany.I.MarketShare * 100f:0}");
                 EventManager.I.Push(haftalikKart);
             }
 

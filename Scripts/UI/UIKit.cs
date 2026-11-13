@@ -180,7 +180,12 @@ namespace KuryeTycoon
         void Chip(string text, Color color)
         {
             if (string.IsNullOrEmpty(text)) return;
-            if (text.Length > 44) text = text.Substring(0, 42).TrimEnd() + "…";
+            // Uzun durum yazısı ("Çevrimdışı: Geçimini kuryelikten sağlıyor, ...") kısalır: iki noktadan öncesi kalır
+            if (text.Length > 30)
+            {
+                int k = text.IndexOf(": ", System.StringComparison.Ordinal);
+                text = k >= 4 && k <= 26 ? text.Substring(0, k) : text.Substring(0, 28).TrimEnd() + "…";
+            }
             chips.Add((text, color));
         }
 

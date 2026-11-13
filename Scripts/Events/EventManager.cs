@@ -9,12 +9,29 @@ namespace KuryeTycoon
         public System.Action action;
     }
 
+    /// <summary>Kartın üstünde büyük yazılan özet sayısı (rapor kartlarında). ton: 0 düz, 1 iyi, 2 kötü, 3 dikkat.</summary>
+    public class KartOzeti
+    {
+        public string baslik, deger;
+        public int ton;
+        public KartOzeti(string baslik, string deger, int ton = 0) { this.baslik = baslik; this.deger = deger; this.ton = ton; }
+    }
+
     /// <summary>Oyuncuya karar sunan olay kartı.</summary>
     public class GameEvent
     {
         public string title;
         public string body;
         public readonly List<EventChoice> choices = new List<EventChoice>();
+        /// <summary>Doluysa başlığın altında büyük sayılar olarak gösterilir; gövde metni "ayrıntı" olarak küçük yazılır.</summary>
+        public List<KartOzeti> ozet;
+
+        public GameEvent Ozet(string baslik, string deger, int ton = 0)
+        {
+            if (ozet == null) ozet = new List<KartOzeti>();
+            ozet.Add(new KartOzeti(baslik, deger, ton));
+            return this;
+        }
 
         public GameEvent(string title, string body)
         {
