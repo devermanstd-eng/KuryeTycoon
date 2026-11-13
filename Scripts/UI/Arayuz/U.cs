@@ -59,6 +59,8 @@ namespace KuryeTycoon
         {
             var b = new Button(tik) { text = metin ?? "" };
             b.AddToClassList("dg");
+            // Odak almasın: odaktaki düğme Boşluk/Enter ile yeniden basılır (Boşluk = duraklat; ör. "Yükselt" iki kez alınmasın)
+            b.focusable = false;
             // Düğme bir satırın / kartın içindeyse tıklama satıra geçmesin (satır açılıp kapanmasın)
             b.RegisterCallback<ClickEvent>(e => e.StopPropagation());
             foreach (var s in siniflar) if (!string.IsNullOrEmpty(s)) b.AddToClassList(s);

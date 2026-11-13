@@ -123,7 +123,7 @@ namespace KuryeTycoon
 
         bool ToastAt(Vector2 m, float sw)
         {
-            if (toasts.Count == 0) return false;
+            if (toasts.Count == 0 || UiAktif) return false;   // yeni arayüzde UiUzerinde bakar
             float w = 460f, cx = DockW + (sw - DockW) / 2f;
             return m.x > cx - w / 2f && m.x < cx + w / 2f && m.y > TopBar && m.y < TopBar + 12f + toasts.Count * 80f;
         }

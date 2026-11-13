@@ -40,17 +40,18 @@ namespace KuryeTycoon
 
             protected override void Kur()
             {
-                ozet = U.El(kok, "cipler");
+                var ust = Ust();   // özet, filtre ve sıralama kaymaz
+                ozet = U.El(ust, "cipler");
                 ui.Ipucu(ozet, "Kuryeler serbest çalışır, istedikleri saatte çevrimiçi olurlar. Saatte iyi kazanınca mutlu olurlar; uzun günler yorgunluk biriktirir. " +
                                "Asıl mesleklerine, yorgunluklarına ve günlük hayatlarına göre çevrimiçi/çevrimdışı olurlar; onları zorlayamazsın. " +
                                "Kendi araçlarını ve sigortalarını kendi kazançlarından öderler.");
 
-                var filtreler = U.El(kok, "satir");
+                var filtreler = U.El(ust, "satir");
                 filtreler.style.marginTop = 6;
                 filtreler.style.marginBottom = 6;
                 filtre = U.SecenekEkle(filtreler, new[] { "Hepsi", "Bisiklet", "Scooter", "Motor", "Araba" }, () => arac + 1, v => arac = v - 1);
                 filtre.kok.style.flexGrow = 1;
-                var sr = U.El(kok, "satir");
+                var sr = U.El(ust, "satir");
                 sr.style.marginBottom = 8;
                 U.Yazi(sr, "Sırala:", "kucuk", "soluk").style.marginRight = 8;
                 siralama = U.SecenekEkle(sr, SiraAdlari, () => sira, v => sira = v);

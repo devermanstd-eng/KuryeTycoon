@@ -8,7 +8,7 @@ namespace KuryeTycoon
     /// <summary>
     /// Üst çubuk (UI Toolkit): logo ve şirket adı · KASA, HARCANABİLİR, İTİBAR, ÇEVRİMİÇİ, tarih/saat/hava kartları ·
     /// uyarı hapları (çökme, vergi borcu, kriz, fiyat savaşı, boost, aile borcu, gece hızı, pazar payı) · oynat/duraklat ve hız.
-    /// Sığmayan uyarı hapları kesilir (en önemlisi solda).
+    /// Sığmayan uyarı hapları daralır, yazıları "…" ile kesilir (en önemlisi solda; tamamı üstüne gelince).
     /// </summary>
     public partial class GameUI
     {
@@ -218,6 +218,7 @@ namespace KuryeTycoon
                 U.Simge(hap, h.simge, h.renk, 0f, "hap-simge");
                 var l = U.Kalin(hap, h.yazi, "hap-yazi");
                 U.Renk(l, h.renk);
+                Ipucu(hap, h.yazi);   // sığmayınca yazı "…" ile kesilir; tamamı burada
             }
         }
     }
