@@ -66,7 +66,9 @@ namespace KuryeTycoon
                 if (CustomerSurcharge > 0) extra += $" · müşteriye kötü hava ücreti +{GameData.Ft(CustomerSurcharge)}";
                 float wb = CampaignManager.I != null ? CampaignManager.I.WeatherBoostPercent : 0f;
                 if (wb > 0f) extra += $" · hava boostu %{wb * 100f:0}";
-                EventManager.I.Notify($"Hava değişti: {Name}{extra}");
+                // Güneş/bulut değişimi oyunu etkilemez: sessiz. Yağmur, kar gibi etkisi olanlar bildirilir.
+                if (extra.Length > 0) EventManager.I.Notify($"Hava değişti: {Name}{extra}");
+                else EventManager.I.NotifyQuiet($"Hava değişti: {Name}");
             }
         }
 

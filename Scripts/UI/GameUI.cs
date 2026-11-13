@@ -2895,7 +2895,8 @@ namespace KuryeTycoon
             toggle.onHover.background = UITheme.KutuTex(true, true, acc);
             toggle.onActive.background = UITheme.KutuTex(true, true, acc);
             toggle.onFocused.background = UITheme.KutuTex(true, false, acc);
-            toggle.border = new RectOffset(UITheme.KutuW, 0, 0, 0);
+            // Üst kenar dokunun tamamı: kutu hiç uzamaz, iki satırlı seçenekte de solda üstte kalır
+            toggle.border = new RectOffset(UITheme.KutuW, 0, UITheme.KutuH, 0);
             toggle.overflow = new RectOffset(0, 0, 0, 0);
             toggle.padding = new RectOffset(UITheme.KutuW + 4, 4, 4, 4);
             toggle.margin = new RectOffset(2, 2, 3, 3);

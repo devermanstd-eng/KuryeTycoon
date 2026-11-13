@@ -267,15 +267,13 @@ namespace KuryeTycoon
             {
                 s.commissionBonus += 0.02f;
                 AddSatisfaction(s, -5f);
-                EventManager.I.Push(new GameEvent("Pazarlık başarılı",
-                    $"{s.Name} komisyonu 2 puan artırmayı kabul etti. Yeni oran: {Pct(s.Commission)}."));
+                EventManager.I.Notify($"Pazarlık başarılı: {s.Name} komisyonu 2 puan artırmayı kabul etti. Yeni oran: {Pct(s.Commission)}.");
             }
             else
             {
                 AddSatisfaction(s, -12f);
-                EventManager.I.Push(new GameEvent("Pazarlık başarısız",
-                    $"{s.Name} teklifini reddetti ve biraz küstü (memnuniyet {s.satisfaction:0}). " +
-                    "Bir ay sonra yeniden deneyebilirsin. Zamanında teslimat memnuniyeti artırır."));
+                EventManager.I.Notify($"Pazarlık başarısız: {s.Name} teklifini reddetti ve biraz küstü (memnuniyet {s.satisfaction:0}). " +
+                                      "Bir ay sonra yeniden deneyebilirsin; zamanında teslimat memnuniyeti artırır.");
             }
         }
 
