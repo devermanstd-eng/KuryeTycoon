@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-13 g (ince ayar 1: itibar olayları, bilgi kartları bildirim)";
+        public const string CodeVersion = "2026-11-13 h (aile borcu 6 000 €, itibar olayları, bilgi kartları bildirim)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 

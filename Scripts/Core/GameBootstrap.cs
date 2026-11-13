@@ -41,8 +41,13 @@ namespace KuryeTycoon
         [Header("Başlangıç")]
         // Not: alan adı bilerek değiştirildi (eski "startingMoney"). Eski sahnelerde kayıtlı 300 000 değeri
         // artık okunmaz; herkes güncel varsayılanla (1 000 000 Ft) başlar.
-        [Tooltip("Ailenden aldığın borç = başlangıç kasası")]
+        [Tooltip("Başlangıç kasası: aile borcundan kuruluş masrafları düşülünce kalan para")]
         public long familyLoanAmount = 1000000;
+        /// <summary>
+        /// Aileden alınan borcun tamamı (6 000 €). Kuruluş masrafları (ofis depozitosu, ilk ekipman, uygulama) düşülünce
+        /// kasada familyLoanAmount kalır. Eskiden borç = kasa = 2 500 €'ydu ve iyi oyuncu 10. günde kapatıyordu.
+        /// </summary>
+        public long familyLoanTotal = Denge.AileBorcu;
         public VehicleKind[] starterCouriers = { VehicleKind.Bisiklet, VehicleKind.EScooter };
 
         public bool Started { get; private set; }
@@ -209,7 +214,7 @@ namespace KuryeTycoon
             CityEvents.I.Init();
             CrisisManager.I.Init();
             CourierMessages.I.Init();
-            FamilyLoan.I.principal = familyLoanAmount;
+            FamilyLoan.I.principal = System.Math.Max(familyLoanTotal, familyLoanAmount);
             FamilyLoan.I.Init();
             Guide.I.InitNew();
             SaveSystem.I.Init();

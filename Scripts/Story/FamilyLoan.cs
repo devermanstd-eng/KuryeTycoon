@@ -97,6 +97,9 @@ namespace KuryeTycoon
                 "Baban uzun süre sustu. Sonra annene baktı ve çekmeceden banka kartını çıkardı:\n" +
                 $"\"Bu bizim emeklilik birikimimiz, {Ft(principal)}. Sana güveniyoruz evladım. " +
                 "Ama bu para bize lazım, Temmuz sonuna kadar geri ödemen gerekiyor.\"\n\n" +
+                (principal > EconomyManager.I.money
+                    ? $"Ofisin depozitosu, ilk iki kuryenin ekipmanı ve uygulamanın kurulumu {Ft(principal - EconomyManager.I.money)} tuttu; kasada {Ft(EconomyManager.I.money)} kaldı.\n\n"
+                    : "") +
                 $"Taksitler: her ayın sonunda {Ft(each)} ({first.DueText}, ...). " +
                 $"Erken ödeyebilirsin. Taksit kaçırırsan ailenin güveni sarsılır; {maxTrust} kez kaçırırsan şirketi kapatırsın.")
                 .Add("Sizi utandırmayacağım.", null));

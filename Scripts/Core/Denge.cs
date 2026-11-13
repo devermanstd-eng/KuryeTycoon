@@ -74,6 +74,11 @@ namespace KuryeTycoon
             return Mathf.RoundToInt(taban * Mathf.Sqrt(m) / 10f) * 10;
         }
 
+        // ------------------------------------------------------------------ aile borcu
+
+        /// <summary>Aile borcunun tamamı (Ft): 6 000 €, 5 taksit (Mart–Temmuz sonu, ayda 1 200 €). Başlangıç kasası ayrı (2 500 €).</summary>
+        public const long AileBorcu = 2400000;
+
         // ------------------------------------------------------------------ yorgunluk
 
         /// <summary>Çalışırken dakika başına yorgunluk (eski 0,0011).</summary>
