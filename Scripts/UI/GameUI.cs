@@ -100,10 +100,11 @@ namespace KuryeTycoon
             if (HandlePhotoMode(sw, sh)) return;   // F10: arayüz gizli, yalnızca şehir
 
             if (ConfirmOpen) HandleConfirmKey();
+            else if (BigCardOpen) HandleBigCardKey();   // büyük kurye kartı: Esc kapatır (CourierBigCard.cs)
             else if (EventManager.I.Current == null) HandleMenuKey();
-            modalFree = EventManager.I.Current == null && !pauseMenuOpen && !ConfirmOpen;
+            modalFree = EventManager.I.Current == null && !pauseMenuOpen && !ConfirmOpen && !BigCardOpen;
             if (modalFree) HandleKeys();
-            if (!pauseMenuOpen && !ConfirmOpen) HandleMapMouse(sw, sh);
+            if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
 
             GUI.enabled = modalFree;
             DrawHeat();          // sipariş yoğunluğu katmanı (etiketlerin altında)
@@ -125,6 +126,7 @@ namespace KuryeTycoon
             DrawGuideOverlays(sw, sh);
             GUI.enabled = true;
             DrawEvent(sw, sh);
+            if (BigCardOpen && EventManager.I.Current == null && !pauseMenuOpen) DrawBigCard(sw, sh);
             if (pauseMenuOpen) DrawPauseMenu(sw, sh);
             if (ConfirmOpen) DrawConfirm(sw, sh);
         }
@@ -1505,10 +1507,11 @@ namespace KuryeTycoon
                 else applicationFilter = -1;
                 if (applicationFilter >= 0 && ApplicationCountByVehicle((VehicleKind)applicationFilter) == 0)
                     GUILayout.Label($"{GameData.Vehicle((VehicleKind)applicationFilter).name} ile başvuran yok.", small);
+                WorkPartFilterBar(cm.Applications);   // saat filtresi (WorkHoursView.cs)
             }
 
             foreach (var cand in cm.Applications)
-                if (PassesFilter(applicationFilter, cand.vehicle)) DrawCandidateCard(cand, now);
+                if (PassesFilter(applicationFilter, cand.vehicle) && PassesWorkFilter(cand)) DrawCandidateCard(cand, now);
 
             // Destek personeli de buradan işe alınabilir (Destek menüsü açıldıktan sonra)
             if (!TabOpen(Tab.Destek)) return;
