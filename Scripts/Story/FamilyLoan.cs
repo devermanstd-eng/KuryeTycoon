@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    /// <summary>Aile borcunun bir taksiti.</summary>
+    /// <summary>Kurulum kredisinin bir taksiti.</summary>
     [System.Serializable]
     public class Installment
     {
@@ -19,18 +19,27 @@ namespace KuryeTycoon
     }
 
     /// <summary>
-    /// Hikaye: Şirketi annenle babanın birikimi olan 1 000 000 Ft ile kurdun.
-    /// Borcu 4 aylık taksitle ödemen gerekiyor (Taksimetre'deki gibi süre baskısı).
-    /// Taksit kaçırırsan ailenin güveni azalır; güven biterse şirket kapanır.
-    /// Erken veya kısmi ödeme yapılabilir. Borç anapara ödemesidir: gider değildir, vergiden düşülmez.
+    /// Hikaye: Yıllarca Turbo Paket'te kuryelik yaptın. Platformun her ay biraz daha düşen paket ücretinden bıkıp
+    /// kendi kurye şirketini kurmaya karar verdin ve Duna Bank'tan 1 000 000 Ft girişimci kredisi aldın.
+    /// Kredi faiziyle birlikte Mart–Temmuz arası 5 taksitle geri ödenir (süre baskısı).
+    /// Taksit kaçırırsan kredi notun düşer; not biterse banka krediyi geri çağırır ve şirket kapanır.
+    /// Erken veya kısmi ödeme yapılabilir. Kredi ödemesi gider değildir, vergiden düşülmez.
+    /// (Sınıfın adı eski kayıtlar ve diğer scriptler bozulmasın diye FamilyLoan olarak kaldı.)
     /// </summary>
     public class FamilyLoan : MonoBehaviour
     {
         public static FamilyLoan I { get; private set; }
 
-        [Header("Borç")]
-        public long principal = 1000000;
-        // Mart–Temmuz sonu (5 taksit). Eskiden ilk taksit Nisan sonundaydı ve borç oyunun başında hiç baskı yapmıyordu.
+        public const string Banka = "Duna Bank";
+        public const string Temsilci = "Kovács Réka";
+        public const string EskiSirket = "Turbo Paket";
+        public const string EskiArkadas = "Bence";
+
+        [Header("Kredi")]
+        public long principal = 1000000;          // çekilen kredi (başlangıç kasası)
+        [Tooltip("Kredinin toplam faizi (5 aylık vade için)")]
+        public float faizOrani = 0.08f;
+        // Mart–Temmuz sonu (5 taksit).
         public int[] dueMonths = { 3, 4, 5, 6, 7 };
         public int maxTrust = 3;
 
@@ -40,12 +49,16 @@ namespace KuryeTycoon
         public bool Finished { get; private set; }
         public bool Failed { get; private set; }
 
+        /// <summary>Faiz dahil geri ödenecek toplam (eski kayıtlarda faizsiz: anapara).</summary>
+        public long Toplam { get; private set; }
+        public long Faiz => System.Math.Max(0L, Toplam - principal);
+
         int deliveriesMilestone;
         bool ready;
 
         static string Ft(long v) => GameData.Ft(v);
 
-        public long Remaining => Finished ? 0 : principal - TotalPaid;
+        public long Remaining => Finished ? 0 : System.Math.Max(0L, Toplam - TotalPaid);
 
         void Awake() { I = this; }
 
@@ -55,7 +68,7 @@ namespace KuryeTycoon
         {
             var s = new LoanSave
             {
-                principal = principal, totalPaid = TotalPaid, trust = Trust, deliveriesMilestone = deliveriesMilestone,
+                principal = principal, toplam = Toplam, totalPaid = TotalPaid, trust = Trust, deliveriesMilestone = deliveriesMilestone,
                 finished = Finished, failed = Failed
             };
             s.schedule.AddRange(Schedule);
@@ -73,6 +86,7 @@ namespace KuryeTycoon
             Finished = s.finished;
             Failed = s.failed;
             deliveriesMilestone = s.deliveriesMilestone;
+            Toplam = s.toplam > 0 ? s.toplam : principal;   // eski kayıt (aile borcu): faiz yok
             GameClock.I.OnNewDay += OnNewDay;
             ready = true;
         }
@@ -82,6 +96,7 @@ namespace KuryeTycoon
         {
             Schedule.Clear();
             principal = 0;
+            Toplam = 0;
             TotalPaid = 0;
             Trust = maxTrust;
             Finished = true;
@@ -91,11 +106,12 @@ namespace KuryeTycoon
         public void Init()
         {
             Trust = maxTrust;
-            long each = principal / dueMonths.Length;
+            Toplam = (long)Mathf.Round(principal * (1f + faizOrani) / 1000f) * 1000;
+            long each = (Toplam / dueMonths.Length) / 1000 * 1000;
             for (int i = 0; i < dueMonths.Length; i++)
             {
                 int m = dueMonths[i];
-                long amount = i == dueMonths.Length - 1 ? principal - each * (dueMonths.Length - 1) : each;
+                long amount = i == dueMonths.Length - 1 ? Toplam - each * (dueMonths.Length - 1) : each;
                 Schedule.Add(new Installment { month = m, day = GameClock.MonthLength(m), amount = amount });
             }
             GameClock.I.OnNewDay += OnNewDay;
@@ -103,17 +119,19 @@ namespace KuryeTycoon
 
             var first = Schedule[0];
             EventManager.I.Push(new GameEvent("Bir hayalin başlangıcı",
-                "Yıllarca başkalarının siparişini taşıdın. Yağmurda, karda, gece yarısı...\n" +
-                "Bir akşam yemekte annenle babana kendi kurye şirketini kurmak istediğini söyledin.\n\n" +
-                "Baban uzun süre sustu. Sonra annene baktı ve çekmeceden banka kartını çıkardı:\n" +
-                $"\"Bu bizim emeklilik birikimimiz, {Ft(principal)}. Sana güveniyoruz evladım. " +
-                "Ama bu para bize lazım, Temmuz sonuna kadar geri ödemen gerekiyor.\"\n\n" +
+                $"Üç yıl boyunca {TurkceEk.In(EskiSirket)} mor çantasını taşıdın. Yağmurda, karda, gece yarısı...\n" +
+                "Her ay paket başı ücret biraz daha düştü, uygulama her ay biraz daha çok şey istedi. " +
+                $"Bir gece vardiya arkadaşın {EskiArkadas} durakta söylendi: \"Bu işi bizden iyi bilen yok, ama parayı hep başkası kazanıyor.\"\n\n" +
+                $"Ertesi sabah {TurkceEk.In(Banka)} şubesindeydin. Temsilci {Temsilci} iş planını okudu, gözlüğünü çıkardı:\n" +
+                $"\"{Ft(principal)} girişimci kredisi verebiliriz. Faiziyle {Ft(Toplam)}, Temmuz sonuna kadar beş taksit. " +
+                "Taksiti aksatırsanız notunuz düşer; üçüncüsünde krediyi geri çağırırız.\"\n\n" +
                 (principal > EconomyManager.I.money
                     ? $"Ofisin depozitosu, ilk iki kuryenin ekipmanı ve uygulamanın kurulumu {Ft(principal - EconomyManager.I.money)} tuttu; kasada {Ft(EconomyManager.I.money)} kaldı.\n\n"
                     : "") +
-                $"Taksitler: her ayın sonunda {Ft(each)} ({first.DueText}, ...). " +
-                $"Erken ödeyebilirsin. Taksit kaçırırsan ailenin güveni sarsılır; {maxTrust} kez kaçırırsan şirketi kapatırsın.")
-                .Add("Sizi utandırmayacağım.", null));
+                $"Taksitler: her ayın sonunda {Ft(each)} ({first.DueText}, ...). Erken ödeyebilirsin. " +
+                $"{maxTrust} taksit kaçırırsan banka krediyi geri çağırır ve şirket kapanır.\n\n" +
+                $"Eski patronun {EskiSirket} artık rakibin. Şehirde onlardan başka platformlar da var.")
+                .Add("İmzala. Bu sefer kendi şirketim için çalışacağım.", null));
         }
 
         public Installment NextDue
@@ -145,10 +163,11 @@ namespace KuryeTycoon
             {
                 int left = DaysUntil(due);
                 if (left == 7)
-                    EventManager.I.Notify($"Annen aradı: \"Taksite 1 hafta kaldı, {Ft(due.Remaining)}. Kolay gelsin evladım.\"");
+                    EventManager.I.Notify($"{Banka} SMS: \"Kredi taksitinizin ({Ft(due.Remaining)}) vadesine 7 gün kaldı: {due.DueText}.\"");
                 else if (left == 1)
                     EventManager.I.Push(new GameEvent("Yarın taksit günü",
-                        $"Baban mesaj attı: \"Yarın {due.DueText}. {Ft(due.Remaining)} bekliyoruz.\"\n\n" +
+                        $"{Temsilci} ({Banka}) e-posta attı: \"Yarın {due.DueText}, {Ft(due.Remaining)} tutarındaki taksitinizin son günü. " +
+                        "Hesabınızda bakiye bulundurmanızı rica ederiz.\"\n\n" +
                         $"Kasanda {Ft(EconomyManager.I.money)} var.")
                         .Add($"Şimdi öde ({Ft(due.Remaining)})", () => Pay(due.Remaining))
                         .Add("Yarına kadar biraz daha kazanırım", null));
@@ -167,16 +186,16 @@ namespace KuryeTycoon
                 if (deliveriesMilestone < m && total >= m)
                 {
                     deliveriesMilestone = m;
-                    string msg = m == 100 ? "Annen: \"Komşulara anlattım, senin kuryeleri gördüler! 100 teslimat olmuş, maşallah.\""
-                               : m == 500 ? "Baban: \"500 teslimat ha? Ben ilk dükkanımı açtığımda bu kadar müşterim yoktu.\""
-                               : m == 1000 ? "Annen: \"Bin teslimat! Babana söyledim, gözleri doldu.\""
-                               : "Baban: \"Artık mahallede herkes senin şirketini konuşuyor.\"";
+                    string msg = m == 100 ? $"{EskiArkadas} yazdı: \"Senin kuryeleri gördüm abi! 100 teslimat olmuş, {EskiSirket}'te herkes seni konuşuyor.\""
+                               : m == 500 ? $"{EskiArkadas}: \"500 teslimat ha? {EskiSirket}'te bölge müdürü adını sordu, tedirgin olmuşlar.\""
+                               : m == 1000 ? $"{EskiArkadas}: \"Bin teslimat! Bizim duraktaki yarı kuryeler sana geçmek istiyor.\""
+                               : $"{Temsilci} ({Banka}): \"Şubede sizin şirketi örnek gösteriyoruz. Büyüme kredisi düşünürseniz kapımız açık.\"";
                     EventManager.I.Notify(msg);
                 }
             }
         }
 
-        /// <summary>Borca ödeme (erken, kısmi veya tamamı). Önce en eski taksit kapanır.</summary>
+        /// <summary>Krediye ödeme (erken, kısmi veya tamamı). Önce en eski taksit kapanır.</summary>
         public bool Pay(long amount)
         {
             if (Finished || Failed || amount <= 0) return false;
@@ -187,7 +206,7 @@ namespace KuryeTycoon
                 return false;
             }
 
-            EconomyManager.I.PayLoan(amount, "Aile borcu ödemesi");
+            EconomyManager.I.PayLoan(amount, $"{Banka} kredi taksiti");
             TotalPaid += amount;
 
             long left = amount;
@@ -200,7 +219,7 @@ namespace KuryeTycoon
                 if (t.Remaining == 0)
                 {
                     t.closed = true;
-                    EventManager.I.Notify($"{t.DueText} taksiti ödendi. Baban: \"Aferin evladım.\"");
+                    EventManager.I.Notify($"{t.DueText} kredi taksiti ödendi. {Banka}: \"Ödemeniz için teşekkür ederiz.\"");
                 }
             }
             // Erken ödenen fazlalık sonraki taksitlerden düşülmüş olur
@@ -220,13 +239,13 @@ namespace KuryeTycoon
 
             if (Trust <= 0)
             {
-                Fail($"{t.DueText} taksitini de ödeyemedin. Baban artık sabredemiyor.");
+                Fail($"{t.DueText} taksitini de ödeyemedin. {Banka} krediyi geri çağırdı.");
                 return;
             }
 
             if (next == null)
             {
-                // Son taksit kaçtı: aile 30 gün daha süre verir
+                // Son taksit kaçtı: banka 30 gün daha süre verir
                 int gm = Mathf.Min(12, t.month + 1);
                 next = new Installment { month = gm, day = GameClock.MonthLength(gm), amount = 0 };
                 Schedule.Add(next);
@@ -234,13 +253,13 @@ namespace KuryeTycoon
             next.amount += unpaid;
 
             string mood = Trust == 2
-                ? "Annen telefonda sesini yükseltmedi ama hayal kırıklığını hissettin:\n\"Oğlum, babanın ilaç parası bile o hesaptaydı...\""
-                : "Baban telefonu açar açmaz konuştu:\n\"Son şansın. Bir daha olursa şirketi kapatıp bize parayı geri vereceksin.\"";
+                ? $"{Temsilci} aradı, sesi nazik ama kesindi:\n\"Bu sefer gecikme notu düştük. Bir sonraki taksitte sorun çıkmasın lütfen.\""
+                : $"{Banka}'tan imzalı bir mektup geldi:\n\"Son uyarıdır. Bir taksit daha ödenmezse kredi sözleşmesi feshedilir ve şirket varlıklarına haciz başlatılır.\"";
 
             EventManager.I.Push(new GameEvent("Taksit kaçtı!",
                 $"{t.DueText} taksitinden {Ft(unpaid)} ödenemedi.\n\n{mood}\n\n" +
                 $"Ödenmeyen tutar {next.DueText} taksitine eklendi (yeni taksit {Ft(next.Remaining)}). " +
-                $"Aile güveni: {Trust}/{maxTrust}")
+                $"Kredi notu: {Trust}/{maxTrust}")
                 .Add("Telafi edeceğim.", null));
         }
 
@@ -254,10 +273,10 @@ namespace KuryeTycoon
             string ending = Trust == maxTrust
                 ? "Tek bir taksit bile kaçırmadın."
                 : "Kolay olmadı, birkaç kez sendeledin ama sonunda başardın.";
-            EventManager.I.Push(new GameEvent("Borç bitti!",
-                $"Son ödemeyi yaptığın akşam annenle baban seni yemeğe çağırdı. {ending}\n\n" +
-                "Baban kadehini kaldırdı: \"Evladımın şirketine! Artık bizim değil, senin paran çalışıyor.\"\n\n" +
-                "Aile borcu kapandı. Bundan sonrası tamamen senin: şirketini istediğin kadar büyüt.")
+            EventManager.I.Push(new GameEvent("Kredi bitti!",
+                $"Son taksiti yatırdığın akşam {EskiArkadas} seni eski durağa çağırdı, kuryeler sana kahve ısmarladı. {ending}\n\n" +
+                $"\"Bizden biri patron oldu ve {EskiSirket}'e kafa tutuyor,\" dedi {EskiArkadas}. \"Unutma nereden geldiğini.\"\n\n" +
+                $"{Banka} kredisi kapandı. Bundan sonrası tamamen senin: şirketini istediğin kadar büyüt.")
                 .Add("Devam et (serbest mod)", null));
         }
 
@@ -265,9 +284,9 @@ namespace KuryeTycoon
         {
             Failed = true;
             EventManager.I.Push(new GameEvent("Son: Şirket kapandı",
-                reason + "\n\nAilenle oturup konuştunuz. Kuryelere veda ettin, dükkanlarla sözleşmeleri bitirdin. " +
-                "Belki bir gün yeniden denersin...\n\n" +
-                $"Ödenen: {Ft(TotalPaid)} / {Ft(principal)}")
+                reason + "\n\nKuryelere veda ettin, dükkanlarla sözleşmeleri bitirdin. Belki bir gün yeniden denersin... " +
+                $"{EskiSirket} kapıyı açık bıraktı: \"İstersen yine kuryelik yapabilirsin.\"\n\n" +
+                $"Ödenen: {Ft(TotalPaid)} / {Ft(Toplam)}")
                 .Add("Yeniden başla", () => GameBootstrap.Restart())
                 .Add("Devam et (sadece test için)", null));
         }
@@ -277,11 +296,11 @@ namespace KuryeTycoon
             get
             {
                 if (!ready) return "";
-                if (Finished) return "Aile borcu: ödendi";
-                if (Failed) return "Aile borcu: ödenemedi";
+                if (Finished) return "Kredi: ödendi";
+                if (Failed) return "Kredi: ödenemedi";
                 var n = NextDue;
-                if (n == null) return $"Aile borcu: {Ft(Remaining)}";
-                return $"Aile borcu: {Ft(Remaining)} · Taksit {Ft(n.Remaining)} → {n.DueText} ({DaysUntil(n)} gün) · Güven {Trust}/{maxTrust}";
+                if (n == null) return $"Kredi: {Ft(Remaining)}";
+                return $"Kredi: {Ft(Remaining)} · Taksit {Ft(n.Remaining)} → {n.DueText} ({DaysUntil(n)} gün) · Not {Trust}/{maxTrust}";
             }
         }
     }

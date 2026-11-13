@@ -324,9 +324,12 @@ namespace KuryeTycoon
             GUILayout.Label("Kurye Şirketini Kur", title);
             var gb = GameBootstrap.I;
             long borc = System.Math.Max(gb.familyLoanTotal, gb.familyLoanAmount);
-            GUILayout.Label($"Yıllarca kuryelik yaptın. Şimdi annenle babanın emeklilik birikimi olan {Ft(borc)} ile kendi kurye şirketini kuruyorsun. " +
+            long toplamBorc = (long)Mathf.Round(borc * (1f + (FamilyLoan.I != null ? FamilyLoan.I.faizOrani : 0.08f)) / 1000f) * 1000;
+            GUILayout.Label($"Yıllarca {FamilyLoan.EskiSirket}'te kuryelik yaptın. Şimdi {FamilyLoan.Banka}'tan aldığın {Ft(borc)} girişimci kredisiyle kendi kurye " +
+                            "şirketini kuruyorsun. " +
                             (borc > gb.familyLoanAmount ? $"Kuruluş masraflarından sonra kasada {Ft(gb.familyLoanAmount)} kalıyor. " : "") +
-                            $"Borcu Temmuz sonuna kadar ayda {Ft(borc / 5)} taksitle geri ödemen gerekiyor.", label);
+                            $"Krediyi faiziyle ({Ft(toplamBorc)}) Temmuz sonuna kadar ayda ~{Ft(toplamBorc / 5)} taksitle geri ödemen gerekiyor; " +
+                            "eski patronun artık rakiplerinden biri.", label);
             GUILayout.Space(6);
             GUILayout.BeginVertical(box);
             GUILayout.Label("Bu oyunda ne yapacaksın?", header);
@@ -335,7 +338,7 @@ namespace KuryeTycoon
             GUILayout.Label("•  Kuryeler serbest çalışır: saatte iyi kazanırsa mutlu olur, uzun günler biriktikçe yorulur. Çok kurye alırsan iş başına düşen kazanç azalır.", small);
             GUILayout.Label("•  İtibar son iki haftanın müşteri puanıdır; iptal edilen sipariş 1 yıldız sayılır. Şirket büyüdükçe yatırımlar da pahalanır.", small);
             GUILayout.Label("•  Şehir yaşıyor: gündüz ve gece, hava, trafik ve şehir olayları siparişleri ve kuryeleri etkiler.", small);
-            GUILayout.Label("•  İlk hedef: aile borcunu zamanında ödemek. Sonrası: şehrin en büyük kurye şirketi olmak.", small);
+            GUILayout.Label("•  İlk hedef: banka kredisini zamanında ödemek. Sonrası: şehrin en büyük kurye şirketi olmak.", small);
             GUILayout.Label("Boşluk: duraklat · 1–8: hız · H: sipariş yoğunluğu · F10: fotoğraf modu · Esc: menü. Oyun her gece kendini kaydeder.", bodyDim);
             GUILayout.EndVertical();
             GUILayout.Space(6);
@@ -559,7 +562,7 @@ namespace KuryeTycoon
                 foreach (var a in RivalFleet.I.Agents)
                     if (a != null && a.Visible)
                         QueueLabel(cam, CityMap.ToWorld(a.Position) + MapCamera.LabelOffset(0.5f, 0.55f), a.label,
-                                   Color.Lerp(RivalFleet.RivalColor, Color.white, 0.4f));
+                                   Color.Lerp(a.renk, Color.white, 0.4f));
 
             // 4b) Teslimat robotları: sadece yakındayken
             if (RobotFilo.I != null && MapCamera.I != null && MapCamera.I.ShowModels)
@@ -1027,7 +1030,8 @@ namespace KuryeTycoon
                 }
             if (RivalCompany.I != null && RivalCompany.I.priceWarDays > 0 && RivalCompany.I.warDistrict > 0)
             {
-                string t = $"Fiyat savaşı: {CityMap.DistrictNames[RivalCompany.I.warDistrict]} · {RivalCompany.I.priceWarDays} g";
+                var wo = RivalCompany.I.RakipAt(RivalCompany.I.warOwner);
+                string t = $"Fiyat savaşı{(wo != null ? " (" + wo.kisa + ")" : "")}: {CityMap.DistrictNames[RivalCompany.I.warDistrict]} · {RivalCompany.I.priceWarDays} g";
                 Add(px => AlertPill(px, Icons.Kind.Flag, t, UITheme.WithAlpha(UITheme.Bad, 0.6f), Color.white), topValue.CalcSize(new GUIContent(t)).x + 44f);
             }
             var boost = CampaignManager.I.ActiveWindow;
@@ -1046,7 +1050,7 @@ namespace KuryeTycoon
             if (FamilyLoan.I != null && !FamilyLoan.I.Finished)
             {
                 string t = FamilyLoan.I.TopBarText;
-                Add(px => AlertPill(px, Icons.Kind.Heart, t, UITheme.WithAlpha(Color.white, 0.08f), UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
+                Add(px => AlertPill(px, Icons.Kind.Wallet, t, UITheme.WithAlpha(Color.white, 0.08f), UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
             }
             if (GameClock.I.NightFastActive && !GameClock.I.Paused)
             {
@@ -1060,10 +1064,15 @@ namespace KuryeTycoon
                 bool noData = rvc.myDeliveriesLastWeek + rvc.deliveriesLastWeek == 0;   // ilk hafta: henüz ölçülmedi
                 float sh = rvc.MarketShare, tr = rvc.ShareTrend;
                 string arrow = tr > 0.005f ? " ▲" : tr < -0.005f ? " ▼" : "";
-                string t = noData ? $"Pazar payı: ilk hafta sonunda · rakip {rvc.companyName}"
-                                  : $"Pazar payı %{sh * 100f:0}{arrow} · {rvc.companyName} %{(1f - sh) * 100f:0}";
-                Color bg = sh >= 0.55f ? UITheme.WithAlpha(new Color(0.40f, 0.85f, 0.55f), 0.22f)
-                         : sh >= 0.42f ? UITheme.WithAlpha(orange, 0.30f) : UITheme.Bad;
+                // En büyük rakip (geçen haftanın payına göre)
+                Rakip enb = null;
+                foreach (var r in rvc.Rakipler) if (enb == null || rvc.PayiOf(r) > rvc.PayiOf(enb)) enb = r;
+                float enbPay = enb != null ? rvc.PayiOf(enb) : 0f;
+                string t = noData ? $"Pazar payı: ilk hafta sonunda · {rvc.Rakipler.Count} rakip"
+                                  : $"Pazar payı %{sh * 100f:0}{arrow} · {(enb != null ? enb.kisa : "rakip")} %{enbPay * 100f:0}";
+                // Renk: en büyük rakibi geçtiysen yeşil, yakınsan turuncu, gerideysen kırmızı
+                Color bg = sh >= enbPay * 1.15f ? UITheme.WithAlpha(new Color(0.40f, 0.85f, 0.55f), 0.22f)
+                         : sh >= enbPay * 0.8f ? UITheme.WithAlpha(orange, 0.30f) : UITheme.Bad;
                 Add(px => AlertPill(px, Icons.Kind.Chart, t, bg, UITheme.Text), topValue.CalcSize(new GUIContent(t)).x + 44f);
             }
 
@@ -1603,22 +1612,34 @@ namespace KuryeTycoon
             if (rv != null)
             {
                 GUILayout.BeginVertical(box);
-                GUILayout.Label($"Rakip: {rv.companyName} (yapay zekâ)", header);
-                HelpOnLast("Rakip de çalıştığı dükkanlarda siparişler itibar ve kurye sayısına göre paylaşılır. Münhasır dükkanlarda rakip yok. " +
-                           "Sözleşmeler 6 ayda bir yenilenir; memnuniyet düşükse rakip araya girer. Moralsiz kuryelerini de ayartabilir.");
-                GUILayout.Label($"İtibar {rv.reputation:0.0}/5{(rv.marketingDays > 0 ? $" (reklamla {rv.EffectiveReputation:0.0})" : "")} · " +
-                                $"{rv.couriers} kurye · {rv.RivalShopCount} dükkanla çalışıyor · geçen hafta ~{rv.deliveriesLastWeek} teslimat", small);
+                GUILayout.Label($"Rakipler: {rv.Rakipler.Count} platform (yapay zekâ)", header);
+                HelpOnLast("Bir dükkanla birden çok platform çalışabilir: siparişler itibar, kurye sayısı ve teslimat hızına göre paylaşılır. " +
+                           "Münhasır dükkanlarda hiçbir rakip yok. Sözleşmeler 6 ayda bir yenilenir; memnuniyet düşükse bir rakip araya girer. " +
+                           "Moralsiz kuryelerini de ayartabilirler.");
                 GUILayout.Label($"Pazar payın: %{rv.MarketShare * 100f:0} (geçen hafta {(rv.ShareTrend >= 0f ? "+" : "−")}{Mathf.Abs(rv.ShareTrend) * 100f:0.0} puan) · " +
-                                $"rakibin tavrı: {rv.MoodText} · yatırım turu: {rv.fundingRounds}", small);
-                GUILayout.Label($"Hizmet (son 7 gün): sen ort. {rv.myAvgMinutes:0} dk, %{rv.myLateRate * 100f:0} geç → müşteri gözünde ×{rv.MyService:0.00} · " +
-                                $"{rv.companyName} ~{rv.rivalAvgMinutes:0} dk, %{rv.rivalLateRate * 100f:0} geç → ×{rv.RivalService:0.00} · " +
-                                $"toplam talep ×{rv.ServiceDemandFactor:0.00}", small);
+                                $"sen ort. {rv.myAvgMinutes:0} dk, %{rv.myLateRate * 100f:0} geç → müşteri gözünde ×{rv.MyService:0.00} · toplam talep ×{rv.ServiceDemandFactor:0.00}", small);
                 HelpOnLast("Daha hızlı ve dakik teslimat yaptıkça paylaşılan dükkanlarda müşteriler rakipten sana geçer ve şehirde sipariş " +
                            "vermek isteyen insan sayısı artar. 40 dk ortalama nötr; her dakika hızlı ≈ +%2, geç kalan siparişler düşürür. " +
                            "Kurye fazlan varken siparişler toplu taşınmaz, boştaki kuryeye gider.");
-                HelpOnLast("Pazar payın %45'in üstüne çıktıkça rakip saldırganlaşır: yatırım bulur, kurye alır, hizmetini iyileştirir; " +
+                HelpOnLast("Pazar payın büyüdükçe (3 rakipte %35'ten sonra) rakipler saldırganlaşır: yatırım bulur, kurye alır, hizmetini iyileştirir; " +
                            "en iyi dükkanlarına ve kuryelerine teklif yapar, bir bölgede fiyat savaşı ya da reklam atağı başlatır. " +
                            "İtibarını yüksek tut, iyi dükkanlarla münhasırlık yap, kuryelerinin moralini koru.");
+                for (int ri = 0; ri < rv.Rakipler.Count; ri++)
+                {
+                    var r = rv.Rakipler[ri];
+                    GUILayout.Label($"■ {r.ad} · {r.Tanim}", note);
+                    var lastRect = GUILayoutUtility.GetLastRect();
+                    if (Event.current.type == EventType.Repaint)
+                    {
+                        var c = GUI.color; GUI.color = r.renk;
+                        GUI.DrawTexture(new Rect(lastRect.x, lastRect.y + lastRect.height * 0.25f, 10f, lastRect.height * 0.5f), Texture2D.whiteTexture);
+                        GUI.color = c;
+                    }
+                    GUILayout.Label($"   pay %{rv.PayiOf(r) * 100f:0} · itibar {r.reputation:0.0}/5{(r.marketingDays > 0 ? $" (reklamla {r.EffectiveReputation:0.0})" : "")} · " +
+                                    $"{r.couriers} kurye · {rv.ShopCountOf(ri)} dükkan · ~{r.deliveriesLastWeek} teslimat · ~{r.avgMinutes:0} dk, %{r.lateRate * 100f:0} geç (×{r.Service:0.00}) · " +
+                                    $"tavrı: {r.MoodText}{(r.fundingRounds > 0 ? $" · yatırım turu {r.fundingRounds}" : "")}", small);
+                    if (r.marketingDays > 0) GUILayout.Label($"   Reklam atağı: {r.marketingDays} gün daha müşterilere daha iyi görünüyor.", warn);
+                }
                 if (rv.shareHistory.Count > 1)
                 {
                     var hs = new System.Text.StringBuilder("Son haftalar: ");
@@ -1626,9 +1647,8 @@ namespace KuryeTycoon
                     GUILayout.Label(hs.ToString(), small);
                 }
                 if (rv.priceWarDays > 0 && rv.warDistrict > 0)
-                    GUILayout.Label($"Fiyat savaşı: {rv.companyName} {CityMap.DistrictNames[rv.warDistrict]} bölgesinde {rv.priceWarDays} gün daha ücret kırıyor " +
+                    GUILayout.Label($"Fiyat savaşı: {(rv.RakipAt(rv.warOwner) != null ? rv.RakipAt(rv.warOwner).ad : "rakip")} {CityMap.DistrictNames[rv.warDistrict]} bölgesinde {rv.priceWarDays} gün daha ücret kırıyor " +
                                     $"(oradaki siparişlerin −%{(1f - rv.warFactor) * 100f:0}).", warn);
-                if (rv.marketingDays > 0) GUILayout.Label($"Reklam atağı: {rv.marketingDays} gün daha müşterilere daha iyi görünüyor.", warn);
                 GUILayout.EndVertical();
             }
 
@@ -1660,7 +1680,7 @@ namespace KuryeTycoon
             if (withTitle)
             {
                 GUILayout.Label(s.Name + (s.exclusive ? "  [Münhasır]" : s.contracted ? "  [Sözleşmeli]" : "") +
-                                (s.rivalContracted ? $"  · {(rv != null ? rv.companyName : "rakip")} ile de çalışıyor" : ""), header);
+                                (s.rivalContracted ? $"  · {(rv != null ? rv.DukkanRakipleri(s) : "rakip")} ile de çalışıyor" : ""), header);
             }
             bool openNow = ShopHours.IsOpen(s.def);
             GUILayout.Label($"{ShopHours.StatusText(s.def)} · {ShopHours.HoursText(s.def)}", openNow ? note : warn);
@@ -1689,9 +1709,8 @@ namespace KuryeTycoon
                 Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);
                 Bar("Memnuniyet", s.satisfaction / 100f, sc, $"{s.satisfaction:0}/100");
                 GUILayout.Label(RivalCompany.PerformanceText(s), small);
-                float share = rv.ShareFor(s);
                 GUILayout.Label($"Sözleşme bitişi: {GameClock.I.DateOf(s.contractEndDay)} · bu ay {s.monthOrders} sipariş (geçen ay {s.lastMonthOrders}) · " +
-                                (s.exclusive ? "münhasır: siparişler +%15" : s.rivalContracted ? $"rakiple paylaşılıyor: payın ~%{share / 1.25f * 100f:0}" : "rakip yok"),
+                                (s.exclusive ? "münhasır: siparişler +%15" : s.rivalContracted ? $"{rv.DukkanRakipleri(s)} ile paylaşılıyor: müşterilerin ~%{rv.MyFraction(s) * 100f:0}'i seni seçiyor" : "rakip yok"),
                                 small);
                 if (s.commissionBonus != 0f)
                     GUILayout.Label($"Pazarlık/anlaşma farkı: {(s.commissionBonus > 0 ? "+" : "−")}{Mathf.Abs(s.commissionBonus) * 100f:0.#} puan (temel %{s.def.commission * 100f:0.#})", small);
@@ -1702,7 +1721,7 @@ namespace KuryeTycoon
                 GUI.enabled = modalFree && rv.CanOfferExclusive(s);
                 if (GUILayout.Button(s.exclusive ? "Münhasır" : $"Münhasırlık öner: −3 puan (şans %{rv.ExclusiveChance(s) * 100f:0})", smallButton))
                     deferred = () => AskConfirm("Münhasırlık öner",
-                        $"{shop.def.name} sadece seninle çalışsın diye teklif edilsin mi? Kabul ederse rakip çıkar, siparişler %15 artar, " +
+                        $"{shop.def.name} sadece seninle çalışsın diye teklif edilsin mi? Kabul ederse bütün rakipler çıkar, siparişler %15 artar, " +
                         "komisyonun 3 puan düşer ve sözleşme 6 ay uzar. Reddederse memnuniyeti biraz düşer ve 30 gün tekrar teklif edemezsin. " +
                         $"Kabul ihtimali yaklaşık %{rv.ExclusiveChance(shop) * 100f:0}.",
                         "Evet, teklif et", () => rv.OfferExclusive(shop));
@@ -2213,19 +2232,19 @@ namespace KuryeTycoon
             var loan = FamilyLoan.I;
             var e = EconomyManager.I;
             GUILayout.BeginVertical(box);
-            GUILayout.Label("Aile borcu", header);
-            HelpOnLast("Borç ödemesi gider değildir, vergiden düşülmez. Erken ödemek taksiti kapatır; ama kasada kötü günler için yedek bırak.");
+            GUILayout.Label($"Kurulum kredisi ({FamilyLoan.Banka})", header);
+            HelpOnLast("Kredi taksiti gider değildir, vergiden düşülmez (faiz taksitlerin içinde). Erken ödemek taksiti kapatır; ama kasada kötü günler için yedek bırak.");
             if (loan.Finished)
             {
-                GUILayout.Label($"Borç tamamen ödendi ({Ft(loan.principal)}). Ailen seninle gurur duyuyor.", label);
+                GUILayout.Label($"Kredi faiziyle tamamen ödendi ({Ft(loan.Toplam)}). Şirket artık kimseye borçlu değil.", label);
                 GUILayout.EndVertical();
                 return;
             }
-            if (loan.Failed) GUILayout.Label("Borç ödenemedi, şirket kapandı (test modunda devam ediyorsun).", warn);
+            if (loan.Failed) GUILayout.Label("Kredi ödenemedi, banka geri çağırdı ve şirket kapandı (test modunda devam ediyorsun).", warn);
 
-            GUILayout.Label($"Kalan: {Ft(loan.Remaining)} / {Ft(loan.principal)} · Aile güveni: {loan.Trust}/{loan.maxTrust}", label);
-            Bar("Ödenen", loan.TotalPaid / (float)loan.principal, new Color(0.35f, 0.8f, 0.5f),
-                $"%{loan.TotalPaid * 100f / loan.principal:0}");
+            GUILayout.Label($"Kalan: {Ft(loan.Remaining)} / {Ft(loan.Toplam)} (çekilen {Ft(loan.principal)} + faiz {Ft(loan.Faiz)}) · Kredi notu: {loan.Trust}/{loan.maxTrust}", label);
+            Bar("Ödenen", loan.TotalPaid / (float)Mathf.Max(1L, loan.Toplam), new Color(0.35f, 0.8f, 0.5f),
+                $"%{loan.TotalPaid * 100f / Mathf.Max(1L, loan.Toplam):0}");
             foreach (var t in loan.Schedule)
             {
                 string state = t.closed ? (t.Remaining == 0 ? "ödendi" : "kaçırıldı") : $"{loan.DaysUntil(t)} gün kaldı";
@@ -2240,8 +2259,8 @@ namespace KuryeTycoon
                 if (GUILayout.Button($"Taksiti öde ({Ft(next.Remaining)})", smallButton)) deferred = () => loan.Pay(next.Remaining);
                 GUI.enabled = modalFree && e.money >= 50000;
                 if (GUILayout.Button($"{Ft(50000)} erken öde", smallButton))
-                    deferred = () => ConfirmIfExpensive(50000, "Aile borcuna erken ödeme",
-                        $"Annenle babana {Ft(50000)} erken ödensin mi? Serbest kasan {Ft(EconomyManager.I.FreeCash)}.",
+                    deferred = () => ConfirmIfExpensive(50000, "Krediye erken ödeme",
+                        $"{FamilyLoan.Banka} kredisine {Ft(50000)} erken ödensin mi? Serbest kasan {Ft(EconomyManager.I.FreeCash)}.",
                         () => loan.Pay(50000));
                 GUI.enabled = modalFree && e.money >= loan.Remaining;
                 if (GUILayout.Button($"Tamamını öde ({Ft(loan.Remaining)})", smallButton)) deferred = () => loan.Pay(loan.Remaining);

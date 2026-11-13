@@ -725,7 +725,7 @@ namespace KuryeTycoon
         public void PoachToRival(Courier c, string rivalName, bool card = true)
         {
             if (card) EventManager.I.Push(new GameEvent("Kurye rakibe geçti",
-                $"{c.courierName} ({ShortOccupation(c.occupation)}) {rivalName}'ın daha iyi boost teklifini kabul edip oraya geçti. " +
+                $"{c.courierName} ({ShortOccupation(c.occupation)}) {TurkceEk.In(rivalName)} daha iyi boost teklifini kabul edip oraya geçti. " +
                 "Morali düşük kuryeler rakibin tekliflerine daha açık."));
             HandleLeaving(c);
             Couriers.Remove(c);

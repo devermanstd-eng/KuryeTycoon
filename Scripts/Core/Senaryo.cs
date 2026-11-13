@@ -5,9 +5,10 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Senaryolar, serbest mod ve günlük meydan okuma. Yeni oyun kurarken seçilir (kurulum ekranı), kayda yazılır.
-    ///  • Klasik: bildiğimiz oyun (aile borcu, büyüme).
-    ///  • Borç batağı: aile borcu yerine 15 000 € banka borcu, aynı beş taksit. Hedef: borcu Temmuz sonuna kadar kapat.
-    ///  • Rakibin şehri: Turbo Paket bütün dükkanlarla çalışıyor ve güçlü. Hedef: 90 gün içinde pazar payını %50'ye çıkar.
+    ///  • Klasik: bildiğimiz oyun (kurulum kredisi, rakipler, büyüme).
+    ///  • Borç batağı: kurulum kredisi 15 000 € (+faiz), aynı beş taksit. Hedef: krediyi Temmuz sonuna kadar kapat.
+    ///  • Rakiplerin şehri: üç platform da güçlü, Turbo Paket bütün dükkanlarla çalışıyor. Hedef: 90 gün içinde şehrin lideri ol
+    ///    (bir haftada her rakipten çok teslimat).
     ///  • Hızlı büyüme: yatırımcıdan 6 000 € ek sermaye. Hedef: 60 gün içinde 25 kurye ve günde ortalama 1 000 € gelir.
     ///  • Serbest mod: 250 000 € kasa, borç yok, hedef yok; şehri kurup denemek için.
     ///  • Günlük meydan okuma: herkes bugün aynı şehirle başlar (tohum = bugünün tarihi). 14 gün sonra puan:
@@ -18,13 +19,13 @@ namespace KuryeTycoon
     {
         public enum Tur { Klasik, BorcBatagi, RakibinSehri, HizliBuyume, Serbest, GunlukMeydan }
 
-        public static readonly string[] Adlar = { "Klasik", "Borç batağı", "Rakibin şehri", "Hızlı büyüme", "Serbest mod", "Günlük meydan okuma" };
+        public static readonly string[] Adlar = { "Klasik", "Borç batağı", "Rakiplerin şehri", "Hızlı büyüme", "Serbest mod", "Günlük meydan okuma" };
 
         public static readonly string[] Aciklamalar =
         {
-            "Aile borcunu öde, şirketi büyüt. Hedef sende.",
-            "Aile borcu yerine 15 000 € banka borcu, Mart–Temmuz beş taksit. Hedef: borcu zamanında kapat. Zor.",
-            "Turbo Paket şehrin bütün dükkanlarıyla çalışıyor, ekibi büyük. Hedef: 90 gün içinde pazar payını %50'ye çıkar.",
+            "Kredini öde, rakiplerini geç, şirketi büyüt. Hedef sende.",
+            "Kurulum kredisi 15 000 € (+%8 faiz), Mart–Temmuz beş taksit. Hedef: krediyi zamanında kapat. Zor.",
+            "Üç platform da güçlü, Turbo Paket şehrin bütün dükkanlarıyla çalışıyor. Hedef: 90 gün içinde şehrin lideri ol (bir haftada her rakipten çok teslimat).",
             "Bir yatırımcı 6 000 € ek sermaye verdi. Hedef: 60 gün içinde 25 kurye ve son 7 günde günde ortalama 1 000 € gelir.",
             "250 000 € kasa, borç yok, hedef yok. Şehri kur, dene, eğlen.",
             "Herkes bugün aynı şehirle başlar. 14 gün sonra puanın: teslimat × itibar / 5. Her gün yeni şehir.",
@@ -60,7 +61,7 @@ namespace KuryeTycoon
             return GunlukTohum;
         }
 
-        /// <summary>StartGame: aile borcunun tutarı (senaryoya göre).</summary>
+        /// <summary>StartGame: kurulum kredisinin tutarı (senaryoya göre; 0 = kredisiz).</summary>
         public static long AileBorcu(long varsayilan) =>
             Secili == Tur.BorcBatagi ? BorcBatagiBorcu : Secili == Tur.Serbest ? 0 : varsayilan;
 
@@ -82,11 +83,14 @@ namespace KuryeTycoon
                     var rv = RivalCompany.I;
                     if (rv != null)
                     {
-                        foreach (var s in CityMap.I.Shops) if (!s.own) s.rivalContracted = true;
-                        rv.couriers = 22;
-                        rv.reputation = 4.2f;
-                        rv.quality = 0.4f;
-                        rv.money = 4000000;
+                        foreach (var s in CityMap.I.Shops) if (!s.own) s.rivalContracted = true;   // en az Turbo Paket her dükkanda
+                        foreach (var r in rv.Rakipler)
+                        {
+                            r.couriers = Mathf.Max(r.couriers, 14);
+                            r.reputation = Mathf.Max(r.reputation, 4.0f);
+                            r.quality = Mathf.Max(r.quality, 0.35f);
+                            r.money += 3000000;
+                        }
                     }
                     break;
             }
@@ -110,7 +114,8 @@ namespace KuryeTycoon
                         return fl == null ? ad : $"{ad} · kalan borç {GameData.Ft(fl.Remaining)}";
                     case Tur.RakibinSehri:
                         var rv = RivalCompany.I;
-                        return $"{ad} · {Mathf.Max(0, RakipGun - Gun)} gün · pazar payı %{(rv != null ? rv.MarketShare * 100f : 0f):0} / %50";
+                        return $"{ad} · {Mathf.Max(0, RakipGun - Gun)} gün · pazar payın %{(rv != null ? rv.MarketShare * 100f : 0f):0}" +
+                               (rv != null && rv.Lideriz ? " · şu an liderisin" : " · lider değilsin");
                     case Tur.HizliBuyume:
                         return $"{ad} · {Mathf.Max(0, BuyumeGun - Gun)} gün · {CourierManager.I.Couriers.Count}/25 kurye · günde {GameData.Ft(OrtalamaGelir(7))} / {GameData.Ft(400000)}";
                     case Tur.GunlukMeydan:
@@ -151,13 +156,13 @@ namespace KuryeTycoon
             switch (Secili)
             {
                 case Tur.BorcBatagi:
-                    if (FamilyLoan.I != null && FamilyLoan.I.Finished && !FamilyLoan.I.Failed) Bitir(true, "Banka borcunun tamamını ödedin. Şehir artık seni ciddiye alıyor.");
+                    if (FamilyLoan.I != null && FamilyLoan.I.Finished && !FamilyLoan.I.Failed) Bitir(true, "Kredinin tamamını ödedin. Şehir artık seni ciddiye alıyor.");
                     else if (FamilyLoan.I != null && FamilyLoan.I.Failed) Bitir(false, "Taksitleri ödeyemedin.");
                     break;
                 case Tur.RakibinSehri:
                     var rv = RivalCompany.I;
-                    if (rv != null && gun >= 14 && rv.MarketShare >= 0.5f) Bitir(true, $"Pazar payın %{rv.MarketShare * 100f:0}: {rv.companyName} artık şehrin bir numarası değil.");
-                    else if (gun > RakipGun) Bitir(false, $"90 gün doldu, pazar payın %{(rv != null ? rv.MarketShare * 100f : 0f):0} kaldı.");
+                    if (rv != null && gun >= 14 && rv.Lideriz) Bitir(true, $"Geçen hafta her rakipten çok teslimat yaptın (pazar payın %{rv.MarketShare * 100f:0}): şehrin lideri artık sensin.");
+                    else if (gun > RakipGun) Bitir(false, $"90 gün doldu, liderliği alamadın (pazar payın %{(rv != null ? rv.MarketShare * 100f : 0f):0}).");
                     break;
                 case Tur.HizliBuyume:
                     if (CourierManager.I.Couriers.Count >= 25 && OrtalamaGelir(7) >= 400000) Bitir(true, "25 kurye ve günde 1 000 € gelir: yatırımcı yeni tur için kapıda.");

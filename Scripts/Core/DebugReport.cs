@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-14 b (özellikler ve eğitim, eczane, kurumsal sipariş, anlatıcı, senaryolar, rakip satın alma)";
+        public const string CodeVersion = "2026-11-14 b2 (özellikler ve eğitim, eczane, kurumsal sipariş, anlatıcı, senaryolar, rakip satın alma; banka kredisi, 3 rakip)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
@@ -368,10 +368,11 @@ namespace KuryeTycoon
             {
                 var rv = RivalCompany.I;
                 sb.AppendLine("Rakip özeti: " + rv.ReportLine);
-                sb.AppendLine($"  saldırganlık {rv.aggression:0.00} · kalite {rv.quality:0.00} · yatırım turu {rv.fundingRounds} · kasa {GameData.Ft(rv.money)} · " +
-                              $"fiyat savaşı {rv.priceWarDays} gün (bölge {rv.warDistrict}, ×{rv.warFactor:0.00}) · reklam {rv.marketingDays} gün");
-                sb.AppendLine($"  hizmet: sen {rv.myAvgMinutes:0.0} dk / %{rv.myLateRate * 100f:0} geç → ×{rv.MyService:0.00} · rakip {rv.rivalAvgMinutes:0.0} dk / " +
-                              $"%{rv.rivalLateRate * 100f:0} geç → ×{rv.RivalService:0.00} · talep ×{rv.ServiceDemandFactor:0.00}");
+                foreach (var r in rv.Rakipler)
+                    sb.AppendLine($"  {r.ad}: saldırganlık {r.aggression:0.00} · kalite {r.quality:0.00} · yatırım turu {r.fundingRounds} · kasa {GameData.Ft(r.money)} · " +
+                                  $"reklam {r.marketingDays} gün · hizmet {r.avgMinutes:0.0} dk / %{r.lateRate * 100f:0} geç → ×{r.Service:0.00} · iş yükü {r.load:0.00}");
+                sb.AppendLine($"  fiyat savaşı {rv.priceWarDays} gün (bölge {rv.warDistrict}, ×{rv.warFactor:0.00}, açan {rv.warOwner}) · " +
+                              $"hizmet: sen {rv.myAvgMinutes:0.0} dk / %{rv.myLateRate * 100f:0} geç → ×{rv.MyService:0.00} · talep ×{rv.ServiceDemandFactor:0.00}");
                 if (rv.shareHistory.Count > 0)
                 {
                     var hs = new System.Text.StringBuilder("  haftalık pazar payın:");

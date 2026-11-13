@@ -41,11 +41,11 @@ namespace KuryeTycoon
         [Header("Başlangıç")]
         // Not: alan adı bilerek değiştirildi (eski "startingMoney"). Eski sahnelerde kayıtlı 300 000 değeri
         // artık okunmaz; herkes güncel varsayılanla (1 000 000 Ft) başlar.
-        [Tooltip("Başlangıç kasası: aile borcundan kuruluş masrafları düşülünce kalan para")]
+        [Tooltip("Başlangıç kasası: kurulum kredisinden kuruluş masrafları düşülünce kalan para")]
         public long familyLoanAmount = 1000000;
         /// <summary>
-        /// Aileden alınan borcun tamamı (6 000 €). Kuruluş masrafları (ofis depozitosu, ilk ekipman, uygulama) düşülünce
-        /// kasada familyLoanAmount kalır. Eskiden borç = kasa = 2 500 €'ydu ve iyi oyuncu 10. günde kapatıyordu.
+        /// Bankadan çekilen kurulum kredisinin tamamı (6 000 €, faizi FamilyLoan.faizOrani). Kuruluş masrafları (ofis depozitosu,
+        /// ilk ekipman, uygulama) düşülünce kasada familyLoanAmount kalır. Eskiden kredi = kasa = 2 500 €'ydu ve iyi oyuncu 10. günde kapatıyordu.
         /// </summary>
         public long familyLoanTotal = Denge.AileBorcu;
         public VehicleKind[] starterCouriers = { VehicleKind.Bisiklet, VehicleKind.EScooter };
@@ -86,7 +86,7 @@ namespace KuryeTycoon
             Make<OperationsManager>("Operasyon Sorumlusu");
             Make<RivalCompany>("Rakip Şirket");
             Make<RivalFleet>("Rakip Kuryeler");
-            Make<FamilyLoan>("Hikaye - Aile Borcu");
+            Make<FamilyLoan>("Hikaye - Kurulum Kredisi");
             Make<Milestones>("Kilometre Taşları");
             Make<Guide>("Rehber");
             Make<GameSounds>("Sesler");
@@ -244,7 +244,7 @@ namespace KuryeTycoon
             // Kısa tutuldu: menüleri ilk gün rehberi (Tutorial.cs) tek tek gösterir, ayrıntılar pencerelerdeki "Ayrıntı"da.
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
                 "2 kuryen ve 2 sözleşmeli dükkanın var; siparişler otomatik atanır.\n" +
-                (Senaryo.Secili == Senaryo.Tur.Klasik ? "Amacın: kâr et, aile borcunu öde, şirketi büyüt.\n\n"
+                (Senaryo.Secili == Senaryo.Tur.Klasik ? "Amacın: kâr et, kredi taksitlerini öde, rakiplerini geç.\n\n"
                                                        : $"Senaryo: {Senaryo.Adlar[(int)Senaryo.Secili]}. {Senaryo.Aciklamalar[(int)Senaryo.Secili]}\n\n") +
                 "Kartı kapatınca kısa bir rehber başlayacak.\n\n" +
                 "Boşluk = duraklat · 1–8 = hız · Esc = menü. Oyun her gece kendini kaydeder."));

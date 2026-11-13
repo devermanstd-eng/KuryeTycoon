@@ -24,7 +24,13 @@ namespace KuryeTycoon
         public int contractStartDay;       // sözleşmenin başladığı gün (GameClock.Day)
         public int contractEndDay;         // yenileme günü (6 ayda bir)
         public bool exclusive;             // sadece seninle çalışıyor (rakip yok, daha çok sipariş, daha düşük oran)
-        public bool rivalContracted;       // rakip platformla da çalışıyor (siparişler paylaşılır)
+        public int rivalMask;              // bu dükkanla çalışan rakip platformlar (bit i = RivalCompany.Rakipler[i])
+        /// <summary>En az bir rakip platformla da çalışıyor (siparişler paylaşılır). true atanırsa ve rakip yoksa ilk rakip (Turbo Paket) eklenir.</summary>
+        public bool rivalContracted
+        {
+            get => rivalMask != 0;
+            set { if (!value) rivalMask = 0; else if (rivalMask == 0) rivalMask = 1; }
+        }
         public int monthOrders;            // bu ay teslim edilen sipariş
         public int lastMonthOrders;
         public int negotiateCooldownUntil; // bu güne kadar yeniden pazarlık yapılamaz

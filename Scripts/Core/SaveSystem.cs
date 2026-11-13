@@ -64,6 +64,7 @@ namespace KuryeTycoon
     {
         public string name;
         public bool contracted, exclusive, rivalContracted, lowSatisfactionWarned;
+        public int rivalMask;                  // birden çok rakip (eski kayıtlarda 0: rivalContracted'a bakılır)
         public float commissionBonus, prepMultiplier, satisfaction;
         public int ordersTotal, contractStartDay, contractEndDay, monthOrders, lastMonthOrders;
         public int negotiateCooldownUntil, resignBlockedUntil;
@@ -92,14 +93,17 @@ namespace KuryeTycoon
         public int warDistrict, marketingDays, fundingCooldownUntil, fundingRounds;
         public int lastCourierRaidDay = -999;
         public List<float> shareHistory = new List<float>();
-        public bool satinAlindi;               // oyuncu rakibi satın aldı (eski kayıtlarda yok)
-        public int sonSatisTeklifiGunu = -999;
+        // Birden çok rakip (activeVersion 2)
+        public int warOwner;
+        public List<Rakip> rakipler = new List<Rakip>();
+        public int sonSatisTeklifiGunu = -999; // rakip satın alma teklifi (eski kayıtlarda yok)
     }
 
     [System.Serializable]
     public class LoanSave
     {
         public long principal, totalPaid;
+        public long toplam;                    // faiz dahil geri ödenecek (eski kayıtlarda 0: anapara)
         public int trust, deliveriesMilestone;
         public bool finished, failed;
         public List<Installment> schedule = new List<Installment>();
@@ -402,7 +406,7 @@ namespace KuryeTycoon
                 if (!s.own)   // kendi marketin ayrıca kaydedilir (darkStore)
                 d.shops.Add(new ShopSave
                 {
-                    name = s.def.name, contracted = s.contracted, exclusive = s.exclusive, rivalContracted = s.rivalContracted,
+                    name = s.def.name, contracted = s.contracted, exclusive = s.exclusive, rivalContracted = s.rivalContracted, rivalMask = s.rivalMask,
                     lowSatisfactionWarned = s.lowSatisfactionWarned, commissionBonus = s.commissionBonus,
                     prepMultiplier = s.prepMultiplier, satisfaction = s.satisfaction, ordersTotal = s.ordersTotal,
                     contractStartDay = s.contractStartDay, contractEndDay = s.contractEndDay, monthOrders = s.monthOrders,
@@ -448,7 +452,7 @@ namespace KuryeTycoon
             {
                 var s = CityMap.I.Shops.Find(x => x.def.name == ss.name);
                 if (s == null) continue;
-                s.contracted = ss.contracted; s.exclusive = ss.exclusive; s.rivalContracted = ss.rivalContracted;
+                s.contracted = ss.contracted; s.exclusive = ss.exclusive; s.rivalMask = ss.rivalMask != 0 ? ss.rivalMask : (ss.rivalContracted ? 1 : 0);
                 s.lowSatisfactionWarned = ss.lowSatisfactionWarned; s.commissionBonus = ss.commissionBonus;
                 s.prepMultiplier = ss.prepMultiplier; s.satisfaction = ss.satisfaction; s.ordersTotal = ss.ordersTotal;
                 s.contractStartDay = ss.contractStartDay; s.contractEndDay = ss.contractEndDay; s.monthOrders = ss.monthOrders;

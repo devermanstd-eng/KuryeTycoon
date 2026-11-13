@@ -58,7 +58,7 @@ namespace KuryeTycoon
             new TutorialStepDef
             {
                 title = "Hazırsın!",
-                text = "Kasanı ve aile borcunu Finans'ta izle; yıl sonunda vergi var, kasanda yedek tut. " +
+                text = "Kasanı ve kredi taksitlerini Finans'ta izle; yıl sonunda vergi var, kasanda yedek tut. " +
                        "Soluk menüler ilerleyen günlerde açılacak. Esc = menü (kaydet / çık)."
             },
         };

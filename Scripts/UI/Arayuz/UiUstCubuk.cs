@@ -171,8 +171,11 @@ namespace KuryeTycoon
                 foreach (var ce in CrisisManager.I.Effects)
                     Ekle(Icons.Kind.Warning, $"{ce.title} · {CrisisManager.I.DaysLeft(ce)} g", U.A(Turuncu, 0.35f), UITheme.Text);
             if (RivalCompany.I != null && RivalCompany.I.priceWarDays > 0 && RivalCompany.I.warDistrict > 0)
-                Ekle(Icons.Kind.Flag, $"Fiyat savaşı: {CityMap.DistrictNames[RivalCompany.I.warDistrict]} · {RivalCompany.I.priceWarDays} g",
+            {
+                var wo = RivalCompany.I.RakipAt(RivalCompany.I.warOwner);
+                Ekle(Icons.Kind.Flag, $"Fiyat savaşı{(wo != null ? " (" + wo.kisa + ")" : "")}: {CityMap.DistrictNames[RivalCompany.I.warDistrict]} · {RivalCompany.I.priceWarDays} g",
                      U.A(UITheme.Bad, 0.6f), Color.white);
+            }
             var boost = CampaignManager.I != null ? CampaignManager.I.ActiveWindow : null;
             float wBoost = CampaignManager.I != null ? CampaignManager.I.WeatherBoostPercent : 0f;
             var koyu = new Color(0.12f, 0.08f, 0.02f);
@@ -181,7 +184,7 @@ namespace KuryeTycoon
             else if (wBoost > 0f)
                 Ekle(Icons.Kind.Bolt, $"Hava boostu %{wBoost * 100f:0}", Turuncu, koyu);
             if (FamilyLoan.I != null && !FamilyLoan.I.Finished)
-                Ekle(Icons.Kind.Heart, FamilyLoan.I.TopBarText, U.A(Color.white, 0.08f), UITheme.Text);
+                Ekle(Icons.Kind.Wallet, FamilyLoan.I.TopBarText, U.A(Color.white, 0.08f), UITheme.Text);
             if (GameClock.I.NightFastActive && !GameClock.I.Paused)
                 Ekle(Icons.Kind.Moon, $"Gece hızlı · {GameClock.I.EffectiveSpeed:0}×", new Color(0.22f, 0.26f, 0.45f), Color.white);
             if (RivalCompany.I != null)
@@ -190,9 +193,14 @@ namespace KuryeTycoon
                 bool noData = rvc.myDeliveriesLastWeek + rvc.deliveriesLastWeek == 0;
                 float sh = rvc.MarketShare, tr = rvc.ShareTrend;
                 string arrow = tr > 0.005f ? " ▲" : tr < -0.005f ? " ▼" : "";
-                string t = noData ? $"Pazar payı: ilk hafta sonunda · rakip {rvc.companyName}"
-                                  : $"Pazar payı %{sh * 100f:0}{arrow} · {rvc.companyName} %{(1f - sh) * 100f:0}";
-                Color bg = sh >= 0.55f ? U.A(KasaRengi, 0.22f) : sh >= 0.42f ? U.A(Turuncu, 0.30f) : UITheme.Bad;
+                // En büyük rakip (geçen haftanın payına göre)
+                Rakip enb = null;
+                foreach (var r in rvc.Rakipler) if (enb == null || rvc.PayiOf(r) > rvc.PayiOf(enb)) enb = r;
+                float enbPay = enb != null ? rvc.PayiOf(enb) : 0f;
+                string t = noData ? $"Pazar payı: ilk hafta sonunda · {rvc.Rakipler.Count} rakip"
+                                  : $"Pazar payı %{sh * 100f:0}{arrow} · {(enb != null ? enb.kisa : "rakip")} %{enbPay * 100f:0}";
+                // Renk: en büyük rakibi geçtiysen yeşil, yakınsan turuncu, gerideysen kırmızı
+                Color bg = sh >= enbPay * 1.15f ? U.A(KasaRengi, 0.22f) : sh >= enbPay * 0.8f ? U.A(Turuncu, 0.30f) : UITheme.Bad;
                 Ekle(Icons.Kind.Chart, t, bg, UITheme.Text);
             }
 
