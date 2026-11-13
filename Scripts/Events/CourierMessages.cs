@@ -186,14 +186,14 @@ namespace KuryeTycoon
                 {
                     Ask(c, "Sırılsıklam oldum, yağmurluğum yok. Bugünlük eve gidebilir miyim?", 0,
                         ("Git, geçmiş olsun", () => { c.EndShiftEarly("Yağmurda ıslandı, eve gitti"); c.morale = Mathf.Clamp01(c.morale + 0.03f); }),
-                        ("Yağmurluk gönder (depozitolu)", () => { CourierManager.I.IssueGear(c, EquipmentKind.Yagmurluk, true); c.morale = Mathf.Clamp01(c.morale + 0.02f); }),
+                        (Sade.Depozito ? "Yağmurluk gönder (depozitolu)" : "Yağmurluk gönder", () => { CourierManager.I.IssueGear(c, EquipmentKind.Yagmurluk, true); c.morale = Mathf.Clamp01(c.morale + 0.02f); }),
                         ("Biraz daha dayan", () => { c.morale = Mathf.Clamp01(c.morale - 0.08f); }));
                     return;
                 }
                 if (!c.Has(EquipmentKind.Powerbank) && Random.value < 0.25f)
                 {
                     Ask(c, "Telefonumun şarjı %9 kaldı, birazdan kapanacak.", 1,
-                        ("Powerbank gönder (depozitolu)", () => CourierManager.I.IssueGear(c, EquipmentKind.Powerbank, true)),
+                        (Sade.Depozito ? "Powerbank gönder (depozitolu)" : "Powerbank gönder", () => CourierManager.I.IssueGear(c, EquipmentKind.Powerbank, true)),
                         ("Molada şarj et (30 dk)", () => c.TakeBreak(30f, "Telefonunu şarj ediyor")));
                     return;
                 }
