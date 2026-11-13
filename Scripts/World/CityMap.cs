@@ -420,6 +420,14 @@ namespace KuryeTycoon
             return false;
         }
 
+        /// <summary>Nokta bir tarlanın içinde mi (kenar payıyla)?</summary>
+        bool InField(Vector2 p, float margin)
+        {
+            foreach (var f in Fields)
+                if (p.x > f.r.xMin - margin && p.x < f.r.xMax + margin && p.y > f.r.yMin - margin && p.y < f.r.yMax + margin) return true;
+            return false;
+        }
+
         static bool RectClear(Rect r, float margin)
         {
             for (float x = r.xMin; x <= r.xMax + 0.01f; x += Mathf.Max(0.5f, r.width / 4f))
@@ -432,25 +440,27 @@ namespace KuryeTycoon
         void GenerateCountryside()
         {
             var rng = new System.Random(4242);
+            // Tarla renkleri (yumuşak, CityRT'deki gibi): olgun buğday, genç ekin, sürülmüş toprak, kolza, çayır, anız
             var fieldColors = new[]
             {
-                new Color(0.78f, 0.70f, 0.40f), new Color(0.44f, 0.64f, 0.30f), new Color(0.54f, 0.42f, 0.28f),
-                new Color(0.56f, 0.72f, 0.38f), new Color(0.70f, 0.66f, 0.36f), new Color(0.40f, 0.58f, 0.34f)
+                new Color(0.80f, 0.71f, 0.42f), new Color(0.55f, 0.66f, 0.33f), new Color(0.55f, 0.43f, 0.30f),
+                new Color(0.84f, 0.78f, 0.36f), new Color(0.48f, 0.60f, 0.32f), new Color(0.73f, 0.65f, 0.45f)
             };
             // Tarlalar: şehrin etrafında halka (kamera en çok bu kısmı görür)
             const float ring = 32f;
             for (float x = -ring; x < Width + ring; x += 6f)
                 for (float y = -ring; y < Height + ring; y += 5f)
                 {
-                    if (rng.NextDouble() < 0.6) continue;           // çoğu yer çayır ve ağaç kümesi (referanstaki gibi), tarla seyrek
-                    float w = 4f + (float)rng.NextDouble() * 2f, h = 3f + (float)rng.NextDouble() * 2f;
-                    var r = new Rect(x + 0.4f, y + 0.4f, w, h);
+                    // Tarlalar yan yana dizilir (yama gibi), aralarında ince çit/çimen şeridi kalır; arada çayır boşlukları
+                    if (rng.NextDouble() < 0.3) continue;
+                    float w = 4.6f + (float)rng.NextDouble() * 1.1f, h = 3.8f + (float)rng.NextDouble() * 0.9f;
+                    var r = new Rect(x + 0.15f, y + 0.15f, w, h);
                     if (!RectClear(r, 0.6f)) continue;
                     Fields.Add(new Field { r = r, c = fieldColors[rng.Next(fieldColors.Length)] });
                 }
 
             // Ormanlar: rastgele kümeler
-            for (int k = 0; k < 40; k++)   // performans: orman sayısı sınırlı
+            for (int k = 0; k < 28; k++)   // performans: orman sayısı sınırlı
             {
                 var c = new Vector2((float)rng.NextDouble() * (Width + 2 * ring) - ring, (float)rng.NextDouble() * (Height + 2 * ring) - ring);
                 if (NearCountryFeature(c, 2f)) { k--; if (rng.NextDouble() < 0.02) break; continue; }
@@ -460,16 +470,27 @@ namespace KuryeTycoon
                 {
                     float a = (float)rng.NextDouble() * Mathf.PI * 2f, d = Mathf.Sqrt((float)rng.NextDouble()) * radius;
                     var p = c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * d;
-                    if (NearCountryFeature(p, 0.4f)) continue;
+                    if (NearCountryFeature(p, 0.4f) || InField(p, 0.1f)) continue;
                     CountryTrees.Add(new Vector3(p.x, p.y, 0.3f + (float)rng.NextDouble() * 0.3f));
                 }
             }
-            // Dağınık tek ağaçlar (çayırda)
-            for (int i = 0; i < 160; i++)
+            // Çit ağaçları: bazı tarlaların bir kenarı boyunca sık ağaç sırası (tarlalar arasındaki çitler gibi).
+            // Eskiden çayıra rastgele 160 tek ağaç serpiliyordu; alakasız yerlerde duruyorlardı.
+            foreach (var f in Fields)
             {
-                var p = new Vector2((float)rng.NextDouble() * (Width + 2 * ring) - ring, (float)rng.NextDouble() * (Height + 2 * ring) - ring);
-                if (NearCountryFeature(p, 0.6f)) continue;
-                CountryTrees.Add(new Vector3(p.x, p.y, 0.25f + (float)rng.NextDouble() * 0.3f));
+                if (rng.NextDouble() > 0.35) continue;
+                int kenar = rng.Next(4);
+                var r = f.r;
+                Vector2 a = kenar == 0 ? new Vector2(r.xMin, r.yMin - 0.12f) : kenar == 1 ? new Vector2(r.xMin, r.yMax + 0.12f)
+                          : kenar == 2 ? new Vector2(r.xMin - 0.12f, r.yMin) : new Vector2(r.xMax + 0.12f, r.yMin);
+                Vector2 yon = kenar < 2 ? Vector2.right : Vector2.up;
+                float boy = kenar < 2 ? r.width : r.height;
+                for (float d = 0.3f; d < boy - 0.2f; d += 0.65f + (float)rng.NextDouble() * 0.3f)
+                {
+                    var p = a + yon * d;
+                    if (NearCountryFeature(p, 0.5f)) continue;
+                    CountryTrees.Add(new Vector3(p.x, p.y, 0.24f + (float)rng.NextDouble() * 0.18f));
+                }
             }
             // Nehir kıyısında ağaç sıraları (kıvrımı belli etsin)
             for (int side = -1; side <= 1; side += 2)
@@ -489,13 +510,13 @@ namespace KuryeTycoon
             // Şehrin kenarı boyunca ağaç sırası (şehir kırdan yumuşakça ayrılsın)
             for (float x = -1.5f; x < Width + 1f; x += 1.1f)
             {
-                if (rng.NextDouble() < 0.4) TryEdgeTree(new Vector2(x, -1.6f), rng);
-                if (rng.NextDouble() < 0.4) TryEdgeTree(new Vector2(x, Height + 0.6f), rng);
+                if (rng.NextDouble() < 0.22) TryEdgeTree(new Vector2(x, -1.6f), rng);
+                if (rng.NextDouble() < 0.22) TryEdgeTree(new Vector2(x, Height + 0.6f), rng);
             }
             for (float y = -1.5f; y < Height + 1f; y += 1.1f)
             {
-                if (rng.NextDouble() < 0.4) TryEdgeTree(new Vector2(-1.6f, y), rng);
-                if (rng.NextDouble() < 0.4) TryEdgeTree(new Vector2(Width + 0.6f, y), rng);
+                if (rng.NextDouble() < 0.22) TryEdgeTree(new Vector2(-1.6f, y), rng);
+                if (rng.NextDouble() < 0.22) TryEdgeTree(new Vector2(Width + 0.6f, y), rng);
             }
 
             // Çiftlikler: yollara yakın
@@ -518,6 +539,7 @@ namespace KuryeTycoon
         {
             // Kenar ağaçları şehrin hemen dışında: sadece nehir ve kır yollarından uzak dur
             if (Mathf.Abs(p.y - RiverCurveY(p.x)) < 2f) return;
+            if (InField(p, 0.2f)) return;
             foreach (var r in CountryRoads)
             {
                 if (Mathf.Approximately(r.a.y, r.b.y) && Mathf.Abs(p.y - r.a.y) < 0.9f) return;
@@ -687,10 +709,10 @@ namespace KuryeTycoon
         void BuildCountryside()
         {
             float pad = 90f;
-            Deco("Çayır", countryRoot, false, CountryColor, new Vector2((Width - 1) / 2f, (Height - 1) / 2f),
-                 new Vector2(Width + pad * 2f, Height + pad * 2f), -10, false);
+            kirSprite.Add(Deco("Çayır", countryRoot, false, CountryColor, new Vector2((Width - 1) / 2f, (Height - 1) / 2f),
+                 new Vector2(Width + pad * 2f, Height + pad * 2f), -10, false));
             foreach (var f in Fields)
-                Deco("Tarla", countryRoot, false, f.c, f.r.center, f.r.size, -9, false);
+                kirSprite.Add(Deco("Tarla", countryRoot, false, f.c, f.r.center, f.r.size, -9, false));
             // Nehir şehrin iki yanından kıvrılarak devam eder: eğriyi kısa, döndürülmüş parçalarla çiz
             // (önce biraz geniş çimen kıyı, üstüne su)
             const float step = 0.7f;
@@ -997,6 +1019,33 @@ namespace KuryeTycoon
             return shop;
         }
 
+        // 3D'de kır zemini (çayır, tarlalar, şehir kenarındaki kır kareleri) City3D'nin ışık alan dokulu zemininden gelir.
+        // Bu 2D parçalar gizlenir; sadece kar yağınca zeminin üstünü beyaz örtmek için kar oranında görünür olurlar.
+        readonly List<SpriteRenderer> kirSprite = new List<SpriteRenderer>();
+        bool kir3D;
+
+        /// <summary>City3D dokulu kır zeminini kurunca çağırır.</summary>
+        public void Kir3DZemin()
+        {
+            kir3D = true;
+            RefreshColors();
+        }
+
+        void Kir2DGizle()
+        {
+            float a = Mathf.Clamp01(snowCover * 1.3f);
+            void Ayarla(SpriteRenderer sr)
+            {
+                if (sr == null) return;
+                var c = sr.color; c.a = a; sr.color = c;
+                sr.enabled = a > 0.01f;
+            }
+            foreach (var sr in kirSprite) Ayarla(sr);
+            for (int x = 0; x < Width; x++)
+                for (int y = 0; y < Height; y++)
+                    if (ZoneOf(x, y) == Zone.Country && !RoadAt(x, y) && !WaterAt(x, y)) Ayarla(ground[x, y]);
+        }
+
         public void RefreshColors()
         {
             if (ground == null) return;
@@ -1027,6 +1076,7 @@ namespace KuryeTycoon
             }
 
             if (hq != null) hq.color = CompanyProfile.Primary;
+            if (kir3D) Kir2DGizle();
         }
 
         /// <summary>Kayıttan yüklerken açık bölge seviyesini geri koyar.</summary>
