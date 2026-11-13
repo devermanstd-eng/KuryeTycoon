@@ -74,18 +74,47 @@ namespace KuryeTycoon
 
         // ---------------------------------------------------------------- ekran görüntüleri
 
-        /// <summary>Karenin sonunda ekranı JPG olarak kaydeder (arayüz dahil).</summary>
-        public IEnumerator TestCek(string yol)
+        /// <summary>Son TestCek'in pencere bölgesinin özeti (aynıysa kaydırma bir şey değiştirmemiştir).</summary>
+        ulong testSonImza;
+
+        /// <summary>
+        /// Karenin sonunda ekranı JPG olarak kaydeder (arayüz dahil). bolge verilirse (arayüz birimiyle) o bölgenin özeti
+        /// testSonImza'ya yazılır; atlaImza ile aynıysa dosya yazılmaz (aynı görüntü iki kez çıkmasın).
+        /// </summary>
+        public IEnumerator TestCek(string yol, Rect? bolge = null, ulong atlaImza = 0)
         {
             yield return new WaitForEndOfFrame();
             Texture2D tex = null;
             try
             {
                 tex = ScreenCapture.CaptureScreenshotAsTexture();
-                File.WriteAllBytes(yol, tex.EncodeToJPG(88));
+                testSonImza = bolge.HasValue ? BolgeImzasi(tex, bolge.Value) : 0;
+                if (atlaImza == 0 || testSonImza != atlaImza)
+                    File.WriteAllBytes(yol, tex.EncodeToJPG(88));
             }
             catch (System.Exception ex) { Debug.LogWarning("Test ekran görüntüsü alınamadı: " + ex.Message); }
             if (tex != null) Destroy(tex);
+        }
+
+        /// <summary>Arayüz birimindeki bölgenin piksellerinden basit bir özet (FNV); her 3. pikselin her 3. satırı.</summary>
+        ulong BolgeImzasi(Texture2D tex, Rect r)
+        {
+            int x0 = Mathf.Clamp(Mathf.RoundToInt(r.x * uiScale), 0, tex.width - 1);
+            int x1 = Mathf.Clamp(Mathf.RoundToInt(r.xMax * uiScale), x0 + 1, tex.width);
+            // GUI'de y yukarıdan, dokuda aşağıdan sayılır
+            int y0 = Mathf.Clamp(tex.height - Mathf.RoundToInt(r.yMax * uiScale), 0, tex.height - 1);
+            int y1 = Mathf.Clamp(tex.height - Mathf.RoundToInt(r.y * uiScale), y0 + 1, tex.height);
+            var px = tex.GetPixels32();
+            ulong h = 1469598103934665603UL;
+            for (int y = y0; y < y1; y += 3)
+                for (int x = x0; x < x1; x += 3)
+                {
+                    var c = px[y * tex.width + x];
+                    h = (h ^ c.r) * 1099511628211UL;
+                    h = (h ^ c.g) * 1099511628211UL;
+                    h = (h ^ c.b) * 1099511628211UL;
+                }
+            return h == 0 ? 1 : h;
         }
 
         /// <summary>Arayüz gizli, bütün şehir: haritanın o günkü hali.</summary>
@@ -120,9 +149,10 @@ namespace KuryeTycoon
             panelOpen = false;
             int no = 0;
             yield return null;
-            yield return StartCoroutine(TestCek(Path.Combine(klasor, $"pencere_{++no:00}_ana_ekran.jpg")));
+            yield return StartCoroutine(TestCek(Path.Combine(klasor, $"pencere_{++no:000}_ana_ekran.jpg")));
 
             var cm = CourierManager.I;
+            float shUi = Screen.height / uiScale;
             foreach (Tab t in System.Enum.GetValues(typeof(Tab)))
             {
                 if (!TabOpen(t)) { kilitli?.Add($"{t}: pencere açılmamış (ekran görüntüsü yok)"); continue; }
@@ -135,15 +165,20 @@ namespace KuryeTycoon
                         selectedCourier = cm.Couriers[0];
                     tab = t;
                     panelOpen = true;
-                    float onceki = -1f;
-                    for (int s = 0; s < 6; s++)
+                    scroll = Vector2.zero;
+                    yield return new WaitForSecondsRealtime(0.4f);   // pencere ve harita kayması otursun, kurye resimleri çizilsin
+                    // Pencerenin içi (sağ kenardaki bildirim kartı hariç): aşağı kaydırınca değişmiyorsa sayfa bitmiştir
+                    var w = WindowRect(shUi);
+                    var ic = new Rect(w.x + 4f, w.y + 4f, w.width - 60f, w.height - 8f);
+                    ulong onceki = 0;
+                    for (int s = 0; s < 8; s++)
                     {
-                        scroll = new Vector2(0f, s * 560f);
-                        yield return null;   // bir kare çizilsin: IMGUI kaydırmayı içeriğin sonuna sınırlar
-                        if (s > 0 && scroll.y <= onceki + 4f) break;   // daha aşağısı yok
-                        onceki = scroll.y;
-                        string ad = $"pencere_{++no:00}_{t}" + (sayfa > 1 ? $"_s{p + 1}" : "") + (s > 0 ? $"_asagi{s}" : "") + ".jpg";
-                        yield return StartCoroutine(TestCek(Path.Combine(klasor, ad)));
+                        scroll = new Vector2(0f, s * 520f);
+                        yield return null;
+                        string ad = $"pencere_{++no:000}_{t}" + (sayfa > 1 ? $"_s{p + 1}" : "") + (s > 0 ? $"_asagi{s}" : "") + ".jpg";
+                        yield return StartCoroutine(TestCek(Path.Combine(klasor, ad), ic, onceki));
+                        if (s > 0 && testSonImza == onceki) { no--; break; }   // aynı görüntü: kaydedilmedi, sayfa bitti
+                        onceki = testSonImza;
                     }
                 }
             }
@@ -162,7 +197,7 @@ namespace KuryeTycoon
                     phoneScreen = ps;
                     popupScroll = Vector2.zero;
                     yield return null;
-                    yield return StartCoroutine(TestCek(Path.Combine(klasor, $"telefon_{++no:00}_{ps}.jpg")));
+                    yield return StartCoroutine(TestCek(Path.Combine(klasor, $"telefon_{++no:000}_{ps}.jpg")));
                 }
                 phoneScreen = PhoneScreen.Home;
                 popupCourier = null;
