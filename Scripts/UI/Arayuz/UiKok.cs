@@ -39,6 +39,13 @@ namespace KuryeTycoon
                 Kur();
             }
             protected abstract void Kur();
+            /// <summary>Sekmenin kaymayan üst kısmı (filtreler, sıralama): pencerede kaydırılan alanın üstünde durur. Yoksa null.</summary>
+            public VisualElement ust;
+            protected VisualElement Ust()
+            {
+                if (ust == null) { ust = new VisualElement(); ust.AddToClassList("sekme-ust"); }
+                return ust;
+            }
             /// <summary>Sekme açıkken 8 Hz'de çağrılır.</summary>
             public abstract void Yenile();
             /// <summary>Sekme her açıldığında.</summary>
@@ -101,8 +108,9 @@ namespace KuryeTycoon
             bool goster = basladi && !fotoModu && YeniArayuz;
             U.Goster(uiKok, goster);
             if (!goster) { U.Goster(uiIpucu, false); return; }
+            // Ortadaki kutu açıkken alttaki çubuklar ve pencere tıklanmaz; üst katman (kutular, bildirimler, rehber) açık kalır
             bool serbest = UiSerbest;
-            if (uiKok.enabledSelf != serbest) uiKok.SetEnabled(serbest);
+            if (katHud.enabledSelf != serbest) { katHud.SetEnabled(serbest); katPencere.SetEnabled(serbest); }
             if (!serbest) U.Goster(uiIpucu, false);
 
             float t = Time.unscaledTime;
@@ -116,6 +124,15 @@ namespace KuryeTycoon
                 UiHaritaYenile(agir);
                 UiOlaylarYenile(agir);
                 UiHedefYenile(agir);
+                UiBildirimYenile();
+                UiRehberYenile();
+                UiModalYenile(agir);
+                // Büyük kurye kartı (CourierBigCard.cs) hâlâ IMGUI: ekranın ortasında, UI Toolkit'in altında kalır.
+                // Açıkken pencere ve haritanın üstündeki kutular gizlenir.
+                bool buyukKart = BuyukKartCiziliyor;
+                U.Goster(katPencere, !buyukKart);
+                U.Goster(aracKok, !buyukKart);
+                if (buyukKart) { U.Goster(olayKok, false); U.Goster(hedefKok, false); }
             }
             catch (Exception ex)
             {
@@ -185,6 +202,9 @@ namespace KuryeTycoon
             UiOlaylarKur();
             UiHedefKur();
             UiPencereKur();
+            UiBildirimKur();
+            UiRehberKur();
+            UiModalKur();   // en son: perde her şeyin üstünde
             uiHazir = true;
         }
 
@@ -259,6 +279,8 @@ namespace KuryeTycoon
         {
             if (e.style.color.keyword != StyleKeyword.Null) e.style.color = StyleKeyword.Null;
         }
+
+        float UiEkranGenisligi => uiKok != null && uiKok.layout.width > 1f ? uiKok.layout.width : Screen.width / Mathf.Max(0.01f, uiScale);
 
         float UiEkranYuksekligi => uiKok != null && uiKok.layout.height > 1f ? uiKok.layout.height : Screen.height / Mathf.Max(0.01f, uiScale);
     }
