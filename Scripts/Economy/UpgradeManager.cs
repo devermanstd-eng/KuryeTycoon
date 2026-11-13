@@ -4,7 +4,8 @@ namespace KuryeTycoon
 {
     // Sıra kayıt uyumluluğu için sabit: yeni türler sona eklenir
     // Dinlenme = kurye avantaj programı, Bakim = anlaşmalı servisler, Hijyen = çanta kontrolü ve ekipman partneri (eski adlar kayıt uyumu için)
-    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo }
+    // Yeni türler hep sona eklenir (kayıttaki seviye dizisi sıraya göre okunur)
+    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo, KargoBisikleti, PaketDolabi, Robot }
 
     public class UpgradeDef
     {
@@ -180,7 +181,7 @@ namespace KuryeTycoon
                 costs = new[] { 80000, 250000, 7000000 },
                 daily = new[] { 0, 500, 1200, 4000 },
                 levelNames = new[] { "Sadece yazılı adres", "Harita pini + giriş fotoğrafı", "+ \"Kurye yaklaştı\" bildirimi",
-                                     "+ Teslimat dolapları (paketomat) ağı" },
+                                     "+ Canlı konum paylaşımı ve görüntülü bina tarifi" },   // paket dolapları ayrı geliştirme (PaketDolabi)
                 effect = lv => lv == 0 ? "yanlış adres ve evde olmayan müşteri sık"
                              : $"yanlış adres −{Pct(WrongAddrAt(lv))}" + (lv >= 2 ? $", müşteri evde yok −{Pct(NotHomeAt(lv))}" : ""),
                 reqDistrict = new[] { 0, 2, 5 },
@@ -226,7 +227,77 @@ namespace KuryeTycoon
                 extraLock = lv => lv == 2 ? Need(UpgradeKind.Hub, 1) : "",
                 category = ExpenseCategory.Ekipman,
             },
+            // ---------- Geç oyun ----------
+            new UpgradeDef
+            {
+                kind = UpgradeKind.KargoBisikleti, name = "Kargo bisikletleri",
+                summary = "Önünde büyük kasası olan elektrikli kargo bisikletleri (Avrupa şehirlerinde market ve kargo teslimatında yaygın). " +
+                          "Şirket alır, bisikletli kuryelere verir: aynı anda 2 paket fazla taşırlar. Çok kuryeli şirkette kurye başına daha çok iş, daha az iptal.",
+                costs = new[] { 1600000, 4000000, 9000000 },
+                daily = new[] { 0, 2000, 4500, 9000 },
+                levelNames = new[] { "Yok", "4 kargo bisikleti", "10 kargo bisikleti", "20 kargo bisikleti" },
+                effect = lv => lv == 0 ? "bisikletli kurye kendi bisikletiyle" : $"{KargoBisikletiAt(lv)} bisikletli kurye +2 paket taşır",
+                reqDistrict = new[] { 2, 3, 4 },
+                category = ExpenseCategory.Ekipman,
+            },
+            new UpgradeDef
+            {
+                kind = UpgradeKind.PaketDolabi, name = "Paket dolapları",
+                summary = "Mahallelere akıllı paket dolapları kurulur (Foxpost, Packeta gibi). Bazı müşteriler siparişini dolaptan almayı seçer: " +
+                          "kurye kata çıkmaz, kapı kodu ve \"evde yok\" derdi olmaz, teslimat hızlanır; müşteri de memnun kalır.",
+                costs = new[] { 1200000, 3600000, 8000000 },
+                daily = new[] { 0, 1500, 4000, 8000 },
+                levelNames = new[] { "Yok", "Merkez'de 5 dolap", "Üç bölgede 15 dolap", "Her bölgede 40 dolap" },
+                effect = lv => lv == 0 ? "her sipariş kapıya" : $"kartla ödenen siparişlerin %{DolapAt(lv) * 100f:0}'i dolaba (kat yok, evde yok derdi yok, puan +0,2)",
+                reqDistrict = new[] { 2, 3, 5 },
+                category = ExpenseCategory.Diger,
+            },
+            new UpgradeDef
+            {
+                kind = UpgradeKind.Robot, name = "Teslimat robotları",
+                summary = "Kaldırımda giden altı tekerlekli teslimat robotları (Starship gibi). Merkeze yakın dükkanlardan 2 km'ye kadar, kartla ödenen, " +
+                          "hafif siparişleri götürür. Kurye ücreti yoktur ama yavaştır (saatte ~5 km) ve fırtınada, karda çalışmaz.",
+                costs = new[] { 5000000, 12000000, 24000000 },
+                daily = new[] { 0, 4000, 9000, 16000 },
+                levelNames = new[] { "Yok", "3 robot", "8 robot", "16 robot" },
+                effect = lv => lv == 0 ? "bütün teslimatları kuryeler yapar" : $"{RobotAt(lv)} robot kısa mesafe siparişleri götürür",
+                reqDistrict = new[] { 3, 4, 5 },
+                extraLock = lv => lv == 1 ? Need(UpgradeKind.Ofis, 2) : "",
+                category = ExpenseCategory.Ekipman,
+            },
         };
+
+        public static int KargoBisikletiAt(int lv) => new[] { 0, 4, 10, 20 }[Mathf.Clamp(lv, 0, 3)];
+        public static float DolapAt(int lv) => new[] { 0f, 0.1f, 0.2f, 0.3f }[Mathf.Clamp(lv, 0, 3)];
+        public static int RobotAt(int lv) => new[] { 0, 3, 8, 16 }[Mathf.Clamp(lv, 0, 3)];
+
+        /// <summary>Kartla ödenen bir siparişin paket dolabına gitme ihtimali.</summary>
+        public float DolapOrani => DolapAt(Level(UpgradeKind.PaketDolabi));
+        public int RobotSayisi => RobotAt(Level(UpgradeKind.Robot));
+
+        readonly System.Collections.Generic.HashSet<Courier> kargoBisikletliler = new System.Collections.Generic.HashSet<Courier>();
+        int kargoKaresi = -1;
+
+        /// <summary>
+        /// Bu kurye şirketin kargo bisikletlerinden birini kullanıyor mu? (İlk N bisikletli kurye, işe alınma sırasıyla.)
+        /// Atama döngüsünde çok çağrılır: liste karede bir hesaplanır.
+        /// </summary>
+        public bool KargoBisikletiVar(Courier c)
+        {
+            int n = KargoBisikletiAt(Level(UpgradeKind.KargoBisikleti));
+            if (n <= 0 || c == null || c.vehicle != VehicleKind.Bisiklet) return false;
+            if (kargoKaresi != Time.frameCount)
+            {
+                kargoKaresi = Time.frameCount;
+                kargoBisikletliler.Clear();
+                foreach (var x in CourierManager.I.Couriers)
+                {
+                    if (kargoBisikletliler.Count >= n) break;
+                    if (x.vehicle == VehicleKind.Bisiklet) kargoBisikletliler.Add(x);
+                }
+            }
+            return kargoBisikletliler.Contains(c);
+        }
 
         // ---------- Seviye etkileri ----------
         static float MoraleAt(int lv) => new[] { 0f, 0.005f, 0.01f, 0.015f, 0.02f }[lv];

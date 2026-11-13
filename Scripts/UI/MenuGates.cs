@@ -197,6 +197,8 @@ namespace KuryeTycoon
                     deferred = () => { if (g.TutorialDone) g.RestartTutorial(); else g.FinishTutorial(); };
             }
             GUILayout.Label($"Zorluk: {Difficulty.Name(Difficulty.Level)} (yeni oyun kurarken seçilir)", small);
+            GUILayout.Space(4);
+            DrawAnlaticiAyari();   // SenaryoSecimi.cs
             GUILayout.Space(8);
         }
     }

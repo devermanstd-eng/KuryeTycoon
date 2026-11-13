@@ -96,6 +96,7 @@ namespace KuryeTycoon
         // Birden çok rakip (activeVersion 2)
         public int warOwner;
         public List<Rakip> rakipler = new List<Rakip>();
+        public int sonSatisTeklifiGunu = -999; // rakip satın alma teklifi (eski kayıtlarda yok)
     }
 
     [System.Serializable]
@@ -171,6 +172,10 @@ namespace KuryeTycoon
         public MessagesSave messages;
         public TelemetrySave telemetry;        // hata ayıklama sayaçları (eski kayıtlarda yok)
         public CrisisSave crisis;              // krizler ve kalıcı kararlar (eski kayıtlarda yok)
+        public int senaryo;                    // Senaryo.Tur (eski kayıtlarda 0 = Klasik)
+        public int senaryoDurum;
+        public int gunlukTohum;
+        public int anlatici = 1;               // Anlatici.Tur (eski kayıtlarda Klasik)
     }
 
     // =====================================================================
@@ -371,6 +376,7 @@ namespace KuryeTycoon
                 secondary = CompanyProfile.Secondary,
                 reputation = CompanyProfile.Reputation,
                 itibarToplam = Itibar.KayitToplam(), itibarAdet = Itibar.KayitAdet(), itibarGun = Itibar.KayitGun, itibarOlay = Itibar.OlayEtkisi,
+                senaryo = (int)Senaryo.Secili, senaryoDurum = Senaryo.Durum, gunlukTohum = Senaryo.GunlukTohum, anlatici = (int)Anlatici.Secili,
                 totalMinutes = clock.TotalMinutes,
                 startDay = clock.StartDay,
                 mapSeed = GameBootstrap.I.MapSeed,

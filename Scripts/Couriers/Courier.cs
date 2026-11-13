@@ -24,6 +24,8 @@ namespace KuryeTycoon
         [Header("Kimlik")]
         public string courierName;
         public VehicleKind vehicle;            // şu an kullandığı araç
+        public List<int> ozellikler = new List<int>();   // kalıcı özellikler (KuryeOzellik.Tur): gece kuşu, güler yüzlü...
+        public List<int> egitimler = new List<int>();    // aldığı eğitimler (KuryeEgitim.Tur): ilaç sertifikası, catering...
         public Occupation occupation;
         public int scheduleSeed;               // öğrencinin ders programı (her dönem değişir)
 
@@ -226,6 +228,8 @@ namespace KuryeTycoon
             courierId = Random.Range(1000000, 9999999);
             courierName = c.name;
             vehicle = c.vehicle;
+            ozellikler = c.ozellikler != null && c.ozellikler.Count > 0 ? new List<int>(c.ozellikler) : KuryeOzellik.Rastgele();
+            egitimler = new List<int>();
             occupation = c.occupation;
             scheduleSeed = c.scheduleSeed;
             speedSkill = c.speedSkill;
@@ -835,6 +839,7 @@ namespace KuryeTycoon
             {
                 // Araç kapasitesi üst sınır (gerçekte kurye aynı anda en fazla 2–4 paket taşır); moral/boost sınırı aşmaz
                 int cap = V.capacity;
+                if (UpgradeManager.I != null && UpgradeManager.I.KargoBisikletiVar(this)) cap += 2;   // şirketin kargo bisikleti
                 if (morale < 0.35f) cap -= 1;
                 if (fatigue >= 0.6f) cap -= 1;
                 return Mathf.Max(1, cap);
@@ -858,7 +863,11 @@ namespace KuryeTycoon
         }
 
         public bool CanTakeMore => Available && OrderCount < EffectiveCapacity;
-        public bool CanCarry(Order o) => o.weightKg <= V.maxWeightKg;
+        /// <summary>Bu siparişi götürebilir mi: ağırlık ve (eczane / catering siparişinde) eğitim.</summary>
+        public bool CanCarry(Order o) =>
+            o.weightKg <= V.maxWeightKg &&
+            (!o.eczane || KuryeEgitim.Var(this, KuryeEgitim.Tur.Ilac)) &&
+            (!o.catering || (KuryeEgitim.Var(this, KuryeEgitim.Tur.Catering) && (vehicle == VehicleKind.Motosiklet || vehicle == VehicleKind.Araba)));
         public bool CanCarry(float kg) => kg <= V.maxWeightKg;
 
         public float RejectChance =>
@@ -889,7 +898,7 @@ namespace KuryeTycoon
         public float Speed =>
             V.tilesPerMinute * speedSkill * (1f + 0.04f * (level - 1)) *
             WeatherSystem.I.SpeedFactor(this) * (1f - 0.3f * fatigue) * TrafficFactor * UpgradeManager.I.SpeedMultiplier *
-            UpgradeManager.I.VehicleSpeedMultiplier(vehicle);
+            UpgradeManager.I.VehicleSpeedMultiplier(vehicle) * KuryeOzellik.HizCarpani(this);
 
         // ================================================================== teslimat akışı
 
@@ -1126,7 +1135,7 @@ namespace KuryeTycoon
 
         void Work(float dm)
         {
-            float rate = Denge.CalismaYorgunlugu / Mathf.Max(0.3f, stamina);
+            float rate = Denge.CalismaYorgunlugu / Mathf.Max(0.3f, stamina) * KuryeOzellik.YorgunlukCarpani(this);
             if (V.exposed && WeatherSystem.I.IsHot && !Has(EquipmentKind.YazTisort)) rate *= 1.5f;
             if (Has(EquipmentKind.Powerbank)) rate *= 0.8f;
             rate *= CrisisManager.FatigueFactor;   // sıcak dalgası vb.
@@ -1279,6 +1288,7 @@ namespace KuryeTycoon
             if (o.secondRound) t *= 0.75f;         // sipariş uzun beklemiş: pazarlık payı
             t *= UpgradeManager.I.OfferThresholdMultiplier; // kurye uygulaması 2.0
             t *= Difficulty.OfferThreshold;                  // zorluk seviyesi
+            t *= KuryeOzellik.TeklifCarpani(this);           // paragöz kurye daha seçici
             return t;
         }
 
@@ -1328,7 +1338,7 @@ namespace KuryeTycoon
         void DeliverCurrent(bool kept)
         {
             lastBusyAt = GameClock.I.TotalMinutes;
-            fatigue = Mathf.Min(1f, fatigue + Denge.TeslimatYorgunlugu / Mathf.Max(0.5f, stamina));   // paketi taşımak, kapı, kat
+            fatigue = Mathf.Min(1f, fatigue + Denge.TeslimatYorgunlugu / Mathf.Max(0.5f, stamina) * KuryeOzellik.YorgunlukCarpani(this));   // paketi taşımak, kapı, kat
             {
                 var done = current;
                 lastDelivered = done;

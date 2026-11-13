@@ -47,6 +47,10 @@ namespace KuryeTycoon
             { "Mini ABC",       Nonstop },
             { "Kikötő Non-Stop", Nonstop },
             { "Falu ABC",       Nonstop },
+            // Eczane (patika): hafta içi 8–20, cumartesi 8–14; nöbetçi eczane 24 saat
+            { "Szent István Patika", H(8, 20, 8, 14) },
+            { "Belvárosi Patika",    H(8, 20, 8, 14) },
+            { "Kikötő Ügyeletes Patika", Nonstop },
         };
 
         public static Hours Of(ShopDef d) => d != null && Table.TryGetValue(d.name, out var h) ? h : Nonstop;

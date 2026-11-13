@@ -93,6 +93,7 @@ namespace KuryeTycoon
                 if (x < left || y < TopBar) continue;
                 float a = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(MapFx.Life * 0.45f, MapFx.Life, age));
                 var r = new Rect(x - 80f, y - 11f, 160f, 22f);
+                if (UiAktif && UiHaritaUstuDoluMu(new Rect(x - 40f, y - 11f, 80f, 22f))) continue;   // UI Toolkit kutusunun altına girmesin
                 popStyle.normal.textColor = new Color(0f, 0f, 0f, 0.8f * a);
                 GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), p.text, popStyle);
                 popStyle.normal.textColor = UITheme.WithAlpha(p.color, a);

@@ -479,6 +479,16 @@ namespace KuryeTycoon
             foreach (var r in PizzaHatExtras) yield return r;
         }
 
+        // Eczane (patika): reçetesiz ürünler ve hazırlanmış reçeteli ilaç (kimlik/PIN ile teslim)
+        static readonly string[] Patika =
+        {
+            "Ağrı kesici (20 tablet)|1490|U", "Ateş düşürücü şurup|2190|U", "Vitamin C 1000 mg (30 tablet)|2290|U", "D vitamini damla|3190|U",
+            "Burun spreyi|1890|U", "Boğaz pastili|1290|U", "Öksürük şurubu|2690|U", "Termometre|3990|U", "Yara bandı (20'li)|990|U",
+            "El dezenfektanı|1190|L", "Bebek bezi (paket)|5490|U", "Bebek maması|4890|U", "Güneş kremi SPF 50|4990|L",
+            "Nemlendirici krem|3290|L", "Elektrolit tozu|1590|U", "Kas ağrısı jeli|2890|L", "Göz damlası|2490|L",
+            "Reçeteli ilaç (hazırlanmış)|3500|U", "Reçeteli ilaç, soğuk zincir|6900|F", "Test kiti|2990|U",
+        };
+
         static IEnumerable<string> Concat(string[] a, string[] b)
         {
             foreach (var x in a) yield return x;
@@ -507,6 +517,9 @@ namespace KuryeTycoon
             };
             // 24 saat açık yerler: gece fiyatı biraz yüksek
             Register("Non-Stop Gyros", "Döner Kral", 1.08f);
+            menus["Szent István Patika"] = Parse(Patika);
+            Register("Belvárosi Patika", "Szent István Patika", 1.03f);
+            Register("Kikötő Ügyeletes Patika", "Szent István Patika", 1.08f);   // nöbetçi eczane: gece de açık
             foreach (var b in new[] { "ABC Non-Stop", "Sarok Kisbolt", "Éjjel-Nappali", "Mini ABC", "Kikötő Non-Stop", "Falu ABC" })
                 Register(b, "Market 24", 1.02f);
         }

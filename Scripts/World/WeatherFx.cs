@@ -230,6 +230,22 @@ namespace KuryeTycoon
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
             // GUI.depth her olayda (Start'ta da) ayarlanır: arayüzün (GameUI) altında kalsın
             GUI.matrix = Matrix4x4.identity;
+            // Efektler yalnızca haritanın çizildiği alana (kameranın görüntü alanı) çizilir: üst çubuk, sol menü ve
+            // UI Toolkit arayüzü (IMGUI'nin altında kalabilir) gece/hava tonuyla kararmasın
+            var cam = Camera.main;
+            var alan = new Rect(0f, 0f, Screen.width, Screen.height);
+            if (cam != null)
+            {
+                var pr = cam.pixelRect;
+                alan = new Rect(pr.x, Screen.height - pr.yMax, pr.width, pr.height);
+            }
+            GUI.BeginClip(alan, -alan.position, Vector2.zero, false);
+            try { Ciz(); }
+            finally { GUI.EndClip(); }
+        }
+
+        void Ciz()
+        {
             float sw = Screen.width, sh = Screen.height;
             var full = new Rect(0, 0, sw, sh);
             var old = GUI.color;

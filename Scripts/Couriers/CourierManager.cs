@@ -21,6 +21,7 @@ namespace KuryeTycoon
         public float speedSkill, care, politeness, stamina;
         public float tidiness;
         public float pickiness;
+        public List<int> ozellikler = new List<int>();   // kalıcı özellikler (KuryeOzellik)
         public int level = 1;
         public bool insured;           // kendi parasıyla sigortalı
         public long savings;           // birikimi
@@ -145,6 +146,7 @@ namespace KuryeTycoon
                 expiresAt = withExpiry ? GameClock.I.TotalMinutes + 1440f : float.MaxValue
             };
             aday.note = GameData.ApplicationNote(aday.occupation, aday.level);   // söz mesleğe ve tecrübeye uysun
+            aday.ozellikler = KuryeOzellik.Rastgele();
             return aday;
         }
 
@@ -639,10 +641,12 @@ namespace KuryeTycoon
                 // --- Moral: her gece bir hedefe yaklaşır (Denge.MoralYaklasma) ---
                 // Hedef: saatlik kazancı aracına göre makul mü, yorgunluk birikmiş mi, ekipmanı ve bonusu var mı.
                 // Eskiden her iyi teslimat moral ekliyordu ve moral 60 gün %100'de kalıyordu.
-                c.morale = Mathf.Clamp01(c.morale + (MoralHedefi(c, saat, kazanc, satIdle, season, bonusM) - c.morale) * Denge.MoralYaklasma);
+                float kazancOrani = saat >= 1f ? kazanc / saat / (Denge.BeklenenSaatlikKazanc * AracBeklentisi(c.vehicle)) : 1f;
+                float moralHedef = MoralHedefi(c, saat, kazanc, satIdle, season, bonusM) + KuryeOzellik.MoralEki(c, kazancOrani);   // özellikler (sadık, paragöz...)
+                c.morale = Mathf.Clamp01(c.morale + (Mathf.Clamp01(moralHedef) - c.morale) * Denge.MoralYaklasma);
 
                 // Çok mutsuz kurye bırakır: moral 0,2'de günde %5, 0,1'de %10
-                float birak = (Denge.BirakmaMoralSiniri - c.morale) * Denge.BirakmaOrani;
+                float birak = (Denge.BirakmaMoralSiniri - c.morale) * Denge.BirakmaOrani * KuryeOzellik.BirakmaCarpani(c);
                 if (birak > 0f && c.OrderCount == 0 && Random.value < birak)
                 {
                     Quit(c);
@@ -679,9 +683,8 @@ namespace KuryeTycoon
         {
             var v = c.V;
             string extra = v.kind == VehicleKind.Araba ? " Artık ağır siparişleri de alabilir." : "";
-            EventManager.I.Push(new GameEvent("Yeni araç!",
-                $"{c.courierName} biriktirdiği parayla kendine {v.name} aldı ({Ft(v.ownPrice)}).\n" +
-                $"Artık paket başı {Ft(v.basePay)} + {Ft(v.payPerKm)}/km kazanıyor ve aynı anda {v.capacity} paket taşıyabiliyor.{extra}"));
+            EventManager.I.Notify($"Yeni araç: {c.courierName} biriktirdiği parayla {v.name} aldı ({Ft(v.ownPrice)}). " +
+                                  $"Artık paket başı {Ft(v.basePay)} + {Ft(v.payPerKm)}/km kazanıyor, aynı anda {v.capacity} paket taşıyor.{extra}");
             c.morale = Mathf.Min(1f, c.morale + 0.1f);
         }
 

@@ -91,6 +91,18 @@ namespace KuryeTycoon
             ready = true;
         }
 
+        /// <summary>Serbest mod: borç yok (taksit, hikâye kartı ve üst çubuk hapı çıkmaz).</summary>
+        public void BorcsuzBasla()
+        {
+            Schedule.Clear();
+            principal = 0;
+            Toplam = 0;
+            TotalPaid = 0;
+            Trust = maxTrust;
+            Finished = true;
+            ready = true;
+        }
+
         public void Init()
         {
             Trust = maxTrust;
@@ -113,6 +125,9 @@ namespace KuryeTycoon
                 $"Ertesi sabah {TurkceEk.In(Banka)} şubesindeydin. Temsilci {Temsilci} iş planını okudu, gözlüğünü çıkardı:\n" +
                 $"\"{Ft(principal)} girişimci kredisi verebiliriz. Faiziyle {Ft(Toplam)}, Temmuz sonuna kadar beş taksit. " +
                 "Taksiti aksatırsanız notunuz düşer; üçüncüsünde krediyi geri çağırırız.\"\n\n" +
+                (principal > EconomyManager.I.money
+                    ? $"Ofisin depozitosu, ilk iki kuryenin ekipmanı ve uygulamanın kurulumu {Ft(principal - EconomyManager.I.money)} tuttu; kasada {Ft(EconomyManager.I.money)} kaldı.\n\n"
+                    : "") +
                 $"Taksitler: her ayın sonunda {Ft(each)} ({first.DueText}, ...). Erken ödeyebilirsin. " +
                 $"{maxTrust} taksit kaçırırsan banka krediyi geri çağırır ve şirket kapanır.\n\n" +
                 $"Eski patronun {EskiSirket} artık rakibin. Şehirde onlardan başka platformlar da var.\n\n" +

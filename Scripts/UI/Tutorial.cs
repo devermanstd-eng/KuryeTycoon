@@ -115,7 +115,7 @@ namespace KuryeTycoon
         {
             DrawDockTooltip();
             DrawHelpTip(sw, sh);   // pencerelerdeki "?" balonu
-            if (!TutorialVisible) return;
+            if (!TutorialVisible || UiAktif) return;   // yeni arayüzde rehber kartı ve vurgu UI Toolkit'te (Arayuz/UiBildirim.cs)
             InitTutorialStyles();
             var g = Guide.I;
             int index = Mathf.Clamp(g.TutorialStep, 0, TutorialSteps.Length - 1);

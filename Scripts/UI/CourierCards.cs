@@ -261,6 +261,8 @@ namespace KuryeTycoon
                  cand.pickiness >= 0.75f ? UITheme.Warn : cand.pickiness >= 0.45f ? NeutralTone : UITheme.Good);
             Chip(cand.insured ? "Sigortalı" : "Sigortasız", cand.insured ? UITheme.Good : NeutralTone);
             Chip($"{hoursLeft:0} saat geçerli", hoursLeft <= 3f ? UITheme.Warn : NeutralTone);
+            if (cand.ozellikler != null)
+                foreach (var t in cand.ozellikler) Chip(KuryeOzellik.Ad(t), KuryeOzellik.OlumluMu(t) ? UITheme.Good : UITheme.Warn);   // kalıcı özellikler
             ChipRow(CardColumnWidth);
             EndIdCardHead();
 
@@ -272,6 +274,8 @@ namespace KuryeTycoon
             {
                 GUILayout.Space(4);
                 GUILayout.Label($"Meslek: {Courier.OccupationLabel(cand.occupation)}", small);
+                if (cand.ozellikler != null)
+                    foreach (var t in cand.ozellikler) GUILayout.Label($"{KuryeOzellik.Ad(t)}: {KuryeOzellik.Aciklama(t)}", small);
                 if (cand.occupation == Occupation.Ogrenci)
                     GUILayout.Label($"Bu dönem ders programı: {Courier.ScheduleText(cand.scheduleSeed, GameClock.I)}", small);
                 if (cand.alsoOwnsBike) GUILayout.Label("Yedekte bisikleti de var.", small);
