@@ -855,7 +855,7 @@ namespace KuryeTycoon
             sb.Append($"\nNET KÂR: {Signed(s.Profit - s.penalties)}\n");
 
             // Kasa hareketi
-            if (s.loanPaid > 0) sb.Append($"\nAile borcuna ödenen: {Ft(s.loanPaid)}");
+            if (s.loanPaid > 0) sb.Append($"\nKredi taksiti ödenen: {Ft(s.loanPaid)}");
             if (s.payoutsPaid > 0) sb.Append($"\nKuryelerin hesabına yatan: {Ft(s.payoutsPaid)}");
             if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders}" + (s.cashCollected > 0 ? $" · kuryelerden tahsil edilen nakit {Ft(s.cashCollected)}" : ""));
             if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (kuryeden kesilen − iade): {Signed(s.depositNet)}");
@@ -1022,7 +1022,7 @@ namespace KuryeTycoon
                 sb.Append($"\nEn kötü gün: {worst.date} ({Signed(worst.net)}, {worst.deliveries} paket)");
             }
 
-            if (s.loanPaid > 0) sb.Append($"\n\nAile borcuna ödenen: {Ft(s.loanPaid)}");
+            if (s.loanPaid > 0) sb.Append($"\n\nKredi taksiti ödenen: {Ft(s.loanPaid)}");
             if (s.payoutsPaid > 0) sb.Append($"\nKuryelerin hesabına yatan: {Ft(s.payoutsPaid)}");
             if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders}" + (Sade.NakitBorcu || s.cashCollected > 0 ? $" · tahsil edilen nakit {Ft(s.cashCollected)}" : ""));
             if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (kuryeden kesilen − iade): {Signed(s.depositNet)}");
@@ -1052,7 +1052,7 @@ namespace KuryeTycoon
             if (RivalCompany.I != null)
                 sb.Append("\n\n" + (RivalCompany.I.HaftaKapanisGunu == GameClock.I.Day ? RivalCompany.I.ReportLine : RakipSatiriYeri));
             if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null)
-                sb.Append($"\n\nAile borcu: kalan {Ft(loan.Remaining)} · sıradaki taksit {Ft(loan.NextDue.Remaining)} → {loan.NextDue.DueText} ({loan.DaysUntil(loan.NextDue)} gün)");
+                sb.Append($"\n\nKredi: kalan {Ft(loan.Remaining)} · sıradaki taksit {Ft(loan.NextDue.Remaining)} → {loan.NextDue.DueText} ({loan.DaysUntil(loan.NextDue)} gün)");
 
             string first = weekDays.Count > 0 ? weekDays[0].date : clock.DateOf(weekStartDay);
             string last = weekDays.Count > 0 ? weekDays[weekDays.Count - 1].date : clock.DateOf(clock.Day - 1);
