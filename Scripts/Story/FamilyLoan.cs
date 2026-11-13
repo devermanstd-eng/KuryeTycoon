@@ -115,7 +115,8 @@ namespace KuryeTycoon
                 "Taksiti aksatırsanız notunuz düşer; üçüncüsünde krediyi geri çağırırız.\"\n\n" +
                 $"Taksitler: her ayın sonunda {Ft(each)} ({first.DueText}, ...). Erken ödeyebilirsin. " +
                 $"{maxTrust} taksit kaçırırsan banka krediyi geri çağırır ve şirket kapanır.\n\n" +
-                $"Eski patronun {EskiSirket} artık rakibin. Şehirde onlardan başka platformlar da var.")
+                $"Eski patronun {EskiSirket} artık rakibin. Şehirde onlardan başka platformlar da var.\n\n" +
+                $"{EskiArkadas} ve durağın birkaç eski kuryesi seninle gelmek istiyor: belgeleri hazır, hesapları bugün açılacak.")
                 .Add("İmzala. Bu sefer kendi şirketim için çalışacağım.", null));
         }
 

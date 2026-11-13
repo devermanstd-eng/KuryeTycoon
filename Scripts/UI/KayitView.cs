@@ -66,7 +66,10 @@ namespace KuryeTycoon
                 if (SelectButton(ks.acik[v], t, smallButton, GUILayout.Width(panelWidth / 2f - 40f))) deferred = () => ks.acik[vi] = !ks.acik[vi];
             }
             GUILayout.EndHorizontal();
-            GUILayout.Label($"Tahmini kayıt hızı: günde ~{24f * 60f / 140f * ks.KayitCarpani:0.#} kişi (itibar, bonus çarpanı ve kampanyalara göre).", small);
+            GUILayout.Label($"Tahmini kayıt hızı: günde ~{24f * 60f / 210f * ks.KayitCarpani:0.#} kişi (itibar, bonus çarpanı ve kampanyalara göre).", small);
+            if (ks.Dolu)
+                GUILayout.Label($"Kurye hesapları dolu ve {ks.HesapBekleyen} kişi hesap bekliyor: yeni kayıtlar kendiliğinden bekleme listesine yazılıyor " +
+                                $"({ks.BeklemeListesi} kişi). Gelişim'den kurye hesabı sınırını artırınca sürece girerler.", warn);
 
             // ---------- Kontrol ----------
             Section("Kontrol sıkılığı", "Belgeler, ehliyet ve sigorta (motorlu araç), çalışma izni kontrol edilir.");

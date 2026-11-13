@@ -538,7 +538,7 @@ namespace KuryeTycoon
                     if (!ks.acik[v]) { ks.acik[v] = true; Eylem("Kayıt", $"{GameData.Vehicle((VehicleKind)v).name} kaydı açıldı · neden: {neden}"); }
                 if (ks.yeniBonus == 0 && EconomyManager.I.FreeCash > 200000)
                 { ks.yeniBonus = 1; Eylem("Kayıt", $"yeni kurye bonusu açıldı (+{GameData.Ft(ks.YeniKuryeBonusu)}/paket) · neden: {neden} · süreçte {ks.Adaylar.Count} aday"); }
-                if (!ks.ReklamAktif && iptal > 0.06f && EconomyManager.I.FreeCash > ks.ReklamBedeli * 4)
+                if (!ks.ReklamAktif && iptal > 0.06f && !UpgradeManager.I.CourierCapFull && ks.Adaylar.Count < 8 && EconomyManager.I.FreeCash > ks.ReklamBedeli * 4)
                 { ks.ReklamVer(); Eylem("Kayıt", $"sosyal medya reklamı ({GameData.Ft(ks.ReklamBedeli)}) · neden: {neden}"); }
                 if (ks.tavsiyePrim == 0 && kurye >= 6)
                 { ks.tavsiyePrim = 1; Eylem("Kayıt", $"tavsiye primi açıldı ({GameData.Ft(ks.TavsiyePrimi)})"); }

@@ -133,13 +133,27 @@ namespace KuryeTycoon
         {
             Adaylar.Clear();
             for (int i = 0; i < 4; i++) { acik[i] = true; bekleme[i] = 0; }
-            // Oyunun başında süreçte birkaç aday olsun: ilk günlerde hesap açılan olur
-            for (int i = 0; i < 3; i++)
+            // Oyunun başı: Turbo Paket'ten eski vardiya arkadaşların seninle gelmek istiyor. Belgeleri hazır, ilk gün
+            // hesapları açılır (şirket boş kurye kadrosuyla başlayıp ilk günleri iptallerle geçirmesin). Birkaçı da süreçte.
+            for (int i = 0; i < 7; i++)
             {
                 var a = YeniAday();
                 if (a == null) continue;
-                a.asama = i == 0 ? KayitAsamasi.Ekipman : i == 1 ? KayitAsamasi.Kontrol : KayitAsamasi.Belge;
-                a.asamaBitis = GameClock.I.TotalMinutes + Random.Range(120f, 720f) * (i + 1);
+                float now = GameClock.I.TotalMinutes;
+                if (i < 4)
+                {
+                    a.tur = KayitTuru.EskiKurye;
+                    a.aday.level = Mathf.Max(a.aday.level, 2);
+                    if (a.aday.occupation == Occupation.Ogrenci) a.aday.occupation = Occupation.TamZamanli;
+                    a.aday.note = GameData.ApplicationNote(a.aday.occupation, a.aday.level);
+                    a.asama = KayitAsamasi.Ekipman;
+                    a.asamaBitis = now + Random.Range(60f, 300f) + 120f * i;   // ilk gün öğlene kadar
+                }
+                else
+                {
+                    a.asama = i == 4 ? KayitAsamasi.Ekipman : KayitAsamasi.Kontrol;
+                    a.asamaBitis = now + Random.Range(600f, 1800f);
+                }
                 Adaylar.Add(a);
             }
             Planla();
@@ -198,6 +212,10 @@ namespace KuryeTycoon
         public int HesapBekleyen { get { int n = 0; foreach (var a in Adaylar) if (a.hesapBekliyor) n++; return n; } }
         public int BeklemeListesi { get { int n = 0; foreach (var b in bekleme) n += b; return n; } }
 
+        /// <summary>Hesap sınırı dolu ve hesap bekleyen yeterince kişi var: yeni kayıtlar kendiliğinden bekleme listesine yazılır.</summary>
+        public bool Dolu => UpgradeManager.I != null && UpgradeManager.I.CourierCapFull && HesapBekleyen >= DoluEsigi;
+        public const int DoluEsigi = 4;
+
         public int AsamadakiSayi(KayitAsamasi s)
         {
             int n = 0;
@@ -205,7 +223,7 @@ namespace KuryeTycoon
             return n;
         }
 
-        /// <summary>Saatte ortalama kaç yeni kayıt gelir (pencerede tahmin için).</summary>
+        /// <summary>Kayıt hızı çarpanı (1 ≈ günde 7 kayıt).</summary>
         public float KayitCarpani
         {
             get
@@ -219,8 +237,8 @@ namespace KuryeTycoon
 
         void Planla()
         {
-            // Süreçte yaklaşık yarısı vazgeçtiği için eski başvuru hızının ~1,7 katı kayıt gelir
-            sonrakiKayit = GameClock.I.TotalMinutes + Random.Range(70f, 210f) / Mathf.Max(0.2f, KayitCarpani);
+            // Ortalama ~3,5 saatte bir kayıt (günde ~7); itibar, bonus ve kampanyalar artırır
+            sonrakiKayit = GameClock.I.TotalMinutes + Random.Range(120f, 300f) / Mathf.Max(0.2f, KayitCarpani);
         }
 
         void Update()
@@ -240,7 +258,7 @@ namespace KuryeTycoon
             {
                 sonBeklemeAkisi = now;
                 for (int v = 0; v < 4; v++)
-                    if (acik[v] && bekleme[v] > 0)
+                    if (acik[v] && bekleme[v] > 0 && !Dolu)
                     {
                         bekleme[v]--;
                         var a = YeniAday((VehicleKind)v);
@@ -317,7 +335,7 @@ namespace KuryeTycoon
             var a = YeniAday();
             if (a == null) return;
             int v = (int)a.aday.vehicle;
-            if (!acik[v])
+            if (!acik[v] || Dolu)
             {
                 if (bekleme[v] < BeklemeSiniri) bekleme[v]++;
                 return;
