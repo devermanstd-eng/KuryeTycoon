@@ -117,6 +117,9 @@ namespace KuryeTycoon
             UiSekmeEkle(Tab.Kuryeler, new UiKuryeler());
             UiSekmeEkle(Tab.Gelistirmeler, new UiGelisim());
             UiSekmeEkle(Tab.Hedefler, new UiHedefler());
+            UiSekmeEkle(Tab.Ekipman, new UiEkipman());
+            UiSekmeEkle(Tab.Dukkanlar, new UiDukkanlar());
+            UiSekmeEkle(Tab.Finans, new UiFinans());
         }
 
         void SekmeSeridiKur(int g)
