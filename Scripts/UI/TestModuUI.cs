@@ -183,7 +183,9 @@ namespace KuryeTycoon
                     for (int s = 0; s < 8; s++)
                     {
                         scroll = new Vector2(0f, s * 520f);
+                        if (UiSekmeVar(t) && pencereKaydir != null) pencereKaydir.scrollOffset = new Vector2(0f, s * 520f);   // UI Toolkit penceresi
                         yield return null;
+                        yield return null;   // UI Toolkit düzeni otursun
                         string ad = $"pencere_{++no:000}_{t}" + (sayfa > 1 ? $"_s{p + 1}" : "") + (s > 0 ? $"_asagi{s}" : "") + ".jpg";
                         yield return StartCoroutine(TestCek(Path.Combine(klasor, ad), ic, onceki));
                         if (s > 0 && testSonImza == onceki) { no--; break; }   // aynı görüntü: kaydedilmedi, sayfa bitti

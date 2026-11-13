@@ -6,6 +6,9 @@ namespace KuryeTycoon
     /// <summary>
     /// Prototip arayüzü (Unity IMGUI). Kurulum ekranı, üst bar, sol panel sekmeleri,
     /// haber akışı ve olay kartları. Hiçbir Canvas / prefab gerektirmez.
+    /// GEÇİŞ: arayüz UI Toolkit'e taşınıyor (Scripts/UI/Arayuz, Resources/UI/Arayuz). Üst çubuk, sol menü, pencere çerçevesi,
+    /// harita araçları, olaylar, hedef kutusu ve Siparişler/Kuryeler/Gelişim/Hedefler pencereleri orada. Yeni arayüz OnGUI'ye
+    /// yazılmaz. Buradaki eski çizimler F8 ile (eski arayüz) ve henüz taşınmayan pencereler için duruyor.
     /// </summary>
     public partial class GameUI : MonoBehaviour
     {
@@ -68,6 +71,7 @@ namespace KuryeTycoon
                 deferred = null;
                 a();
             }
+            UiGuncelle();   // UI Toolkit arayüzü (Arayuz/UiKok.cs)
         }
 
         void LateUpdate()
@@ -84,7 +88,7 @@ namespace KuryeTycoon
         void OnGUI()
         {
             // Ekran yüksekliğine göre ölçek × oyuncunun seçtiği arayüz boyutu (Ayarlar > Arayüz)
-            uiScale = Mathf.Clamp(Mathf.Clamp(Screen.height / 900f, 0.8f, 2f) * UiSizeFactor, 0.7f, 2.4f);
+            uiScale = UiOlcek();
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(uiScale, uiScale, 1f));
             float sw = Screen.width / uiScale;
             float sh = Screen.height / uiScale;
@@ -107,17 +111,23 @@ namespace KuryeTycoon
             if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
 
             GUI.enabled = modalFree;
-            DrawHeat();          // sipariş yoğunluğu katmanı (etiketlerin altında)
+            // Yeni arayüz (UI Toolkit) açıksa üst çubuk, sol menü, pencere başlığı, harita araçları, olaylar ve hedef kutusu orada çizilir.
+            // Haritanın üstüne çizilen IMGUI parçaları (katman, etiketler, uçan yazılar) harita alanına kırpılır: UI Toolkit'in altına taşmasın.
+            bool eskiArayuz = !UiAktif;
+            var haritaAlani = new Rect(MapLeftGui, TopBar, Mathf.Max(0f, sw - MapLeftGui), Mathf.Max(0f, sh - TopBar));
+            if (!eskiArayuz) GUI.BeginClip(haritaAlani, -haritaAlani.position, Vector2.zero, false);
+            DrawHeat();          // harita katmanı (etiketlerin altında)
             DrawWorldLabels();
             DrawMapPops();       // uçan "+350 Ft" yazıları
-            DrawTopBar(sw);
+            if (!eskiArayuz) GUI.EndClip();
+            if (eskiArayuz) DrawTopBar(sw);
             DrawPanel(sh);
-            DrawFeed(sw, sh);
-            DrawZoomButtons(sh);
+            if (eskiArayuz) DrawFeed(sw, sh);
+            if (eskiArayuz) DrawZoomButtons(sh);
             DrawLegend(sh);
-            DrawHeatMenu(sh);    // harita katmanı menüsü (HeatMap.cs)
-            DrawGoalTracker();
-            DrawUyarilar(sw);    // sağ üstte "Dikkat" listesi (UyariListesi.cs)
+            if (eskiArayuz) DrawHeatMenu(sh);    // harita katmanı menüsü (HeatMap.cs)
+            if (eskiArayuz) DrawGoalTracker();
+            if (eskiArayuz) DrawUyarilar(sw);    // "Dikkat" listesi (UyariListesi.cs)
             DrawCityEventMarker(sw);
             UITheme.Klasik = true;      // kurye telefonu: koyu ekran olarak kalır
             DrawCourierPopup(sw, sh);
@@ -438,9 +448,11 @@ namespace KuryeTycoon
         {
             var e = Event.current;
             if (e.type != EventType.KeyDown) return;
+            if (UiYaziOdakta) return;   // UI Toolkit yazı kutusuna yazılıyor
             var clk = GameClock.I;
             switch (e.keyCode)
             {
+                case KeyCode.F8: YeniArayuz = !YeniArayuz; e.Use(); return;   // geçiş döneminde eski arayüze dönüş
                 case KeyCode.Space: clk.Paused = !clk.Paused; e.Use(); break;
                 case KeyCode.Alpha1: SetSpeed(1f); e.Use(); break;
                 case KeyCode.Alpha2: SetSpeed(2f); e.Use(); break;
@@ -477,19 +489,19 @@ namespace KuryeTycoon
         }
 
         // ---------------------------------------------------------------- harita etiketleri
-        struct LabelReq { public Vector2 p; public string text; public Color color; public bool landmark; public Rect r; public bool skip; public bool hasIcon; public Icons.Kind icon; }
+        struct LabelReq { public Vector2 p; public string text; public Color color; public bool landmark; public Rect r; public bool skip; public bool hasIcon; public Icons.Kind icon; public bool onemli; }
         readonly List<LabelReq> labelReqs = new List<LabelReq>();
         readonly List<Rect> labelPlaced = new List<Rect>();
 
         /// <summary>Etiketi sıraya koyar; icon verilirse yazının soluna simge çizilir (ör. kuryenin aracı).</summary>
-        void QueueLabel(Camera cam, Vector3 world, string text, Color color, bool landmark = false, Icons.Kind? icon = null)
+        void QueueLabel(Camera cam, Vector3 world, string text, Color color, bool landmark = false, Icons.Kind? icon = null, bool onemli = false)
         {
             Vector3 sp = cam.WorldToScreenPoint(world);
             if (sp.z < 0f) return;
             labelReqs.Add(new LabelReq
             {
                 p = new Vector2(sp.x / uiScale, (Screen.height - sp.y) / uiScale), text = text, color = color, landmark = landmark,
-                hasIcon = icon.HasValue, icon = icon ?? Icons.Kind.Close
+                hasIcon = icon.HasValue, icon = icon ?? Icons.Kind.Close, onemli = onemli
             });
         }
 
@@ -504,22 +516,25 @@ namespace KuryeTycoon
             labelReqs.Clear();
             float zoom = MapCamera.I != null ? MapCamera.I.Zoom : 1f;
 
-            // 1) Kuryeler (aynı karedekiler üst üste dizilir)
+            // 1) Kuryeler (aynı karedekiler üst üste dizilir). Kalabalık ekipte bütün şehre bakarken isim yazılmaz
+            //    (sadece fare üstündeki / seçili kurye): etiketler birbirine girmesin
             var stack = new Dictionary<Vector2Int, int>();
+            bool kalabalik = CourierManager.I.Couriers.Count > 8 && zoom < 0.18f;
             foreach (var c in CourierManager.I.Couriers)
             {
                 var key = Vector2Int.RoundToInt(c.Position);
                 stack.TryGetValue(key, out int n);
                 stack[key] = n + 1;
                 bool hi = c == popupCourier || c == hoverCourier;
+                if (kalabalik && !hi) continue;
                 QueueLabel(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n),
-                    c.ShortName, hi ? new Color(1f, 0.85f, 0.2f) : Color.white, false, Icons.Of(c.vehicle));
+                    c.ShortName, hi ? new Color(1f, 0.85f, 0.2f) : Color.white, false, Icons.Of(c.vehicle), hi);
             }
 
             // 2) Merkez ofis
             float hqTop = BuildingTop(CityMap.I.HQTile);
-            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary);
-            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white);
+            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary, false, null, true);
+            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white, false, null, true);
 
             // 3) Dükkanlar (uzaktayken sözleşmesizler gizlenir: harita kalabalık olmasın)
             foreach (var s in CityMap.I.Shops)
@@ -565,6 +580,8 @@ namespace KuryeTycoon
             if (landmarkStyle == null)
                 landmarkStyle = UITheme.Semi(new GUIStyle(worldLabel) { fontStyle = FontStyle.BoldAndItalic, fontSize = 13, alignment = TextAnchor.MiddleCenter });
             labelPlaced.Clear();
+            // Haritanın üstündeki UI Toolkit kutuları (olaylar, hedefler, araç çubuğu) dolu sayılır: etiket altlarına girmesin
+            if (UiAktif) UiHaritaUstuDolu(labelPlaced);
             float[] shifts = { 0f, -19f, 19f, -38f, 38f };
             for (int i = 0; i < labelReqs.Count; i++)
             {
@@ -582,7 +599,7 @@ namespace KuryeTycoon
                     foreach (var o in labelPlaced) if (o.Overlaps(r)) { hit = true; break; }
                     if (!hit) { q.r = r; ok = true; break; }
                 }
-                if (!ok && q.landmark) q.skip = true;
+                if (!ok && !q.onemli) q.skip = true;   // yer yoksa çizilmez (üst üste binen etiket okunmuyor)
                 if (!q.skip) labelPlaced.Add(q.r);
                 labelReqs[i] = q;
             }
@@ -752,8 +769,11 @@ namespace KuryeTycoon
                            !(TrackerVisible && GoalTrackerRect().Contains(m)) &&
                            !ToastAt(m, sw) &&
                            !(heatMenuOpen && HeatMenuRect(sh).Contains(m)) &&
-                           !(UyariGorunur && UyariRect(sw).Contains(m)) &&
-                           !new Rect(DockW + 10f, sh - 44f, 560f, 30f).Contains(m);
+                           !(!UiAktif && UyariGorunur && UyariRect(sw).Contains(m)) &&
+                           !new Rect(DockW + 10f, sh - 44f, 560f, 30f).Contains(m) &&
+                           !UiUzerinde(m);   // UI Toolkit elemanı (üst çubuk, menü, pencere, olaylar...)
+            // Haritaya tıklayınca açık katman menüsü kapanır (UI Toolkit menüsü dışarı tıklamayı göremez)
+            if (UiAktif && heatMenuOpen && e.type == EventType.MouseDown && overMap) heatMenuOpen = false;
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
 
@@ -1151,26 +1171,42 @@ namespace KuryeTycoon
                 windowTitle = new GUIStyle(header) { fontSize = 19, alignment = TextAnchor.MiddleLeft };
             }
 
-            // Çubuk
-            var bar = new Rect(0, TopBar, DockW, sh - TopBar);
-            Fill(bar, UITheme.Bg);
-            Fill(new Rect(bar.xMax - 1, bar.y, 1, bar.height), UITheme.Line);
-            DrawMapGap(sh);   // harita pencerenin sağına kaydıysa aradaki şerit
-
-            // Sol çubuk: 6 ana menü + Ayarlar (bkz. MenuGroups.cs)
+            bool eski = !UiAktif;
             dockTip = null;
-            DrawGroupDock(sh);
+            if (eski)
+            {
+                // Çubuk
+                var bar = new Rect(0, TopBar, DockW, sh - TopBar);
+                Fill(bar, UITheme.Bg);
+                Fill(new Rect(bar.xMax - 1, bar.y, 1, bar.height), UITheme.Line);
+                DrawMapGap(sh);   // harita pencerenin sağına kaydıysa aradaki şerit
+
+                // Sol çubuk: 6 ana menü + Ayarlar (bkz. MenuGroups.cs)
+                dockTip = null;
+                DrawGroupDock(sh);
+            }
 
             if (!panelOpen) return;
 
             // Pencere
             var w = WindowRect(sh);
-            UITheme.Shadowed(w, UITheme.Bg, 14f, 8f);
-            UITheme.Outline(w, UITheme.Line, 1f, 14f);
-
-            // Başlık: menü adı, kapat ve sekme şeridi (bkz. MenuGroups.cs)
-            DrawWindowHeader(w);
             float headH = WindowHeaderHeight();
+            if (eski)
+            {
+                UITheme.Shadowed(w, UITheme.Bg, 14f, 8f);
+                UITheme.Outline(w, UITheme.Line, 1f, 14f);
+                // Başlık: menü adı, kapat ve sekme şeridi (bkz. MenuGroups.cs)
+                DrawWindowHeader(w);
+            }
+            else
+            {
+                // Yeni arayüz: başlık ve sekmeler UI Toolkit'te. Sekme taşındıysa içerik de orada; taşınmadıysa
+                // gövdenin zemini ve içeriği burada (IMGUI) çizilir, başlıkla üst üste binmez.
+                if (UiSekmeVar(tab)) return;
+                var govde = new Rect(w.x, w.y + headH + 1f, w.width, w.height - headH - 1f);
+                Fill(new Rect(govde.x, govde.y, govde.width, Mathf.Max(0f, govde.height - 14f)), UITheme.Bg);
+                UITheme.Box(new Rect(govde.x, govde.yMax - 28f, govde.width, 28f), UITheme.Bg, 14f);
+            }
 
             GUILayout.BeginArea(new Rect(w.x + 12f, w.y + headH + 8f, w.width - 24f, w.height - headH - 16f));
             scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);   // yatay çubuk yok
@@ -2799,7 +2835,13 @@ namespace KuryeTycoon
             bool ozetli = ev.ozet != null && ev.ozet.Count > 0;
             float w = ozetli ? 640f : 580f;
             var govdeStil = ozetli ? small : label;   // özetli kartta metin ayrıntıdır: küçük yazılır
-            float bodyH = govdeStil.CalcHeight(new GUIContent(ev.body), w - 56f);
+            if (olayAyrintiFor != ev) { olayAyrintiFor = ev; olayAyrintiAcik = false; }
+            // Rapor kartı: üstte özet kutuları ve ilk paragraf; dökümün geri kalanı "Ayrıntılar" ile açılır (metin duvarı olmasın)
+            string ilk = ev.body ?? "";
+            int kesim = ozetli ? ilk.IndexOf("\n\n", System.StringComparison.Ordinal) : -1;
+            bool katlanir = kesim > 0 && kesim < ilk.Length - 2;
+            string govdeMetni = katlanir && !olayAyrintiAcik ? ilk.Substring(0, kesim) : ilk;
+            float bodyH = govdeStil.CalcHeight(new GUIContent(govdeMetni), w - 56f) + (katlanir ? 32f : 0f);
             float ozetH = ozetli ? 74f : 0f;
             float h = Mathf.Min(sh - 40f, 118f + ozetH + bodyH + ev.choices.Count * 46f);
             var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
@@ -2820,10 +2862,12 @@ namespace KuryeTycoon
             {
                 if (eventScrollFor != ev) { eventScrollFor = ev; eventScroll = Vector2.zero; }
                 eventScroll = GUILayout.BeginScrollView(eventScroll, GUILayout.Height(Mathf.Max(60f, bodyRoom)));
-                GUILayout.Label(ev.body, govdeStil);
+                GUILayout.Label(govdeMetni, govdeStil);
                 GUILayout.EndScrollView();
             }
-            else GUILayout.Label(ev.body, govdeStil);
+            else GUILayout.Label(govdeMetni, govdeStil);
+            if (katlanir && GUILayout.Button(olayAyrintiAcik ? "Ayrıntıları gizle ▲" : "Ayrıntılar (gelir, gider, kasa) ▼", smallButton, GUILayout.Height(26)))
+                deferred = () => olayAyrintiAcik = !olayAyrintiAcik;
             GUILayout.Space(12);
             for (int i = 0; i < ev.choices.Count; i++)
             {
@@ -2836,6 +2880,8 @@ namespace KuryeTycoon
         }
 
         GUIStyle ozetBaslik, ozetDeger;
+        GameEvent olayAyrintiFor;
+        bool olayAyrintiAcik;
 
         /// <summary>Rapor kartının üstündeki büyük sayılar: yan yana kutular (iyi yeşil, kötü kırmızı, dikkat turuncu).</summary>
         void KartOzetSatiri(List<KartOzeti> ozet, float genislik)
