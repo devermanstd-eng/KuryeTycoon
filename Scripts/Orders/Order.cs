@@ -115,6 +115,8 @@ namespace KuryeTycoon
         public bool codeMissing;       // binada kod var ama müşteri yazmamış: kurye kapıda arar (+1,5 dk)
         public string intercom = "";   // zil / interkom
         public bool noContact;         // temassız teslimat: kapıya bırakılır (müşteri evde olmasa da teslim edilir)
+        public bool dolap;             // paket dolabına teslim (Paket dolapları geliştirmesi): kat, kod, evde yok derdi yok
+        public bool robot;             // teslimat robotu götürdü (RobotFilo)
         public string noteTranslation = ""; // not Macarca ise Türkçesi ("Çevir")
         public bool markedLate;        // kurye "gecikme bildir"e bastı: müşteriye haber verildi, söz verilen süre +10 dk
         public bool shopPinged;        // destek dükkanı hızlandırması için aradı
@@ -138,11 +140,11 @@ namespace KuryeTycoon
         public string ItemsText => Menus.Text(items);
         public int ItemCount { get { int n = 0; foreach (var i in items) n += i.qty; return n; } }
 
-        public string AddressText =>
+        public string AddressText => dolap ? $"Paket dolabı · {street} No: {number} önü" :
             $"{street} No: {number}" + (blocks > 1 ? $", {block} Blok" : "") + $", {Addresses.FloorText(floor)}" +
             (flat > 0 ? $", Daire {flat}" : "");
 
-        public string BuildingText =>
+        public string BuildingText => dolap ? "Paket dolabı · kurye pakedi dolaba bırakır, müşteri kodla alır" :
             $"{floors} katlı bina · " + (floor == 0 ? "zemin kat, kapıda teslim" :
             elevator ? (elevatorBroken ? "asansör ARIZALI, merdivenle" : "asansörlü") : "asansör yok, merdivenle");
 

@@ -288,7 +288,7 @@ namespace KuryeTycoon
                 s.boosts += o.boostPay;
                 s.deliveries++;
             }
-            o.courier.Earn(o.courierPay + o.boostPay);
+            if (o.courier != null) o.courier.Earn(o.courierPay + o.boostPay);   // robot teslimatında kurye yok
             if (o.boostPay > 0) CampaignManager.I.RegisterBoostPaid(o.boostPay);
 
             int profit = o.Profit;

@@ -71,6 +71,7 @@ namespace KuryeTycoon
             Make<WeatherFx>("Hava Efektleri");
             Make<MapCamera>("Harita Kamerası");
             Make<CourierManager>("Kurye Yönetimi");
+            Make<RobotFilo>("Robotlar");
             Make<OrderManager>("Siparişler");
             Make<CampaignManager>("Kampanyalar");
             Make<GoalManager>("Haftalık Hedefler");
@@ -156,11 +157,12 @@ namespace KuryeTycoon
                 Denge.Sifirla();
                 GameClock.I.RestoreTime(d.totalMinutes, d.startDay);
                 Difficulty.Level = (DifficultyLevel)Mathf.Clamp(d.difficulty, 0, 2);   // sistemler kurulmadan önce
-                OrderHeat.Reset();
+                OrderHeat.Reset(); DukkanKari.Reset();
 
                 GenerateWorld(d.mapSeed);
                 CourierManager.I.Init();
                 OrderManager.I.Init();
+                RobotFilo.I.Init();
                 CampaignManager.I.Init();
                 SupportManager.I.Init();
                 OperationsManager.I.Init();
@@ -199,12 +201,13 @@ namespace KuryeTycoon
             Denge.Sifirla();
             EconomyManager.I.money = familyLoanAmount;
             EconomyManager.I.InitCashMarkers();
-            OrderHeat.Reset();
+            OrderHeat.Reset(); DukkanKari.Reset();
             Telemetry.Reset();
             GenerateWorld(Random.Range(1, int.MaxValue));
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v).StartShift();
             OrderManager.I.Init();
+            RobotFilo.I.Init();
             CampaignManager.I.Init();
             SupportManager.I.Init();
             OperationsManager.I.Init();

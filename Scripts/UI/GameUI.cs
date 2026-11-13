@@ -115,7 +115,9 @@ namespace KuryeTycoon
             DrawFeed(sw, sh);
             DrawZoomButtons(sh);
             DrawLegend(sh);
+            DrawHeatMenu(sh);    // harita katmanı menüsü (HeatMap.cs)
             DrawGoalTracker();
+            DrawUyarilar(sw);    // sağ üstte "Dikkat" listesi (UyariListesi.cs)
             DrawCityEventMarker(sw);
             UITheme.Klasik = true;      // kurye telefonu: koyu ekran olarak kalır
             DrawCourierPopup(sw, sh);
@@ -521,6 +523,12 @@ namespace KuryeTycoon
             {
                 if (!CityMap.I.IsUnlocked(s.tile)) continue;
                 if (!s.contracted && zoom < 0.3f && infoShop != s) continue;
+                if (heatMode == HeatMode.DukkanKari && !s.contracted) continue;   // kârlılık katmanında yalnızca sözleşmeli dükkanlar
+                if (ShopProfitLabel(s, out string karYazi, out Color karRenk))
+                {
+                    QueueLabel(cam, CityMap.ToWorld(s.tile) + MapCamera.LabelOffset(0.7f, BuildingTop(s.tile) + 0.2f), karYazi, karRenk);
+                    continue;
+                }
                 bool shopOpen = ShopHours.IsOpen(s.def);
                 QueueLabel(cam, CityMap.ToWorld(s.tile) + MapCamera.LabelOffset(0.7f, BuildingTop(s.tile) + 0.2f),
                     (s.contracted ? s.Name : s.Name + " (sözleşmesiz)") + (shopOpen ? "" : " · Kapalı"),
@@ -533,6 +541,13 @@ namespace KuryeTycoon
                     if (a != null && a.Visible)
                         QueueLabel(cam, CityMap.ToWorld(a.Position) + MapCamera.LabelOffset(0.5f, 0.55f), a.label,
                                    Color.Lerp(RivalFleet.RivalColor, Color.white, 0.4f));
+
+            // 4b) Teslimat robotları: sadece yakındayken
+            if (RobotFilo.I != null && MapCamera.I != null && MapCamera.I.ShowModels)
+                foreach (var rb in RobotFilo.I.Robotlar)
+                    if (rb.durum != RobotFilo.Durum.Bosta)
+                        QueueLabel(cam, CityMap.ToWorld(rb.pos) + MapCamera.LabelOffset(0.5f, 0.35f),
+                                   rb.order != null ? $"{rb.Ad} · #{rb.order.id}" : rb.Ad, RobotFilo.RobotHalka);
 
             // 5) Yer adları: kilitli bölgedekiler soluk
             if (ShowLandmarks)
@@ -733,7 +748,9 @@ namespace KuryeTycoon
                            !(InfoOpen && InfoRect(sw, sh).Contains(m)) &&
                            !(TrackerVisible && GoalTrackerRect().Contains(m)) &&
                            !ToastAt(m, sw) &&
-                           !new Rect(DockW + 10f, sh - 44f, 500f, 30f).Contains(m);
+                           !(heatMenuOpen && HeatMenuRect(sh).Contains(m)) &&
+                           !(UyariGorunur && UyariRect(sw).Contains(m)) &&
+                           !new Rect(DockW + 10f, sh - 44f, 560f, 30f).Contains(m);
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
                 hoverCourier = overMap && modalFree ? CourierAt(m) : null;
 
@@ -798,16 +815,16 @@ namespace KuryeTycoon
             if (GUI.Button(new Rect(x + 152, y, 60, 30), "Tümü", smallButton)) mc.ResetView();
             if (GUI.Button(new Rect(x + 216, y, 66, 30), legendOpen ? "Lejant ✓" : "Lejant", smallButton)) legendOpen = !legendOpen;
             if (GUI.Button(new Rect(x + 286, y, 88, 30), mc.FlatMode ? "3D görünüm" : "Düz harita", smallButton)) mc.ToggleFlatMode();
-            if (GUI.Button(new Rect(x + 378, y, 118, 30), HeatButtonText, smallButton)) CycleHeat();
-            // Kısayollar ekranda yazı olarak durmasın: "?" üstüne gelince görünür. Yoğunluk açıkken onun açıklaması yazar.
-            HelpBadgeAt(new Rect(x + 504, y + 5, 20, 20),
+            if (GUI.Button(new Rect(x + 378, y, 150, 30), HeatButtonText, smallButton)) heatMenuOpen = !heatMenuOpen;
+            // Kısayollar ekranda yazı olarak durmasın: "?" üstüne gelince görünür. Katman açıkken onun açıklaması yazar.
+            HelpBadgeAt(new Rect(x + 536, y + 5, 20, 20),
                 "Harita kısayolları\nTekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle ya da Q/E: döndür\n" +
-                "N: kuzey · M: düz harita · 0: tüm harita · H: sipariş yoğunluğu\nBoşluk: duraklat · 1–8: hız · Esc: menü · F10: fotoğraf modu (arayüzü gizler)");
+                "N: kuzey · M: düz harita · 0: tüm harita · H: harita katmanları (sipariş, kaçan, teslimat süresi, kapsama, dükkan kârı)\nBoşluk: duraklat · 1–8: hız · Esc: menü · F10: fotoğraf modu (arayüzü gizler)");
             if (heatMode != HeatMode.Kapali)
             {
                 string hint = HeatCaption;
                 float hw = small.CalcSize(new GUIContent(hint)).x + 16f;
-                var r = new Rect(x + 532, y + 3, hw, 24);
+                var r = new Rect(x + 564, y + 3, hw, 24);
                 UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.75f), 12f);
                 GUI.Label(new Rect(r.x + 6, r.y + 2, r.width - 8, r.height), hint, small);
             }
@@ -1301,7 +1318,9 @@ namespace KuryeTycoon
             }
 
             GUILayout.Space(6);
-            Section($"Yolda ({om.Active.Count})");
+            int robotYolda = RobotFilo.I != null ? RobotFilo.I.Yolda : 0;
+            Section(robotYolda > 0 ? $"Yolda ({om.Active.Count} + {robotYolda} robotta)" : $"Yolda ({om.Active.Count})");
+            if (RobotFilo.I != null && RobotFilo.I.Robotlar.Count > 0) GUILayout.Label(RobotFilo.I.DurumMetni(), small);
             foreach (var c in CourierManager.I.Couriers)
             {
                 if (c.OrderCount == 0) continue;
@@ -1322,7 +1341,9 @@ namespace KuryeTycoon
                 if (o.batched) issue += " · toplu";
                 if (o.deliveredCold) issue += " · soğuk gitti";
                 string stars = o.keptByCourier ? "puan yok" : $"{o.rating:0.0} yıldız";
-                GUILayout.Label($"#{o.id} {o.shop.Name} → {o.courier.ShortName} · {GameData.KmText(o.distance)} · " +
+                string kim = o.courier != null ? o.courier.ShortName : o.robot ? "robot" : "-";
+                if (o.dolap) issue += " · paket dolabına";
+                GUILayout.Label($"#{o.id} {o.shop.Name} → {kim} · {GameData.KmText(o.distance)} · " +
                                 $"{stars} · kurye {Ft(o.courierPay)} · kâr {Ft(o.Profit)}{tip}{issue}",
                                 o.keptByCourier ? warn : small);
             }

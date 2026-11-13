@@ -446,6 +446,20 @@ namespace KuryeTycoon
             }
             // Temassız teslimat: kartla ödenen siparişlerin ~%22'si (not "kapıya bırakın" diyorsa her zaman)
             o.noContact = !o.cashPay && (Random.value < 0.22f || o.customerNote.Contains("bırakın") || o.noteTranslation.Contains("bırakın"));
+            // Paket dolabı: müşteri siparişi mahalledeki dolaptan alır (kat, asansör, kapı kodu, evde yok derdi yok)
+            if (!o.cashPay && UpgradeManager.I != null && Random.value < UpgradeManager.I.DolapOrani)
+            {
+                o.dolap = true;
+                o.noContact = true;
+                o.floor = 0;
+                o.elevator = true;
+                o.elevatorBroken = false;
+                o.codeMissing = false;
+                o.doorCode = null;
+                o.addressIssue = AddressIssue.Yok;
+                o.customerNote = "Paket dolabına bırakın.";
+                o.noteTranslation = "";
+            }
             o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);
             // Söz verilen süre (uygulamadaki gibi): kurye dükkana giderken yemek hazırlanır (en az ~8 dk yol payı),
             // sonra ortalama ~11 km/saat ile müşteriye, kapıda geçen süre ve pay (aceleci müşteride daha az)
@@ -848,6 +862,46 @@ namespace KuryeTycoon
             if (o.marker != null) o.marker.color = o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f);
         }
 
+        /// <summary>
+        /// Teslimat robotunun götürdüğü sipariş (RobotFilo). Kurye yok: kurye ücreti, bahşiş, moral, kurye mesajı yok;
+        /// gelir, puan, itibar, hedefler ve harita katmanları normal teslimat gibi işlenir.
+        /// </summary>
+        public void CompleteByRobot(Order o)
+        {
+            float now = GameClock.I.TotalMinutes;
+            o.status = OrderStatus.Teslim;
+            o.deliveredAt = now;
+            o.robot = true;
+            o.courierPay = 0;
+            o.boostPay = 0;
+            float late = now - o.deadlineAt;
+            Telemetry.Add("Teslim edildi (robot)");
+            Telemetry.DayDelivered++;
+            Telemetry.DayMinutes += now - o.createdAt;
+            if (late > 0f) Telemetry.DayLate++;
+            if (late > 15f) Telemetry.DayLate15++;
+            float rating = 4.6f;   // robotlar güler yüzlü değil ama dakik ve temiz
+            if (late > 0f) rating -= Mathf.Min(3f, late / 10f);
+            if (o.shop.def.hotFood && now - o.pickedAt > 25f) { rating -= 0.8f; o.deliveredCold = true; Telemetry.DayCold++; }
+            if (o.customerType == CustomerType.Zor) rating -= 0.7f;
+            if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
+            if (o.dolap) rating += 0.2f;
+            o.rating = Mathf.Clamp(rating, 1f, 5f);
+            OrderHeat.RecordDelivery(o.customerTile, now - o.createdAt);
+            DukkanKari.Record(o);
+            if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);
+            EconomyManager.I.RegisterDelivery(o);
+            MapFx.Delivered(o);
+            Itibar.Puan(o.rating);
+            if (o.marker != null) Destroy(o.marker.gameObject);
+            Pending.Remove(o);
+            Active.Remove(o);
+            History.Insert(0, o);
+            if (History.Count > 50) History.RemoveAt(History.Count - 1);
+            if (GoalManager.I != null) GoalManager.I.OnDelivered(o);
+            if (DarkStore.I != null) DarkStore.I.OnDelivered(o);
+        }
+
         public void CompleteDelivery(Order o, Courier c)
         {
             float now = GameClock.I.TotalMinutes;
@@ -884,7 +938,10 @@ namespace KuryeTycoon
             if (o.customerType == CustomerType.Zor) rating -= 0.7f;
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
             if (c.hygiene < Courier.HygieneLimit) rating -= (Courier.HygieneLimit - c.hygiene) * 3f; // kirli çanta
+            if (o.dolap) rating += 0.2f;   // dolaptan istediği saatte aldı
             o.rating = Mathf.Clamp(rating, 1f, 5f);
+            OrderHeat.RecordDelivery(o.customerTile, now - o.createdAt);   // harita: teslimat süresi katmanı
+            DukkanKari.Record(o);                                          // harita: dükkan kârlılığı katmanı
 
             RollTip(o, c, late);
             if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);
