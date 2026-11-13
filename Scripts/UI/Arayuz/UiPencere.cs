@@ -81,6 +81,7 @@ namespace KuryeTycoon
         ScrollView pencereKaydir;
         int sekmeSeritGrubu = -1;
         Tab? gosterilenSekme;
+        VisualElement gosterilenUst;   // açık sekmenin kaymayan üst kısmı (UiSekme.ust)
 
         class SekmeOge
         {
@@ -139,7 +140,13 @@ namespace KuryeTycoon
         {
             bool acik = panelOpen;
             U.Goster(pencereKok, acik);
-            if (!acik) { gosterilenSekme = null; return; }
+            if (!acik)
+            {
+                gosterilenSekme = null;
+                gosterilenUst?.RemoveFromHierarchy();
+                gosterilenUst = null;
+                return;
+            }
             if (pencereKok.style.width != panelWidth) pencereKok.style.width = panelWidth;
 
             int g = GroupIndexOf(tab);
@@ -174,9 +181,18 @@ namespace KuryeTycoon
             U.Sinif(pencereGovde, "imgui", !uitk);
             pencereGovde.pickingMode = uitk ? PickingMode.Position : PickingMode.Ignore;
             U.Goster(pencereKaydir, uitk);
-            if (!uitk) { gosterilenSekme = null; return; }
+            if (!uitk)
+            {
+                gosterilenSekme = null;
+                gosterilenUst?.RemoveFromHierarchy();
+                gosterilenUst = null;
+                return;
+            }
             if (gosterilenSekme != tab)
             {
+                gosterilenUst?.RemoveFromHierarchy();
+                gosterilenUst = s.ust;
+                if (gosterilenUst != null) pencereGovde.Insert(0, gosterilenUst);
                 pencereKaydir.Clear();
                 pencereKaydir.Add(s.kok);
                 pencereKaydir.scrollOffset = Vector2.zero;

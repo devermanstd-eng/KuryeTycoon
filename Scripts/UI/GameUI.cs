@@ -134,13 +134,15 @@ namespace KuryeTycoon
             UITheme.Klasik = false;
             DrawInfoMarker();
             DrawInfoPopup(sw, sh);
-            DrawToasts(sw, sh);
+            // Yeni arayüzde bildirimler, rehber kartı, olay kartı, Esc menüsü ve onay UI Toolkit'te (Arayuz/UiBildirim.cs, UiModal.cs):
+            // UI Toolkit IMGUI'nin üstüne çizildiği için bunlar IMGUI'de kalsa açık pencerenin altında kalırdı.
+            if (eskiArayuz) DrawToasts(sw, sh);
             DrawGuideOverlays(sw, sh);
             GUI.enabled = true;
-            DrawEvent(sw, sh);
+            if (eskiArayuz) DrawEvent(sw, sh);
             if (BigCardOpen && EventManager.I.Current == null && !pauseMenuOpen) DrawBigCard(sw, sh);
-            if (pauseMenuOpen) DrawPauseMenu(sw, sh);
-            if (ConfirmOpen) DrawConfirm(sw, sh);
+            if (pauseMenuOpen && eskiArayuz) DrawPauseMenu(sw, sh);
+            if (ConfirmOpen && eskiArayuz) DrawConfirm(sw, sh);
         }
 
         // ---------------------------------------------------------------- ESC menüsü (kaydet / ana menü / çık)

@@ -37,7 +37,10 @@
     bottom: 0;
 }
 
-.kok .unity-label {
+/* Etiketlerin varsayılan boşluğu sıfır. Tek sınıflı seçici: aşağıdaki .cip, .hap-yazi, .ipucu, .pencere-baslik gibi
+   kurallar kendi boşluklarını verebilsin (".kok .unity-label" iki sınıflıydı ve hepsini eziyordu). Temanın kuralını da
+   yener: bu stil kök elemana eklendiği için aynı güçteki seçicide sonra gelir. */
+.unity-label {
     margin: 0;
     padding: 0;
 }
@@ -298,10 +301,19 @@ Button.dg.tehlike:hover { background-color: rgba(242, 97, 92, 0.36); }
     padding: 0 14px 0 11px;
     margin-right: 8px;
     border-radius: 17px;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 40px;
+    overflow: hidden;
 }
-.hap-simge { width: 16px; height: 16px; }
-.hap-yazi { margin-left: 7px; font-size: 14px; white-space: nowrap; }
+.hap-simge { width: 16px; height: 16px; flex-shrink: 0; }
+.hap-yazi {
+    margin-left: 7px;
+    font-size: 14px;
+    white-space: nowrap;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 .hiz {
     flex-direction: row;
     align-items: center;
@@ -418,6 +430,7 @@ Button.dg.tehlike:hover { background-color: rgba(242, 97, 92, 0.36); }
     border-width: 0;
 }
 
+.sekme-ust { flex-shrink: 0; padding-right: 8px; }
 .kaydir { flex-grow: 1; }
 .kaydir .unity-scroll-view__content-container { padding-right: 8px; }
 .kaydir .unity-scroller--vertical { width: 8px; border-width: 0; background-color: rgba(0, 0, 0, 0); }
@@ -606,3 +619,126 @@ Button.dg.tehlike:hover { background-color: rgba(242, 97, 92, 0.36); }
 }
 .gelisim-ana { flex-grow: 1; flex-shrink: 1; margin-left: 12px; }
 .kilit-yazi { font-size: 11px; color: var(--uyari); margin-top: 4px; white-space: normal; }
+
+/* ---------------------------------------------------------------- ortadaki kutular: olay kartı, Esc menüsü, onay */
+
+.perde {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(5, 6, 9, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+.modal-kart {
+    background-color: rgb(24, 26, 32);
+    border-radius: 18px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+    overflow: hidden;
+    flex-shrink: 1;
+}
+.modal-baslik { font-size: 24px; margin-bottom: 4px; }
+Button.dg.modal-dg { height: 34px; margin: 6px 0 0 0; font-size: 14px; }
+.satir > Button.dg.modal-dg { margin: 0 0 0 6px; }
+.satir > Button.dg.modal-dg.ilk { margin-left: 0; }
+
+.olay-ust {
+    flex-direction: row;
+    align-items: center;
+    min-height: 56px;
+    padding: 10px 24px 10px 24px;
+    flex-shrink: 0;
+}
+.olay-serit { width: 6px; height: 22px; border-radius: 3px; flex-shrink: 0; }
+.olay-baslik { font-size: 21px; margin-left: 12px; flex-shrink: 1; white-space: normal; }
+.olay-icerik { padding: 16px 24px 20px 24px; flex-shrink: 1; min-height: 0; }
+.ozet-satir { flex-direction: row; margin-bottom: 14px; flex-shrink: 0; }
+.ozet-kutu {
+    flex-grow: 1;
+    flex-basis: 0;
+    height: 62px;
+    border-radius: 10px;
+    margin-left: 8px;
+    align-items: center;
+    justify-content: center;
+}
+.ozet-kutu.ilk { margin-left: 0; }
+.ozet-baslik { font-size: 11px; color: var(--soluk); letter-spacing: 0.4px; -unity-text-align: middle-center; white-space: nowrap; }
+.ozet-deger { font-size: 17px; margin-top: 4px; -unity-text-align: middle-center; white-space: nowrap; }
+.olay-govde { flex-grow: 0; flex-shrink: 1; min-height: 40px; }
+.olay-metin { font-size: 14px; white-space: normal; }
+Button.dg.olay-ayrinti { margin: 8px 0 0 0; }
+.olay-secenekler { margin-top: 16px; flex-shrink: 0; }
+Button.dg.olay-secim {
+    height: auto;
+    min-height: 38px;
+    margin: 0 0 6px 0;
+    padding: 6px 14px 6px 14px;
+    font-size: 14px;
+    white-space: normal;
+}
+
+.menu-kart { width: 440px; padding: 18px 20px 20px 20px; }
+.onay-kart { width: 440px; padding: 18px 20px 20px 20px; }
+.onay-baslik { font-size: 17px; margin-bottom: 6px; }
+.onay-metin { font-size: 14px; white-space: normal; }
+
+/* ---------------------------------------------------------------- bildirimler */
+
+.bildirimler {
+    position: absolute;
+    top: 72px;
+}
+.bildirim {
+    flex-direction: row;
+    align-items: center;
+    min-height: 52px;
+    margin-bottom: 8px;
+    background-color: rgba(20, 22, 27, 0.97);
+    border-radius: 12px;
+    overflow: hidden;
+    padding-right: 12px;
+}
+.bildirim-serit { width: 5px; align-self: stretch; flex-shrink: 0; }
+.bildirim-simge-kutu {
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    margin-left: 11px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.bildirim-yazi { flex-grow: 1; flex-shrink: 1; margin-left: 12px; padding: 6px 0 7px 0; }
+.bildirim-metin { font-size: 13px; white-space: normal; margin-top: 1px; }
+
+/* ---------------------------------------------------------------- ilk gün rehberi */
+
+.rehber-kart {
+    position: absolute;
+    width: 390px;
+    background-color: rgb(24, 26, 32);
+    border-radius: 14px;
+    border-width: 1.5px;
+    border-color: rgba(255, 209, 64, 0.6);
+    padding: 14px 16px 14px 16px;
+}
+.rehber-baslik { font-size: 16px; flex-grow: 1; flex-shrink: 1; white-space: normal; }
+.rehber-metin { font-size: 14px; margin-top: 6px; white-space: normal; }
+.rehber-vurgu {
+    position: absolute;
+    border-width: 2.5px;
+    border-radius: 15px;
+}
+.rehber-tikla {
+    position: absolute;
+    width: 64px;
+    height: 26px;
+    border-radius: 13px;
+    align-items: center;
+    justify-content: center;
+}
+.rehber-tikla-yazi { font-size: 12px; color: rgb(26, 26, 31); }
