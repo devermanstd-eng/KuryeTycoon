@@ -310,8 +310,14 @@ namespace KuryeTycoon
                 GUILayout.Label($"{newGameSlot + 1}. yuvadaki \"{slotSaves[newGameSlot].companyName}\" kaydı, yeni oyun ilk kez kaydedilince silinir.", warn);
             GUILayout.Space(6);
             GUILayout.Label("Kurye Şirketini Kur", title);
-            GUILayout.Label($"Yıllarca {FamilyLoan.EskiSirket}'te kuryelik yaptın. Şimdi {FamilyLoan.Banka}'tan aldığın {Ft(GameBootstrap.I.familyLoanAmount)} girişimci kredisiyle kendi kurye " +
-                            "şirketini kuruyorsun. Krediyi faiziyle Temmuz sonuna kadar taksitlerle geri ödemen gerekiyor; eski patronun artık rakiplerinden biri.", label);
+            var gb = GameBootstrap.I;
+            long borc = System.Math.Max(gb.familyLoanTotal, gb.familyLoanAmount);
+            long toplamBorc = (long)Mathf.Round(borc * (1f + (FamilyLoan.I != null ? FamilyLoan.I.faizOrani : 0.08f)) / 1000f) * 1000;
+            GUILayout.Label($"Yıllarca {FamilyLoan.EskiSirket}'te kuryelik yaptın. Şimdi {FamilyLoan.Banka}'tan aldığın {Ft(borc)} girişimci kredisiyle kendi kurye " +
+                            "şirketini kuruyorsun. " +
+                            (borc > gb.familyLoanAmount ? $"Kuruluş masraflarından sonra kasada {Ft(gb.familyLoanAmount)} kalıyor. " : "") +
+                            $"Krediyi faiziyle ({Ft(toplamBorc)}) Temmuz sonuna kadar ayda ~{Ft(toplamBorc / 5)} taksitle geri ödemen gerekiyor; " +
+                            "eski patronun artık rakiplerinden biri.", label);
             GUILayout.Space(6);
             GUILayout.BeginVertical(box);
             GUILayout.Label("Bu oyunda ne yapacaksın?", header);
@@ -2911,7 +2917,8 @@ namespace KuryeTycoon
             toggle.onHover.background = UITheme.KutuTex(true, true, acc);
             toggle.onActive.background = UITheme.KutuTex(true, true, acc);
             toggle.onFocused.background = UITheme.KutuTex(true, false, acc);
-            toggle.border = new RectOffset(UITheme.KutuW, 0, 0, 0);
+            // Üst kenar dokunun tamamı: kutu hiç uzamaz, iki satırlı seçenekte de solda üstte kalır
+            toggle.border = new RectOffset(UITheme.KutuW, 0, UITheme.KutuH, 0);
             toggle.overflow = new RectOffset(0, 0, 0, 0);
             toggle.padding = new RectOffset(UITheme.KutuW + 4, 4, 4, 4);
             toggle.margin = new RectOffset(2, 2, 3, 3);

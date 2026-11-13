@@ -39,8 +39,12 @@ namespace KuryeTycoon
     public static class Itibar
     {
         public const int GunSayisi = 14;
-        const float OnDeger = 3.5f, OnAgirlik = 60f;   // başlangıçta 60 puanlık 3,5 varsayılır
-        const float OlaySiniri = 0.8f;
+        // Başlangıçta 250 puanlık 3,5 varsayılır: ilk gün 40 iptalle itibar 3,5'ten 2,9'a düşmesin (birkaç günde silinir)
+        const float OnDeger = 3.5f, OnAgirlik = 250f;
+        // Olayların toplam etkisi en fazla ±0,4 (60 günlük testte destek aramaları ve viral övgüler birikip itibarı 5,0'a kilitliyordu)
+        const float OlaySiniri = 0.4f;
+        /// <summary>Bundan küçük etkiler olay değil, tek bir müşterinin puanı sayılır (destek araması +0,01 gibi).</summary>
+        const float KucukEtki = 0.05f;
 
         static readonly float[] toplam = new float[GunSayisi];
         static readonly int[] adet = new int[GunSayisi];
@@ -77,6 +81,12 @@ namespace KuryeTycoon
 
         public static void Olay(float delta)
         {
+            if (Mathf.Abs(delta) < KucukEtki)
+            {
+                // Küçük, sık etkiler (destek müşteriyi aradı, kurye hatası) birikmesin: bir müşterinin puanı gibi sayılır
+                if (delta > 0f) Puan(5f); else Puan(2f);
+                return;
+            }
             OlayEtkisi = Mathf.Clamp(OlayEtkisi + delta, -OlaySiniri, OlaySiniri);
             Hesapla();
         }

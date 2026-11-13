@@ -289,26 +289,32 @@ namespace KuryeTycoon
 
             switch (Random.Range(0, 3))
             {
+                // Bilgi olayları oyunu durduran kart değil, bildirim (60 günde 22 "Tamam" kartı çıkıyordu)
                 case 0:
                     shop.prepMultiplier = 2f;
-                    Push(new GameEvent("Dükkan yavaş",
-                        $"{shop.Name} bugün personel eksikliği yaşıyor. Siparişler 2 kat geç hazırlanacak; kuryeler dükkanda bekleyebilir."));
+                    Notify($"{shop.Name} bugün personel eksikliği yaşıyor: siparişler 2 kat geç hazırlanacak, kuryeler dükkanda bekleyebilir.");
                     break;
 
                 case 1:
-                    if (CompanyProfile.Reputation >= 3.8f)
+                {
+                    // Viral yorum dünkü servise göre: iyi gün övülür, kötü gün yerilir (itibara göre değil; yoksa kendini besliyordu)
+                    var gunler = StatsHistory.I != null ? StatsHistory.I.Days : null;
+                    var dun = gunler != null && gunler.Count > 0 ? gunler[gunler.Count - 1] : null;
+                    if (dun == null || dun.deliveries < 20) break;
+                    float iptal = dun.cancelled / (float)(dun.deliveries + dun.cancelled);
+                    float gec = dun.late / (float)dun.deliveries;
+                    if (iptal < 0.03f && gec < 0.25f)
                     {
-                        CompanyProfile.AddReputation(0.2f);
-                        Push(new GameEvent("Viral övgü!",
-                            $"Bir müşteri {CompanyProfile.Name} kuryesinin hızını sosyal medyada övdü. İtibar +0.2"));
+                        CompanyProfile.AddReputation(0.1f);
+                        Notify($"Viral övgü: bir müşteri {CompanyProfile.Name} kuryesinin hızını sosyal medyada övdü. İtibar +0,1");
                     }
-                    else if (CompanyProfile.Reputation < 2.8f)
+                    else if (iptal > 0.10f)
                     {
-                        CompanyProfile.AddReputation(-0.15f);
-                        Push(new GameEvent("Kötü yorum viral oldu",
-                            "Geç gelen bir sipariş hakkındaki yorum çok paylaşıldı. İtibar −0.15. Daha çok kurye almayı düşün."));
+                        CompanyProfile.AddReputation(-0.1f);
+                        Notify("Kötü yorum viral oldu: iptal edilen bir sipariş çok paylaşıldı. İtibar −0,1. Daha çok kurye almayı düşün.");
                     }
                     break;
+                }
 
                 case 2:
                     const int adCost = 30000;

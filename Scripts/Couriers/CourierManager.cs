@@ -683,9 +683,8 @@ namespace KuryeTycoon
         {
             var v = c.V;
             string extra = v.kind == VehicleKind.Araba ? " Artık ağır siparişleri de alabilir." : "";
-            EventManager.I.Push(new GameEvent("Yeni araç!",
-                $"{c.courierName} biriktirdiği parayla kendine {v.name} aldı ({Ft(v.ownPrice)}).\n" +
-                $"Artık paket başı {Ft(v.basePay)} + {Ft(v.payPerKm)}/km kazanıyor ve aynı anda {v.capacity} paket taşıyabiliyor.{extra}"));
+            EventManager.I.Notify($"Yeni araç: {c.courierName} biriktirdiği parayla {v.name} aldı ({Ft(v.ownPrice)}). " +
+                                  $"Artık paket başı {Ft(v.basePay)} + {Ft(v.payPerKm)}/km kazanıyor, aynı anda {v.capacity} paket taşıyor.{extra}");
             c.morale = Mathf.Min(1f, c.morale + 0.1f);
         }
 
