@@ -100,6 +100,34 @@ namespace KuryeTycoon
             if (not && agir) U.Metin(katmanNot, HeatCaption);
         }
 
+        /// <summary>
+        /// Haritanın üstündeki UI Toolkit kutularının dikdörtgenleri (GUI koordinatı). IMGUI harita etiketleri ve uçan yazılar
+        /// bunların altına girmesin diye dolu sayılır.
+        /// </summary>
+        readonly List<Rect> uiHaritaDolu = new List<Rect>();
+
+        void UiHaritaUstuDolu(List<Rect> hedef)
+        {
+            uiHaritaDolu.Clear();
+            void Ekle(VisualElement e)
+            {
+                if (e == null || !U.Gorunur(e)) return;
+                var r = e.worldBound;
+                if (r.width > 1f && r.height > 1f && !float.IsNaN(r.x)) uiHaritaDolu.Add(new Rect(r.x - 4f, r.y - 4f, r.width + 8f, r.height + 8f));
+            }
+            Ekle(hedefKok);
+            Ekle(olayKok);
+            Ekle(aracKok);
+            if (heatMenuOpen) Ekle(katmanMenu);
+            hedef?.AddRange(uiHaritaDolu);
+        }
+
+        bool UiHaritaUstuDoluMu(Rect r)
+        {
+            foreach (var o in uiHaritaDolu) if (o.Overlaps(r)) return true;
+            return false;
+        }
+
         // ------------------------------------------------------------------ olaylar kartı (Dikkat + son olaylar)
 
         VisualElement olayKok, olayDikkat, olayAyrac, olayAkis, olayBaslikSimge;

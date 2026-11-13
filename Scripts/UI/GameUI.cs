@@ -486,19 +486,19 @@ namespace KuryeTycoon
         }
 
         // ---------------------------------------------------------------- harita etiketleri
-        struct LabelReq { public Vector2 p; public string text; public Color color; public bool landmark; public Rect r; public bool skip; public bool hasIcon; public Icons.Kind icon; }
+        struct LabelReq { public Vector2 p; public string text; public Color color; public bool landmark; public Rect r; public bool skip; public bool hasIcon; public Icons.Kind icon; public bool onemli; }
         readonly List<LabelReq> labelReqs = new List<LabelReq>();
         readonly List<Rect> labelPlaced = new List<Rect>();
 
         /// <summary>Etiketi sıraya koyar; icon verilirse yazının soluna simge çizilir (ör. kuryenin aracı).</summary>
-        void QueueLabel(Camera cam, Vector3 world, string text, Color color, bool landmark = false, Icons.Kind? icon = null)
+        void QueueLabel(Camera cam, Vector3 world, string text, Color color, bool landmark = false, Icons.Kind? icon = null, bool onemli = false)
         {
             Vector3 sp = cam.WorldToScreenPoint(world);
             if (sp.z < 0f) return;
             labelReqs.Add(new LabelReq
             {
                 p = new Vector2(sp.x / uiScale, (Screen.height - sp.y) / uiScale), text = text, color = color, landmark = landmark,
-                hasIcon = icon.HasValue, icon = icon ?? Icons.Kind.Close
+                hasIcon = icon.HasValue, icon = icon ?? Icons.Kind.Close, onemli = onemli
             });
         }
 
@@ -513,22 +513,25 @@ namespace KuryeTycoon
             labelReqs.Clear();
             float zoom = MapCamera.I != null ? MapCamera.I.Zoom : 1f;
 
-            // 1) Kuryeler (aynı karedekiler üst üste dizilir)
+            // 1) Kuryeler (aynı karedekiler üst üste dizilir). Kalabalık ekipte bütün şehre bakarken isim yazılmaz
+            //    (sadece fare üstündeki / seçili kurye): etiketler birbirine girmesin
             var stack = new Dictionary<Vector2Int, int>();
+            bool kalabalik = CourierManager.I.Couriers.Count > 8 && zoom < 0.18f;
             foreach (var c in CourierManager.I.Couriers)
             {
                 var key = Vector2Int.RoundToInt(c.Position);
                 stack.TryGetValue(key, out int n);
                 stack[key] = n + 1;
                 bool hi = c == popupCourier || c == hoverCourier;
+                if (kalabalik && !hi) continue;
                 QueueLabel(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n),
-                    c.ShortName, hi ? new Color(1f, 0.85f, 0.2f) : Color.white, false, Icons.Of(c.vehicle));
+                    c.ShortName, hi ? new Color(1f, 0.85f, 0.2f) : Color.white, false, Icons.Of(c.vehicle), hi);
             }
 
             // 2) Merkez ofis
             float hqTop = BuildingTop(CityMap.I.HQTile);
-            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary);
-            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white);
+            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary, false, null, true);
+            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white, false, null, true);
 
             // 3) Dükkanlar (uzaktayken sözleşmesizler gizlenir: harita kalabalık olmasın)
             foreach (var s in CityMap.I.Shops)
@@ -574,6 +577,8 @@ namespace KuryeTycoon
             if (landmarkStyle == null)
                 landmarkStyle = UITheme.Semi(new GUIStyle(worldLabel) { fontStyle = FontStyle.BoldAndItalic, fontSize = 13, alignment = TextAnchor.MiddleCenter });
             labelPlaced.Clear();
+            // Haritanın üstündeki UI Toolkit kutuları (olaylar, hedefler, araç çubuğu) dolu sayılır: etiket altlarına girmesin
+            if (UiAktif) UiHaritaUstuDolu(labelPlaced);
             float[] shifts = { 0f, -19f, 19f, -38f, 38f };
             for (int i = 0; i < labelReqs.Count; i++)
             {
@@ -591,7 +596,7 @@ namespace KuryeTycoon
                     foreach (var o in labelPlaced) if (o.Overlaps(r)) { hit = true; break; }
                     if (!hit) { q.r = r; ok = true; break; }
                 }
-                if (!ok && q.landmark) q.skip = true;
+                if (!ok && !q.onemli) q.skip = true;   // yer yoksa çizilmez (üst üste binen etiket okunmuyor)
                 if (!q.skip) labelPlaced.Add(q.r);
                 labelReqs[i] = q;
             }
@@ -2811,7 +2816,13 @@ namespace KuryeTycoon
             bool ozetli = ev.ozet != null && ev.ozet.Count > 0;
             float w = ozetli ? 640f : 580f;
             var govdeStil = ozetli ? small : label;   // özetli kartta metin ayrıntıdır: küçük yazılır
-            float bodyH = govdeStil.CalcHeight(new GUIContent(ev.body), w - 56f);
+            if (olayAyrintiFor != ev) { olayAyrintiFor = ev; olayAyrintiAcik = false; }
+            // Rapor kartı: üstte özet kutuları ve ilk paragraf; dökümün geri kalanı "Ayrıntılar" ile açılır (metin duvarı olmasın)
+            string ilk = ev.body ?? "";
+            int kesim = ozetli ? ilk.IndexOf("\n\n", System.StringComparison.Ordinal) : -1;
+            bool katlanir = kesim > 0 && kesim < ilk.Length - 2;
+            string govdeMetni = katlanir && !olayAyrintiAcik ? ilk.Substring(0, kesim) : ilk;
+            float bodyH = govdeStil.CalcHeight(new GUIContent(govdeMetni), w - 56f) + (katlanir ? 32f : 0f);
             float ozetH = ozetli ? 74f : 0f;
             float h = Mathf.Min(sh - 40f, 118f + ozetH + bodyH + ev.choices.Count * 46f);
             var r = new Rect((sw - w) / 2f, (sh - h) / 2f, w, h);
@@ -2832,10 +2843,12 @@ namespace KuryeTycoon
             {
                 if (eventScrollFor != ev) { eventScrollFor = ev; eventScroll = Vector2.zero; }
                 eventScroll = GUILayout.BeginScrollView(eventScroll, GUILayout.Height(Mathf.Max(60f, bodyRoom)));
-                GUILayout.Label(ev.body, govdeStil);
+                GUILayout.Label(govdeMetni, govdeStil);
                 GUILayout.EndScrollView();
             }
-            else GUILayout.Label(ev.body, govdeStil);
+            else GUILayout.Label(govdeMetni, govdeStil);
+            if (katlanir && GUILayout.Button(olayAyrintiAcik ? "Ayrıntıları gizle ▲" : "Ayrıntılar (gelir, gider, kasa) ▼", smallButton, GUILayout.Height(26)))
+                deferred = () => olayAyrintiAcik = !olayAyrintiAcik;
             GUILayout.Space(12);
             for (int i = 0; i < ev.choices.Count; i++)
             {
@@ -2848,6 +2861,8 @@ namespace KuryeTycoon
         }
 
         GUIStyle ozetBaslik, ozetDeger;
+        GameEvent olayAyrintiFor;
+        bool olayAyrintiAcik;
 
         /// <summary>Rapor kartının üstündeki büyük sayılar: yan yana kutular (iyi yeşil, kötü kırmızı, dikkat turuncu).</summary>
         void KartOzetSatiri(List<KartOzeti> ozet, float genislik)
