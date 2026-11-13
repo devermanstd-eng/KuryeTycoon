@@ -127,6 +127,7 @@ namespace KuryeTycoon
             if (fleet.Count < 3 || crisis == null) return null;
             // Grev anlaşmasıyla ya da önceki artışla üst üste binmesin
             if (crisis.HasEffect("grev_zam") || crisis.HasEffect("grev_uzlasma") || crisis.HasEffect("paket_ucret")) return null;
+            if (crisis.AvgMorale() >= Denge.ZamMoralSiniri) return null;   // memnun kuryeler zam istemez
             const float raise = 0.10f;
             const int weeks = 6;
             return new GameEvent("Kuryeler paket başı ücret artışı istiyor",

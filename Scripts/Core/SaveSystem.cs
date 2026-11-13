@@ -131,6 +131,11 @@ namespace KuryeTycoon
         public float totalMinutes;
         public int startDay;
         public int mapSeed;
+        // İki haftalık itibar (eski kayıtlarda yok: itibar olay etkisi olarak devam eder)
+        public float[] itibarToplam;
+        public int[] itibarAdet;
+        public int itibarGun;
+        public float itibarOlay;
         public int unlockLevel;
         public List<ShopSave> shops = new List<ShopSave>();
         public int weather;
@@ -359,6 +364,7 @@ namespace KuryeTycoon
                 primary = CompanyProfile.Primary,
                 secondary = CompanyProfile.Secondary,
                 reputation = CompanyProfile.Reputation,
+                itibarToplam = Itibar.KayitToplam(), itibarAdet = Itibar.KayitAdet(), itibarGun = Itibar.KayitGun, itibarOlay = Itibar.OlayEtkisi,
                 totalMinutes = clock.TotalMinutes,
                 startDay = clock.StartDay,
                 mapSeed = GameBootstrap.I.MapSeed,

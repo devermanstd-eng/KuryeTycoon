@@ -631,7 +631,7 @@ namespace KuryeTycoon
             bool platformBolgeBekliyor = up.CourierCapFull && up.IsLocked(UpgradeKind.Platform) && up.LockReason(UpgradeKind.Platform).Contains("bölge");
             if (enIyiKalan > ortalama * 0.5f && !platformBolgeBekliyor) return;
             if (IptalOrani(3) > 0.05f && !platformBolgeBekliyor) return;   // servis oturmadan büyüme yok
-            long bedel = CityMap.UnlockCost[map.UnlockLevel + 1];
+            long bedel = CityMap.BolgeBedeli(map.UnlockLevel + 1);
             if (bedel > Bos / 2) return;
             if (map.TryUnlockNext())
             {
@@ -838,7 +838,13 @@ namespace KuryeTycoon
                 eco.baseFee = Mathf.RoundToInt(eco.baseFee * 1.05f / 10f) * 10;
                 Eylem("Fiyat", $"Fiyattan vazgeçen yok denecek kadar az (%{oran * 100f:0.0}), servis iyi: taban ücret {Ft(eski)} → {Ft(eco.baseFee)}");
             }
-            if (iptalRedDun >= 4 && eco.bonusMultiplier < baslangicBonus + 0.5f)
+            if (OrtMoral < 0.45f && eco.bonusMultiplier < baslangicBonus + 0.5f)
+            {
+                float eski = eco.bonusMultiplier;
+                eco.bonusMultiplier = Mathf.Min(2f, eco.bonusMultiplier + 0.1f);
+                Eylem("Fiyat", $"Kuryelerin morali düşük (ort. {OrtMoral:0.00}): bonus çarpanı {eski:0.0} → {eco.bonusMultiplier:0.0}");
+            }
+            else if (iptalRedDun >= 4 && eco.bonusMultiplier < baslangicBonus + 0.5f)
             {
                 float eski = eco.bonusMultiplier;
                 eco.bonusMultiplier = Mathf.Min(2f, eco.bonusMultiplier + 0.1f);

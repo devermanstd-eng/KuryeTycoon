@@ -147,7 +147,8 @@ namespace KuryeTycoon
                 CompanyProfile.Name = string.IsNullOrEmpty(d.companyName) ? "Hızlı Kurye" : d.companyName;
                 CompanyProfile.Primary = d.primary;
                 CompanyProfile.Secondary = d.secondary;
-                CompanyProfile.Reputation = Mathf.Clamp(d.reputation, 1f, 5f);
+                Itibar.Yukle(d.itibarToplam, d.itibarAdet, d.itibarGun, d.itibarOlay, Mathf.Clamp(d.reputation, 1f, 5f));
+                Denge.Sifirla();
                 GameClock.I.RestoreTime(d.totalMinutes, d.startDay);
                 Difficulty.Level = (DifficultyLevel)Mathf.Clamp(d.difficulty, 0, 2);   // sistemler kurulmadan önce
                 OrderHeat.Reset();
@@ -190,6 +191,7 @@ namespace KuryeTycoon
         {
             if (Started) return;
 
+            Denge.Sifirla();
             EconomyManager.I.money = familyLoanAmount;
             EconomyManager.I.InitCashMarkers();
             OrderHeat.Reset();

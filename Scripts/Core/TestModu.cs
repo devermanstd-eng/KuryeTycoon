@@ -438,7 +438,7 @@ namespace KuryeTycoon
             if (clk.Day - sonBolgeGun < 7 || map.UnlockLevel >= map.MaxLevel) return;
             foreach (var s in map.Shops)
                 if (!s.contracted && !s.own && map.IsUnlocked(s.tile)) return;   // açık bölgede imzalanacak dükkan varken açma
-            long bedel = CityMap.UnlockCost[map.UnlockLevel + 1];
+            long bedel = CityMap.BolgeBedeli(map.UnlockLevel + 1);
             if (EconomyManager.I.FreeCash < bedel + rezerv * 2) return;
             if (map.TryUnlockNext())
             {
@@ -516,7 +516,7 @@ namespace KuryeTycoon
         const string CsvBaslik =
             "gun;tarih;teslimat;iptal;kacan;gelir;gider;net;kasa;serbest_kasa;itibar;kurye;dukkan;bolge;gec;gec_15dk;soguk;ort_teslim_dk;" +
             "ort_atama_bekleme_dk;ort_alma_bekleme_dk;dukkan_iptali;musteri_vazgecti;gecikme_iptali;kurye_odemesi;ekipman;maaslar;" +
-            "ort_moral;ort_yorgunluk;basvuru;pazar_payi;aile_borcu_kalan;gelistirme_gunluk;fps_ort;fps_en_dusuk;gercek_saniye";
+            "ort_moral;ort_yorgunluk;ort_birikmis_yorgunluk;basvuru;pazar_payi;aile_borcu_kalan;gelistirme_gunluk;fiyat_carpani;fps_ort;fps_en_dusuk;gercek_saniye";
 
         long enDusukKasa;
         int enDusukKasaGun;
@@ -528,8 +528,8 @@ namespace KuryeTycoon
         void GunSonu(DayRecord d, int gunNo)
         {
             var cm = CourierManager.I;
-            float moral = 0f, yorgun = 0f;
-            foreach (var c in cm.Couriers) { moral += c.morale; yorgun += c.fatigue; }
+            float moral = 0f, yorgun = 0f, birikmis = 0f;
+            foreach (var c in cm.Couriers) { moral += c.morale; yorgun += c.fatigue; birikmis += c.burnout; }
             int n = Mathf.Max(1, cm.Couriers.Count);
             float fpsOrt = gunSure > 0f ? gunKare / gunSure : 0f;
             float fpsMin = gunEnUzunKare > 0f ? 1f / gunEnUzunKare : 0f;
@@ -555,8 +555,8 @@ namespace KuryeTycoon
                     d.late.ToString(Inv), d.late15.ToString(Inv), d.cold.ToString(Inv), F(d.avgMinutes), F(d.avgAssignWait), F(d.avgPickupWait),
                     d.cancelShop.ToString(Inv), d.cancelCustomer.ToString(Inv), d.cancelDelay.ToString(Inv),
                     P(d.courierPay), P(d.equipment), P(d.salaries),
-                    F(moral / n), F(yorgun / n), cm.Applications.Count.ToString(Inv), F(pay), P(borc),
-                    P(UpgradeManager.I.TotalDailyCost), F(fpsOrt), F(fpsMin), F(gercek)
+                    F(moral / n), F(yorgun / n), F(birikmis / n), cm.Applications.Count.ToString(Inv), F(pay), P(borc),
+                    P(UpgradeManager.I.TotalDailyCost), F(Denge.FiyatCarpani), F(fpsOrt), F(fpsMin), F(gercek)
                 }));
 
             if (gunNo == 1 || gunNo % 10 == 0) haritaBekliyor = true;

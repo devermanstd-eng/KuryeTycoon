@@ -212,6 +212,8 @@ namespace KuryeTycoon
             if (c.fatigue >= 0.6f) Chip("Yorgun", UITheme.Warn);
             if (c.cashHeld >= Courier.CashLimit * 0.7f && !c.cashBlocked) Chip("Nakit borcu yüksek", UITheme.Warn);
             if (c.hygiene < Courier.HygieneLimit) Chip("Çanta kirli", UITheme.Warn);
+            if (c.burnout >= 0.5f) Chip(c.burnout >= Denge.ZorunluIzinSiniri ? "Tükenmiş: izin günü yapacak" : "Yorgunluk birikti", UITheme.Warn);
+            if (c.morale < Denge.BirakmaMoralSiniri) Chip("Bırakmayı düşünüyor", UITheme.Bad);
             if (c.BagWorn) Chip("Çanta yıpranmış", UITheme.Warn);
             if (!c.insured) Chip("Sigortasız", NeutralTone);
             var pens = c.ActivePenalties();

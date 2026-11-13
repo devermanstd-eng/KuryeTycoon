@@ -30,7 +30,8 @@ namespace KuryeTycoon
 
         [Header("Borç")]
         public long principal = 1000000;
-        public int[] dueMonths = { 4, 5, 6, 7 };   // Nisan–Temmuz sonu
+        // Mart–Temmuz sonu (5 taksit). Eskiden ilk taksit Nisan sonundaydı ve borç oyunun başında hiç baskı yapmıyordu.
+        public int[] dueMonths = { 3, 4, 5, 6, 7 };
         public int maxTrust = 3;
 
         public readonly List<Installment> Schedule = new List<Installment>();

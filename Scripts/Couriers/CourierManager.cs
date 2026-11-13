@@ -195,7 +195,7 @@ namespace KuryeTycoon
         {
             if (UpgradeManager.I.CourierCapFull)
             {
-                EventManager.I.Notify($"Platform paketindeki kurye hesapları dolu ({UpgradeManager.I.CourierCap}). Daha fazla kurye için Geliştirmeler'den paketi yükselt.");
+                EventManager.I.Notify($"Kurye hesapları dolu ({UpgradeManager.I.CourierCap}). {UpgradeManager.I.CourierCapHint}");
                 return;
             }
             if (!Applications.Remove(c)) return;
@@ -591,6 +591,29 @@ namespace KuryeTycoon
             return accepted;
         }
 
+        /// <summary>Aracına göre makul saatlik kazanç çarpanı (arabalı yakıt öder, bisikletli daha azına razı).</summary>
+        static float AracBeklentisi(VehicleKind v) =>
+            v == VehicleKind.Araba ? 1.25f : v == VehicleKind.Motosiklet ? 1.1f : v == VehicleKind.EScooter ? 0.9f : 0.85f;
+
+        /// <summary>Kuryenin moralinin gideceği yer (0–1).</summary>
+        static float MoralHedefi(Courier c, float saat, long kazanc, bool satIdle, Season season, float bonusM)
+        {
+            float hedef;
+            if (saat >= 1f)
+            {
+                float oran = kazanc / saat / (Denge.BeklenenSaatlikKazanc * AracBeklentisi(c.vehicle));
+                hedef = 0.3f + 0.5f * Mathf.Clamp01((oran - 0.4f) / 0.9f);   // beklenenin %100'ü → ~0,63; %130'u → 0,8
+            }
+            else hedef = Mathf.Lerp(c.morale, 0.6f, 0.3f);   // çalışmadı (izin): kazanç etkisi yok
+            hedef += (bonusM - 1f) * 0.15f + Mathf.Min(0.06f, c.equipment.Count * 0.01f);
+            hedef -= c.burnout * 0.3f;
+            if (satIdle) hedef -= 0.1f;   // çevrimiçi bekledi, iş gelmedi
+            if (c.V.exposed && season == Season.Kis && !c.Has(EquipmentKind.KisMontu)) hedef -= 0.12f;
+            if (c.V.exposed && season == Season.Yaz && !c.Has(EquipmentKind.YazTisort)) hedef -= 0.06f;
+            if (c.fatigue > 0.7f) hedef -= 0.05f;
+            return Mathf.Clamp01(hedef);
+        }
+
         // ================================================================== gün sonu
 
         void OnNewDay()
@@ -613,18 +636,18 @@ namespace KuryeTycoon
             {
                 int worked = c.deliveriesToday;
                 bool satIdle = c.onlineMinutesToday > 120f && worked == 0;
+                float saat = c.onlineMinutesToday / 60f;
+                long kazanc = c.earnedToday;
                 c.NewDay(clock);
 
-                // --- Moral ---
-                float d = (0.6f - c.morale) * 0.05f + (bonusM - 1f) * 0.08f + c.equipment.Count * 0.004f;
-                if (satIdle) d -= 0.03f;
-                else d += Mathf.Min(0.05f, worked * 0.004f);
-                if (c.V.exposed && season == Season.Kis && !c.Has(EquipmentKind.KisMontu)) d -= 0.06f;
-                if (c.V.exposed && season == Season.Yaz && !c.Has(EquipmentKind.YazTisort)) d -= 0.03f;
-                if (c.fatigue > 0.7f) d -= 0.03f;
-                c.morale = Mathf.Clamp01(c.morale + d);
+                // --- Moral: her gece bir hedefe yaklaşır (Denge.MoralYaklasma) ---
+                // Hedef: saatlik kazancı aracına göre makul mü, yorgunluk birikmiş mi, ekipmanı ve bonusu var mı.
+                // Eskiden her iyi teslimat moral ekliyordu ve moral 60 gün %100'de kalıyordu.
+                c.morale = Mathf.Clamp01(c.morale + (MoralHedefi(c, saat, kazanc, satIdle, season, bonusM) - c.morale) * Denge.MoralYaklasma);
 
-                if (c.morale < 0.2f && c.OrderCount == 0 && Random.value < 0.35f)
+                // Çok mutsuz kurye bırakır: moral 0,2'de günde %5, 0,1'de %10
+                float birak = (Denge.BirakmaMoralSiniri - c.morale) * Denge.BirakmaOrani;
+                if (birak > 0f && c.OrderCount == 0 && Random.value < birak)
                 {
                     Quit(c);
                     continue;
