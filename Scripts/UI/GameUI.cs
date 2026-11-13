@@ -2295,9 +2295,10 @@ namespace KuryeTycoon
                         if (GUILayout.Button($"Vergi borcunu öde ({Ft(e.taxDebt)})", button)) deferred = () => e.PayDebt();
                     }
                     GUILayout.BeginHorizontal();
-                    if (!string.IsNullOrEmpty(e.LastDailyReport) && GUILayout.Button("Dünün raporu", smallButton))
+                    // Genişlik yazıya göre verilir: satır kaydırmalı düğme dar kalınca yazı yarım görünüyordu
+                    if (!string.IsNullOrEmpty(e.LastDailyReport) && GUILayout.Button("Dünün raporu", smallButton, TekSatir("Dünün raporu")))
                         deferred = () => EventManager.I.Push(new GameEvent(e.LastDailyReportTitle, e.LastDailyReport));
-                    if (!string.IsNullOrEmpty(e.LastWeeklyReport) && GUILayout.Button("Geçen haftanın raporu", smallButton))
+                    if (!string.IsNullOrEmpty(e.LastWeeklyReport) && GUILayout.Button("Geçen haftanın raporu", smallButton, TekSatir("Geçen haftanın raporu")))
                         deferred = () => EventManager.I.Push(new GameEvent(e.LastWeeklyReportTitle, e.LastWeeklyReport));
                     GUILayout.FlexibleSpace();
                     GUILayout.EndHorizontal();
@@ -2383,7 +2384,7 @@ namespace KuryeTycoon
                 if (s.rewards > 0) list += (list.Length > 0 ? ", " : "") + $"Hedef ödülleri {Ft(s.rewards)}";
                 GUILayout.Label($"Yatırım ve diğer giderler: −{Ft(others)}", label);
                 if (list.Length > 0) GUILayout.Label("  " + list, small);
-                if (s.otherIncome > 0) GUILayout.Label($"  + Diğer gelir (kurye kesintileri) {Ft(s.otherIncome)}", small);
+                if (s.otherIncome > 0) GUILayout.Label($"  + Diğer gelir (ödüller, sigorta komisyonu, kesintiler) {Ft(s.otherIncome)}", small);
             }
 
             // 3) Sonuç
@@ -2883,6 +2884,13 @@ namespace KuryeTycoon
         bool kagitTema;
 
         /// <summary>Yuvarlak köşeli düz düğme stili. Seçili (on) hali şirket renginde.</summary>
+        /// <summary>Küçük düğmenin yazısı tek satıra sığsın diye genişlik ve yükseklik.</summary>
+        GUILayoutOption[] TekSatir(string yazi)
+        {
+            var sz = smallButton.CalcSize(new GUIContent(yazi));
+            return new[] { GUILayout.Width(sz.x + 6f), GUILayout.Height(Mathf.Max(26f, sz.y)) };
+        }
+
         GUIStyle MakeButton(int fontSize, int radius)
         {
             var st = new GUIStyle(GUI.skin.button)

@@ -71,6 +71,19 @@ namespace KuryeTycoon
             if (Feed.Count > 40) Feed.RemoveAt(Feed.Count - 1);
         }
 
+        /// <summary>Sessiz bildirimler için (otomatik test bunları da kaydeder).</summary>
+        public static System.Action<string> NotifiedQuiet;
+
+        /// <summary>
+        /// Sık olan, önemsiz bildirim (asansör arızası, küçük bahşiş, destek araması...): haber akışına ve kartlara düşmez,
+        /// sadece hata ayıklama günlüğüne yazılır. 60 günlük testte 10 000'den fazla bildirim çıkıyordu, önemliler kayboluyordu.
+        /// </summary>
+        public void NotifyQuiet(string msg)
+        {
+            NotifiedQuiet?.Invoke(msg);
+            Telemetry.Line(msg);
+        }
+
         public void Choose(int index)
         {
             if (Current == null || index < 0 || index >= Current.choices.Count) return;
@@ -153,6 +166,15 @@ namespace KuryeTycoon
                 return;
             }
 
+            // Küçük tutarda (5 €'ya kadar) kart açılmaz: kural uygulanır, iade kuryeden düşülür
+            if (value <= SmallRefund)
+            {
+                long kesilen = ChargeCourier(o, c, value);
+                Notify($"#{o.id}: {c.ShortName} teslimatında {what}. Müşteriye {Ft(value)} iade edildi" +
+                       (kesilen >= value ? $", kural gereği {c.ShortName}'ın hesabından düşüldü." : $"; {Ft(kesilen)}'ı {c.ShortName}'ın hesabından düşüldü, kalanı şirket ödedi."));
+                return;
+            }
+
             Push(new GameEvent(forgot ? "Eksik teslimat (kurye)" : "Hasarlı sipariş",
                     $"#{o.id} · {o.shop.Name}: kurye {c.courierName} teslimatında {what}. Müşteri desteğe yazdı ve bu ürünün ücretini ({Ft(value)}) istiyor.\n" +
                     "Kural: kurye kaynaklı sorunlarda iade kuryenin hesabından düşülür. İstersen şirket olarak üstlenebilirsin.")
@@ -169,6 +191,9 @@ namespace KuryeTycoon
                 })
                 .Add("Reddet (itibar −0.15)", () => CompanyProfile.AddReputation(-0.15f)));
         }
+
+        /// <summary>Bu tutara kadar kurye kaynaklı iadeler için karar kartı açılmaz (2 000 Ft = 5 €).</summary>
+        const int SmallRefund = 2000;
 
         /// <summary>Müşteriye iade yapılır, tutar kuryenin hesabındaki kazançtan düşülür (yetmezse kalanı şirket öder).</summary>
         long ChargeCourier(Order o, Courier c, int value)

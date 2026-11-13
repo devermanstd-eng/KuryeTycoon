@@ -372,14 +372,19 @@ namespace KuryeTycoon
             if (GameClock.I.DayOfWeek == 0) Weekly();
         }
 
+        /// <summary>Haftayı en son hangi gün kapattı (haftalık rapor, sırası ne olursa olsun güncel satırı yazsın diye).</summary>
+        public int HaftaKapanisGunu { get; private set; } = -1;
+
         void Weekly()
         {
+            HaftaKapanisGunu = Day;
             deliveriesLastWeek = deliveriesThisWeek;
             deliveriesThisWeek = 0;
             myDeliveriesLastWeek = myDeliveriesThisWeek;
             myDeliveriesThisWeek = 0;
             shareHistory.Add(MarketShare);
             while (shareHistory.Count > 12) shareHistory.RemoveAt(0);
+            if (EconomyManager.I != null) EconomyManager.I.RakipSatiriniYaz(ReportLine);   // haftalık rapor bu sayılarla
 
             // Saldırganlık: pazar payın %45'in üstüne çıktıkça rakip daha çok hamle yapar, yatırım arar
             float targetAgg = Mathf.Clamp01((MarketShare - 0.45f) * 2.5f);

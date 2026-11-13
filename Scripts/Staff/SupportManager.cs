@@ -335,7 +335,7 @@ namespace KuryeTycoon
             o.supportCalled = true;
             a.handledTotal++;
             handledThisMonth++;
-            EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisini arayıp gecikme için özür diledi, {extraWaitMinutes:0} dk ek süre aldı.");
+            EventManager.I.NotifyQuiet($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisini arayıp gecikme için özür diledi, {extraWaitMinutes:0} dk ek süre aldı.");
             return true;
         }
     }

@@ -136,7 +136,7 @@ namespace KuryeTycoon
             if (MapCamera.I != null) MapCamera.I.ResetView();
             fotoModu = true;
             fotoIpucuBitis = 0f;
-            yield return null;
+            yield return new WaitForSecondsRealtime(0.3f);   // arayüz tamamen kalksın
             yield return StartCoroutine(TestCek(yol));
             fotoModu = false;
             panelOpen = eskiPanel;
