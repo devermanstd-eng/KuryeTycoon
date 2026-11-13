@@ -255,7 +255,7 @@ namespace KuryeTycoon
                 EconomyManager.I.SpendCampaign(monthlyReward, $"Aylık hedef ödülü: {c.courierName}");
                 c.Earn(monthlyReward);
                 c.AddInbox($"Ayın kuryesi! {monthlyTarget}+ paket, {Ft(monthlyReward)} ödül hesabına yazıldı.");
-                c.morale = Mathf.Min(1f, c.morale + 0.25f);
+                c.morale = Mathf.Min(1f, c.morale + 0.1f);
                 rewardsPaidThisMonth += monthlyReward;
                 rewardsClaimedThisMonth++;
                 // Ayda bir kart (ilk ulaşan); sonrakiler bildirim. 60 günlük testte 16 kart açılıyordu.

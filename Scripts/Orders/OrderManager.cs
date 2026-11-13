@@ -54,7 +54,7 @@ namespace KuryeTycoon
             reputationAtDayStart = CompanyProfile.Reputation;
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { busyLostToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; cancelledShopToday = 0; cancelledCustomerToday = 0; cancelledDelayToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
+            GameClock.I.OnNewDay += () => { Itibar.YeniGun(); busyLostToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; cancelledShopToday = 0; cancelledCustomerToday = 0; cancelledDelayToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
         }
 
         /// <summary>
@@ -330,6 +330,14 @@ namespace KuryeTycoon
             var shop = PickShop();
             if (shop == null) return;
 
+            // Hiç kurye çevrimiçi değilken (çoğunlukla gece) uygulama "şu an teslimat yok" gösterir: sipariş gelmez,
+            // iptal olup itibarı düşürmez. Eskiden gece 24 saat açık dükkanların siparişleri kuryesiz kalıp iptal oluyordu.
+            if (CourierManager.I.OnlineCount == 0)
+            {
+                busyLostToday++;
+                return;
+            }
+
             int excess = BusyExcess;
             if (excess > 0 && Random.value < Mathf.Min(0.75f, excess * 0.12f))
             {
@@ -480,7 +488,7 @@ namespace KuryeTycoon
                 if (RivalCompany.I != null) RivalCompany.I.OnCancelled(o);
                 bool rejected = o.priceDeclines > 0 || o.rejectedBy.Count > 0;
                 if (rejected) cancelledRejectedToday++;
-                CompanyProfile.AddReputation(-cancelReputationPenalty);
+                Itibar.Iptal(1f);   // müşteri 1 yıldız vermiş sayılır
                 IptalBildir(rejected
                     ? $"#{o.id} ({o.shop.Name}) iptal oldu: kuryeler teklifi gördü ama kabul etmedi. İtibar düştü."
                     : $"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu. İtibar düştü.");
@@ -616,7 +624,7 @@ namespace KuryeTycoon
                 case 1:
                     cancelledShopToday++;
                     Telemetry.Add("İptal: dükkan iptal etti");
-                    CompanyProfile.AddReputation(-cancelReputationPenalty * 0.3f);   // müşteri biraz da uygulamaya kızar
+                    Itibar.Iptal(0.3f);   // müşteri biraz da uygulamaya kızar
                     EventManager.I.Notify($"#{o.id} {o.shop.Name} siparişi iptal etti: {o.cancelReason}.{who}");
                     break;
                 case 2:
@@ -631,7 +639,7 @@ namespace KuryeTycoon
                     Telemetry.Add("İptal: müşteri gecikme yüzünden vazgeçti");
                     if (GoalManager.I != null) GoalManager.I.OnCancelled();
                     if (RivalCompany.I != null) RivalCompany.I.OnCancelled(o);
-                    CompanyProfile.AddReputation(-cancelReputationPenalty);
+                    Itibar.Iptal(1f);
                     IptalBildir($"#{o.id} ({o.shop.Name}) müşteri iptal etti: {o.cancelReason}. İtibar düştü.{who}");
                     break;
             }
@@ -817,7 +825,7 @@ namespace KuryeTycoon
             }
             c.tipsTotal += o.tip;
             c.tipsToday += o.tip;
-            c.morale = Mathf.Min(1f, c.morale + (o.tip >= 800 ? 0.04f : 0.02f));
+            c.morale = Mathf.Min(1f, c.morale + (o.tip >= 800 ? 0.02f : 0.01f));
             if (o.tip >= 2000)   // 5 €'dan büyük bahşiş haber akışına düşer; küçükleri gün sonu raporunda
             {
                 string why = badWeather ? " (kötü havada geldiği için)" : (o.IsHeavy ? " (ağır paketi kapıya taşıdığı için)" : "");
@@ -850,8 +858,8 @@ namespace KuryeTycoon
             Telemetry.Add("Teslim edildi");
             Telemetry.DayDelivered++;
             Telemetry.DayMinutes += now - o.createdAt;
-            if (o.assignedAt >= 0f) Telemetry.DayAssignWait += o.assignedAt - o.createdAt;
-            if (o.assignedAt >= 0f && o.pickedAt > 0f) Telemetry.DayPickupWait += o.pickedAt - o.assignedAt;
+            if (o.assignedAt >= o.createdAt) Telemetry.DayAssignWait += o.assignedAt - o.createdAt;   // atanma zamanı yoksa (0) sayılmaz
+            if (o.assignedAt >= o.createdAt && o.pickedAt >= o.assignedAt) Telemetry.DayPickupWait += o.pickedAt - o.assignedAt;
             if (late > 0f) Telemetry.DayLate++;
             if (late > 15f) Telemetry.DayLate15++;
             if (late > 0f) Telemetry.Add("Teslim: geç");
@@ -883,8 +891,8 @@ namespace KuryeTycoon
 
             EconomyManager.I.RegisterDelivery(o);
             MapFx.Delivered(o);   // haritada "+350 Ft" ve teslimat sesi
-            CompanyProfile.Reputation = Mathf.Lerp(CompanyProfile.Reputation, o.rating, 0.04f);
-            c.morale = Mathf.Clamp01(c.morale + (o.rating >= 4f ? 0.01f : -0.02f));
+            Itibar.Puan(o.rating);   // itibar: son 14 günün puan ortalaması
+            if (o.rating < 3f) c.morale = Mathf.Clamp01(c.morale - 0.01f);   // kötü puan canını sıkar (iyi puan artık moral eklemez)
 
             if (o.marker != null) Destroy(o.marker.gameObject);
             Active.Remove(o);

@@ -1457,7 +1457,7 @@ namespace KuryeTycoon
             float now = GameClock.I.TotalMinutes;
             var up = UpgradeManager.I;
             if (up.CourierCapFull)
-                GUILayout.Label($"Kurye hesapları dolu ({cm.Couriers.Count}/{up.CourierCap}): Gelişim'den paketi yükselt ya da bir kuryeyle yollarını ayır.", warn);
+                GUILayout.Label($"Kurye hesapları dolu ({cm.Couriers.Count}/{up.CourierCap}). {up.CourierCapHint}", warn);
             else
                 KV("Kurye hesapları", $"{cm.Couriers.Count}/{up.CourierCap}");
             Section($"Gelen başvurular ({cm.Applications.Count}/{cm.maxApplications})");
@@ -1491,11 +1491,11 @@ namespace KuryeTycoon
             if (map.UnlockLevel < map.MaxLevel)
             {
                 int next = map.UnlockLevel + 1;
-                if (GUILayout.Button($"Yeni bölge aç: {CityMap.DistrictNames[next]} — {Ft(CityMap.UnlockCost[next])}", button))
+                if (GUILayout.Button($"Yeni bölge aç: {CityMap.DistrictNames[next]} — {Ft(CityMap.BolgeBedeli(next))}", button))
                     deferred = () => AskConfirm("Yeni bölge aç",
-                        $"{CityMap.DistrictNames[next]} {Ft(CityMap.UnlockCost[next])} karşılığında açılsın mı? " +
+                        $"{CityMap.DistrictNames[next]} {Ft(CityMap.BolgeBedeli(next))} karşılığında açılsın mı? " +
                         $"Serbest kasan: {Ft(EconomyManager.I.FreeCash)}. Bölge açmak geri alınamaz.",
-                        $"Evet, aç ({Ft(CityMap.UnlockCost[next])})", () => map.TryUnlockNext());
+                        $"Evet, aç ({Ft(CityMap.BolgeBedeli(next))})", () => map.TryUnlockNext());
             }
             GUILayout.Space(6);
 
@@ -1892,8 +1892,15 @@ namespace KuryeTycoon
             var e = EconomyManager.I;
             Intro("gelisim", "Her geliştirmenin kurulum bedeli ve günlük gideri var. Sadece gerçekten gerektiğinde yükselt.",
                   "Günlük gider: abonelik, kira, malzeme, reklam bütçesi. Büyük platform paketleri şehir büyüdükçe, tesisler ise merkez ofis " +
-                  "büyüdükçe açılır. İşletme gideri olanları küçültebilirsin (kurulum bedeli geri gelmez). Bütün giderler vergiden düşülür.");
+                  "büyüdükçe açılır. İşletme gideri olanları küçültebilirsin (kurulum bedeli geri gelmez). Bütün giderler vergiden düşülür. " +
+                  "Fiyatlar şirketin büyüklüğüne göre değişir: son iki haftanın günlük geliri arttıkça kurulum bedelleri ve bölge açma bedeli artar, " +
+                  "günlük giderler daha yavaş artar. Erken yatırım ucuzdur.");
             KV("Serbest kasa", Ft(e.FreeCash));
+            if (Denge.FiyatCarpani > 1f)
+            {
+                KV("Fiyat seviyesi", $"×{Denge.FiyatCarpani:0.00}");
+                HelpOnLast("Son 14 günün ortalama gelirine göre. Şirket büyüdükçe tedarikçiler de fiyat artırır.");
+            }
             KV("Kurye hesapları", $"{CourierManager.I.Couriers.Count}/{up.CourierCap}");
             KV("Günlük toplam gider", $"{Ft(up.TotalDailyCost)} (ayda ~{Ft(up.TotalDailyCost * 30L)})");
 

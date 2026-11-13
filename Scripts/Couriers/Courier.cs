@@ -37,6 +37,8 @@ namespace KuryeTycoon
 
         [Header("Durum")]
         public float fatigue;
+        /// <summary>Birikmiş yorgunluk (0–1): günde 6 saatten fazla çalıştıkça artar, izin günü azalır. Güne yorgun başlatır, moralı düşürür.</summary>
+        public float burnout;
         public float morale = 0.7f;
         public int deliveries;
         public int deliveriesToday;
@@ -484,7 +486,7 @@ namespace KuryeTycoon
             {
                 if (fatigue > 0.5f) return;
                 // Boost, sadece zaten müsait olabilecek kuryeleri çeker (sınavdaki öğrenciyi değil)
-                float pOn = pref * (0.4f + morale * 0.6f) * WeatherWillingness() + (boost && pref >= 0.2f ? 0.35f : 0f);
+                float pOn = pref * (0.4f + morale * 0.6f) * WeatherWillingness() * (1f - 0.5f * burnout) + (boost && pref >= 0.2f ? 0.35f : 0f);
                 if (UpgradeManager.I != null) pOn *= UpgradeManager.I.PeakAvailabilityMultiplier(GameClock.I.Hour);
                 pOn *= crisis;
                 if (UpgradeManager.I != null) pOn *= UpgradeManager.I.HubOnlineMultiplier;
@@ -1096,7 +1098,7 @@ namespace KuryeTycoon
 
         void Work(float dm)
         {
-            float rate = 0.0011f / Mathf.Max(0.3f, stamina);
+            float rate = Denge.CalismaYorgunlugu / Mathf.Max(0.3f, stamina);
             if (V.exposed && WeatherSystem.I.IsHot && !Has(EquipmentKind.YazTisort)) rate *= 1.5f;
             if (Has(EquipmentKind.Powerbank)) rate *= 0.8f;
             rate *= CrisisManager.FatigueFactor;   // sıcak dalgası vb.
@@ -1298,6 +1300,7 @@ namespace KuryeTycoon
         void DeliverCurrent(bool kept)
         {
             lastBusyAt = GameClock.I.TotalMinutes;
+            fatigue = Mathf.Min(1f, fatigue + Denge.TeslimatYorgunlugu / Mathf.Max(0.5f, stamina));   // paketi taşımak, kapı, kat
             {
                 var done = current;
                 lastDelivered = done;
@@ -1390,6 +1393,13 @@ namespace KuryeTycoon
 
             // Çanta temizliği kuryenin kendi sorumluluğu: her gece zorunlu olarak temizler (şirkete maliyeti yok)
             if (hygiene < MaxHygiene - 0.01f || cleanRequested) CleanBag();
+
+            // Birikmiş yorgunluk: uzun günler birikir, izin günü dinlendirir; güne biraz yorgun başlatır
+            float saat = onlineMinutesToday / 60f;
+            if (saat < 0.5f) burnout -= Denge.IzinGunuDinlenme;
+            else burnout += Mathf.Max(0f, saat - Denge.BirikmeSaatEsigi) * Denge.BirikmeSaatBasi;
+            burnout = Mathf.Clamp01(burnout - Denge.GeceDinlenme);
+            fatigue = Mathf.Max(fatigue, burnout * 0.5f);
             onlineMinutesToday = 0f;
 
             if (repairDays > 0)
@@ -1412,7 +1422,13 @@ namespace KuryeTycoon
             float chance = clock.IsWeekend ? 0.12f : 0.06f;
             if (occupation == Occupation.TamZamanli) chance *= 0.5f; // geçimini kuryelikten sağlıyor
             if (morale < 0.4f) chance *= 1.5f;
+            chance += burnout * 0.3f;   // yorgunluk birikmişse dinlenmek ister
             dayOff = Random.value < chance;
+            if (!dayOff && burnout >= Denge.ZorunluIzinSiniri)
+            {
+                dayOff = true;
+                if (EventManager.I != null) EventManager.I.NotifyQuiet($"{courierName} çok yorgun, bugün dinleniyor (birikmiş yorgunluk %{burnout * 100f:0}).");
+            }
         }
 
         // ================================================================== arayüz

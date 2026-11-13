@@ -1036,10 +1036,13 @@ namespace KuryeTycoon
             RefreshColors();
         }
 
+        /// <summary>Bölgenin açılış bedeli: şirket büyüdükçe artar (Denge.Olcekle).</summary>
+        public static long BolgeBedeli(int seviye) => Denge.Olcekle(UnlockCost[Mathf.Clamp(seviye, 0, UnlockCost.Length - 1)]);
+
         public bool TryUnlockNext()
         {
             if (UnlockLevel >= MaxLevel) return false;
-            long cost = UnlockCost[UnlockLevel + 1];
+            long cost = BolgeBedeli(UnlockLevel + 1);
             if (!EconomyManager.I.TrySpend(cost, $"Yeni bölge: {DistrictNames[UnlockLevel + 1]}", ExpenseCategory.Bolge)) return false;
             UnlockLevel++;
             RefreshColors();

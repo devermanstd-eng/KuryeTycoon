@@ -23,7 +23,8 @@ namespace KuryeTycoon
 
         public int MaxLevel => costs.Length;
         public string LevelText(int lv) => $"{levelNames[lv]}: {effect(lv)}";
-        public int DailyAt(int lv) => daily != null && lv < daily.Length ? daily[lv] : 0;
+        /// <summary>Seviyenin günlük gideri; şirket büyüdükçe yavaşça artar (Denge.OlcekleGunluk).</summary>
+        public int DailyAt(int lv) => daily != null && lv < daily.Length ? Denge.OlcekleGunluk(daily[lv]) : 0;
         public int ReqDistrict(int targetLevel) => reqDistrict != null && targetLevel - 1 < reqDistrict.Length ? reqDistrict[targetLevel - 1] : 0;
         public int ReqOffice(int targetLevel) => reqOffice != null && targetLevel - 1 < reqOffice.Length ? reqOffice[targetLevel - 1] : 0;
     }
@@ -281,6 +282,26 @@ namespace KuryeTycoon
         public string PlatformName => Def(UpgradeKind.Platform).LevelText(Level(UpgradeKind.Platform));
         public bool CourierCapFull => CourierManager.I.Couriers.Count >= CourierCap;
 
+        /// <summary>
+        /// Kurye hesapları dolunca oyuncuya ne yapması gerektiğini söyler. Paket bir bölge istiyorsa önce onu söyler
+        /// (testte bot ve oyuncu "Gelişim'den yükselt" deyip kilitli pakete takılıyordu).
+        /// </summary>
+        public string CourierCapHint
+        {
+            get
+            {
+                var d = Def(UpgradeKind.Platform);
+                int next = Level(UpgradeKind.Platform) + 1;
+                if (next > d.MaxLevel) return "En büyük platform paketindesin; yeni kurye için biriyle yollarını ayırman gerekir.";
+                int dist = d.ReqDistrict(next);
+                if (dist > 0 && CityMap.I.UnlockLevel < dist)
+                    return $"Önce \"{CityMap.DistrictNames[dist]}\" bölgesini aç (İşletme > Dükkanlar, {GameData.Ft(CityMap.BolgeBedeli(dist))}), sonra Gelişim'den kurye paketini yükselt.";
+                string kilit = LockReason(UpgradeKind.Platform);
+                if (kilit.Length > 0) return $"Kurye paketini yükseltmek için {kilit}.";
+                return $"Gelişim'den kurye paketini yükselt ({GameData.Ft(NextCost(UpgradeKind.Platform))}) ya da bir kuryeyle yollarını ayır.";
+            }
+        }
+
         // ---------- Satın alma / küçültme ----------
 
         /// <summary>Sonraki seviye neden alınamıyor (boşsa alınabilir).</summary>
@@ -303,7 +324,7 @@ namespace KuryeTycoon
         {
             var d = Def(k);
             int lv = Level(k);
-            return lv >= d.MaxLevel ? -1 : d.costs[lv];
+            return lv >= d.MaxLevel ? -1 : (int)Denge.Olcekle(d.costs[lv]);   // şirket büyüdükçe kurulum bedeli artar
         }
 
         public bool Buy(UpgradeKind k)
@@ -311,7 +332,7 @@ namespace KuryeTycoon
             var d = Def(k);
             int lv = Level(k);
             if (lv >= d.MaxLevel || IsLocked(k)) return false;
-            if (!EconomyManager.I.TrySpend(d.costs[lv], $"Geliştirme: {d.name} → {d.levelNames[lv + 1]}", ExpenseCategory.Gelistirme)) return false;
+            if (!EconomyManager.I.TrySpend(NextCost(k), $"Geliştirme: {d.name} → {d.levelNames[lv + 1]}", ExpenseCategory.Gelistirme)) return false;
             levels[(int)k] = lv + 1;
             int dailyNow = d.DailyAt(lv + 1);
             EventManager.I.Notify($"{d.name} tamamlandı: {d.LevelText(lv + 1)}" + (dailyNow > 0 ? $" (günlük gider {Ft(dailyNow)})." : "."));
