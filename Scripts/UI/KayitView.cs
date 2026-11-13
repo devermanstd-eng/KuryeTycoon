@@ -27,20 +27,22 @@ namespace KuryeTycoon
             else
                 KV("Açık kurye hesapları", $"{cm.Couriers.Count}/{up.CourierCap}");
             Intro("kayit", "Kuryeler uygulamaya kendileri kaydolur; sen kimseyi tek tek seçmezsin, kuralları belirlersin.",
-                  "Kayıt olanlar sırayla formu doldurur, belgelerini yükler, kontrol edilir, eğitimi izler ve ekipmanını alır; " +
+                  "Kayıt olanlar sırayla formu doldurur, belgelerini yükler, kontrol edilir ve ekipmanını alır; " +
                   "sonra hesabı açılır. Her aşamada bir kısmı vazgeçer. Hesabı açılan kurye ilk haftasında yeterince iş bulamazsa bırakabilir. " +
                   "Kuryeler paket ve km başı kazanır, maaş yoktur. Çok kurye = kişi başı az paket = düşük moral: gerekirse kaydı kapat.");
 
             // ---------- Huni ----------
             Section("Kayıt süreci", "Her aşamada şu an kaç kişi var; parantez içinde bu hafta o aşamada vazgeçenler.");
-            int toplam = ks.Adaylar.Count;
+            int toplam = ks.Adaylar.Count, sira = 0;
             for (int i = 0; i < 5; i++)
             {
                 var s = (KayitAsamasi)i;
+                if (s == KayitAsamasi.Egitim) continue;   // eğitim aşaması yok
+                sira++;
                 int n = ks.AsamadakiSayi(s);
                 int b = ks.haftaBirakan[i];
                 string ek = s == KayitAsamasi.Ekipman && ks.HesapBekleyen > 0 ? $" · {ks.HesapBekleyen} hesap bekliyor" : "";
-                Bar($"{i + 1}. {KayitSistemi.AsamaAdi(s)}", toplam > 0 ? n / (float)Mathf.Max(4, toplam) : 0f, AsamaRenk[i],
+                Bar($"{sira}. {KayitSistemi.AsamaAdi(s)}", toplam > 0 ? n / (float)Mathf.Max(4, toplam) : 0f, AsamaRenk[i],
                     $"{n}" + (b > 0 ? $" (−{b})" : "") + ek);
             }
             GUILayout.Label($"Bu hafta: {ks.haftaKayit} kayıt · {ks.haftaAktif} hesap açıldı · {ks.haftaElenen} kontrolde elendi · " +

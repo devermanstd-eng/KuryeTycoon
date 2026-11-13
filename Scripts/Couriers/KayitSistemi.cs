@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    /// <summary>Kurye adayının kayıt sürecindeki aşaması (sonunda hesap açılır).</summary>
+    /// <summary>Kurye adayının kayıt sürecindeki aşaması (sonunda hesap açılır). Egitim artık kullanılmıyor (eski kayıtlar için duruyor).</summary>
     public enum KayitAsamasi { Kayit, Belge, Kontrol, Egitim, Ekipman }
 
     /// <summary>Adayın hangi yoldan geldiği.</summary>
@@ -42,9 +42,9 @@ namespace KuryeTycoon
     /// Kurye kayıtları (eski "İşe Alım"ın yerine). Gerçekteki gibi kimse "işe alınmaz": insanlar uygulamaya kendileri
     /// kaydolur ve bir süreçten geçer; her aşamada bir kısmı vazgeçer. Oyuncu kişileri tek tek seçmez, kuralları belirler.
     ///
-    ///  Aşamalar: Kayıt formu → Belge yükleme → Kontrol → Eğitim → Ekipman alma → hesap açılır → ilk hafta.
+    ///  Aşamalar: Kayıt formu → Belge yükleme → Kontrol → Ekipman alma → hesap açılır → ilk hafta.
     ///  Aday türleri: bireysel (egyéni vállalkozó), okul kooperatifi (öğrenci, belgesi hızlı), çalışma izinli (çok çalışır,
-    ///   kontrolü uzun), tavsiyeyle gelen (az vazgeçer, tavsiye edene prim), geri dönen eski kurye (eğitimi atlar, tecrübeli).
+    ///   kontrolü uzun), tavsiyeyle gelen (az vazgeçer, tavsiye edene prim), geri dönen eski kurye (kontrolü kısa, tecrübeli).
     ///  Oyuncunun düğmeleri:
     ///   • Kayıt araç türüne göre açık/kapalı: kapalıyken gelenler bekleme listesine yazılır, açınca saatte bir sürece girer.
     ///   • Kontrol sıkılığı: hızlı (çabuk ama özensiz adaylar da geçer) · normal · sıkı (yavaş, özensizler elenir).
@@ -122,7 +122,7 @@ namespace KuryeTycoon
                 case KayitTuru.OkulKooperatifi: return "Öğrenci, okul kooperatifi üzerinden çalışır: belgeleri hızlı, sınav haftalarında az çalışır.";
                 case KayitTuru.CalismaIzinli: return "AB dışından, çalışma izniyle: çok çalışır ve az seçicidir, ama izin kontrolü uzun sürer.";
                 case KayitTuru.Tavsiye: return "Bir kuryenin arkadaşı: süreçte daha az vazgeçer. 30 teslimata ulaşınca tavsiye edene prim ödenir.";
-                case KayitTuru.EskiKurye: return "Daha önce kuryelik yapmış: eğitimi atlar, tecrübeli başlar.";
+                case KayitTuru.EskiKurye: return "Daha önce kuryelik yapmış: belgesi sistemde, kontrolü yarı sürede biter, tecrübeli başlar.";
                 default: return "Kendi vergi numarasıyla çalışan serbest kurye (egyéni vállalkozó).";
             }
         }
@@ -138,7 +138,7 @@ namespace KuryeTycoon
             {
                 var a = YeniAday();
                 if (a == null) continue;
-                a.asama = i == 0 ? KayitAsamasi.Egitim : i == 1 ? KayitAsamasi.Kontrol : KayitAsamasi.Belge;
+                a.asama = i == 0 ? KayitAsamasi.Ekipman : i == 1 ? KayitAsamasi.Kontrol : KayitAsamasi.Belge;
                 a.asamaBitis = GameClock.I.TotalMinutes + Random.Range(120f, 720f) * (i + 1);
                 Adaylar.Add(a);
             }
@@ -163,7 +163,13 @@ namespace KuryeTycoon
         {
             if (s == null) return;
             Adaylar.Clear();
-            if (s.adaylar != null) foreach (var a in s.adaylar) if (a != null && a.aday != null) Adaylar.Add(a);
+            if (s.adaylar != null)
+                foreach (var a in s.adaylar)
+                {
+                    if (a == null || a.aday == null) continue;
+                    if (a.asama == KayitAsamasi.Egitim) a.asama = KayitAsamasi.Ekipman;   // eğitim aşaması kaldırıldı
+                    Adaylar.Add(a);
+                }
             if (s.acik != null) for (int i = 0; i < 4 && i < s.acik.Length; i++) acik[i] = s.acik[i];
             if (s.bekleme != null) for (int i = 0; i < 4 && i < s.bekleme.Length; i++) bekleme[i] = s.bekleme[i];
             kontrol = Mathf.Clamp(s.kontrol, 0, 2);
@@ -402,7 +408,7 @@ namespace KuryeTycoon
             }
 
             var next = a.asama + 1;
-            if (next == KayitAsamasi.Egitim && a.tur == KayitTuru.EskiKurye) next = KayitAsamasi.Ekipman;   // eğitimi atlar
+            if (next == KayitAsamasi.Egitim) next = KayitAsamasi.Ekipman;   // eğitim aşaması yok: kontrolden sonra ekipman
             a.asama = next;
             a.asamaBitis = now + Sure(a);
         }
