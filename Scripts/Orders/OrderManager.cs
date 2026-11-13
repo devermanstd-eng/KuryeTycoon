@@ -49,12 +49,14 @@ namespace KuryeTycoon
 
         void Awake() { I = this; }
 
+        bool eczaneUyarildiBugun;
+
         public void Init()
         {
             reputationAtDayStart = CompanyProfile.Reputation;
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { Itibar.YeniGun(); busyLostToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; cancelledShopToday = 0; cancelledCustomerToday = 0; cancelledDelayToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
+            GameClock.I.OnNewDay += () => { Itibar.YeniGun(); eczaneUyarildiBugun = false; busyLostToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; cancelledShopToday = 0; cancelledCustomerToday = 0; cancelledDelayToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
         }
 
         /// <summary>
@@ -375,6 +377,21 @@ namespace KuryeTycoon
             float t = Mathf.InverseLerp(shop.def.basketMin, shop.def.basketMax, basket);
             float kg = Mathf.Round(Mathf.Lerp(shop.def.kgMin, shop.def.kgMax, t * 0.7f + Random.value * 0.3f) * 10f) / 10f;
 
+            // Eczane: ilaç sertifikalı kurye yoksa uygulama bu eczaneyi "şu an teslimat yok" gösterir (sipariş kaybolur, itibar düşmez)
+            if (shop.def.eczane && KuryeEgitim.Sayi(KuryeEgitim.Tur.Ilac, true) == 0)
+            {
+                heavyLostToday++;
+                Telemetry.Add("Kaçan sipariş: ilaç sertifikalı kurye yok");
+                OrderHeat.Record(custTile, true);
+                if (!eczaneUyarildiBugun)
+                {
+                    eczaneUyarildiBugun = true;
+                    EventManager.I.Notify($"{shop.Name}'dan sipariş geldi ama çevrimiçi ilaç sertifikalı kurye yok, alınamadı. " +
+                                          "Kuryeler > kart > Eğitim: \"İlaç teslimatı sertifikası\".");
+                }
+                return;
+            }
+
             // Ekipte bu ağırlığı taşıyabilecek kurye yoksa sipariş kabul edilmez
             if (!EconomyManager.AnyoneCanCarry(kg))
             {
@@ -444,10 +461,17 @@ namespace KuryeTycoon
                 o.cashGiven = (amt + step - 1) / step * step;
                 if (o.cashGiven == amt && Random.value < 0.5f) o.cashGiven += 1000;
             }
+            // Eczane: kartla ödenir, kapıda kimlik/PIN kontrolüyle teslim (temassız ve dolap yok)
+            if (shop.def.eczane)
+            {
+                o.eczane = true;
+                o.cashPay = false;
+            }
             // Temassız teslimat: kartla ödenen siparişlerin ~%22'si (not "kapıya bırakın" diyorsa her zaman)
-            o.noContact = !o.cashPay && (Random.value < 0.22f || o.customerNote.Contains("bırakın") || o.noteTranslation.Contains("bırakın"));
+            o.noContact = !o.cashPay && !o.eczane && (Random.value < 0.22f || o.customerNote.Contains("bırakın") || o.noteTranslation.Contains("bırakın"));
+            if (o.eczane) { o.customerNote = "Kimlik/PIN ile teslim: kapıda bekleyin."; o.noteTranslation = ""; }
             // Paket dolabı: müşteri siparişi mahalledeki dolaptan alır (kat, asansör, kapı kodu, evde yok derdi yok)
-            if (!o.cashPay && UpgradeManager.I != null && Random.value < UpgradeManager.I.DolapOrani)
+            if (!o.cashPay && !o.eczane && UpgradeManager.I != null && Random.value < UpgradeManager.I.DolapOrani)
             {
                 o.dolap = true;
                 o.noContact = true;
@@ -483,7 +507,9 @@ namespace KuryeTycoon
             {
                 var o = Pending[i];
                 float limit = pendingTimeout + (o.supportCalled ? SupportManager.I.extraWaitMinutes : 0f);
+                if (o.catering) limit = Mathf.Max(limit, o.deadlineAt - o.createdAt + 10f);   // kurumsal: teslim saati geçene kadar bekler
                 if (now - o.createdAt < limit) continue;
+                if (o.catering && KurumsalSiparisler.I != null) KurumsalSiparisler.I.Kacti(o);
                 if (SupportManager.I.TryCallCustomer(o)) continue; // destek müşteriyi arayıp oyalar
                 o.status = OrderStatus.Iptal;
                 if (o.marker != null) Destroy(o.marker.gameObject);
@@ -560,6 +586,7 @@ namespace KuryeTycoon
 
         void CheckCancel(Order o, float now, float dm)
         {
+            if (o.catering) return;   // kurumsal sipariş anlaşmalı: müşteri vazgeçmez, teslim saati geçerse ExpirePending kaçırır
             if (o.cancelPlan > 0 && now >= o.cancelAt) { CancelOrder(o, o.cancelPlan); return; }
             // Beklemekten vazgeçme (gerçekte müşteri, uygulamada gördüğü tahmini varış saatine göre sabreder):
             //  - kurye hâlâ atanmadıysa: 12 dk sonra yavaşça artan ihtimal ("kurye aranıyor" ekranında bekleme)
@@ -902,6 +929,54 @@ namespace KuryeTycoon
             if (DarkStore.I != null) DarkStore.I.OnDelivered(o);
         }
 
+        /// <summary>
+        /// Kurumsal (catering) sipariş: fiyatı ve saati önceden anlaşılmış, müşteri pazarlığı ve vazgeçmesi yok.
+        /// KurumsalSiparisler teslim saatinden ~50 dk önce çağırır; sipariş normal bekleyenler listesine girer.
+        /// </summary>
+        public Order OzelSiparis(Shop shop, Vector2Int custTile, int hedefSepet, float kg, int teslimatUcreti, float hazirAt, float sozAt, string not)
+        {
+            var map = CityMap.I;
+            var custDoor = map.GetDoor(custTile);
+            int dist = Mathf.Max(1, map.FindPath(shop.door, custDoor).Count - 1);
+            var items = Menus.Generate(shop.def, hedefSepet);
+            int basket = Mathf.Max(hedefSepet / 2, Menus.Sum(items));
+            float now = GameClock.I.TotalMinutes;
+            var o = new Order
+            {
+                shop = shop,
+                customerTile = custTile,
+                customerDoor = custDoor,
+                customerType = CustomerType.Normal,
+                addressIssue = AddressIssue.Yok,
+                basket = basket,
+                distance = dist,
+                weightKg = kg,
+                commissionIncome = Mathf.RoundToInt(basket * shop.Commission),
+                deliveryFee = teslimatUcreti,
+                feeBase = teslimatUcreti,
+                createdAt = now,
+                items = items,
+                customerName = GameData.RandomName(),
+                stockCost = 0
+            };
+            o.SetAddress(custTile, custDoor);
+            o.floor = 0;                  // ofis resepsiyonu
+            o.elevator = true;
+            o.elevatorBroken = false;
+            o.codeMissing = false;
+            o.customerNote = not;
+            o.noteTranslation = "";
+            o.catering = true;
+            o.readyAt = hazirAt;
+            o.deadlineAt = sozAt;
+            o.marker = SpriteFactory.Create($"Kurumsal #{o.id}", markerRoot, true, new Color(1f, 0.85f, 0.3f),
+                CityMap.ToWorld(custTile), 0.6f, 15);
+            Pending.Add(o);
+            shop.ordersTotal++;
+            OrderHeat.Record(custTile, false);
+            return o;
+        }
+
         public void CompleteDelivery(Order o, Courier c)
         {
             float now = GameClock.I.TotalMinutes;
@@ -939,8 +1014,10 @@ namespace KuryeTycoon
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
             if (c.hygiene < Courier.HygieneLimit) rating -= (Courier.HygieneLimit - c.hygiene) * 3f; // kirli çanta
             if (o.dolap) rating += 0.2f;   // dolaptan istediği saatte aldı
+            rating += KuryeOzellik.PuanEki(c);   // güler yüzlü / kestirmeci
             o.rating = Mathf.Clamp(rating, 1f, 5f);
             OrderHeat.RecordDelivery(o.customerTile, now - o.createdAt);   // harita: teslimat süresi katmanı
+            if (o.catering && KurumsalSiparisler.I != null) KurumsalSiparisler.I.Teslim(o, late);
             DukkanKari.Record(o);                                          // harita: dükkan kârlılığı katmanı
 
             RollTip(o, c, late);

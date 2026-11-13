@@ -14,7 +14,17 @@ namespace KuryeTycoon
         class UiSiparisler : UiSekme
         {
             U.Onay otoAta, karOncele;
-            Label basitNot, yogunluk, kayipOzet, bekleyenBaslik, bekleyenBos, yoldaBaslik, robotNot, sonBaslik;
+            Label basitNot, yogunluk, kayipOzet, bekleyenBaslik, bekleyenBos, yoldaBaslik, robotNot, sonBaslik, kurumsalBaslik, kurumsalNot;
+            VisualElement kurumsalKap;
+            U.Liste<int, KurumsalSiparisler.Teklif, KurumsalSatir> kurumsal;
+
+            class KurumsalSatir
+            {
+                public VisualElement kok;
+                public Label ad, alt, durum;
+                public Button kabul, red;
+                public KurumsalSiparisler.Teklif t;
+            }
             VisualElement bekleyenKap, yoldaKap, sonKap;
             U.Liste<int, Order, Satir> bekleyen;
             U.Liste<Courier, Courier, YoldaSatir> yolda;
@@ -64,6 +74,38 @@ namespace KuryeTycoon
                            $"taşıyacak kurye olmadığı için alınamayan {o.heavyLostToday} · kuryelerin reddettiği teklif {o.rejectedToday}.\n" +
                            "Yoğunlukta uygulama müşterilere uzun teslimat uyarısı gösterir; itibar düşmez ama sipariş kaybolur.\n" +
                            $"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; {GameData.HeavyKg:0} kg ve üstü sadece araba.";
+                });
+
+                // Kurumsal (catering) teklifler: kabul edilirse teslim saatinden ~50 dk önce sipariş açılır
+                kurumsalBaslik = U.Bolum(kok, "KURUMSAL SİPARİŞLER");
+                kurumsalNot = U.Yazi(kok, "", "minik", "soluk");
+                kurumsalNot.style.marginBottom = 4;
+                kurumsalKap = U.El(kok, "kolon");
+                kurumsal = new U.Liste<int, KurumsalSiparisler.Teklif, KurumsalSatir>(kurumsalKap, t => t.no, t =>
+                {
+                    var r = new KurumsalSatir { t = t };
+                    r.kok = U.El(null, "satir-kart");
+                    var ana = U.Gecirgen(r.kok, "siparis-ana");
+                    ana.style.marginLeft = 0;
+                    r.ad = U.Kalin(ana, "", "siparis-ad");
+                    r.alt = U.Yazi(ana, "", "siparis-alt");
+                    r.durum = U.Kalin(r.kok, "", "cip");
+                    r.kabul = U.Dugme(r.kok, "Kabul et", () => { KurumsalSiparisler.I.KabulEt(r.t); ui.UiSekmeyiYenile(); }, "kucuk-dg");
+                    r.red = U.Dugme(r.kok, "Reddet", () => { KurumsalSiparisler.I.Reddet(r.t); ui.UiSekmeyiYenile(); }, "kucuk-dg");
+                    return r;
+                }, r => r.kok, (r, t) =>
+                {
+                    r.t = t;
+                    U.Metin(r.ad, $"{t.ofisAdi} · {t.kisi} kişi · {t.dukkan.Name}");
+                    U.Metin(r.alt, $"Teslim {KurumsalSiparisler.SaatYazi(t.teslimAt)} · ücret {Ft(t.ucret)} + zamanında prim {Ft(t.odul)} · {GameData.KgText(t.kg)}");
+                    bool karar = !t.kabul && !t.bitti;
+                    U.Goster(r.kabul, karar);
+                    U.Goster(r.red, karar);
+                    string durum = t.bitti ? (t.basarili ? "Teslim ✓" : t.kabul ? (t.siparis != null && t.siparis.status == OrderStatus.Teslim ? "Geç teslim" : "Kaçtı") : "Kapandı")
+                                 : !t.kabul ? $"{KurumsalSiparisler.SaatYazi(t.sonKabul)}'e kadar"
+                                 : !t.siparisVerildi ? "Kabul edildi" : t.siparis != null && t.siparis.courier != null ? "Yolda" : "Kurye bekliyor";
+                    U.Metin(r.durum, durum);
+                    U.CipRengi(r.durum, t.bitti ? (t.basarili ? UITheme.Good : UITheme.Bad) : t.kabul ? UITheme.Accent : UITheme.Warn);
                 });
 
                 bekleyenBaslik = U.Bolum(kok, "BEKLEYEN");
@@ -252,6 +294,19 @@ namespace KuryeTycoon
                 U.Goster(yogunluk, om.IsBusy);
                 int lostTotal = om.busyLostToday + om.lostToday + om.cancelledToday + om.heavyLostToday;
                 U.Metin(kayipOzet, $"Bugün kaybedilen sipariş: {lostTotal} · toplu teslimat: {om.batchedToday}  (ayrıntı için üstüne gel)");
+
+                var ks = KurumsalSiparisler.I;
+                bool kurumsalVar = ks != null && ks.Teklifler.Count > 0;
+                U.Goster(kurumsalBaslik.parent, kurumsalVar);
+                U.Goster(kurumsalNot, kurumsalVar);
+                if (kurumsalVar)
+                {
+                    int egitimli = KuryeEgitim.Sayi(KuryeEgitim.Tur.Catering);
+                    U.Metin(kurumsalNot, egitimli > 0 ? $"Catering eğitimli kurye: {egitimli} (motor/araba). Zamanında teslim: prim, itibar, dükkan memnuniyeti."
+                                                      : "Catering eğitimli kuryen yok: Kuryeler > kart > Eğitim (motorlu ya da arabalı kurye).");
+                    kurumsal.Esitle(ks.Teklifler);
+                }
+                else kurumsal.Esitle(new List<KurumsalSiparisler.Teklif>());
 
                 U.Metin(bekleyenBaslik, $"BEKLEYEN ({om.Pending.Count})");
                 U.Goster(bekleyenBos, om.Pending.Count == 0);

@@ -33,7 +33,7 @@ namespace KuryeTycoon
         void Update()
         {
             if (GameBootstrap.I == null || !GameBootstrap.I.Started || RivalCompany.I == null || CityMap.I == null) return;
-            int want = Mathf.Min(maxVisible, Mathf.RoundToInt(RivalCompany.I.couriers * OnlineShare(GameClock.I.Hour)));
+            int want = RivalCompany.I.satinAlindi ? 0 : Mathf.Min(maxVisible, Mathf.RoundToInt(RivalCompany.I.couriers * OnlineShare(GameClock.I.Hour)));
 
             // Fazlası işini bitirince (paketsizken) ayrılır, eksikse merkezden değil rastgele bir yoldan katılır
             int active = 0;

@@ -35,8 +35,9 @@ namespace KuryeTycoon
             var clock = GameClock.I;
             if (clock == null || clock.CompanyDay < FirstDay) return;
             if (clock.Day - lastDay < MinGapDays) return;
-            if (Random.value > DailyChance) return;
-            RollNow();
+            if (Anlatici.Mola) return;                                        // büyük olaydan sonra nefes (Anlatici.cs)
+            if (Random.value > DailyChance * Anlatici.ZorKararCarpani) return;
+            if (RollNow()) Anlatici.BuyukOlay();
         }
 
         /// <summary>Hemen bir zor karar kartı çıkarır (test için de kullanılır). Uygun olay yoksa false.</summary>

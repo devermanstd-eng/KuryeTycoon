@@ -40,6 +40,8 @@ namespace KuryeTycoon
         public int fundingCooldownUntil;
         public int fundingRounds;
         public int lastCourierRaidDay = -999;   // kurye ayartma en fazla 6 haftada bir
+        public bool satinAlindi;                // oyuncu rakibi satın aldı: rakip yok, dükkanları devralındı
+        int sonSatisTeklifiGunu = -999;
 
         // Hizmet kalitesi (her gece güncellenir; kayda yazılmaz, yüklemede yeniden hesaplanır)
         [System.NonSerialized] public float myAvgMinutes = 40f, myLateRate = 0.25f;
@@ -93,6 +95,7 @@ namespace KuryeTycoon
             aggression = aggression, quality = quality, warDistrict = warDistrict, warFactor = warFactor,
             marketingDays = marketingDays, fundingCooldownUntil = fundingCooldownUntil, fundingRounds = fundingRounds,
             lastCourierRaidDay = lastCourierRaidDay,
+            satinAlindi = satinAlindi, sonSatisTeklifiGunu = sonSatisTeklifiGunu,
             shareHistory = new List<float>(shareHistory), activeVersion = 1
         };
 
@@ -108,6 +111,8 @@ namespace KuryeTycoon
                 aggression = s.aggression; quality = s.quality; warDistrict = s.warDistrict; warFactor = s.warFactor > 0f ? s.warFactor : 0.75f;
                 marketingDays = s.marketingDays; fundingCooldownUntil = s.fundingCooldownUntil; fundingRounds = s.fundingRounds;
                 lastCourierRaidDay = s.lastCourierRaidDay;
+                satinAlindi = s.satinAlindi;
+                sonSatisTeklifiGunu = s.sonSatisTeklifiGunu;
                 if (s.shareHistory != null) shareHistory.AddRange(s.shareHistory);
             }
             else
@@ -330,10 +335,10 @@ namespace KuryeTycoon
                 }
                 else est += perWeight * s.def.weight * 0.9f;
             }
-            int d = Mathf.Min(Mathf.RoundToInt(est * Random.Range(0.9f, 1.1f)), couriers * 22);
+            int d = satinAlindi ? 0 : Mathf.Min(Mathf.RoundToInt(est * Random.Range(0.9f, 1.1f)), couriers * 22);
             myToday.Clear();
             deliveriesThisWeek += d;
-            money += d * 280L - couriers * 1500L - 4000;
+            if (!satinAlindi) money += d * 280L - couriers * 1500L - 4000;
             float load = d / Mathf.Max(1f, couriers * 15f);           // kurye başına iş yükü
             rivalLoad = load;
             UpdateService();
@@ -383,6 +388,8 @@ namespace KuryeTycoon
             shareHistory.Add(MarketShare);
             while (shareHistory.Count > 12) shareHistory.RemoveAt(0);
             if (EconomyManager.I != null) EconomyManager.I.RakipSatiriniYaz(ReportLine);   // haftalık rapor bu sayılarla
+            if (satinAlindi) return;   // rakip artık yok: hamle, büyüme, dükkan anlaşması yok
+            SatisTeklifi();
 
             // Saldırganlık: pazar payın %45'in üstüne çıktıkça rakip daha çok hamle yapar, yatırım arar
             float targetAgg = Mathf.Clamp01((MarketShare - 0.45f) * 2.5f);
@@ -663,9 +670,77 @@ namespace KuryeTycoon
         }
 
         /// <summary>Haftalık rapor satırı.</summary>
-        public string ReportLine =>
-            $"Rakip {companyName}: itibar {reputation:0.0}/5 · {couriers} kurye · {RivalShopCount} dükkan · " +
-            $"geçen hafta ~{deliveriesLastWeek} teslimat · pazar payın ~%{MarketShare * 100f:0} · tavrı: {MoodText}";
+        public string ReportLine => satinAlindi
+            ? $"Rakip yok: {companyName} artık senin (pazar payın %{MarketShare * 100f:0})."
+            : $"Rakip {companyName}: itibar {reputation:0.0}/5 · {couriers} kurye · {RivalShopCount} dükkan · " +
+              $"geçen hafta ~{deliveriesLastWeek} teslimat · pazar payın ~%{MarketShare * 100f:0} · tavrı: {MoodText}";
+
+        // ================================================================ satın alma
+
+        /// <summary>Rakibi satın alma bedeli: kuryeleri, dükkanları ve kasası.</summary>
+        public long SatinAlmaBedeli => Round1000(couriers * 450000f + RivalShopCount * 220000f + Mathf.Max(0f, money) * 0.5f + 3000000f);
+
+        /// <summary>
+        /// Haftalık: rakip zayıfladıysa (pazar payın %62'yi geçti ya da kasası eksiye düştü) yatırımcıları şirketi satmak ister.
+        /// 60. günden sonra, en fazla 4 haftada bir sorulur (Mad Games Tycoon'daki şirket satın alma gibi).
+        /// </summary>
+        void SatisTeklifi()
+        {
+            if (GameClock.I.CompanyDay < 60 || Day - sonSatisTeklifiGunu < 28) return;
+            if (!(MarketShare >= 0.62f || money < 0)) return;
+            sonSatisTeklifiGunu = Day;
+            long bedel = SatinAlmaBedeli;
+            long serbest = EconomyManager.I.FreeCash;
+            var ev = new GameEvent($"{companyName} satılık",
+                    $"{companyName} zor durumda: pazar payın %{MarketShare * 100f:0}, onların kasası {(money < 0 ? "eksi" : "eriyor")}. " +
+                    "Yatırımcıları şirketi sana satmak istiyor.
+
+" +
+                    $"Satın alırsan rakip ortadan kalkar: çalıştığı {RivalShopCount} dükkanın siparişleri tamamen senin olur, " +
+                    "seninle sözleşmesi olmayanlar sözleşmeleriyle birlikte sana geçer. Fiyat savaşı, kurye ayartma ve dükkan kapma biter.")
+                .Ozet("Bedel", GameData.Ft(bedel), serbest >= bedel ? 0 : 2)
+                .Ozet("Kuryesi", couriers.ToString())
+                .Ozet("Dükkanı", RivalShopCount.ToString())
+                .Ozet("Pazar payın", $"%{MarketShare * 100f:0}", 1);
+            if (serbest >= bedel) ev.Add($"Satın al ({GameData.Ft(bedel)})", SatinAl);
+            else ev.Add($"Param yetmiyor (harcanabilir {GameData.Ft(serbest)})", null);
+            ev.Add("Şimdilik hayır", null);
+            EventManager.I.Push(ev);
+        }
+
+        /// <summary>Rakibi satın alır: dükkanları devralınır, rakip faaliyetleri durur.</summary>
+        public void SatinAl()
+        {
+            if (satinAlindi) return;
+            long bedel = SatinAlmaBedeli;
+            if (!EconomyManager.I.TrySpend(bedel, $"{companyName} satın alındı", ExpenseCategory.Diger)) return;
+            satinAlindi = true;
+            int devralinan = 0;
+            foreach (var s in CityMap.I.Shops)
+            {
+                if (!s.rivalContracted) continue;
+                s.rivalContracted = false;
+                if (!s.contracted && !s.own && CityMap.I.IsUnlocked(s.tile))
+                {
+                    s.contracted = true;
+                    s.contractStartDay = Day;
+                    s.contractEndDay = Day + contractDays;
+                    s.satisfaction = 60f;
+                    devralinan++;
+                }
+            }
+            couriers = 0;
+            priceWarDays = 0;
+            warDistrict = 0;
+            marketingDays = 0;
+            deliveriesThisWeek = 0;
+            Itibar.Olay(0.1f);
+            if (CityMap.I != null) CityMap.I.RefreshColors();
+            EventManager.I.Push(new GameEvent($"{companyName} artık senin",
+                $"Anlaşma imzalandı. Şehirde rakibin kalmadı: bütün dükkanların siparişleri senin. " +
+                (devralinan > 0 ? $"{devralinan} dükkan sözleşmesiyle birlikte sana geçti (Dükkanlar). " : "") +
+                "Müşteriler artık tek uygulamaya bakıyor: hızını ve itibarını korursan talep büyür."));
+        }
 
         public string MoodText => aggression > 0.66f ? "çok saldırgan" : aggression > 0.33f ? "saldırgan" : aggression > 0.1f ? "temkinli" : "sakin";
 
