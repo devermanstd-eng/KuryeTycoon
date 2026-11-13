@@ -155,7 +155,7 @@ namespace KuryeTycoon
             // Gün sonları (StatsHistory her gece bir satır ekler)
             var gunler = StatsHistory.I != null ? StatsHistory.I.Days : null;
             if (gunler != null)
-                while (islenenGun < gunler.Count) GunSonu(gunler[islenenGun++]);
+                while (islenenGun < gunler.Count) { var kayit = gunler[islenenGun++]; GunSonu(kayit, islenenGun); }
 
             // Karar kartı açıksa önce o (oyun kart açıkken durur)
             var ev = EventManager.I.Current;
@@ -274,7 +274,7 @@ namespace KuryeTycoon
             for (int i = 0; i < ev.choices.Count; i++)
             {
                 string l = ev.choices[i].label ?? "";
-                if (l.Contains("Yeniden başla") || l.Contains("raporlarını kapat")) continue;
+                if (l.Contains("Yeniden başla") || l.Contains("raporlarını kapat") || l.Contains("raporları kapat")) continue;
                 izinli.Add(i);
             }
             if (izinli.Count == 0) return 0;
@@ -396,7 +396,8 @@ namespace KuryeTycoon
             var map = CityMap.I;
             if (clk.Day - sonSozlesmeGun < 2) return;
             var son = SonGun();
-            if (son != null && son.deliveries + son.cancelled > 0 && son.cancelled > (son.deliveries + son.cancelled) * 0.05f) return;   // önce mevcut işi yetiştir
+            if (son == null) return;   // ilk gün bitmeden sözleşme yok
+            if (son.deliveries + son.cancelled > 0 && son.cancelled > (son.deliveries + son.cancelled) * 0.05f) return;   // önce mevcut işi yetiştir
             if (CourierManager.I.Couriers.Count < SozlesmeliDukkan()) return;
 
             Shop en = null;
@@ -506,7 +507,8 @@ namespace KuryeTycoon
         float fpsToplam; int fpsGun, fpsDusukGun;
         float enKotuFps = float.MaxValue; int enKotuFpsGun;
 
-        void GunSonu(DayRecord d)
+        /// <summary>gunNo: biten günün sırası (1 = şirketin ilk günü). DayRecord.companyDay ertesi günü gösterir.</summary>
+        void GunSonu(DayRecord d, int gunNo)
         {
             var cm = CourierManager.I;
             float moral = 0f, yorgun = 0f;
@@ -516,34 +518,37 @@ namespace KuryeTycoon
             float fpsMin = gunEnUzunKare > 0f ? 1f / gunEnUzunKare : 0f;
             float gercek = Time.realtimeSinceStartup - gunBasiGercek;
             gunKare = 0; gunSure = 0f; gunEnUzunKare = 0f; gunBasiGercek = Time.realtimeSinceStartup;
-            if (d.companyDay > 1 || fpsGun > 0)   // ilk gün kurulumun yükünü taşır, ortalamaya katılmaz
+            if (gunNo > 1)   // ilk gün kurulumun yükünü taşır, ortalamaya katılmaz
             {
                 fpsToplam += fpsOrt; fpsGun++;
                 if (fpsOrt < 30f) fpsDusukGun++;
-                if (fpsOrt < enKotuFps) { enKotuFps = fpsOrt; enKotuFpsGun = d.companyDay; }
+                if (fpsOrt < enKotuFps) { enKotuFps = fpsOrt; enKotuFpsGun = gunNo; }
             }
 
-            if (d.cash < enDusukKasa) { enDusukKasa = d.cash; enDusukKasaGun = d.companyDay; }
+            if (d.cash < enDusukKasa) { enDusukKasa = d.cash; enDusukKasaGun = gunNo; }
             float pay = RivalCompany.I != null ? RivalCompany.I.MarketShare : 0f;
             long borc = FamilyLoan.I != null ? FamilyLoan.I.Remaining : 0;
 
             if (csvW != null)
                 csvW.WriteLine(string.Join(";", new[]
                 {
-                    d.companyDay.ToString(Inv), d.date, d.deliveries.ToString(Inv), d.cancelled.ToString(Inv), d.lost.ToString(Inv),
-                    d.income.ToString(Inv), d.expenses.ToString(Inv), d.net.ToString(Inv), d.cash.ToString(Inv), d.freeCash.ToString(Inv),
+                    gunNo.ToString(Inv), d.date, d.deliveries.ToString(Inv), d.cancelled.ToString(Inv), d.lost.ToString(Inv),
+                    P(d.income), P(d.expenses), P(d.net), P(d.cash), P(d.freeCash),
                     F(d.reputation), d.couriers.ToString(Inv), d.contractedShops.ToString(Inv), d.district.ToString(Inv),
                     d.late.ToString(Inv), d.late15.ToString(Inv), d.cold.ToString(Inv), F(d.avgMinutes), F(d.avgAssignWait), F(d.avgPickupWait),
                     d.cancelShop.ToString(Inv), d.cancelCustomer.ToString(Inv), d.cancelDelay.ToString(Inv),
-                    d.courierPay.ToString(Inv), d.equipment.ToString(Inv), d.salaries.ToString(Inv),
-                    F(moral / n), F(yorgun / n), cm.Applications.Count.ToString(Inv), F(pay), borc.ToString(Inv),
-                    UpgradeManager.I.TotalDailyCost.ToString(Inv), F(fpsOrt), F(fpsMin), F(gercek)
+                    P(d.courierPay), P(d.equipment), P(d.salaries),
+                    F(moral / n), F(yorgun / n), cm.Applications.Count.ToString(Inv), F(pay), P(borc),
+                    P(UpgradeManager.I.TotalDailyCost), F(fpsOrt), F(fpsMin), F(gercek)
                 }));
 
-            if (d.companyDay == 1 || d.companyDay % 10 == 0) haritaBekliyor = true;
+            if (gunNo == 1 || gunNo % 10 == 0) haritaBekliyor = true;
         }
 
         static string F(float v) => v.ToString("0.##", Inv);
+
+        /// <summary>CSV için para: oyunda seçili birimde, binlik ayırıcısız (Euro seçiliyse € olarak, değilse Ft).</summary>
+        static string P(long v) => GameData.DisplayCurrency == Currency.Euro ? (v / (double)GameData.FtPerEuro).ToString("0.##", Inv) : v.ToString(Inv);
 
         IEnumerator HaritaGoruntusu()
         {
@@ -697,7 +702,7 @@ namespace KuryeTycoon
             sb.AppendLine($"Bitiş: {bitisNedeni} · oynanan {gunler.Count} tam gün · gerçek süre {gercekDk:0.0} dk");
 
             Baslik(sb, "SONUÇ");
-            sb.AppendLine($"Kasa: {Ft(baslangicKasa)} → {Ft(eco.money)} · en düşük {Ft(enDusukKasa)} ({enDusukKasaGun}. gün sonu) · serbest kasa {Ft(eco.FreeCash)}");
+            sb.AppendLine($"Kasa: {Ft(baslangicKasa)} → {Ft(eco.money)} · en düşük {Ft(enDusukKasa)} ({(enDusukKasaGun > 0 ? enDusukKasaGun + ". gün sonu" : "başlangıç")}) · serbest kasa {Ft(eco.FreeCash)}");
             sb.AppendLine($"İtibar: {baslangicItibar:0.00} → {CompanyProfile.Reputation:0.00}");
             sb.AppendLine($"Kurye: {cm.Couriers.Count} (sınır {UpgradeManager.I.CourierCap}) · başvuru bekleyen {cm.Applications.Count} · " +
                           $"ayrılan {Sayac("Kurye ayrıldı")} · sözleşmeli dükkan {SozlesmeliDukkan()}/{CityMap.I.Shops.Count} · bölge {CityMap.I.UnlockLevel}/{CityMap.I.MaxLevel}");
