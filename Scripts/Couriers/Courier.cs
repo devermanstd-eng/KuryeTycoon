@@ -1186,7 +1186,7 @@ namespace KuryeTycoon
             doorUntil = GameClock.I.TotalMinutes + mins;
             State = CourierState.KataCikiyor;
             if (o.elevatorBroken)
-                EventManager.I.Notify($"{ShortName} #{o.id}: asansör arızalı, {o.floor}. kata merdivenle çıkıyor.");
+                EventManager.I.NotifyQuiet($"{ShortName} #{o.id}: asansör arızalı, {o.floor}. kata merdivenle çıkıyor.");
         }
 
         // ---------- Arayüz için: kuryenin üstündeki siparişler ----------
@@ -1339,9 +1339,9 @@ namespace KuryeTycoon
                 picked++;
             }
             if (picked > 1)
-                EventManager.I.Notify($"{ShortName} {shop.Name}'dan {picked} siparişi birlikte aldı (toplu teslimat).");
+                EventManager.I.NotifyQuiet($"{ShortName} {shop.Name}'dan {picked} siparişi birlikte aldı (toplu teslimat).");
             else if (carrying.Count > 1)
-                EventManager.I.Notify($"{ShortName} yol üstünde {shop.Name}'a uğradı, çantasında {carrying.Count} paket var.");
+                EventManager.I.NotifyQuiet($"{ShortName} yol üstünde {shop.Name}'a uğradı, çantasında {carrying.Count} paket var.");
             current = null;
             PlanNext();
         }

@@ -141,7 +141,7 @@ namespace KuryeTycoon
             float r = Random.value;
             int level = r < 0.70f ? 1 : (r < 0.92f ? 2 : 3);
             float skill = 0.05f * (level - 1);
-            return new CourierCandidate
+            var aday = new CourierCandidate
             {
                 name = GameData.RandomName(),
                 vehicle = v,
@@ -158,9 +158,10 @@ namespace KuryeTycoon
                 stamina = Random.Range(0.7f, 1.2f) + skill,
                 tidiness = Random.Range(0.2f, 1f),
                 pickiness = Random.Range(0.05f, 0.85f),
-                note = GameData.RandomNote(),
                 expiresAt = withExpiry ? GameClock.I.TotalMinutes + 1440f : float.MaxValue
             };
+            aday.note = GameData.ApplicationNote(aday.occupation, aday.level);   // söz mesleğe ve tecrübeye uysun
+            return aday;
         }
 
         /// <summary>Yarısı aracından memnun; diğerleri parası olursa daha iyi bir araç ister (illa bir üstü değil).</summary>
@@ -186,6 +187,7 @@ namespace KuryeTycoon
             c.level = 1;
             c.occupation = Occupation.TamZamanli;
             c.pickiness = Random.Range(0.1f, 0.35f); // ilk kuryeler pek seçici değil
+            c.note = GameData.ApplicationNote(c.occupation, c.level);
             return Spawn(c);
         }
 

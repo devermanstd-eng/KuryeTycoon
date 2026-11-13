@@ -264,7 +264,7 @@ namespace KuryeTycoon
             {
                 if (Random.value < 0.7f)
                 {
-                    EventManager.I.Notify($"#{o.id} müşterisi birkaç dakika sonra geldi, sipariş teslim edildi.");
+                    EventManager.I.NotifyQuiet($"#{o.id} müşterisi birkaç dakika sonra geldi, sipariş teslim edildi.");
                     c.DeliverHere();
                     return;
                 }
@@ -481,7 +481,7 @@ namespace KuryeTycoon
                 bool rejected = o.priceDeclines > 0 || o.rejectedBy.Count > 0;
                 if (rejected) cancelledRejectedToday++;
                 CompanyProfile.AddReputation(-cancelReputationPenalty);
-                EventManager.I.Notify(rejected
+                IptalBildir(rejected
                     ? $"#{o.id} ({o.shop.Name}) iptal oldu: kuryeler teklifi gördü ama kabul etmedi. İtibar düştü."
                     : $"#{o.id} ({o.shop.Name}) kurye bulunamadığı için iptal oldu. İtibar düştü.");
             }
@@ -567,6 +567,26 @@ namespace KuryeTycoon
             }
         }
 
+        // İptal bildirimleri gruplanır: saatte bir tanesi akışa düşer, aradakiler sayılıp bir sonrakine eklenir
+        float iptalBildirimAni = -1000f;
+        int iptalBekleyen;
+
+        void IptalBildir(string metin)
+        {
+            float now = GameClock.I.TotalMinutes;
+            if (now - iptalBildirimAni >= 60f)
+            {
+                EventManager.I.Notify(metin + (iptalBekleyen > 0 ? $" (Son bir saatte {iptalBekleyen} iptal daha: İşe Alım'a bak.)" : ""));
+                iptalBildirimAni = now;
+                iptalBekleyen = 0;
+            }
+            else
+            {
+                iptalBekleyen++;
+                EventManager.I.NotifyQuiet(metin);
+            }
+        }
+
         /// <summary>1 dükkan, 2 müşteri vazgeçti, 3 müşteri gecikme yüzünden vazgeçti.</summary>
         void CancelOrder(Order o, int reason)
         {
@@ -612,7 +632,7 @@ namespace KuryeTycoon
                     if (GoalManager.I != null) GoalManager.I.OnCancelled();
                     if (RivalCompany.I != null) RivalCompany.I.OnCancelled(o);
                     CompanyProfile.AddReputation(-cancelReputationPenalty);
-                    EventManager.I.Notify($"#{o.id} ({o.shop.Name}) müşteri iptal etti: {o.cancelReason}. İtibar düştü.{who}");
+                    IptalBildir($"#{o.id} ({o.shop.Name}) müşteri iptal etti: {o.cancelReason}. İtibar düştü.{who}");
                     break;
             }
             Telemetry.Add($"İptal dükkan: {o.shop.Name}");
@@ -798,7 +818,7 @@ namespace KuryeTycoon
             c.tipsTotal += o.tip;
             c.tipsToday += o.tip;
             c.morale = Mathf.Min(1f, c.morale + (o.tip >= 800 ? 0.04f : 0.02f));
-            if (o.tip >= 800)
+            if (o.tip >= 2000)   // 5 €'dan büyük bahşiş haber akışına düşer; küçükleri gün sonu raporunda
             {
                 string why = badWeather ? " (kötü havada geldiği için)" : (o.IsHeavy ? " (ağır paketi kapıya taşıdığı için)" : "");
                 EventManager.I.Notify($"{c.ShortName} müşteriden {GameData.Ft(o.tip)} bahşiş aldı{why}!");

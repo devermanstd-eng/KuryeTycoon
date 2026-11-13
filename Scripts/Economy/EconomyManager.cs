@@ -837,7 +837,7 @@ namespace KuryeTycoon
             sb.Append($"\nGELİR: {Ft(s.Income)}\n");
             sb.Append($"   Dükkan komisyonları: {Ft(s.commission)}\n");
             sb.Append($"   Müşteri teslimat ücretleri: {Ft(s.fees)}\n");
-            if (s.otherIncome > 0) sb.Append($"   Diğer (kesinti, sigorta komisyonu, depozito, vergi iadesi): {Ft(s.otherIncome)}\n");
+            if (s.otherIncome > 0) sb.Append($"   Diğer (hedef ve kilometre taşı ödülleri, sigorta komisyonu, kuryeden kesintiler): {Ft(s.otherIncome)}\n");
             if (insuranceIncomeToday > 0) sb.Append($"      bunun {Ft(insuranceIncomeToday)}'ı sigorta komisyonu ({InsuredViaCompanyCount} kurye {Plan.name} ile sigortalı)\n");
 
             // Gider
@@ -859,7 +859,8 @@ namespace KuryeTycoon
             if (s.payoutsPaid > 0) sb.Append($"\nKuryelerin hesabına yatan: {Ft(s.payoutsPaid)}");
             if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders}" + (s.cashCollected > 0 ? $" · kuryelerden tahsil edilen nakit {Ft(s.cashCollected)}" : ""));
             if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (kuryeden kesilen − iade): {Signed(s.depositNet)}");
-            sb.Append($"\nKuryelere borç: hesaplarda {Ft(TotalCourierBalances)} + yatacak {Ft(TotalPendingPayouts)} · kuryelerdeki nakit {Ft(TotalCashHeld)}");
+            sb.Append($"\nKuryelere borç: hesaplarda {Ft(TotalCourierBalances)} + yatacak {Ft(TotalPendingPayouts)}" +
+                      (Sade.NakitBorcu || TotalCashHeld > 0 ? $" · kuryelerdeki nakit {Ft(TotalCashHeld)}" : ""));
             sb.Append($"\nSerbest kasa (kurye hakedişleri düşülünce): {Ft(FreeCash)}" + (FreeCash < 0 ? " — DİKKAT: kuryelere ödeme yapamayabilirsin!" : ""));
             if (bankLoanRemaining > 0) sb.Append($"\nAcil kredi borcu: {Ft(bankLoanRemaining)} (günde {Ft(bankLoanDaily)})");
             if (cashAtLastReport != long.MinValue)
@@ -943,6 +944,18 @@ namespace KuryeTycoon
         }
 
         /// <summary>Biten haftanın (Pazartesi–Pazar) özeti.</summary>
+        const string RakipSatiriYeri = "{rakip}";
+        GameEvent haftalikKart;
+
+        /// <summary>Rakip haftasını kapatınca çağırır: haftalık rapordaki rakip satırı güncel sayılarla dolar.</summary>
+        public void RakipSatiriniYaz(string satir)
+        {
+            if (string.IsNullOrEmpty(LastWeeklyReport) || !LastWeeklyReport.Contains(RakipSatiriYeri)) return;
+            LastWeeklyReport = LastWeeklyReport.Replace(RakipSatiriYeri, satir);
+            if (haftalikKart != null && haftalikKart.body != null) haftalikKart.body = haftalikKart.body.Replace(RakipSatiriYeri, satir);
+            haftalikKart = null;
+        }
+
         void BuildWeeklyReport()
         {
             var clock = GameClock.I;
@@ -995,7 +1008,7 @@ namespace KuryeTycoon
 
             if (s.loanPaid > 0) sb.Append($"\n\nAile borcuna ödenen: {Ft(s.loanPaid)}");
             if (s.payoutsPaid > 0) sb.Append($"\nKuryelerin hesabına yatan: {Ft(s.payoutsPaid)}");
-            if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders} · tahsil edilen nakit {Ft(s.cashCollected)}");
+            if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders}" + (Sade.NakitBorcu || s.cashCollected > 0 ? $" · tahsil edilen nakit {Ft(s.cashCollected)}" : ""));
             if (s.depositNet != 0) sb.Append($"\nEkipman depozitosu (kuryeden kesilen − iade): {Signed(s.depositNet)}");
             sb.Append($"\nKasa: {Ft(money)}");
             if (cashAtWeekStart != long.MinValue) sb.Append($" (hafta başından {Signed(money - cashAtWeekStart)})");
@@ -1019,7 +1032,9 @@ namespace KuryeTycoon
             }
 
             var loan = FamilyLoan.I;
-            if (RivalCompany.I != null) sb.Append("\n\n" + RivalCompany.I.ReportLine);
+            // Rakip haftasını bu rapordan sonra kapatıyor (OnNewDay sırası): satırın yeri tutulur, RivalCompany.Weekly doldurur
+            if (RivalCompany.I != null)
+                sb.Append("\n\n" + (RivalCompany.I.HaftaKapanisGunu == GameClock.I.Day ? RivalCompany.I.ReportLine : RakipSatiriYeri));
             if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null)
                 sb.Append($"\n\nAile borcu: kalan {Ft(loan.Remaining)} · sıradaki taksit {Ft(loan.NextDue.Remaining)} → {loan.NextDue.DueText} ({loan.DaysUntil(loan.NextDue)} gün)");
 
@@ -1028,10 +1043,14 @@ namespace KuryeTycoon
             LastWeeklyReportTitle = $"Haftalık rapor — {first} / {last}";
             LastWeeklyReport = sb.ToString();
 
+            haftalikKart = null;
             if (showWeeklyReport)
-                EventManager.I.Push(new GameEvent(LastWeeklyReportTitle, LastWeeklyReport)
+            {
+                haftalikKart = new GameEvent(LastWeeklyReportTitle, LastWeeklyReport)
                     .Add("Tamam", null)
-                    .Add("Haftalık raporları kapat (Ayarlar'dan açılabilir)", () => showWeeklyReport = false));
+                    .Add("Haftalık raporları kapat (Ayarlar'dan açılabilir)", () => showWeeklyReport = false);
+                EventManager.I.Push(haftalikKart);
+            }
 
             // Yeni hafta için sıfırla
             lastWeekNet = net;

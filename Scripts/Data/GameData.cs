@@ -179,6 +179,31 @@ namespace KuryeTycoon
 
         public static string RandomNote() => ApplicationNotes[Random.Range(0, ApplicationNotes.Length)];
 
+        /// <summary>
+        /// Başvuru sözü adayın mesleğine ve tecrübesine uysun ("Öğrenciyim" diyen tam zamanlı çıkmasın,
+        /// "ilk deneyimim" diyen tecrübeli çıkmasın). Yarı yarıya mesleğe özel söz, yoksa genel söz.
+        /// </summary>
+        public static string ApplicationNote(Occupation o, int level)
+        {
+            if (Random.value < 0.6f)
+                switch (o)
+                {
+                    case Occupation.Ogrenci: return "Öğrenciyim, ders saatlerim dışında ve hafta sonları çalışabilirim.";
+                    case Occupation.OfisCalisani: return "Gündüz ofisteyim, akşamları ek gelir için kuryelik yapmak istiyorum.";
+                    case Occupation.HaftaSonu: return "Hafta içi başka işim var, hafta sonları tamamen müsaitim.";
+                    case Occupation.Vardiyali: return "Fabrikada vardiyalı çalışıyorum, vardiyam dışındaki saatlerde gelebilirim.";
+                    case Occupation.Emekli: return "Emekliyim, sabahları ve öğlene kadar çalışmak istiyorum.";
+                    case Occupation.Ebeveyn: return "Çocuklar okuldayken, öğlene kadar çalışabilirim.";
+                    case Occupation.GeceKuryesi: return "Gece çalışmayı seviyorum, akşamdan sabaha kadar müsaitim.";
+                    default: return "Yağmurda karda fark etmez, her gün çalışırım.";
+                }
+            var genel = new System.Collections.Generic.List<string> { "Şehri avucumun içi gibi bilirim." };
+            if (level <= 1) genel.Add("İlk kuryelik deneyimim olacak ama çok hevesliyim.");
+            else genel.Add("Daha önce başka bir kurye şirketinde çalıştım.");
+            if (o != Occupation.TamZamanli && o != Occupation.GeceKuryesi) genel.Add("Ek gelir için yarı zamanlı çalışmak istiyorum.");
+            return genel[Random.Range(0, genel.Count)];
+        }
+
         public static float Km(int tiles) => tiles * KmPerTile;
 
         /// <summary>Bu ağırlık ve üstü "ağır sipariş": sadece arabalı kuryeler alır.</summary>

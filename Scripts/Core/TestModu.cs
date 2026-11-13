@@ -93,6 +93,7 @@ namespace KuryeTycoon
             csvW.WriteLine(CsvBaslik);
 
             EventManager.Notified += OnNotified;
+            EventManager.NotifiedQuiet += OnNotifiedQuiet;
             Application.logMessageReceived += OnLog;
         }
 
@@ -123,6 +124,7 @@ namespace KuryeTycoon
         void OnDestroy()
         {
             EventManager.Notified -= OnNotified;
+            EventManager.NotifiedQuiet -= OnNotifiedQuiet;
             Application.logMessageReceived -= OnLog;
             Kapat();
             Application.runInBackground = eskiArkaPlan;
@@ -579,6 +581,9 @@ namespace KuryeTycoon
         readonly Dictionary<string, int> uyariSayisi = new Dictionary<string, int>();
         int bildirimToplam, hataToplam, uyariToplam;
         static readonly Regex SayiKalibi = new Regex(@"\d[\d .,:]*\d|\d");
+
+        /// <summary>Sessiz bildirimler (oyuncu görmez): dosyaya "(sessiz)" diye yazılır.</summary>
+        void OnNotifiedQuiet(string m) => OnNotified("(sessiz) " + m);
 
         void OnNotified(string m)
         {

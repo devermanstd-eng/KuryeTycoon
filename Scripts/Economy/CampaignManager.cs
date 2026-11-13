@@ -258,8 +258,13 @@ namespace KuryeTycoon
                 c.morale = Mathf.Min(1f, c.morale + 0.25f);
                 rewardsPaidThisMonth += monthlyReward;
                 rewardsClaimedThisMonth++;
-                EventManager.I.Push(new GameEvent("Ayın kuryesi!",
-                    $"{c.courierName} bu ay {monthlyTarget}+ paket teslim etti ve {Ft(monthlyReward)} ekstra kazandı. Morali tavan yaptı!"));
+                // Ayda bir kart (ilk ulaşan); sonrakiler bildirim. 60 günlük testte 16 kart açılıyordu.
+                if (rewardsClaimedThisMonth == 1)
+                    EventManager.I.Push(new GameEvent("Ayın kuryesi!",
+                        $"{c.courierName} bu ay {monthlyTarget}+ paket teslim etti ve {Ft(monthlyReward)} ekstra kazandı. Morali tavan yaptı!\n\n" +
+                        "Bu ay hedefe ulaşan diğer kuryeler de aynı ödülü alır; onlar bildirim olarak gelir."));
+                else
+                    EventManager.I.Notify($"{c.courierName} de bu ay {monthlyTarget}+ paket teslim etti, {Ft(monthlyReward)} ödül aldı.");
             }
         }
     }
