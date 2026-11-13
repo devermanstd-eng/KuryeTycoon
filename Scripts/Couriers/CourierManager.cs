@@ -8,7 +8,8 @@ namespace KuryeTycoon
 
     public enum OfferResult { Kabul, Ret, Yapilamadi }
 
-    /// <summary>İş başvurusu yapan aday.</summary>
+    /// <summary>Kurye adayı (kayıt sürecindeki kişinin özellikleri).</summary>
+    [System.Serializable]
     public class CourierCandidate
     {
         public string name;
@@ -41,7 +42,6 @@ namespace KuryeTycoon
         public int maxApplications = 6;
 
         Transform root;
-        float nextApplicationAt;
         bool ready;
 
         static string Ft(long v) => GameData.Ft(v);
@@ -52,8 +52,8 @@ namespace KuryeTycoon
         {
             root = new GameObject("Kuryeler").transform;
             root.SetParent(transform, false);
-            for (int i = 0; i < 2; i++) Applications.Add(MakeCandidate(RandomVehicle(), true));
-            ScheduleNextApplication();
+            // Eski "başvuru" sistemi yerine kayıt hunisi (KayitSistemi): insanlar kendileri kaydolur, süreçten geçer
+            if (KayitSistemi.I != null) KayitSistemi.I.Init();
             GameClock.I.OnNewDay += OnNewDay;
             GameClock.I.OnNewMonth += () => { foreach (var c in Couriers) c.pickupCancelsThisMonth = 0; };
             ready = true;
@@ -77,16 +77,6 @@ namespace KuryeTycoon
             for (int i = Applications.Count - 1; i >= 0; i--)
                 if (now >= Applications[i].expiresAt) Applications.RemoveAt(i);
 
-            if (now >= nextApplicationAt)
-            {
-                if (Applications.Count < maxApplications)
-                {
-                    var c = MakeCandidate(RandomVehicle(), true);
-                    Applications.Add(c);
-                    EventManager.I.Notify($"Yeni iş başvurusu: {c.name} ({GameData.Vehicle(c.vehicle).name}, {ShortOccupation(c.occupation)})");
-                }
-                ScheduleNextApplication();
-            }
         }
 
         public static string ShortOccupation(Occupation o)
@@ -104,12 +94,6 @@ namespace KuryeTycoon
             }
         }
 
-        void ScheduleNextApplication()
-        {
-            float rep = 0.5f + 0.15f * CompanyProfile.Reputation;
-            float bonus = Mathf.Lerp(0.8f, 1.3f, (EconomyManager.I.bonusMultiplier - 0.5f) / 1.5f);
-            nextApplicationAt = GameClock.I.TotalMinutes + Random.Range(120f, 360f) / (rep * bonus * UpgradeManager.I.ApplicationMultiplier * Difficulty.ApplicationRate);
-        }
 
         static Occupation RandomOccupation()
         {
@@ -171,7 +155,7 @@ namespace KuryeTycoon
             return (VehicleKind)Random.Range((int)current + 1, (int)VehicleKind.Araba + 1);
         }
 
-        VehicleKind RandomVehicle()
+        public VehicleKind RandomVehicle()
         {
             float r = Random.value;
             if (r < 0.45f) return VehicleKind.Bisiklet;
@@ -207,6 +191,15 @@ namespace KuryeTycoon
         public void Reject(CourierCandidate c)
         {
             Applications.Remove(c);
+        }
+
+        /// <summary>Kayıt sürecini tamamlayan adayın hesabı açılır (KayitSistemi çağırır). Sınır doluysa null.</summary>
+        public Courier ActivateRegistrant(CourierCandidate c)
+        {
+            if (UpgradeManager.I.CourierCapFull) return null;
+            var courier = Spawn(c);
+            if (GoalManager.I != null) GoalManager.I.OnHire();
+            return courier;
         }
 
         Courier Spawn(CourierCandidate c)
@@ -366,14 +359,17 @@ namespace KuryeTycoon
             c.depositOwed = 0;
         }
 
-        public bool Fire(Courier c)
+        /// <summary>Kurye hesabını kapatır (eski "işten çıkar").</summary>
+        public bool Fire(Courier c) => Fire(c, true);
+
+        public bool Fire(Courier c, bool notify)
         {
             if (c.OrderCount > 0)
             {
-                EventManager.I.Notify($"{c.courierName} elinde paket varken işten çıkarılamaz.");
+                EventManager.I.Notify($"{c.courierName} elinde paket varken hesabı kapatılamaz.");
                 return false;
             }
-            EventManager.I.Notify($"{c.courierName} ile yollar ayrıldı.");
+            if (notify) EventManager.I.Notify($"{c.courierName} kurye hesabı kapatıldı.");
             HandleLeaving(c);
             Couriers.Remove(c);
             Destroy(c.gameObject);

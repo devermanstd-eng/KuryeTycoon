@@ -373,12 +373,13 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Basit bot: kurye lazımsa bütün kayıtları açar ve yeni kurye bonusunu açar, değilse bonusu kapatır.</summary>
         void IseAlim(long rezerv)
         {
+            var ks = KayitSistemi.I;
             var cm = CourierManager.I;
             var clk = GameClock.I;
-            if (clk.Day == sonIseAlimGun || cm.Applications.Count == 0 || UpgradeManager.I.CourierCapFull) return;
-            if (EconomyManager.I.FreeCash < rezerv / 2) return;
+            if (ks == null || clk.Day == sonIseAlimGun) return;
             var son = SonGun();
             int kurye = cm.Couriers.Count, dukkan = SozlesmeliDukkan();
             string neden = null;
@@ -387,23 +388,17 @@ namespace KuryeTycoon
             else if (son != null && son.cancelled > Mathf.Max(2, son.deliveries * 0.03f)) neden = $"dün {son.cancelled} iptal";
             else if (son != null && son.avgAssignWait > 6f) neden = $"atama bekleme {son.avgAssignWait:0.0} dk";
             else if (son != null && son.deliveries > 0 && son.lost > son.deliveries * 0.2f) neden = $"dün {son.lost} kaçan sipariş";
-            if (neden == null) return;
-
-            CourierCandidate en = null;
-            float enPuan = float.MinValue;
-            foreach (var a in cm.Applications)
+            sonIseAlimGun = clk.Day;
+            if (neden == null)
             {
-                float p = a.speedSkill + a.care + a.stamina * 0.5f - a.pickiness + a.level * 0.1f;
-                if (p > enPuan) { enPuan = p; en = a; }
+                if (ks.yeniBonus > 0) { ks.yeniBonus = 0; Eylem("Kayıt", "yeni kurye bonusu kapatıldı"); }
+                return;
             }
-            if (en == null) return;
-            int once = cm.Couriers.Count;
-            cm.Hire(en);
-            if (cm.Couriers.Count > once)
+            for (int v = 0; v < 4; v++) ks.acik[v] = true;
+            if (ks.yeniBonus == 0 && EconomyManager.I.FreeCash >= rezerv / 2)
             {
-                sonIseAlimGun = clk.Day;
-                Eylem("İşe alım", $"{en.name} ({GameData.Vehicle(en.vehicle).name}, {CourierManager.ShortOccupation(en.occupation)}, seviye {en.level}, " +
-                                   $"seçicilik {en.pickiness:0.00}) · neden: {neden} · başvuru {cm.Applications.Count + 1}");
+                ks.yeniBonus = 1;
+                Eylem("Kayıt", $"yeni kurye bonusu açıldı · neden: {neden} · süreçte {ks.Adaylar.Count} aday");
             }
         }
 
@@ -455,7 +450,7 @@ namespace KuryeTycoon
             var eco = EconomyManager.I;
 
             // Kurye hesabı dolduysa ve başvuru bekliyorsa platform paketi
-            if (up.CourierCapFull && CourierManager.I.Applications.Count > 0 && !up.IsLocked(UpgradeKind.Platform))
+            if (up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0 && !up.IsLocked(UpgradeKind.Platform))
             {
                 int c = up.NextCost(UpgradeKind.Platform);
                 if (c > 0 && eco.FreeCash - c >= rezerv && up.Buy(UpgradeKind.Platform))
@@ -555,7 +550,7 @@ namespace KuryeTycoon
                     d.late.ToString(Inv), d.late15.ToString(Inv), d.cold.ToString(Inv), F(d.avgMinutes), F(d.avgAssignWait), F(d.avgPickupWait),
                     d.cancelShop.ToString(Inv), d.cancelCustomer.ToString(Inv), d.cancelDelay.ToString(Inv),
                     P(d.courierPay), P(d.equipment), P(d.salaries),
-                    F(moral / n), F(yorgun / n), F(birikmis / n), cm.Applications.Count.ToString(Inv), F(pay), P(borc),
+                    F(moral / n), F(yorgun / n), F(birikmis / n), (KayitSistemi.I != null ? KayitSistemi.I.Adaylar.Count : 0).ToString(Inv), F(pay), P(borc),
                     P(UpgradeManager.I.TotalDailyCost), F(Denge.FiyatCarpani), F(fpsOrt), F(fpsMin), F(gercek)
                 }));
 
@@ -725,7 +720,7 @@ namespace KuryeTycoon
             Baslik(sb, "SONUÇ");
             sb.AppendLine($"Kasa: {Ft(baslangicKasa)} → {Ft(eco.money)} · en düşük {Ft(enDusukKasa)} ({(enDusukKasaGun > 0 ? enDusukKasaGun + ". gün sonu" : "başlangıç")}) · serbest kasa {Ft(eco.FreeCash)}");
             sb.AppendLine($"İtibar: {baslangicItibar:0.00} → {CompanyProfile.Reputation:0.00}");
-            sb.AppendLine($"Kurye: {cm.Couriers.Count} (sınır {UpgradeManager.I.CourierCap}) · başvuru bekleyen {cm.Applications.Count} · " +
+            sb.AppendLine($"Kurye: {cm.Couriers.Count} (sınır {UpgradeManager.I.CourierCap}) · kayıt sürecinde {(KayitSistemi.I != null ? KayitSistemi.I.Adaylar.Count : 0)} · " +
                           $"ayrılan {Sayac("Kurye ayrıldı")} · sözleşmeli dükkan {SozlesmeliDukkan()}/{CityMap.I.Shops.Count} · bölge {CityMap.I.UnlockLevel}/{CityMap.I.MaxLevel}");
             if (RivalCompany.I != null) sb.AppendLine($"Pazar payı (geçen hafta): %{RivalCompany.I.MarketShare * 100f:0}");
             var loan = FamilyLoan.I;

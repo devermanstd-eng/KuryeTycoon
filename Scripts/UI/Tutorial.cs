@@ -36,8 +36,8 @@ namespace KuryeTycoon
             },
             new TutorialStepDef
             {
-                title = "İşe Alım", target = Tab.IseAlim,
-                text = "Ekip menüsünün İşe Alım sekmesine geç. Başvurular zamanla gelir ve 1 gün geçerlidir; kurye almak ücretsiz."
+                title = "Kayıtlar", target = Tab.IseAlim,
+                text = "Ekip menüsünün Kayıtlar sekmesine geç. Kuryeler uygulamaya kendileri kaydolur ve süreci bitirince hesapları açılır; sen kuralları ve kampanyaları belirlersin."
             },
             new TutorialStepDef
             {

@@ -66,6 +66,7 @@ namespace KuryeTycoon
             Make<WeatherFx>("Hava Efektleri");
             Make<MapCamera>("Harita Kamerası");
             Make<CourierManager>("Kurye Yönetimi");
+            Make<KayitSistemi>("Kurye Kayıtları");
             Make<OrderManager>("Siparişler");
             Make<CampaignManager>("Kampanyalar");
             Make<GoalManager>("Haftalık Hedefler");

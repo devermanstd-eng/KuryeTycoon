@@ -10,7 +10,7 @@ namespace KuryeTycoon
     public partial class GameUI : MonoBehaviour
     {
         enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler, Mesajlar, Market, Istatistik }
-        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "İşe Alım", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar", "Haftalık Hedefler",
+        static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "Kayıtlar", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar", "Haftalık Hedefler",
                                                   "Müşteri Yorumları", "Kendi Marketin", "İstatistikler" };
 
         public float panelWidth = 560f;     // açılan pencerenin genişliği (kimlik kartları ve kurye tablosu sığsın)
@@ -1075,7 +1075,7 @@ namespace KuryeTycoon
             (Tab.Mesajlar, Icons.Kind.Star, "Yorumlar"),
             (Tab.Hedefler, Icons.Kind.Flag, "Hedefler"),
             (Tab.Kuryeler, Icons.Kind.Couriers, "Kuryeler"),
-            (Tab.IseAlim, Icons.Kind.Hiring, "İşe Alım"),
+            (Tab.IseAlim, Icons.Kind.Hiring, "Kayıtlar"),
             (Tab.Ekipman, Icons.Kind.Equipment, "Ekipman"),
             (Tab.Destek, Icons.Kind.Support, "Destek"),
             (Tab.Dukkanlar, Icons.Kind.Shops, "Dükkanlar"),
@@ -1113,7 +1113,7 @@ namespace KuryeTycoon
             switch (t)
             {
                 case Tab.Siparisler: return OrderManager.I != null ? OrderManager.I.Pending.Count : 0;
-                case Tab.IseAlim: return CourierManager.I != null ? CourierManager.I.Applications.Count : 0;
+                case Tab.IseAlim: return KayitSistemi.I != null ? KayitSistemi.I.HesapBekleyen : 0;   // hesap sınırı yüzünden bekleyenler
                 case Tab.Mesajlar: return CourierMessages.I != null ? CourierMessages.I.Unread : 0;
                 default: return 0;
             }
@@ -1158,7 +1158,7 @@ namespace KuryeTycoon
             {
                 case Tab.Siparisler: DrawOrders(); break;
                 case Tab.Kuryeler: DrawCouriers(); break;
-                case Tab.IseAlim: DrawHiring(); break;
+                case Tab.IseAlim: DrawKayit(); break;   // KayitView.cs
                 case Tab.Dukkanlar: DrawShops(); break;
                 case Tab.Ekipman: DrawEquipment(); break;
                 case Tab.Kampanyalar: DrawCampaigns(); break;
@@ -1470,15 +1470,30 @@ namespace KuryeTycoon
             GUI.enabled = modalFree;
             GUILayout.EndHorizontal();
 
+            var ks = KayitSistemi.I;
+            if (ks != null)
+            {
+                string puan = c.puanAdet >= 5 ? $"Müşteri puanı {c.puanOrt:0.0} (son ~30 teslimat)" : "Müşteri puanı: henüz az teslimat";
+                if (ks.Askida(c)) puan += $" · hesabı askıda ({c.askiBitis - GameClock.I.Day} gün)";
+                else if (c.askiSayisi > 0 && GameClock.I.Day - c.sonAskiGun <= 60) puan += $" · son 60 günde {c.askiSayisi} askı";
+                if (c.aktifGun > 0 && !c.ilkHaftaTamam) puan += " · ilk haftası";
+                GUILayout.Label(puan, ks.Askida(c) || (ks.MinPuan > 0f && c.puanAdet >= 20 && c.puanOrt < ks.MinPuan + 0.15f) ? warn : small);
+            }
             GUILayout.BeginHorizontal();
             var courier = c;
             if (GUILayout.Button("Nakit / ödeme", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; CloseInfo(); };
+            GUI.enabled = modalFree && c.OrderCount == 0 && ks != null && !ks.Askida(c);
+            if (GUILayout.Button(ks != null && ks.Askida(c) ? "Askıda" : $"Askıya al ({KayitSistemi.AskiGun} gün)", smallButton))
+                deferred = () => AskConfirm("Hesabı askıya al",
+                    $"{courier.courierName} hesabı {KayitSistemi.AskiGun} gün askıya alınsın mı? Bu sürede sipariş alamaz, morali düşer. " +
+                    "60 gün içinde 3. askıda hesap kendiliğinden kapanır.",
+                    "Evet, askıya al", () => ks.AskiyaAl(courier, "operasyon kararı", true));
             GUI.enabled = modalFree && c.OrderCount == 0;
-            if (GUILayout.Button(c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)", smallButton))
-                deferred = () => AskConfirm("Kuryeyle yolları ayır",
-                    $"{courier.courierName} ({courier.V.name}, {courier.deliveries} teslimat) işten çıkarılsın mı? " +
+            if (GUILayout.Button(c.OrderCount == 0 ? "Hesabı kapat" : "Hesabı kapat (paketi var)", smallButton))
+                deferred = () => AskConfirm("Kurye hesabını kapat",
+                    $"{courier.courierName} ({courier.V.name}, {courier.deliveries} teslimat) kurye hesabı kapatılsın mı? " +
                     $"Hesabında bekleyen {Ft(courier.balance)} ve varsa depozitosu ödenir. Bu geri alınamaz.",
-                    "Evet, işten çıkar", () => cm.Fire(courier));
+                    "Evet, hesabı kapat", () => cm.Fire(courier));
             GUI.enabled = modalFree;
             GUILayout.EndHorizontal();
         }
@@ -2497,7 +2512,7 @@ namespace KuryeTycoon
                         GUILayout.Label($"{v.name}: {Ft(v.basePay)}/paket + {Ft(v.payPerKm)}/km · {GameData.CarryText(v)}", small);
 
                     GUILayout.Space(8);
-                    Section("Kurye bonusları", "Yüksek bonus moral ve daha çok başvuru getirir ama kârı düşürür. Bonus = hava bonusu + saat bonusu, çarpanla çarpılır.");
+                    Section("Kurye bonusları", "Yüksek bonus moral ve daha çok kurye kaydı getirir ama kârı düşürür. Bonus = hava bonusu + saat bonusu, çarpanla çarpılır.");
                     e.bonusMultiplier = FloatSlider("Bonus çarpanı", e.bonusMultiplier, 0.5f, 2f);
                     KV("Şu anki bonus", $"{Ft(e.CurrentBonus)} (hava {Ft(WeatherSystem.I.WeatherBonus)} + saat {Ft(e.TimeBonus())})");
 

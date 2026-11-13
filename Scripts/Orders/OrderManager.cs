@@ -584,7 +584,7 @@ namespace KuryeTycoon
             float now = GameClock.I.TotalMinutes;
             if (now - iptalBildirimAni >= 60f)
             {
-                EventManager.I.Notify(metin + (iptalBekleyen > 0 ? $" (Son bir saatte {iptalBekleyen} iptal daha: İşe Alım'a bak.)" : ""));
+                EventManager.I.Notify(metin + (iptalBekleyen > 0 ? $" (Son bir saatte {iptalBekleyen} iptal daha: Kayıtlar'a bak.)" : ""));
                 iptalBildirimAni = now;
                 iptalBekleyen = 0;
             }
@@ -888,6 +888,7 @@ namespace KuryeTycoon
 
             RollTip(o, c, late);
             if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);
+            if (KayitSistemi.I != null) KayitSistemi.I.OnDelivered(c, o.rating);   // kurye puanı, yeni kurye bonusu, tavsiye primi
 
             EconomyManager.I.RegisterDelivery(o);
             MapFx.Delivered(o);   // haritada "+350 Ft" ve teslimat sesi
