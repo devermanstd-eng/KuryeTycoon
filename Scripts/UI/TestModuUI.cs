@@ -48,8 +48,17 @@ namespace KuryeTycoon
                 }
                 GUILayout.EndHorizontal();
 
-                bool rastgele = GUILayout.Toggle(TestModu.RastgeleSecim, " Kartlarda rastgele seç (kapalıyken hep ilk seçenek)", toggle);
-                if (rastgele != TestModu.RastgeleSecim) deferred = () => TestModu.RastgeleSecim = rastgele;
+                GUILayout.BeginHorizontal();
+                GUILayout.Label("Bot", body, GUILayout.Width(60));
+                foreach (TestModu.BotTuru bt in System.Enum.GetValues(typeof(TestModu.BotTuru)))
+                {
+                    var tur = bt;
+                    if (SelectButton(TestModu.Tur == tur, TestModu.TurAdi(tur), smallButton)) deferred = () => TestModu.Tur = tur;
+                }
+                GUILayout.EndHorizontal();
+                if (TestModu.Tur == TestModu.BotTuru.Akilli)
+                    GUILayout.Label("Akıllı bot kartları okuyup maliyetine ve duruma göre seçer; iptal saatlerine uygun kurye, kârlı dükkan, " +
+                                    "ihtiyaca göre geliştirme, ekipman teklifi, pazarlık, fiyat ve kendi marketi kullanır. Her kararın nedeni dosyaya yazılır.", small);
 
                 // Gece saatleri hızlı geçtiği için gün biraz daha kısa sürer
                 float dkGun = GameClock.I != null ? GameClock.I.minutesPerSecond : 2f;

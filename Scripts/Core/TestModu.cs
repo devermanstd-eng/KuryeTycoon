@@ -30,14 +30,17 @@ namespace KuryeTycoon
     ///
     /// Test sırasında kayıt kapalıdır: oyuncunun kayıtlarına dokunulmaz.
     /// </summary>
-    public class TestModu : MonoBehaviour
+    public partial class TestModu : MonoBehaviour
     {
         // ------------------------------------------------------------------ ayarlar (kurulum ekranından)
         public static readonly int[] GunSecenekleri = { 7, 30, 60, 120 };
         public static readonly float[] HizSecenekleri = { 16f, 32f, 64f, 128f };
         public static int HedefGun = 30;
         public static float Hiz = 32f;
-        public static bool RastgeleSecim;
+        /// <summary>Akıllı: kartları okuyup oyuncu gibi seçer ve bütün menüleri kullanır (TestModuAkilli.cs). Diğer ikisi basit bot.</summary>
+        public enum BotTuru { Akilli, IlkSecenek, Rastgele }
+        public static BotTuru Tur = BotTuru.Akilli;
+        public static string TurAdi(BotTuru t) => t == BotTuru.Akilli ? "akıllı oyuncu" : t == BotTuru.Rastgele ? "rastgele seçim" : "hep ilk seçenek";
 
         public static bool Aktif { get; private set; }
         public static TestModu I { get; private set; }
@@ -113,7 +116,7 @@ namespace KuryeTycoon
             enDusukKasa = baslangicKasa;
             baslangicGercek = sonIlerlemeGercek = gunBasiGercek = Time.realtimeSinceStartup;
             Eylem("Başlangıç", $"Yeni oyun: {CompanyProfile.Name}, zorluk {Difficulty.Level}, hedef {HedefGun} gün, hız {Hiz}×, " +
-                               $"seçim {(RastgeleSecim ? "rastgele" : "ilk seçenek")}, harita tohumu {GameBootstrap.I.MapSeed}, bot tohumu {tohum}, " +
+                               $"bot {TurAdi(Tur)}, harita tohumu {GameBootstrap.I.MapSeed}, bot tohumu {tohum}, " +
                                $"kasa {Ft(baslangicKasa)}, kod {DebugReport.CodeVersion}");
         }
 
@@ -238,7 +241,8 @@ namespace KuryeTycoon
 
         void Sec(GameEvent ev)
         {
-            int idx = SecimYap(ev);
+            string neden;
+            int idx = SecimYap(ev, out neden);
             var clk = GameClock.I;
             string anahtar = KartAnahtari(ev.title);
             kartToplam++;
@@ -257,6 +261,7 @@ namespace KuryeTycoon
                 kartW.WriteLine("    " + (ev.body ?? "").Replace("\n", "\n    "));
                 for (int i = 0; i < ev.choices.Count; i++)
                     kartW.WriteLine($"    {(i == idx ? "→" : " ")} {i + 1}) {ev.choices[i].label}");
+                if (!string.IsNullOrEmpty(neden) && ev.choices.Count > 1) kartW.WriteLine($"    neden: {neden}");
                 kartW.WriteLine();
             }
 
@@ -268,8 +273,9 @@ namespace KuryeTycoon
             }
         }
 
-        int SecimYap(GameEvent ev)
+        int SecimYap(GameEvent ev, out string neden)
         {
+            neden = "";
             var izinli = new List<int>();
             for (int i = 0; i < ev.choices.Count; i++)
             {
@@ -283,7 +289,15 @@ namespace KuryeTycoon
             if (son)
                 foreach (int i in izinli)
                     if ((ev.choices[i].label ?? "").ToLowerInvariant().Contains("devam")) return i;
-            return RastgeleSecim ? izinli[rnd.Next(izinli.Count)] : izinli[0];
+            if (izinli.Count == 1) return izinli[0];
+            if (Tur == BotTuru.Akilli)
+            {
+                int a = -1;
+                try { a = AkilliKart(ev, izinli, out neden); }
+                catch (System.Exception ex) { Debug.LogException(ex); neden = "akıllı seçimde hata, ilk seçenek: " + ex.Message; }
+                if (izinli.Contains(a)) return a;
+            }
+            return Tur == BotTuru.Rastgele ? izinli[rnd.Next(izinli.Count)] : izinli[0];
         }
 
         // ------------------------------------------------------------------ bot kararları
@@ -293,6 +307,7 @@ namespace KuryeTycoon
 
         void Kararlar()
         {
+            if (Tur == BotTuru.Akilli) { AkilliKararlar(); return; }
             long rezerv = Rezerv();
             BorcOde();
             IseAlim(rezerv);
@@ -573,6 +588,7 @@ namespace KuryeTycoon
             string k = SayiKalibi.Replace(m, "#");
             if (k.Length > 140) k = k.Substring(0, 140) + "…";
             Say(bildirimKalip, k);
+            AkilliBildirim(m);
         }
 
         void OnLog(string mesaj, string yigin, LogType tur)
@@ -697,7 +713,7 @@ namespace KuryeTycoon
             sb.AppendLine($"Kod sürümü: {DebugReport.CodeVersion}");
             sb.AppendLine($"Tarih (gerçek): {System.DateTime.Now:yyyy-MM-dd HH:mm} · Unity {Application.unityVersion} · {SystemInfo.operatingSystem}");
             sb.AppendLine($"Cihaz: {SystemInfo.deviceModel} · {SystemInfo.processorType} · {SystemInfo.graphicsDeviceName} · ekran {Screen.width}x{Screen.height}");
-            sb.AppendLine($"Ayarlar: hedef {HedefGun} gün · hız {Hiz}× · zorluk {Difficulty.Level} · kart seçimi {(RastgeleSecim ? "rastgele" : "ilk seçenek")} · " +
+            sb.AppendLine($"Ayarlar: hedef {HedefGun} gün · hız {Hiz}× · zorluk {Difficulty.Level} · bot {TurAdi(Tur)} · " +
                           $"grafik {GrafikKalitesi.Seviye} · harita tohumu {GameBootstrap.I.MapSeed} · bot tohumu {tohum}");
             sb.AppendLine($"Bitiş: {bitisNedeni} · oynanan {gunler.Count} tam gün · gerçek süre {gercekDk:0.0} dk");
 
@@ -741,7 +757,9 @@ namespace KuryeTycoon
 
             Baslik(sb, "BOTUN YAPTIKLARI (ayrıntısı bot.txt)");
             foreach (var kv in EnCok(eylemSayisi, 50)) sb.AppendLine($"  {kv.Key}: {kv.Value}");
-            sb.AppendLine("Bot kullanmadı: kampanyalar, kendi marketin, ekipman teklifi, operasyon sorumlusu, fiyat ayarları (varsayılanlarda kaldı).");
+            sb.AppendLine(Tur == BotTuru.Akilli
+                ? "Akıllı bot: kampanya ayarları ve araç değişimi dışında oyuncunun yapabildiği her şeyi kullanır (nedenleri bot.txt'de)."
+                : "Basit bot: kampanyalar, kendi marketin, ekipman teklifi, operasyon sorumlusu ve fiyat ayarlarına dokunmaz.");
 
             Baslik(sb, $"KARAR KARTLARI ({kartToplam} kart; metinleri kartlar.txt)");
             foreach (var kv in EnCok(kartSayisi, 80)) sb.AppendLine($"  {kv.Value,4}× {kv.Key}");
