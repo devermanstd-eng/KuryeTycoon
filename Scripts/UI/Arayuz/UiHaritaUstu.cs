@@ -226,7 +226,7 @@ namespace KuryeTycoon
         // ------------------------------------------------------------------ haftalık hedef kutusu
 
         VisualElement hedefKok;
-        Label hedefKalan, hedefEk;
+        Label hedefKalan, hedefEk, hedefSenaryo;
         readonly List<(VisualElement kok, VisualElement daire, Label ad, Label sayi, U.Cubuk cubuk)> hedefSatirlari =
             new List<(VisualElement, VisualElement, Label, Label, U.Cubuk)>();
 
@@ -234,6 +234,9 @@ namespace KuryeTycoon
         {
             hedefKok = U.Tikla(U.El(katHud, "hedef-kutu"), () => OpenTab(Tab.Hedefler));
             hedefKok.style.left = DockW + 10f;
+            hedefSenaryo = U.Kalin(hedefKok, "", "kucuk");   // senaryo ilerlemesi (Senaryo.cs)
+            hedefSenaryo.style.marginBottom = 6;
+            hedefSenaryo.style.whiteSpace = WhiteSpace.Normal;
             var bas = U.Gecirgen(hedefKok, "satir");
             U.Simge(bas, Icons.Kind.Flag, UITheme.Accent, 14f);
             var t = U.Kalin(bas, "Haftalık hedefler", "kucuk");
@@ -265,6 +268,13 @@ namespace KuryeTycoon
             U.Goster(hedefKok, gor);
             if (!gor || !agir) return;
             var gm = GoalManager.I;
+            bool senaryo = Senaryo.HedefVar;
+            U.Goster(hedefSenaryo, senaryo);
+            if (senaryo)
+            {
+                U.Metin(hedefSenaryo, Senaryo.IlerlemeYazisi);
+                U.Renk(hedefSenaryo, Senaryo.Durum == 1 ? UITheme.Good : Senaryo.Durum == 2 ? UITheme.Bad : ItibarRengi);
+            }
             U.Metin(hedefKalan, $"{gm.DaysLeft} gün kaldı");
             var hedefler = TrackerGoals();
             for (int i = 0; i < hedefSatirlari.Count; i++)

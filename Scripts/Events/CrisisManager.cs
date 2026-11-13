@@ -255,7 +255,7 @@ namespace KuryeTycoon
             if (lawStage == 1 && Day >= lawDecisionDay) PlatformLaw();
             else if (lawStage == 0 && GameClock.I.CompanyDay >= 120 && Couriers.Count >= 20 && Random.value < 0.02f) PlatformLaw();
 
-            if (Day >= nextCrisisDay && GameClock.I.CompanyDay >= 25) RollCrisis();
+            if (Day >= nextCrisisDay && GameClock.I.CompanyDay >= 25 && !Anlatici.Mola) RollCrisis();
         }
 
         void OnNewMonth()
@@ -277,7 +277,8 @@ namespace KuryeTycoon
 
         void RollCrisis()
         {
-            nextCrisisDay = Day + Random.Range(10, 22);
+            nextCrisisDay = Day + Anlatici.KrizAraligi();   // olay anlatıcısına göre (Anlatici.cs)
+            Anlatici.BuyukOlay();
             int month = GameClock.I.Month;
             var pool = new List<(System.Action run, float w)>();
             // Grev: en az 90 günde bir ve önceki grev anlaşmasının zammı sürerken değil

@@ -35,6 +35,7 @@ namespace KuryeTycoon
         public bool hotFood;
         public bool isMarket;          // market (akşam iş çıkışı talebi), değilse yemek/kafe
         public float kgMin, kgMax;     // sipariş ağırlığı aralığı (sepet büyüdükçe artar)
+        public bool eczane;            // eczane: siparişleri ilaç sertifikalı kurye götürür (KuryeEgitim.Ilac)
     }
 
     public class EquipmentDef
@@ -89,6 +90,10 @@ namespace KuryeTycoon
             new ShopDef { name = "Mini ABC",        color = new Color(0.65f, 0.55f, 0.30f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 30000, unlockLevel = 3, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
             new ShopDef { name = "Kikötő Non-Stop", color = new Color(0.20f, 0.45f, 0.65f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 35000, unlockLevel = 4, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
             new ShopDef { name = "Falu ABC",        color = new Color(0.50f, 0.65f, 0.35f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 40000, unlockLevel = 5, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
+            // Eczaneler (sona eklendi: eski haritalarda diğer dükkanların yeri değişmesin). Siparişlerini sadece ilaç sertifikalı kurye götürür.
+            new ShopDef { name = "Szent István Patika",     color = new Color(0.20f, 0.70f, 0.55f), prepMinutes = 8, basketMin = 2500, basketMax = 14000, commission = 0.14f, weight = 0.3f,  contractCost = 50000,  unlockLevel = 2, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
+            new ShopDef { name = "Belvárosi Patika",        color = new Color(0.15f, 0.60f, 0.50f), prepMinutes = 8, basketMin = 2500, basketMax = 14000, commission = 0.14f, weight = 0.3f,  contractCost = 80000,  unlockLevel = 3, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
+            new ShopDef { name = "Kikötő Ügyeletes Patika", color = new Color(0.10f, 0.50f, 0.45f), prepMinutes = 6, basketMin = 2500, basketMax = 16000, commission = 0.13f, weight = 0.25f, contractCost = 120000, unlockLevel = 4, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
         };
 
         public static readonly EquipmentDef[] Equipment =

@@ -34,6 +34,8 @@ namespace KuryeTycoon
                 public Label meslek, kapasite, kazanc, hesap, sigorta, hedef, ekipman, canta, eksikler;
                 public Button cantaDugme, cikarDugme;
                 public int portreRuh = -1;
+                public VisualElement ozellikSatir;
+                public readonly List<(Button b, Label durum, KuryeEgitim.Tur t)> egitimler = new List<(Button, Label, KuryeEgitim.Tur)>();
             }
 
             protected override void Kur()
@@ -88,6 +90,15 @@ namespace KuryeTycoon
                 k.bugun = U.Yazi(ikinci, "", "minik", "soluk", "tek-satir");
                 k.bugun.style.marginLeft = 4;
 
+                // Kalıcı özellikler (gece kuşu, güler yüzlü...): üstüne gelince ne yaptığı
+                k.ozellikSatir = U.Gecirgen(ana, "cipler");
+                foreach (int t in c.ozellikler)
+                {
+                    int tt = t;
+                    var cip = U.Cip(k.ozellikSatir, KuryeOzellik.Ad(t), KuryeOzellik.OlumluMu(t) ? UITheme.Good : UITheme.Warn);
+                    ui.Ipucu(cip, () => $"{KuryeOzellik.Ad(tt)}: {KuryeOzellik.Aciklama(tt)}");
+                }
+
                 var m = U.Gecirgen(ana, "olcu");
                 U.Yazi(m, "Moral", "olcu-ad");
                 k.moral = U.CubukEkle(m, 0f, UITheme.Good);
@@ -115,6 +126,20 @@ namespace KuryeTycoon
                 k.ekipman = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
                 k.canta = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
                 foreach (var l in new[] { k.meslek, k.kapasite, k.kazanc, k.hesap, k.sigorta, k.hedef, k.ekipman, k.canta }) l.style.marginTop = 3;
+
+                // Eğitimler: şirket öder, beceri artar ya da yeni sipariş türü açılır
+                U.Bolum(k.ayrinti, "EĞİTİM");
+                foreach (KuryeEgitim.Tur t in System.Enum.GetValues(typeof(KuryeEgitim.Tur)))
+                {
+                    var tt = t;
+                    var sat = U.El(k.ayrinti, "satir");
+                    sat.style.marginBottom = 4;
+                    var ad = U.Yazi(sat, KuryeEgitim.Adlar[(int)t], "kucuk", "esnek", "tek-satir");
+                    ui.Ipucu(ad, () => KuryeEgitim.Aciklamalar[(int)tt]);
+                    var durum = U.Yazi(sat, "Alındı ✓", "minik", "iyi");
+                    var b = U.Dugme(sat, "", () => KuryeEgitim.Ver(k.c, tt), "kucuk-dg");
+                    k.egitimler.Add((b, durum, t));
+                }
 
                 var dugmeler = U.El(k.ayrinti, "satir");
                 dugmeler.style.marginTop = 8;
@@ -229,6 +254,18 @@ namespace KuryeTycoon
                                  $" · teklif seçiciliği: {c.PickinessText}");
                 k.cantaDugme.SetEnabled(c.BagWorn);
                 U.Metin(k.cantaDugme, $"Yeni çanta (−{Ft(GameData.Equip(EquipmentKind.TermalCanta).price)})");
+                long serbest = EconomyManager.I.FreeCash;
+                foreach (var (b, durum, t) in k.egitimler)
+                {
+                    bool alindi = KuryeEgitim.Var(c, t);
+                    U.Goster(durum, alindi);
+                    U.Goster(b, !alindi);
+                    if (alindi) continue;
+                    int bedel = KuryeEgitim.Bedel((int)t);
+                    bool aracUygun = t != KuryeEgitim.Tur.Catering || c.vehicle == VehicleKind.Motosiklet || c.vehicle == VehicleKind.Araba;
+                    U.Metin(b, aracUygun ? $"Ver — {Ft(bedel)}" : "Motor/araba gerekir");
+                    b.SetEnabled(aracUygun && serbest >= bedel);
+                }
                 k.cikarDugme.SetEnabled(c.OrderCount == 0);
                 U.Metin(k.cikarDugme, c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)");
             }

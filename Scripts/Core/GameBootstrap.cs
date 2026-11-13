@@ -72,6 +72,7 @@ namespace KuryeTycoon
             Make<MapCamera>("Harita Kamerası");
             Make<CourierManager>("Kurye Yönetimi");
             Make<RobotFilo>("Robotlar");
+            Make<KurumsalSiparisler>("Kurumsal Siparişler");
             Make<OrderManager>("Siparişler");
             Make<CampaignManager>("Kampanyalar");
             Make<GoalManager>("Haftalık Hedefler");
@@ -158,11 +159,17 @@ namespace KuryeTycoon
                 GameClock.I.RestoreTime(d.totalMinutes, d.startDay);
                 Difficulty.Level = (DifficultyLevel)Mathf.Clamp(d.difficulty, 0, 2);   // sistemler kurulmadan önce
                 OrderHeat.Reset(); DukkanKari.Reset();
+                Senaryo.Secili = (Senaryo.Tur)Mathf.Clamp(d.senaryo, 0, System.Enum.GetValues(typeof(Senaryo.Tur)).Length - 1);
+                Senaryo.Durum = d.senaryoDurum;
+                Senaryo.GunlukTohum = d.gunlukTohum;
+                Anlatici.Secili = (Anlatici.Tur)Mathf.Clamp(d.anlatici, 0, 2);
+                Anlatici.Sifirla();
 
                 GenerateWorld(d.mapSeed);
                 CourierManager.I.Init();
                 OrderManager.I.Init();
                 RobotFilo.I.Init();
+                KurumsalSiparisler.I.Init();
                 CampaignManager.I.Init();
                 SupportManager.I.Init();
                 OperationsManager.I.Init();
@@ -199,15 +206,18 @@ namespace KuryeTycoon
             if (Started) return;
 
             Denge.Sifirla();
+            Anlatici.Sifirla();
+            Senaryo.Sifirla();
             EconomyManager.I.money = familyLoanAmount;
             EconomyManager.I.InitCashMarkers();
             OrderHeat.Reset(); DukkanKari.Reset();
             Telemetry.Reset();
-            GenerateWorld(Random.Range(1, int.MaxValue));
+            GenerateWorld(Senaryo.HaritaTohumu(Random.Range(1, int.MaxValue)));   // günlük meydan okumada bugünün şehri
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v).StartShift();
             OrderManager.I.Init();
             RobotFilo.I.Init();
+            KurumsalSiparisler.I.Init();
             CampaignManager.I.Init();
             SupportManager.I.Init();
             OperationsManager.I.Init();
@@ -217,8 +227,14 @@ namespace KuryeTycoon
             CityEvents.I.Init();
             CrisisManager.I.Init();
             CourierMessages.I.Init();
-            FamilyLoan.I.principal = System.Math.Max(familyLoanTotal, familyLoanAmount);
-            FamilyLoan.I.Init();
+            long borc = Senaryo.AileBorcu(System.Math.Max(familyLoanTotal, familyLoanAmount));
+            if (borc <= 0) FamilyLoan.I.BorcsuzBasla();   // serbest mod
+            else
+            {
+                FamilyLoan.I.principal = borc;
+                FamilyLoan.I.Init();
+            }
+            Senaryo.Baslat();   // senaryonun başlangıç ayarları (sermaye, güçlü rakip...)
             Guide.I.InitNew();
             SaveSystem.I.Init();
 
@@ -228,7 +244,8 @@ namespace KuryeTycoon
             // Kısa tutuldu: menüleri ilk gün rehberi (Tutorial.cs) tek tek gösterir, ayrıntılar pencerelerdeki "Ayrıntı"da.
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
                 "2 kuryen ve 2 sözleşmeli dükkanın var; siparişler otomatik atanır.\n" +
-                "Amacın: kâr et, kredi taksitlerini öde, rakiplerini geç.\n\n" +
+                (Senaryo.Secili == Senaryo.Tur.Klasik ? "Amacın: kâr et, kredi taksitlerini öde, rakiplerini geç.\n\n"
+                                                       : $"Senaryo: {Senaryo.Adlar[(int)Senaryo.Secili]}. {Senaryo.Aciklamalar[(int)Senaryo.Secili]}\n\n") +
                 "Kartı kapatınca kısa bir rehber başlayacak.\n\n" +
                 "Boşluk = duraklat · 1–8 = hız · Esc = menü. Oyun her gece kendini kaydeder."));
         }

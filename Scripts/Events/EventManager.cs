@@ -276,6 +276,8 @@ namespace KuryeTycoon
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
 
             DilemmaEvents.TryRoll();   // iki seçeneği de olumsuz zor kararlar (DilemmaEvents.cs)
+            Anlatici.YeniGun();        // sakin anlatıcı: zor günlerden sonra küçük yardım
+            Senaryo.YeniGun();         // senaryo hedefi tuttu mu, süresi doldu mu
 
             var map = CityMap.I;
             foreach (var s in map.Shops) s.prepMultiplier = 1f;
@@ -284,7 +286,7 @@ namespace KuryeTycoon
             foreach (var s in map.Shops)
                 if (s.contracted && !s.own && map.IsUnlocked(s.tile)) contracted.Add(s);
 
-            if (contracted.Count == 0 || Random.value > 0.45f) return;
+            if (contracted.Count == 0 || Random.value > 0.45f * Anlatici.OlayCarpani) return;
             var shop = contracted[Random.Range(0, contracted.Count)];
 
             switch (Random.Range(0, 3))

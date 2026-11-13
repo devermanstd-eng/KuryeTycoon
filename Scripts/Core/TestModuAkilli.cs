@@ -53,6 +53,7 @@ namespace KuryeTycoon
             }
 
             AkilliBorc();
+            AkilliKurumsal();
             // Kurye açığı çok büyükse gün içinde de alır (oyuncu bildirimleri görüp İşe Alım'a bakar)
             if (clk.Hour >= 9 && clk.Hour <= 20) AkilliIseAlim(true);
 
@@ -68,7 +69,62 @@ namespace KuryeTycoon
                 AkilliEkipman();
                 AkilliDukkanBakimi();
                 AkilliMarket();
+                AkilliEgitim();
                 if (clk.DayOfWeek == 0 && sonHaftaGun != clk.Day) { sonHaftaGun = clk.Day; AkilliFiyat(); }
+            }
+        }
+
+        // ------------------------------------------------------------------ eğitim ve kurumsal siparişler
+
+        /// <summary>
+        /// Eğitim: eczaneyle çalışıyorsa çevrimiçi saatleri en uzun 2–3 kuryeye ilaç sertifikası; kurumsal teklif geliyorsa
+        /// bir motorlu/arabalı kuryeye catering eğitimi; para bolsa iletişim eğitimi (puanı düşük kuryeye).
+        /// </summary>
+        void AkilliEgitim()
+        {
+            var cm = CourierManager.I;
+            if (cm == null || cm.Couriers.Count == 0) return;
+            bool eczane = false;
+            foreach (var s in CityMap.I.Shops) if (s.contracted && s.def.eczane) eczane = true;
+            int istenenIlac = eczane ? Mathf.Clamp(cm.Couriers.Count / 6, 2, 4) : 0;
+            if (KuryeEgitim.Sayi(KuryeEgitim.Tur.Ilac) < istenenIlac)
+                foreach (var c in cm.Couriers)
+                    if (!KuryeEgitim.Var(c, KuryeEgitim.Tur.Ilac) && c.occupation == Occupation.TamZamanli &&
+                        KuryeEgitim.Bedel((int)KuryeEgitim.Tur.Ilac) * 3L < Bos)
+                    {
+                        if (KuryeEgitim.Ver(c, KuryeEgitim.Tur.Ilac)) Eylem("Eğitim", $"{c.courierName}: ilaç sertifikası (eczane siparişleri için)");
+                        break;
+                    }
+            bool kurumsalVar = KurumsalSiparisler.I != null && KurumsalSiparisler.I.Teklifler.Count > 0;
+            if ((kurumsalVar || cm.Couriers.Count >= 12) && KuryeEgitim.Sayi(KuryeEgitim.Tur.Catering) < 2)
+                foreach (var c in cm.Couriers)
+                    if (!KuryeEgitim.Var(c, KuryeEgitim.Tur.Catering) && (c.vehicle == VehicleKind.Motosiklet || c.vehicle == VehicleKind.Araba) &&
+                        KuryeEgitim.Bedel((int)KuryeEgitim.Tur.Catering) * 3L < Bos)
+                    {
+                        if (KuryeEgitim.Ver(c, KuryeEgitim.Tur.Catering)) Eylem("Eğitim", $"{c.courierName}: catering (kurumsal siparişler için)");
+                        break;
+                    }
+            if (Bos > 2000000)
+                foreach (var c in cm.Couriers)
+                    if (c.politeness < 0.75f && !KuryeEgitim.Var(c, KuryeEgitim.Tur.Iletisim))
+                    {
+                        if (KuryeEgitim.Ver(c, KuryeEgitim.Tur.Iletisim)) Eylem("Eğitim", $"{c.courierName}: müşteri iletişimi (nezaket {c.politeness:0.00})");
+                        break;
+                    }
+        }
+
+        /// <summary>Kurumsal teklifler: catering eğitimli kurye varsa kabul, yoksa geç.</summary>
+        void AkilliKurumsal()
+        {
+            var ks = KurumsalSiparisler.I;
+            if (ks == null) return;
+            int egitimli = 0;
+            foreach (var c in CourierManager.I.Couriers) if (KuryeEgitim.Var(c, KuryeEgitim.Tur.Catering) && c.IsOnline) egitimli++;
+            foreach (var t in ks.Teklifler)
+            {
+                if (t.kabul || t.bitti) continue;
+                if (egitimli > 0) { ks.KabulEt(t); Eylem("Kurumsal", $"{t.ofisAdi}, {t.kisi} kişi, teslim {KurumsalSiparisler.SaatYazi(t.teslimAt)}: kabul ({egitimli} eğitimli kurye çevrimiçi)"); }
+                else { ks.Reddet(t); Eylem("Kurumsal", $"{t.ofisAdi}: reddedildi (catering eğitimli kurye yok)"); }
             }
         }
 

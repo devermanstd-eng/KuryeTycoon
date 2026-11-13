@@ -123,6 +123,8 @@ namespace KuryeTycoon
         public bool noContact;         // temassız teslimat: kapıya bırakılır (müşteri evde olmasa da teslim edilir)
         public bool dolap;             // paket dolabına teslim (Paket dolapları geliştirmesi): kat, kod, evde yok derdi yok
         public bool robot;             // teslimat robotu götürdü (RobotFilo)
+        public bool eczane;            // eczane siparişi: ilaç sertifikalı kurye götürür, kapıda kimlik/PIN (KuryeEgitim.Ilac)
+        public bool catering;          // kurumsal / catering siparişi: zamanı önceden belli, büyük (KurumsalSiparisler)
         public string noteTranslation = ""; // not Macarca ise Türkçesi ("Çevir")
         public bool markedLate;        // kurye "gecikme bildir"e bastı: müşteriye haber verildi, söz verilen süre +10 dk
         public bool shopPinged;        // destek dükkanı hızlandırması için aradı

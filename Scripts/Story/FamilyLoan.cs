@@ -91,6 +91,18 @@ namespace KuryeTycoon
             ready = true;
         }
 
+        /// <summary>Serbest mod: borç yok (taksit, hikâye kartı ve üst çubuk hapı çıkmaz).</summary>
+        public void BorcsuzBasla()
+        {
+            Schedule.Clear();
+            principal = 0;
+            Toplam = 0;
+            TotalPaid = 0;
+            Trust = maxTrust;
+            Finished = true;
+            ready = true;
+        }
+
         public void Init()
         {
             Trust = maxTrust;

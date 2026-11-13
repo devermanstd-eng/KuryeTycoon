@@ -220,6 +220,7 @@ namespace KuryeTycoon
             if (o == null || o.status != OrderStatus.Bekliyor || o.courier != null || o.robot) return false;
             if (o.cashPay || o.IsHeavy || o.distance > MaxMesafe) return false;
             if (o.addressIssue != AddressIssue.Yok || o.cancelPlan > 0) return false;
+            if (o.eczane || o.catering) return false;   // kimlik kontrolü / büyük kurumsal sipariş: kurye götürür
             return true;
         }
 
