@@ -41,7 +41,7 @@ namespace KuryeTycoon
         [Header("Başlangıç")]
         // Not: alan adı bilerek değiştirildi (eski "startingMoney"). Eski sahnelerde kayıtlı 300 000 değeri
         // artık okunmaz; herkes güncel varsayılanla (1 000 000 Ft) başlar.
-        [Tooltip("Ailenden aldığın borç = başlangıç kasası")]
+        [Tooltip("Bankadan çekilen kurulum kredisi = başlangıç kasası")]
         public long familyLoanAmount = 1000000;
         public VehicleKind[] starterCouriers = { VehicleKind.Bisiklet, VehicleKind.EScooter };
 
@@ -79,7 +79,7 @@ namespace KuryeTycoon
             Make<OperationsManager>("Operasyon Sorumlusu");
             Make<RivalCompany>("Rakip Şirket");
             Make<RivalFleet>("Rakip Kuryeler");
-            Make<FamilyLoan>("Hikaye - Aile Borcu");
+            Make<FamilyLoan>("Hikaye - Kurulum Kredisi");
             Make<Milestones>("Kilometre Taşları");
             Make<Guide>("Rehber");
             Make<GameSounds>("Sesler");
@@ -220,7 +220,7 @@ namespace KuryeTycoon
             // Kısa tutuldu: menüleri ilk gün rehberi (Tutorial.cs) tek tek gösterir, ayrıntılar pencerelerdeki "Ayrıntı"da.
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
                 "2 kuryen ve 2 sözleşmeli dükkanın var; siparişler otomatik atanır.\n" +
-                "Amacın: kâr et, aile borcunu öde, şirketi büyüt.\n\n" +
+                "Amacın: kâr et, kredi taksitlerini öde, rakiplerini geç.\n\n" +
                 "Kartı kapatınca kısa bir rehber başlayacak.\n\n" +
                 "Boşluk = duraklat · 1–8 = hız · Esc = menü. Oyun her gece kendini kaydeder."));
         }

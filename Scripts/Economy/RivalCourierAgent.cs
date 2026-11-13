@@ -12,6 +12,8 @@ namespace KuryeTycoon
         public bool carrying;
         public bool leaving;
         public string label = "Turbo";
+        public int rakip;                                    // RivalCompany.Rakipler sırası
+        public Color renk = RivalFleet.RivalColor;
 
         S state;
         List<Vector2Int> path;
@@ -25,16 +27,19 @@ namespace KuryeTycoon
 
         static readonly string[] Names = { "Ádám", "Gergő", "Nóra", "Kata", "Levente", "Zsófi", "Barış", "Deniz", "Mert", "Ece", "Péter", "Dóra" };
 
-        public void Init(Vector2Int start, int index)
+        public void Init(Vector2Int start, int index, int rakipNo = 0)
         {
             Position = start;
             lastPos = start;
-            label = "Turbo · " + Names[Random.Range(0, Names.Length)];
+            rakip = rakipNo;
+            var r = RivalCompany.I != null ? RivalCompany.I.RakipAt(rakip) : null;
+            if (r != null) renk = r.renk;
+            label = (r != null ? r.kisa : "Turbo") + " · " + Names[Random.Range(0, Names.Length)];
             var v = GameData.Vehicles[Random.Range(0, 3)]; // çoğu bisiklet/scooter/motor
             speed = v.tilesPerMinute * Random.Range(0.85f, 1.1f);
             transform.position = CityMap.ToWorld(Position);
-            ring = SpriteFactory.Create("Halka", transform, true, RivalFleet.RivalColor, new Vector3(0f, 0f, -0.04f), 0.6f, 9);
-            body = SpriteFactory.Create("Gövde", transform, true, Color.Lerp(RivalFleet.RivalColor, Color.white, 0.35f), new Vector3(0f, 0f, -0.05f), 0.4f, 10);
+            ring = SpriteFactory.Create("Halka", transform, true, renk, new Vector3(0f, 0f, -0.04f), 0.6f, 9);
+            body = SpriteFactory.Create("Gövde", transform, true, Color.Lerp(renk, Color.white, 0.35f), new Vector3(0f, 0f, -0.05f), 0.4f, 10);
             model = CharacterVisuals.Spawn(transform, label + index);
             NextShop();
         }
@@ -50,7 +55,7 @@ namespace KuryeTycoon
             if (leaving) { Destroy(gameObject); return; }
             var options = new List<Shop>();
             foreach (var s in CityMap.I.Shops)
-                if (s.rivalContracted && CityMap.I.IsUnlocked(s.tile)) options.Add(s);
+                if (RivalCompany.Var(s, rakip) && CityMap.I.IsUnlocked(s.tile)) options.Add(s);
             carrying = false;
             if (options.Count == 0)
             {
