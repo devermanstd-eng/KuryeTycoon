@@ -254,7 +254,7 @@ namespace KuryeTycoon
 
             if (ev.title == "İflas!" && iflasGunu < 0) iflasGunu = clk.CompanyDay;
             if (ev.title != null && ev.title.StartsWith("Son:") && kapanisGunu < 0) kapanisGunu = clk.CompanyDay;
-            if (ev.title == "Borç bitti!" && borcBittiGunu < 0) borcBittiGunu = clk.CompanyDay;
+            if ((ev.title == "Kredi bitti!" || ev.title == "Borç bitti!") && borcBittiGunu < 0) borcBittiGunu = clk.CompanyDay;
             if (ev.title == "Taksit kaçtı!") taksitKacti++;
 
             if (kartW != null)
@@ -730,11 +730,11 @@ namespace KuryeTycoon
             if (RivalCompany.I != null) sb.AppendLine($"Pazar payı (geçen hafta): %{RivalCompany.I.MarketShare * 100f:0}");
             var loan = FamilyLoan.I;
             if (loan != null)
-                sb.AppendLine($"Aile borcu: ödenen {Ft(loan.TotalPaid)} · kalan {Ft(loan.Remaining)} · güven {loan.Trust} · kaçan taksit kartı {taksitKacti}" +
+                sb.AppendLine($"Kredi: ödenen {Ft(loan.TotalPaid)} · kalan {Ft(loan.Remaining)} · güven {loan.Trust} · kaçan taksit kartı {taksitKacti}" +
                               (loan.Finished ? " · BİTTİ" : "") + (loan.Failed ? " · BAŞARISIZ (şirket kapandı)" : ""));
             sb.AppendLine(iflasGunu > 0 ? $"!!! İFLAS: {iflasGunu}. gün (bot \"borçla devam\" seçti)" : "İflas yok.");
             if (kapanisGunu > 0) sb.AppendLine($"!!! ŞİRKET KAPANDI kartı: {kapanisGunu}. gün");
-            if (borcBittiGunu > 0) sb.AppendLine($"Aile borcu {borcBittiGunu}. günde bitti.");
+            if (borcBittiGunu > 0) sb.AppendLine($"Kredi {borcBittiGunu}. günde bitti.");
 
             if (gunler.Count > 0)
             {
