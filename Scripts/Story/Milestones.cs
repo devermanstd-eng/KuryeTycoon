@@ -140,8 +140,8 @@ namespace KuryeTycoon
             Defs.Add(new MilestoneDef
             {
                 id = "sehir_lideri", card = true, title = "Şehrin lideri", reward = 100000, reputation = 0.05f,
-                text = "Geçen hafta rakibinden daha çok teslimat yaptın: pazarın lideri sensin.",
-                reached = () => RivalCompany.I != null && RivalCompany.I.myDeliveriesLastWeek > 0 && RivalCompany.I.MarketShare > 0.5f,
+                text = "Geçen hafta bütün rakiplerinden daha çok teslimat yaptın: pazarın lideri sensin.",
+                reached = () => RivalCompany.I != null && RivalCompany.I.myDeliveriesLastWeek > 0 && RivalCompany.I.Lideriz,
                 progress = () => RivalCompany.I != null ? $"pazar payı %{RivalCompany.I.MarketShare * 100f:0}" : ""
             });
             Defs.Add(new MilestoneDef
@@ -160,7 +160,7 @@ namespace KuryeTycoon
             Defs.Add(new MilestoneDef
             {
                 id = "aile_borcu", card = true, title = "Söz tutuldu", reputation = 0.1f,
-                text = "Annenle babanın birikimini kuruşu kuruşuna geri ödedin.",
+                text = "Kurulum kredisini faiziyle kuruşu kuruşuna geri ödedin.",
                 reached = () => FamilyLoan.I != null && FamilyLoan.I.Finished
             });
         }
