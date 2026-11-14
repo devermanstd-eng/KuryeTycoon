@@ -1281,7 +1281,11 @@ namespace KuryeTycoon
             string n = m.name;
             return n.StartsWith("Cizgi") || n.StartsWith("Cam") || n.StartsWith("Vitrin") || n.StartsWith("Vitray") || n.StartsWith("Isik") ||
                    n.StartsWith("Simsek") || n.StartsWith("Bulut") || n.StartsWith("Yazi") || n.StartsWith("Su_") || n.StartsWith("PSu") ||
-                   n.StartsWith("KirSu") || n.StartsWith("OfisCam") || n.StartsWith("Kar_") || n.StartsWith("Reklam") || n.StartsWith("Pano");
+                   n.StartsWith("KirSu") || n.StartsWith("OfisCam") || n.StartsWith("Kar_") || n.StartsWith("Reklam") || n.StartsWith("Pano") ||
+                   // Yollar: trafik karı eritir, kuryeler yolu görebilsin (yol yalnızca hafif beyazlar)
+                   n.StartsWith("YAsfalt") || n.StartsWith("TAsfalt") || n.StartsWith("Yol_") || n.StartsWith("YolKoyu") ||
+                   n.StartsWith("Serit") || n.StartsWith("YSerit") || n.StartsWith("TSerit") || n.StartsWith("YSari") || n.StartsWith("TSari") ||
+                   n.StartsWith("YBeyaz") || n.StartsWith("TBeyaz") || n.StartsWith("Rogar") || n.StartsWith("Tramvay");
         }
 
         void KarKatmaniGuncelle(float kar)
