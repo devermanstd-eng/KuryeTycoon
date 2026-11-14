@@ -213,7 +213,7 @@ namespace KuryeTycoon
             EconomyManager.I.InitCashMarkers();
             OrderHeat.Reset(); DukkanKari.Reset();
             Telemetry.Reset();
-            GenerateWorld(Senaryo.HaritaTohumu(Random.Range(1, int.MaxValue)));   // günlük meydan okumada bugünün şehri
+            GenerateWorld(Senaryo.HaritaTohumu(TestModu.TestHaritaTohumu ?? Random.Range(1, int.MaxValue)));   // günlük meydan okumada bugünün şehri; testte sabit tohum
             CourierManager.I.Init();
             foreach (var v in starterCouriers) CourierManager.I.HireStarter(v).StartShift();
             OrderManager.I.Init();
