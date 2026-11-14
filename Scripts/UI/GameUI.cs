@@ -72,6 +72,7 @@ namespace KuryeTycoon
                 a();
             }
             UiGuncelle();   // UI Toolkit arayüzü (Arayuz/UiKok.cs)
+            OrtaKutuAcik = UiAktif && UiAcikModal != UiModalTur.Yok;
         }
 
         void LateUpdate()
@@ -110,6 +111,11 @@ namespace KuryeTycoon
             if (modalFree) HandleKeys();
             if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
 
+            // Yeni arayüzde ortada bir kutu (olay kartı, Esc menüsü, onay) açıksa IMGUI hiçbir şey çizmez. Otomatik testin ekran
+            // görüntülerinde IMGUI, UI Toolkit'in üstünde çıktı (uçan "+€" yazıları ve gece ışıkları olay kartına biniyordu).
+            // Oyun ekranında sıra ters olsa bile arkası perdeyle karartıldığı için çizmemek bir şey kaybettirmez.
+            if (OrtaKutuAcik) return;
+
             GUI.enabled = modalFree;
             // Yeni arayüz (UI Toolkit) açıksa üst çubuk, sol menü, pencere başlığı, harita araçları, olaylar ve hedef kutusu orada çizilir.
             // Haritanın üstüne çizilen IMGUI parçaları (katman, etiketler, uçan yazılar) harita alanına kırpılır: UI Toolkit'in altına taşmasın.
@@ -140,10 +146,13 @@ namespace KuryeTycoon
             DrawGuideOverlays(sw, sh);
             GUI.enabled = true;
             if (eskiArayuz) DrawEvent(sw, sh);
-            if (BigCardOpen && EventManager.I.Current == null && !pauseMenuOpen) DrawBigCard(sw, sh);
+            if (BigCardOpen && EventManager.I.Current == null && !pauseMenuOpen && !(UiAktif && ConfirmOpen)) DrawBigCard(sw, sh);
             if (pauseMenuOpen && eskiArayuz) DrawPauseMenu(sw, sh);
             if (ConfirmOpen && eskiArayuz) DrawConfirm(sw, sh);
         }
+
+        /// <summary>Yeni arayüzde ortada bir kutu açık: IMGUI (GameUI ve WeatherFx) o sırada çizmez.</summary>
+        public static bool OrtaKutuAcik { get; private set; }
 
         // ---------------------------------------------------------------- ESC menüsü (kaydet / ana menü / çık)
         bool pauseMenuOpen, menuWasPaused, confirmMainMenu;
