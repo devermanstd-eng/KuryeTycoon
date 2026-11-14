@@ -53,6 +53,7 @@ namespace KuryeTycoon
         public List<PayoutSave> payouts = new List<PayoutSave>();
         public int nextSurpriseDay;
         public long localTaxPaidThisYear;
+        public long geciciVergiOdenen;   // bu yıl ödenen geçici vergi (eski kayıtlarda 0)
         public long bankLoanRemaining, bankLoanDaily;
         public bool emergencyLoanUsed, crisisWarned, bankrupt;
         public int daysUnderLimit;
@@ -97,6 +98,9 @@ namespace KuryeTycoon
         public int warOwner;
         public List<Rakip> rakipler = new List<Rakip>();
         public int sonSatisTeklifiGunu = -999; // rakip satın alma teklifi (eski kayıtlarda yok)
+        // Önceden duyurulan rakip hamleleri ve pazar payına göre tehdit seviyesi (eski kayıtlarda yok)
+        public List<RakipTehdit> tehditler = new List<RakipTehdit>();
+        public int tehditSeviyesi;
     }
 
     [System.Serializable]

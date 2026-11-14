@@ -23,7 +23,7 @@ namespace KuryeTycoon
         static float carpan = 1f;
 
         /// <summary>Yeni oyun ya da yükleme: önceki oyunun önbelleği kalmasın.</summary>
-        public static void Sifirla() { carpanGunu = -1; carpan = 1f; }
+        public static void Sifirla() { carpanGunu = -1; carpan = 1f; IsletmeGiderleri.Sifirla(); }
 
         /// <summary>
         /// Son 14 günün ortalama gelirine göre fiyat çarpanı (1–5). Günde bir hesaplanır ve 0,25'lik adımlarla yuvarlanır,

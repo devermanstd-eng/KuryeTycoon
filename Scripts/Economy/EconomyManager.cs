@@ -4,12 +4,13 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>Teslimat dışı giderlerin türü (Finans'ta ayrı gösterilir).</summary>
-    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger, Vergi, Maas, Gelistirme, Stok }
+    public enum ExpenseCategory { Kira, Ekipman, Sozlesme, Bolge, Iade, Kaza, Reklam, Diger, Vergi, Maas, Gelistirme, Stok, Isletme }   // yenisi sona
 
     public class PeriodStats
     {
         public static readonly string[] CategoryNames =
-            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar", "Personel maaşları", "Geliştirmeler", "Market stoku" };
+            { "Ofis kirası", "Ekipman", "Sözleşmeler", "Yeni bölge", "İade / tazminat", "Kaza desteği", "Reklam", "Diğer", "Vergi ve harçlar", "Personel maaşları", "Geliştirmeler", "Market stoku",
+              "İşletme giderleri" };
 
         public long commission;     // dükkan komisyonları
         public long fees;           // müşteriden alınan teslimat ücretleri
@@ -17,7 +18,7 @@ namespace KuryeTycoon
         public long courierPay;     // kurye ödemeleri (paket + km + bonus)
         public long boosts;         // boost ödemeleri (kârdan)
         public long rewards;        // haftalık / aylık hedef ödülleri (kârdan)
-        public readonly long[] byCategory = new long[12];
+        public readonly long[] byCategory = new long[13];   // ExpenseCategory sayısı (eski kayıtlar 12: eksik kalem 0)
         public long penalties;      // vergi cezası/faizi (vergiden düşülmez)
         public long payoutsPaid;    // kuryelerin hesabına yatan (hakediş ödemesi)
         public long cashCollected;  // kuryelerden tahsil edilen nakit (offload)
@@ -143,6 +144,7 @@ namespace KuryeTycoon
         {
             GameClock.I.OnNewDay += OnNewDay;
             GameClock.I.OnNewYear += OnNewYear;
+            GameClock.I.OnNewMonth += GeciciVergiZamani;
         }
 
         // ---------- Kurye ödemeleri ----------
@@ -569,7 +571,7 @@ namespace KuryeTycoon
                 weekHeavyLost = weekHeavyLost, weekCancelledRejected = weekCancelledRejected, weekBusyLost = weekBusyLost,
                 weekCancelByHour = (int[])weekCancelByHour.Clone(), repAtWeekStart = repAtWeekStart,
                 cashAtWeekStart = cashAtWeekStart, lastWeekNet = lastWeekNet, cashAtLastReport = cashAtLastReport,
-                nextSurpriseDay = nextSurpriseDay, localTaxPaidThisYear = localTaxPaidThisYear,
+                nextSurpriseDay = nextSurpriseDay, localTaxPaidThisYear = localTaxPaidThisYear, geciciVergiOdenen = geciciVergiOdenen,
                 bankLoanRemaining = bankLoanRemaining, bankLoanDaily = bankLoanDaily, emergencyLoanUsed = emergencyLoanUsed,
                 crisisWarned = crisisWarned, bankrupt = bankrupt, daysUnderLimit = daysUnderLimit,
                 insurancePlan = insurancePlan, insurancePlanChangeDay = insurancePlanChangeDay, insuranceIncomeTotal = insuranceIncomeTotal
@@ -620,7 +622,7 @@ namespace KuryeTycoon
                 Payouts.Add(new Payout { courier = c, courierName = p.courierName, amount = p.amount, payDay = p.payDay, early = p.early });
             }
 
-            nextSurpriseDay = s.nextSurpriseDay; localTaxPaidThisYear = s.localTaxPaidThisYear;
+            nextSurpriseDay = s.nextSurpriseDay; localTaxPaidThisYear = s.localTaxPaidThisYear; geciciVergiOdenen = s.geciciVergiOdenen;
             bankLoanRemaining = s.bankLoanRemaining; bankLoanDaily = s.bankLoanDaily; emergencyLoanUsed = s.emergencyLoanUsed;
             crisisWarned = s.crisisWarned; bankrupt = s.bankrupt; daysUnderLimit = s.daysUnderLimit;
             insurancePlan = s.insurancePlan; insurancePlanChangeDay = s.insurancePlanChangeDay; insuranceIncomeTotal = s.insuranceIncomeTotal;
@@ -757,6 +759,8 @@ namespace KuryeTycoon
             // Ofis kirası, platform ücreti, yazılım abonelikleri, tesis giderleri ve reklam bütçesi (geliştirmelere göre)
             if (UpgradeManager.I != null) UpgradeManager.I.ChargeDaily();
             else Spend(officeRentPerDay, "Ofis kirası", ExpenseCategory.Kira);
+            // Şirket büyüdükçe artan işletme giderleri (bölge, filo sigortası, yönetim, kurye sosyal katkısı; IsletmeGiderleri.cs)
+            IsletmeGiderleri.GunlukKes(this, Today);
 
             if (taxDebt > 0)
             {
@@ -1240,18 +1244,69 @@ namespace KuryeTycoon
             }
         }
 
+        // ---------- Geçici vergi (3 ayda bir peşin) ----------
+        /// <summary>Bu yıl ödenen (ya da borca yazılan) geçici vergi; yıl sonu vergisinden düşülür.</summary>
+        long geciciVergiOdenen;
+        public long GeciciVergiOdenen => geciciVergiOdenen;
+
+        /// <summary>Şu an çeyrek kapansa ödenecek geçici vergi: yılbaşından bu yana kârın kademeli vergisi − bu yıl ödenen.</summary>
+        public long TahminiGeciciVergi => System.Math.Max(0L, ProgressiveTax(System.Math.Max(0L, Year.Profit)) - geciciVergiOdenen);
+
+        /// <summary>Sıradaki geçici vergi tarihi (31 Mart, 30 Haziran, 30 Eylül; Aralık yıl sonu vergisi).</summary>
+        public static string SiradakiVergiTarihi(int ay) => ay <= 3 ? "31 Mart" : ay <= 6 ? "30 Haziran" : ay <= 9 ? "30 Eylül" : "31 Aralık (yıl sonu)";
+
+        /// <summary>
+        /// Çeyrek kapanınca (Nisan, Temmuz, Ekim başı) kademeli vergi peşin istenir: yılbaşından bu yana kârın vergisi − daha önce
+        /// ödenen. Böylece vergi yıl sonunu beklemeden kâr marjını daraltır (oyun Mart'ta başlıyor, yıl sonu çok uzak).
+        /// </summary>
+        void GeciciVergiZamani()
+        {
+            if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
+            int ay = GameClock.I.Month;
+            if (ay != 4 && ay != 7 && ay != 10) return;
+            int ceyrek = (ay - 1) / 3;
+            long kar = System.Math.Max(0L, Year.Profit);
+            long tax = TahminiGeciciVergi;
+            if (tax <= 0)
+            {
+                EventManager.I.Notify($"{ceyrek}. çeyrek geçici vergisi: ödenecek vergi yok (yılbaşından bu yana kâr {Ft(kar)}).");
+                return;
+            }
+            string metin = $"Çeyrek kapandı. Yılbaşından bu yana vergilendirilebilir kâr {Ft(kar)}, kademeli vergisi " +
+                           $"{Ft(ProgressiveTax(kar))} (ortalama %{EffectiveTaxRate(kar) * 100f:0.0}); bu yıl daha önce ödenen geçici vergi {Ft(geciciVergiOdenen)}.\n\n" +
+                           "Geçici vergi yıl sonu vergisinden düşülür: yıl sonunda sadece kalan fark ödenir (fazlası iade edilir).\n\n" +
+                           $"Ana kasanda {Ft(money)} var.";
+            EventManager.I.Push(new GameEvent($"{ceyrek}. çeyrek geçici vergisi — Vergi Zamanı", metin)
+                .Add($"Şimdi öde ({Ft(tax)})", () => { geciciVergiOdenen += tax; PayTax(tax); })
+                .Add("Ertele (+%10 ceza, her gün +%2 faiz, itibar düşer)", () => { geciciVergiOdenen += tax; Postpone(tax); }));
+        }
+
         void OnNewYear(int endedYear)
         {
             long taxable = System.Math.Max(0L, Year.Profit);
-            long tax = ProgressiveTax(taxable);
+            long yillik = ProgressiveTax(taxable);
+            long pesin = geciciVergiOdenen;
+            long tax = yillik - pesin;
             LastTaxSummary = $"{endedYear}. yıl → Gelir {Ft(Year.Income)}, Gider {Ft(Year.Expenses)}, " +
-                             $"Vergilendirilebilir kâr {Ft(taxable)}, Kademeli vergi (ortalama %{EffectiveTaxRate(taxable) * 100f:0.0}) {Ft(tax)}";
+                             $"Vergilendirilebilir kâr {Ft(taxable)}, Kademeli vergi (ortalama %{EffectiveTaxRate(taxable) * 100f:0.0}) {Ft(yillik)}" +
+                             (pesin > 0 ? $", yıl içinde ödenen geçici vergi {Ft(pesin)}, kalan {Ft(System.Math.Max(0L, tax))}" : "");
             Year = new PeriodStats();
             localTaxPaidThisYear = 0;
+            geciciVergiOdenen = 0;
+            if (tax < 0)
+            {
+                // Peşin ödenen yıllık vergiden fazla: fark iade edilir (gelir sayılmaz)
+                money += -tax;
+                Log($"Vergi iadesi: {Ft(-tax)}");
+                EventManager.I.Push(new GameEvent($"{endedYear}. Yıl Sonu", $"Yıl içinde ödediğin geçici vergi yıllık vergiden fazla: {Ft(-tax)} iade edildi.\n\n" + LastTaxSummary));
+                return;
+            }
 
             if (tax <= 0)
             {
-                EventManager.I.Push(new GameEvent($"{endedYear}. Yıl Sonu", "Bu yıl kâr olmadığı için vergi çıkmadı.\n\n" + LastTaxSummary));
+                EventManager.I.Push(new GameEvent($"{endedYear}. Yıl Sonu",
+                    (pesin > 0 ? "Yıl içinde ödediğin geçici vergi yıllık vergiyi tam karşıladı, ek vergi yok." : "Bu yıl kâr olmadığı için vergi çıkmadı.") +
+                    "\n\n" + LastTaxSummary));
                 return;
             }
 

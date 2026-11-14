@@ -511,7 +511,8 @@ namespace KuryeTycoon
         const string CsvBaslik =
             "gun;tarih;teslimat;iptal;kacan;gelir;gider;net;kasa;serbest_kasa;itibar;kurye;dukkan;bolge;gec;gec_15dk;soguk;ort_teslim_dk;" +
             "ort_atama_bekleme_dk;ort_alma_bekleme_dk;dukkan_iptali;musteri_vazgecti;gecikme_iptali;kurye_odemesi;ekipman;maaslar;" +
-            "ort_moral;ort_yorgunluk;ort_birikmis_yorgunluk;basvuru;pazar_payi;aile_borcu_kalan;gelistirme_gunluk;fiyat_carpani;fps_ort;fps_en_dusuk;gercek_saniye";
+            "ort_moral;ort_yorgunluk;ort_birikmis_yorgunluk;basvuru;pazar_payi;aile_borcu_kalan;gelistirme_gunluk;fiyat_carpani;fps_ort;fps_en_dusuk;gercek_saniye;" +
+            "isletme_gideri;rakip_tehdit;rakip_hamle_bekleyen";
 
         long enDusukKasa;
         int enDusukKasaGun;
@@ -551,7 +552,8 @@ namespace KuryeTycoon
                     d.cancelShop.ToString(Inv), d.cancelCustomer.ToString(Inv), d.cancelDelay.ToString(Inv),
                     P(d.courierPay), P(d.equipment), P(d.salaries),
                     F(moral / n), F(yorgun / n), F(birikmis / n), (KayitSistemi.I != null ? KayitSistemi.I.Adaylar.Count : 0).ToString(Inv), F(pay), P(borc),
-                    P(UpgradeManager.I.TotalDailyCost), F(Denge.FiyatCarpani), F(fpsOrt), F(fpsMin), F(gercek)
+                    P(UpgradeManager.I.TotalDailyCost), F(Denge.FiyatCarpani), F(fpsOrt), F(fpsMin), F(gercek),
+                    P(d.isletme), d.tehdit.ToString(Inv), (RivalCompany.I != null ? RivalCompany.I.Tehditler.Count : 0).ToString(Inv)
                 }));
 
             if (gunNo == 1 || gunNo % 10 == 0) haritaBekliyor = true;
@@ -742,6 +744,21 @@ namespace KuryeTycoon
                 }
                 sb.AppendLine($"Toplam: {tes} teslimat · {ipt} iptal (%{Yuzde(ipt, tes + ipt):0.0}) · {kac} kaçan · net {Ft(net)} (günlük ort. {Ft(net / gunler.Count)})");
                 sb.AppendLine($"Kalite: ort. teslim {(tes > 0 ? dk / tes : 0):0.0} dk · geç %{Yuzde(gec, tes):0.0} · 15 dk+ geç %{Yuzde(gec15, tes):0.0} · soğuk %{Yuzde(soguk, tes):0.0}");
+                // Geç oyun dengesi: işletme giderleri, geçici vergi, rakiplerin tehdit seviyesi
+                long isletme = 0, isletmeSon7 = 0; int sakinGun = 0, tetikGun = 0, saldiriGun = 0;
+                for (int gi = 0; gi < gunler.Count; gi++)
+                {
+                    var gd = gunler[gi];
+                    isletme += gd.isletme;
+                    if (gi >= gunler.Count - 7) isletmeSon7 += gd.isletme;
+                    if (gd.tehdit >= 2) saldiriGun++; else if (gd.tehdit == 1) tetikGun++; else sakinGun++;
+                }
+                var ecoOz = EconomyManager.I;
+                sb.AppendLine($"Geç oyun: işletme giderleri toplam {GameData.Ft(isletme)} (son 7 gün günde ~{GameData.Ft(isletmeSon7 / 7)}) · " +
+                              $"geçici vergi bu yıl {GameData.Ft(ecoOz != null ? ecoOz.GeciciVergiOdenen : 0)} · " +
+                              $"rakipler: sakin {sakinGun} gün, tetikte {tetikGun} gün, saldırıda {saldiriGun} gün · " +
+                              $"duyurulan hamle {Sayac("Rakip: hamle duyuruldu")} (dükkan {Sayac("Rakip: dükkan teklifi") + Sayac("Rakip: münhasır dükkan teklifi")}, " +
+                              $"kurye {Sayac("Rakip: kurye teklifi")}, fiyat savaşı {Sayac("Rakip: fiyat savaşı")}, yatırım turu {Sayac("Rakip: yatırım turu")})");
 
                 Baslik(sb, "HAFTA HAFTA");
                 sb.AppendLine("hafta | teslimat | iptal % | net          | hafta sonu kasa | kurye | dükkan | itibar");

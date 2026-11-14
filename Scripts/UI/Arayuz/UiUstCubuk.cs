@@ -330,6 +330,7 @@ namespace KuryeTycoon
                           $"{CityMap.DistrictNames[rv.warDistrict]} · {rv.priceWarDays} gün · oradaki siparişler −%{(1f - rv.warFactor) * 100f:0}",
                           () => SekmeyeGit(Tab.Dukkanlar));
             }
+            if (rv != null) RakipDurumlari(rv);
 
             // Para
             var loan = FamilyLoan.I;
@@ -381,5 +382,59 @@ namespace KuryeTycoon
         }
 
         const float DurumGenislik = 300f;
+
+        /// <summary>
+        /// Rakiplerin tehdit seviyesi (pazar payına göre), önceden duyurulan hamleleri (kaç gün kaldığıyla) ve yeni yatırım alanlar.
+        /// Hamleler RivalCompany.Tehditler'de (RakipTehditleri.cs).
+        /// </summary>
+        void RakipDurumlari(RivalCompany rv)
+        {
+            int sev = rv.TehditSeviyesi;
+            if (sev >= 1)
+                DurumEkle("tehdit", Icons.Kind.Flag, sev >= 2 ? UITheme.Bad : Turuncu,
+                          sev >= 2 ? "Rakipler saldırıda" : "Rakipler tetikte",
+                          $"Pazar payın %{rv.MarketShare * 100f:0} (eşik %{(sev >= 2 ? rv.TehditEsigi2 : rv.TehditEsigi1) * 100f:0}) · " +
+                          (sev >= 2 ? "sık hamle, yatırım, kurye ve münhasır dükkan teklifleri" : "hamleler sıklaşır, yatırım ararlar"),
+                          () => SekmeyeGit(Tab.Dukkanlar));
+            int bugun = GameClock.I.Day;
+            for (int i = 0; i < rv.Tehditler.Count; i++)
+            {
+                var t = rv.Tehditler[i];
+                var r = rv.RakipAt(t.rakip);
+                if (r == null || r.satinAlindi) continue;
+                int kalan = t.gun - bugun;
+                string ne = kalan <= 0 ? "bu gece" : kalan == 1 ? "yarın" : $"{kalan} gün içinde";
+                switch (t.Tur)
+                {
+                    case TehditTur.Dukkan:
+                        var s = rv.TehditDukkani(t);
+                        if (s == null) break;
+                        DurumEkle("th" + i, Icons.Kind.Shops, Turuncu, $"{r.kisa}: {s.Name} dükkanına teklif",
+                                  $"{ne} · memnuniyet {s.satisfaction:0}/100 · " +
+                                  (s.exclusive ? "münhasır ama rakipler saldırıda, bu da hedef" : "münhasırlık önerirsen geri çekilir"),
+                                  () => SekmeyeGit(Tab.Dukkanlar));
+                        break;
+                    case TehditTur.Kurye:
+                        string adlar = t.kuryeler.Count <= 3 ? string.Join(", ", t.kuryeler)
+                                     : string.Join(", ", t.kuryeler.GetRange(0, 3)) + $" +{t.kuryeler.Count - 3}";
+                        DurumEkle("th" + i, Icons.Kind.Couriers, Turuncu, $"{r.kisa}: {t.kuryeler.Count} kuryene teklif",
+                                  $"{ne} · {adlar} · morali yüksek olan kalır", () => SekmeyeGit(Tab.Kuryeler));
+                        break;
+                    case TehditTur.FiyatSavasi:
+                        DurumEkle("th" + i, Icons.Kind.Flag, UITheme.Bad, $"{r.kisa}: fiyat savaşı hazırlığı",
+                                  $"{CityMap.DistrictNames[Mathf.Clamp(t.bolge, 0, CityMap.DistrictNames.Length - 1)]} · {ne} başlıyor",
+                                  () => SekmeyeGit(Tab.Dukkanlar));
+                        break;
+                }
+            }
+            for (int i = 0; i < rv.Rakipler.Count; i++)
+            {
+                var r = rv.Rakipler[i];
+                int gecen = bugun - r.yatirimGunu;
+                if (r.satinAlindi || gecen < 0 || gecen >= 21) continue;
+                DurumEkle("yatirim" + i, Icons.Kind.Coins, Turuncu, $"{r.ad} yatırım aldı",
+                          $"{21 - gecen} gün daha hızla büyüyor: kurye alıyor, hizmetini iyileştiriyor", () => SekmeyeGit(Tab.Dukkanlar));
+            }
+        }
     }
 }

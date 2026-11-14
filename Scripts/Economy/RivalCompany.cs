@@ -67,6 +67,7 @@ namespace KuryeTycoon
         public float aggression, quality;
         public int marketingDays, fundingCooldownUntil, fundingRounds;
         public int lastCourierRaidDay = -999;
+        public int yatirimGunu = -999;      // son yatırım turunun günü (sağ üstte "yatırım aldı" kartı)
         public bool satinAlindi;            // oyuncu bu platformu satın aldı: faaliyeti yok, dükkanları devralındı
 
         // Hizmet (her gece güncellenir; kayda yazılmaz)
@@ -97,7 +98,7 @@ namespace KuryeTycoon
     ///  • Hacim: ayda 400+ sipariş veren dükkan bazen komisyon indirimi ister.
     ///  • Münhasırlık: dükkan sadece seninle çalışır: bütün rakipler çıkar, siparişler artar (+%15), komisyon −3 puan.
     /// </summary>
-    public class RivalCompany : MonoBehaviour
+    public partial class RivalCompany : MonoBehaviour
     {
         public static RivalCompany I { get; private set; }
 
@@ -204,6 +205,8 @@ namespace KuryeTycoon
 
             Rakipler.Clear();
             Rakipler.AddRange(Varsayilanlar());
+            Tehditler.Clear();
+            sonTehditSeviyesi = 0;
 
             var shops = CityMap.I.Shops;
             foreach (var s in shops)
@@ -243,8 +246,10 @@ namespace KuryeTycoon
             {
                 priceWarDays = priceWarDays, warDistrict = warDistrict, warFactor = warFactor, warOwner = warOwner,
                 myDeliveriesThisWeek = myDeliveriesThisWeek, myDeliveriesLastWeek = myDeliveriesLastWeek,
-                shareHistory = new List<float>(shareHistory), activeVersion = 2, sonSatisTeklifiGunu = sonSatisTeklifiGunu
+                shareHistory = new List<float>(shareHistory), activeVersion = 2, sonSatisTeklifiGunu = sonSatisTeklifiGunu,
+                tehditSeviyesi = sonTehditSeviyesi
             };
+            foreach (var t in Tehditler) s.tehditler.Add(JsonUtility.FromJson<RakipTehdit>(JsonUtility.ToJson(t)));
             foreach (var r in Rakipler) s.rakipler.Add(JsonUtility.FromJson<Rakip>(JsonUtility.ToJson(r)));
             // Eski sürümlerin okuyabilmesi için lider rakip eski alanlara da yazılır
             var l = Lider;
@@ -264,6 +269,9 @@ namespace KuryeTycoon
             if (s.shareHistory != null) shareHistory.AddRange(s.shareHistory);
             warDistrict = s.warDistrict; warFactor = s.warFactor > 0f ? s.warFactor : 0.75f; warOwner = s.warOwner;
             sonSatisTeklifiGunu = s.sonSatisTeklifiGunu;
+            sonTehditSeviyesi = s.tehditSeviyesi;
+            Tehditler.Clear();
+            if (s.tehditler != null) Tehditler.AddRange(s.tehditler);
 
             Rakipler.Clear();
             var defs = Varsayilanlar();
@@ -590,6 +598,7 @@ namespace KuryeTycoon
                 if (Day >= s.contractEndDay) Renewal(s);
             }
 
+            TehditleriIsle();   // önceden haber verilen rakip hamleleri (RakipTehditleri.cs)
             if (GameClock.I.DayOfWeek == 0) Weekly();
         }
 
@@ -632,18 +641,23 @@ namespace KuryeTycoon
             if (EconomyManager.I != null) EconomyManager.I.RakipSatiriniYaz(ReportLine);   // haftalık rapor bu sayılarla
 
             float esik = SaldirganlikEsigi;
+            int seviye = TehditSeviyesi;
+            TehditSeviyesiniDuyur(seviye);
             SatisTeklifi();   // zayıflayan bir platform satılık olabilir
             for (int i = 0; i < Rakipler.Count; i++)
             {
                 var r = Rakipler[i];
                 if (r.satinAlindi) continue;
                 // Saldırganlık: pazar payın eşiğin üstüne çıktıkça rakip daha çok hamle yapar, yatırım arar
+                // Takvime değil pazar payına bağlı: %35'ten (3 rakipte) sonra tetikte, %50'den sonra saldırıda (taban saldırganlık)
                 float targetAgg = Mathf.Clamp01((MarketShare - esik) * 2.5f * r.saldirganlik);
+                float taban = seviye >= 2 ? 0.7f : seviye == 1 ? 0.35f : 0f;
+                targetAgg = Mathf.Max(targetAgg, taban * r.saldirganlik);
                 r.aggression = Mathf.Lerp(r.aggression, targetAgg, 0.5f);
 
-                // Yatırım turu: rakip büyük pay kaybettiyse yatırımcı bulur
-                if (r.aggression > 0.4f && Day >= r.fundingCooldownUntil && GameClock.I.CompanyDay >= 90 && myDeliveriesLastWeek >= 1500 &&
-                    Random.value < 0.35f) FundingRound(r);
+                // Yatırım turu: pazar payın eşiği geçince rakip yatırımcı arar (saldırıdayken daha sık ve daha erken)
+                if (seviye >= 1 && r.aggression > 0.3f && Day >= r.fundingCooldownUntil && myDeliveriesLastWeek >= 600 &&
+                    Random.value < (seviye >= 2 ? 0.5f : 0.2f)) FundingRound(r);
 
                 // Büyüme: para varsa kurye alır (saldırganken ve hızlı büyüyen platformda daha hızlı), kaliteye yatırım yapar
                 int maxCouriers = Mathf.Min(160, Mathf.RoundToInt((30 + 30 * r.fundingRounds) * (0.7f + 0.4f * r.buyume)));
@@ -679,9 +693,20 @@ namespace KuryeTycoon
 
             // Rakiplerin haftalık hamlesi: rakip sayısı arttıkça biraz daha sık, hamleyi büyük ve saldırgan olan yapar
             float maxAgg = aggression;
-            float moveChance = (0.2f + 0.55f * maxAgg) * (1f + 0.2f * (Rakipler.Count - 1)) * (GameClock.I.CompanyDay < 60 ? 0.4f : 1f);   // ilk aylarda daha nadir
+            // Hamle sıklığı pazar payına bağlı (sakin ×0,5, tetikte ×1, saldırıda ×1,4 ve ikinci bir hamle şansı).
+            // İlk iki hafta hamle yok: pay o zaman birkaç dükkanın siparişinden hesaplanıyor, çok oynak.
+            float moveChance = (0.2f + 0.55f * maxAgg) * (1f + 0.2f * (Rakipler.Count - 1)) * (seviye >= 2 ? 1.4f : seviye == 1 ? 1f : 0.5f);
             if (AktifRakip == 0) return;   // bütün rakipler satın alındı: hamle ve kurye ayartma yok
-            if (GameClock.I.CompanyDay >= 21 && Random.value < Mathf.Min(0.9f, moveChance)) RivalMove(Sec());
+            if (GameClock.I.CompanyDay >= 14 && Random.value < Mathf.Min(0.95f, moveChance))
+            {
+                int ilk = Sec();
+                RivalMove(ilk);
+                if (seviye >= 2 && AktifRakip > 1 && Random.value < 0.5f)
+                {
+                    int ikinci = Sec();
+                    if (ikinci != ilk) RivalMove(ikinci);
+                }
+            }
 
             // Moralsiz kuryeyi ayartma (haftada en fazla bir; çalışan statüsündeki kuryeler gitmez)
             if (!CrisisManager.Employees)
@@ -709,7 +734,8 @@ namespace KuryeTycoon
             r.money += amount;
             r.fundingRounds++;
             r.quality = Mathf.Min(1f, r.quality + 0.2f);
-            r.fundingCooldownUntil = Day + 60;
+            r.fundingCooldownUntil = Day + (TehditSeviyesi >= 2 ? 45 : 60);
+            r.yatirimGunu = Day;
             Telemetry.Add("Rakip: yatırım turu");
             EventManager.I.Push(new GameEvent($"{r.ad} yatırım aldı",
                 $"Rakip {r.ad}, pazar payını geri almak için yatırımcılardan {GameData.Ft(amount)} topladı. " +
@@ -723,27 +749,49 @@ namespace KuryeTycoon
             // Kişiliğe göre hamle: ucuz platform fiyat savaşı, kaliteli platform dükkan avı sever
             float wShop = 0.4f + 0.3f * r.kaliteEgilimi, wCourier = 0.25f, wWar = 0.15f + 0.45f * r.fiyatEgilimi, wAd = 0.2f;
             float x = Random.value * (wShop + wCourier + wWar + wAd);
-            if (x < wShop && ShopRaid(i)) return;
+            // Dükkan, kurye ve fiyat savaşı hamleleri önce duyulur (sağ üstte durum kartı), birkaç gün sonra gerçekleşir
+            if (x < wShop && TehditHazirla(i, TehditTur.Dukkan)) return;
             x -= wShop;
-            if (x < wCourier && CourierRaid(i)) return;
+            if (x < wCourier && TehditHazirla(i, TehditTur.Kurye)) return;
             x -= wCourier;
-            if (x < wWar && priceWarDays == 0 && PriceWar(i)) return;
+            if (x < wWar && priceWarDays == 0 && TehditHazirla(i, TehditTur.FiyatSavasi)) return;
             if (r.marketingDays == 0) MarketingBlitz(r);
         }
 
-        /// <summary>En çok sipariş veren dükkanlarından birine sözleşme bitmeden daha düşük komisyon teklifi.</summary>
-        bool ShopRaid(int ri)
+        /// <summary>
+        /// Teklif yapılacak dükkan: en çok sipariş verenlerden biri. Saldırıdayken (pay %50+) münhasır dükkanlar da hedef;
+        /// başka bir tehdidin hedefi olan dükkan seçilmez.
+        /// </summary>
+        Shop DukkanHedefi()
         {
-            var r = Rakipler[ri];
+            bool saldiri = TehditSeviyesi >= 2;
             var cands = new List<Shop>();
             foreach (var s in CityMap.I.Shops)
-                if (s.contracted && !s.own && !s.exclusive && CityMap.I.IsUnlocked(s.tile)) cands.Add(s);
-            if (cands.Count == 0) return false;
+                if (s.contracted && !s.own && (!s.exclusive || saldiri) && CityMap.I.IsUnlocked(s.tile) && !HedefteMi(s)) cands.Add(s);
+            if (cands.Count == 0) return null;
             cands.Sort((a, b) => (b.lastMonthOrders + b.monthOrders).CompareTo(a.lastMonthOrders + a.monthOrders));
-            var shop = cands[Random.Range(0, Mathf.Min(3, cands.Count))];
-            float indirim = Mathf.Lerp(0.03f, 0.05f, r.fiyatEgilimi);
+            return cands[Random.Range(0, Mathf.Min(3, cands.Count))];
+        }
+
+        /// <summary>Sözleşme bitmeden daha düşük komisyon teklifi (önceden duyurulmuş dükkan tehdidi vadesinde).</summary>
+        void ShopRaidOn(int ri, Shop shop)
+        {
+            var r = Rakipler[ri];
+            if (!shop.contracted)
+            {
+                EventManager.I.Notify($"{r.ad}, {shop.Name} için teklifini geri çekti: dükkan zaten seninle çalışmıyor.");
+                return;
+            }
+            bool saldiri = TehditSeviyesi >= 2;
+            if (shop.exclusive && !saldiri)
+            {
+                EventManager.I.Notify($"{r.ad}, {shop.Name} münhasır olduğu için teklifini geri çekti.");
+                return;
+            }
+            if (shop.exclusive) { MunhasirDukkanTeklifi(ri, shop); return; }
+            float indirim = Mathf.Lerp(0.03f, 0.05f, r.fiyatEgilimi) + (saldiri ? 0.01f : 0f);
             float offer = Mathf.Max(0.05f, shop.Commission - indirim);
-            float keep = Mathf.Clamp(0.15f + shop.satisfaction / 100f * 0.8f, 0.15f, 0.95f);
+            float keep = Mathf.Clamp(0.15f + shop.satisfaction / 100f * 0.8f - (saldiri ? 0.05f : 0f), 0.15f, 0.95f);
             Telemetry.Add("Rakip: dükkan teklifi");
             var ev = new GameEvent($"{r.ad}, {shop.Name} dükkanına göz dikti",
                 $"{r.ad} ({r.Tanim}) sözleşmen bitmeden {shop.Name} dükkanına {Pct(offer)} komisyonla teklif verdi " +
@@ -772,32 +820,51 @@ namespace KuryeTycoon
                 else LoseShop(shop, $"{TurkceEk.In(r.ad)} teklifini kabul etti", ri);
             });
             EventManager.I.Push(ev);
-            return true;
         }
 
-        /// <summary>En deneyimli kuryelerine daha yüksek ücret teklifi.</summary>
-        bool CourierRaid(int ri)
+        /// <summary>
+        /// Teklif yapılacak kuryeler: eğitimliler (sertifika), sonra seviyesi ve teslimatı yüksek olanlar. Karşı zam sürerken ya da
+        /// bu rakip yakın zamanda denediyse (sakinken 6, tetikteyken 4, saldırıdayken 3 hafta) null.
+        /// </summary>
+        List<Courier> KuryeHedefleri(Rakip r)
+        {
+            var list = new List<Courier>(CourierManager.I.Couriers);
+            if (list.Count < 8) return null;
+            list.RemoveAll(HedefteMi);   // başka rakibin hedefindekiler
+            if (list.Count < 3) return null;
+            int seviye = TehditSeviyesi;
+            int bekleme = seviye >= 2 ? 21 : seviye == 1 ? 28 : 42;
+            if (CrisisManager.I.HasEffect("rakip_zam") || Day - r.lastCourierRaidDay < bekleme) return null;
+            list.Sort((a, b) =>
+            {
+                int ea = a.egitimler != null ? a.egitimler.Count : 0, eb = b.egitimler != null ? b.egitimler.Count : 0;
+                if (ea != eb) return eb.CompareTo(ea);
+                return b.level != a.level ? b.level.CompareTo(a.level) : b.deliveries.CompareTo(a.deliveries);
+            });
+            int n = Mathf.Clamp(list.Count / (seviye >= 2 ? 9 : 12), 3, seviye >= 2 ? 7 : 6);
+            return list.GetRange(0, n);
+        }
+
+        /// <summary>Kuryelere daha yüksek ücret teklifi (önceden duyurulmuş kurye tehdidi vadesinde).</summary>
+        void CourierRaidOn(int ri, List<Courier> targets)
         {
             var r = Rakipler[ri];
-            var list = new List<Courier>(CourierManager.I.Couriers);
-            if (list.Count < 8) return false;
-            // Karşı zam sürerken ya da bu rakip son 6 hafta içinde denediyse tekrar denemez (başka hamle seçer)
-            if (CrisisManager.I.HasEffect("rakip_zam") || Day - r.lastCourierRaidDay < 42) return false;
-            r.lastCourierRaidDay = Day;
+            if (targets.Count == 0) { EventManager.I.Notify($"{r.ad} kurye teklifinden vazgeçti: hedeflediği kuryeler artık sende değil."); return; }
             if (CrisisManager.Employees)
             {
                 EventManager.I.Notify($"{r.ad} kuryelerine daha yüksek ücret teklif etti ama çalışan statüsündeki kuryelerin hiçbiri gitmedi.");
-                return true;
+                return;
             }
-            list.Sort((a, b) => b.level != a.level ? b.level.CompareTo(a.level) : b.deliveries.CompareTo(a.deliveries));
-            int n = Mathf.Clamp(list.Count / 12, 3, 6);
-            var targets = list.GetRange(0, n);
+            int n = targets.Count;
+            int zamYuzde = TehditSeviyesi >= 2 ? 30 : 20;
             var names = new List<string>();
-            foreach (var c in targets) names.Add($"{c.courierName} (seviye {c.level})");
+            foreach (var c in targets)
+                names.Add($"{c.courierName} (seviye {c.level}{(c.egitimler != null && c.egitimler.Count > 0 ? $", {c.egitimler.Count} sertifika" : "")}, moral %{c.morale * 100f:0})");
             long bonus = Round1000(n * 30000f);
             Telemetry.Add("Rakip: kurye teklifi");
             EventManager.I.Push(new GameEvent($"{r.ad} kuryelerini ayartıyor",
-                    $"{r.ad}, en deneyimli {n} kuryene %20 daha yüksek ücret teklif etti: {string.Join(", ", names)}.")
+                    $"{r.ad}, en değerli {n} kuryene %{zamYuzde} daha yüksek ücret teklif etti: {string.Join(", ", names)}.\n\n" +
+                    "Morali yüksek kurye daha çok kalır (moral %90 olan, %30 olandan belirgin şekilde daha sadık).")
                 .Add("Tüm kurye ücretlerini 4 hafta +%10 artır (hepsi kalır, moral +8)", () =>
                 {
                     CrisisManager.I.AddEffect(new CrisisEffect { id = "rakip_zam", title = $"{r.ad} karşısında zam: ücretler +%10", pay = 1.1f }, 28);
@@ -808,8 +875,7 @@ namespace KuryeTycoon
                     EconomyManager.I.Spend(bonus, "Rakibe karşı kurye primi", ExpenseCategory.Diger);
                     RaidOutcome(r, targets, 0.85f, 0.15f);
                 })
-                .Add("Bırak (her biri %55 ihtimalle gider)", () => RaidOutcome(r, targets, 0.45f, -0.05f)));
-            return true;
+                .Add("Bırak (her biri ortalama %55 ihtimalle gider; morali yüksek olan daha az)", () => RaidOutcome(r, targets, 0.45f, -0.05f)));
         }
 
         void RaidOutcome(Rakip r, List<Courier> targets, float stay, float moraleDelta)
@@ -819,7 +885,9 @@ namespace KuryeTycoon
             {
                 if (c == null || !CourierManager.I.Couriers.Contains(c)) continue;
                 bool loyal = UpgradeManager.I != null && UpgradeManager.I.LoyaltyProgram && c.level >= 3;
-                if (c.OrderCount > 0 || Random.value < (loyal ? Mathf.Max(stay, 0.75f) : stay))
+                // Morali yüksek olan daha çok kalır: moral %90 → +%15, %30 → −%15
+                float kal = Mathf.Clamp(stay + (c.morale - 0.6f) * 0.5f, 0.1f, 0.97f);
+                if (c.OrderCount > 0 || Random.value < (loyal ? Mathf.Max(kal, 0.75f) : kal))
                     c.morale = Mathf.Clamp01(c.morale + moraleDelta);
                 else { gone.Add(c.courierName); CourierManager.I.PoachToRival(c, r.ad, false); }
             }
@@ -828,27 +896,43 @@ namespace KuryeTycoon
                 : $"{gone.Count} kurye {TurkceEk.A(r.ad)} geçti: {string.Join(", ", gone)}.");
         }
 
-        /// <summary>Bir bölgede 7 gün ücret kırar: o bölgedeki siparişlerin düşer.</summary>
-        bool PriceWar(int ri)
+        /// <summary>
+        /// Fiyat savaşının bölgesi: sakin/tetikteyken açık bölgelerden rastgele, saldırıdayken en çok sipariş aldığın dükkanın bölgesi.
+        /// </summary>
+        int SavasBolgesi()
+        {
+            int maxD = Mathf.Clamp(CityMap.I.UnlockLevel, 1, 5);
+            if (TehditSeviyesi >= 2)
+            {
+                Shop en = null;
+                foreach (var s in CityMap.I.Shops)
+                    if (s.contracted && !s.own && (en == null || s.monthOrders + s.lastMonthOrders > en.monthOrders + en.lastMonthOrders)) en = s;
+                if (en != null) return Mathf.Clamp(CityMap.RegionOf(en.tile), 1, maxD);
+            }
+            return Random.Range(1, maxD + 1);
+        }
+
+        /// <summary>Bir bölgede 7 gün (saldırıdayken 10) ücret kırar: o bölgedeki siparişlerin düşer.</summary>
+        void PriceWarOn(int ri, int bolge)
         {
             var r = Rakipler[ri];
-            int maxD = Mathf.Clamp(CityMap.I.UnlockLevel, 1, 5);
-            warDistrict = Random.Range(1, maxD + 1);
+            bool saldiri = TehditSeviyesi >= 2;
+            warDistrict = Mathf.Clamp(bolge, 1, 5);
             warOwner = ri;
-            priceWarDays = 7;
-            warFactor = Mathf.Lerp(0.8f, 0.7f, r.fiyatEgilimi);
+            priceWarDays = saldiri ? 10 : 7;
+            warFactor = Mathf.Lerp(0.8f, 0.7f, r.fiyatEgilimi) - (saldiri ? 0.05f : 0f);
             string dn = CityMap.DistrictNames[warDistrict];
             long cost = Round1000(Mathf.Max(400000f, CrisisManager.AvgDailyIncome() * 0.5f));
             Telemetry.Add("Rakip: fiyat savaşı");
             EventManager.I.Push(new GameEvent($"Fiyat savaşı: {dn}",
-                    $"{r.ad}, {dn} bölgesinde 7 gün boyunca teslimat ücretini sıfırladı. Bu bölgedeki siparişlerin %{(1f - warFactor) * 100f:0} düşecek.")
+                    $"{r.ad}, {dn} bölgesinde {priceWarDays} gün boyunca teslimat ücretini sıfırladı. Bu bölgedeki siparişlerin %{(1f - warFactor) * 100f:0} düşecek.\n\n" +
+                    "Savaş sürerken büyüme giderleri (İşletme giderleri) hafifler: şirket tek seferde batmasın.")
                 .Add($"Karşı kampanya yap (−{GameData.Ft(cost)}, kayıp %10'a iner)", () =>
                 {
                     EconomyManager.I.Spend(cost, $"Fiyat savaşı karşı kampanyası ({dn})", ExpenseCategory.Reklam);
                     warFactor = 0.9f;
                 })
                 .Add($"Görmezden gel (bölgede siparişler −%{(1f - warFactor) * 100f:0})", null));
-            return true;
         }
 
         /// <summary>İki hafta yoğun reklam: müşteriler rakibi daha iyi görür.</summary>
