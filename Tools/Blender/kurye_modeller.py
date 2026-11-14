@@ -37,7 +37,7 @@ except ImportError:          # Blender dışında (önizleme / test) sadece geom
     IN_BLENDER = False
 
 # ================================== AYARLAR ==================================
-MODEL = "mustakil_ev"      # "sira_ev" · "ofis_kulesi" · "mustakil_ev" · "market" · "fastfood" · "apartman" · "dukkan" (altı dükkanlı binalar) · "sehir" (yollar, zemin, ağaçlar, parklar) · "katalog" (konut, büro, sanayi, kamu, yeni parklar) · "hava" (bulut, yağmur, kar, yaprak, şimşek) · "blok" (bitişik blok ve köşe binaları) · "kurye" · "yaya"
+MODEL = "mustakil_ev"      # "sira_ev" · "ofis_kulesi" · "mustakil_ev" · "market" · "fastfood" · "apartman" · "dukkan" (altı dükkanlı binalar) · "sehir" (yollar, zemin, ağaçlar, parklar) · "katalog" (konut, büro, sanayi, kamu, yeni parklar) · "hava" (bulut, yağmur, kar, yaprak, şimşek) · "kir" (kır parselleri: tarla, bağ, meyve bahçesi, çayır, gölet, sera, koru) · "blok" (bitişik blok ve köşe binaları) · "kurye" · "yaya"
 STIL = "kirmizi_tugla"     # sıra ev için: "kirmizi_tugla" · "pembe_siva" · "kahve_siva" · "karisik"
 OFIS_STIL = "beton"        # ofis kulesi için: "beton" · "gri" · "beyaz" · "karisik"
 OFIS_KAT = (5, 7)          # ofis kulesinin kat sayısı (zemindeki lobi hariç)
@@ -3043,6 +3043,315 @@ def avlu_parcalari():
             ("Avlu_otopark_agacli", avlu_otopark_agacli(r, rnd)), ("Avlu_karma", avlu_karma(r, rnd)), ("Avlu_oyun", avlu_oyun(r, rnd)),
             ("Kir_cicek_1", kir_cicek(r, rnd)), ("Kir_cicek_2", kir_cicek(r, rnd)), ("Kir_kaya_1", kir_kaya(r, rnd))]
 
+
+
+# ------------------------------------------------------------------ kır alanları (parseller: 50 × 40 m, oyunda tarla boyutuna uyar)
+# Malzeme adları "Kir..." ile başlar: oyun (City3D.KirMevsim) mevsime ve havaya göre renklerini değiştirir
+# (ilkbahar taze yeşil, yaz sonu kurak/sarı, sonbahar ıslak/kahve, kış karlı). Sabit renkli olanlar (ahşap, inek, sera) değişmez.
+
+KIR_RENK = dict(cim="#6f9a4a", cim_koyu="#5a8540", toprak="#7e5f42", toprak_koyu="#6a4e36", ekin="#7fa64a", ekin_uc="#97bb5a",
+                bugday="#cfae55", bugday_uc="#e0c46c", kolza="#e6cf3e", kolza_uc="#f2de5a", saman="#c9b07a", balya="#d8bf72",
+                asma="#5f8a3e", ahsap="#8a6a4a", yaprak="#6b9a45", yaprak_koyu="#557f3a", meyve="#d9473a", govde="#6b4a33",
+                cali="#5f8f4a", su="#5f9fc8", kamis="#8fa25a", sera="#dfe9ee", sera_kenar="#9aa8b0", inek="#f2efe8",
+                inek_koyu="#2d2a28", tas="#a49e94", cam="#4f7f4a")
+KW, KD = 25.0, 20.0     # parselin yarı boyu (x, y)
+KZ = 0.1                # taban üstü
+
+
+def kir_renkleri():
+    ad = {"cim": "KirCim", "cim_koyu": "KirCimKoyu", "toprak": "KirToprak", "toprak_koyu": "KirToprakKoyu", "ekin": "KirEkin",
+          "ekin_uc": "KirEkinUc", "bugday": "KirBugday", "bugday_uc": "KirBugdayUc", "kolza": "KirKolza", "kolza_uc": "KirKolzaUc",
+          "saman": "KirSaman", "balya": "KirBalya", "asma": "KirAsma", "ahsap": "KirAhsap", "yaprak": "KirYaprak",
+          "yaprak_koyu": "KirYaprakKoyu", "meyve": "KirMeyve", "govde": "KirGovde", "cali": "KirCali", "su": "KirSu",
+          "kamis": "KirKamis", "sera": "KirSera", "sera_kenar": "KirSeraKenar", "inek": "KirInek", "inek_koyu": "KirInekKoyu",
+          "tas": "KirTas", "cam": "KirCam"}
+    r = {k: M(ad[k], v) for k, v in KIR_RENK.items()}
+    r["cicek"] = [M("KirCicek", c) for c in ("#e0525a", "#f0a0c0", "#f2d04a", "#ffffff", "#9a7ae0")]
+    return r
+
+
+def kir_taban(g, mat, x0=-KW, x1=KW, y0=-KD, y1=KD):
+    levha(g, x0, x1, y0, y1, 0.0, KZ, mat)
+
+
+def kir_sira(g, x0, x1, y, gen, boy, mat, mat_ust, z0=KZ):
+    """Ekin sırası: üstü dar yamuk kesitli uzun tümsek (x boyunca)."""
+    h, u = gen / 2, gen * 0.22
+    pts = [(x0, y - h, z0), (x1, y - h, z0), (x1, y + h, z0), (x0, y + h, z0),
+           (x0, y - u, z0 + boy), (x1, y - u, z0 + boy), (x1, y + u, z0 + boy), (x0, y + u, z0 + boy)]
+    b = len(g.v)
+    g.v += pts
+    g.yuz([b + 0, b + 1, b + 5, b + 4], mat, kabuk=False)     # güney yamaç
+    g.yuz([b + 2, b + 3, b + 7, b + 6], mat, kabuk=False)     # kuzey yamaç
+    g.yuz([b + 4, b + 5, b + 6, b + 7], mat_ust, kabuk=False)  # tepe
+    g.yuz([b + 0, b + 4, b + 7, b + 3], mat, kabuk=False)     # uçlar
+    g.yuz([b + 1, b + 2, b + 6, b + 5], mat, kabuk=False)
+
+
+def yatik_silindir(g, c, r, L, aci, n, mat, mat_yuz=None):
+    """Yere yatırılmış silindir (rulo saman balyası): ekseni yatay, aci yönünde."""
+    ax = (math.cos(aci) * L / 2, math.sin(aci) * L / 2, 0.0)
+    yx, yy = -math.sin(aci), math.cos(aci)
+    pts = []
+    for s in (-1, 1):
+        for i in range(n):
+            a = 2 * math.pi * i / n
+            pts.append((c[0] + s * ax[0] + yx * r * math.cos(a), c[1] + s * ax[1] + yy * r * math.cos(a), c[2] + r * math.sin(a)))
+    yuzler = [list(range(n)), list(range(n, 2 * n))] + [[i, (i + 1) % n, n + (i + 1) % n, n + i] for i in range(n)]
+    b = len(g.f)
+    dis_bukey(g, pts, yuzler, mat)
+    if mat_yuz:
+        g.fm[b] = g.mat(mat_yuz)
+        g.fm[b + 1] = g.mat(mat_yuz)
+
+
+def kir_agac(g, x, y, r, rnd, boy=None, rr=None, mat=None, cam=False):
+    boy = boy or rnd.uniform(2.6, 3.6)
+    if cam:
+        silindir(g, x, y, KZ, boy * 0.35, 0.22, 6, r["govde"])
+        for i, (z, rad, h) in enumerate(((0.3, 1.9, 2.6), (1.5, 1.45, 2.3), (2.6, 1.0, 2.0))):
+            koni(g, x, y, KZ + boy * 0.35 + z, h, rad, 7, r["cam"])
+        return
+    rr = rr or rnd.uniform(1.5, 2.1)
+    silindir(g, x, y, KZ, boy, 0.22, 6, r["govde"])
+    top(g, (x, y, KZ + boy + rr * 0.6), rr, rr, rr * 0.9, mat or r["yaprak"])
+    if rnd.random() < 0.6:
+        top(g, (x + rr * 0.5, y + 0.2, KZ + boy + rr * 0.25), rr * 0.6, rr * 0.6, rr * 0.5, r["yaprak_koyu"])
+
+
+def kir_cit(g, x0, y0, x1, y1, r):
+    cit_hat(g, x0, y0, x1, y1, KZ, r["ahsap"], h=1.1, aralik=2.5)
+
+
+def kir_inek(g, x, y, aci, r, rnd):
+    ca, sa = math.cos(aci), math.sin(aci)
+    ax, ay, az = (ca * 1.0, sa * 1.0, 0.0), (-sa * 0.42, ca * 0.42, 0.0), (0.0, 0.0, 0.42)
+    zc = KZ + 1.15
+    yonlu_kutu(g, (x, y, zc), ax, ay, az, r["inek"])
+    # lekeler
+    for _ in range(2):
+        d = rnd.uniform(-0.5, 0.5)
+        yonlu_kutu(g, (x + ca * d, y + sa * d, zc + 0.3), (ca * 0.28, sa * 0.28, 0.0), (-sa * 0.44, ca * 0.44, 0.0), (0, 0, 0.14), r["inek_koyu"])
+    # baş
+    hx, hy = x + ca * 1.25, y + sa * 1.25
+    yonlu_kutu(g, (hx, hy, zc + 0.25), (ca * 0.3, sa * 0.3, 0.0), (-sa * 0.26, ca * 0.26, 0.0), (0, 0, 0.26), r["inek"])
+    # bacaklar
+    for du in (-0.7, 0.7):
+        for dv in (-0.28, 0.28):
+            px, py = x + ca * du - sa * dv, y + sa * du + ca * dv
+            cubuk(g, (px, py, KZ), (px, py, zc - 0.35), 0.16, r["inek_koyu"], kabuk=False)
+
+
+def kir_ekin(r, rnd, tur):
+    """Ekili tarla: x boyunca sıralar. tur: genc (alçak yeşil), bugday (uzun, sarı), kolza (sarı çiçekli)."""
+    g = Govde()
+    kir_taban(g, r["toprak"])
+    mat, ust = {"genc": (r["ekin"], r["ekin_uc"]), "bugday": (r["bugday"], r["bugday_uc"]), "kolza": (r["kolza"], r["kolza_uc"])}[tur]
+    boy = {"genc": 0.35, "bugday": 0.95, "kolza": 0.75}[tur]
+    aralik = {"genc": 1.3, "bugday": 1.1, "kolza": 1.4}[tur]
+    y = -KD + 1.2
+    while y < KD - 1.0:
+        kir_sira(g, -KW + 1.0, KW - 1.0, y, aralik * 0.78, boy * rnd.uniform(0.9, 1.08), mat, ust)
+        y += aralik
+    if tur == "bugday" and rnd.random() < 0.7:
+        # biçerdöver izi: tarlanın bir ucu biçilmiş
+        kutu(g, KW - 9.0, KW - 1.0, -KD + 1.0, KD - 1.0, KZ, KZ + 0.15, r["saman"])
+    return g
+
+
+def kir_surulmus(r, rnd):
+    """Sürülmüş toprak: ince karık sırtları."""
+    g = Govde()
+    kir_taban(g, r["toprak_koyu"])
+    y = -KD + 0.8
+    while y < KD - 0.6:
+        kir_sira(g, -KW + 0.6, KW - 0.6, y, 0.7, 0.28, r["toprak"], r["toprak"])
+        y += 0.85
+    return g
+
+
+def kir_saman(r, rnd):
+    """Biçilmiş tarla: anız, rulo balyalar, bir köşede balya yığını."""
+    g = Govde()
+    kir_taban(g, r["saman"])
+    y = -KD + 1.0
+    while y < KD - 1.0:
+        kir_sira(g, -KW + 1.0, KW - 1.0, y, 0.5, 0.12, r["saman"], r["balya"])
+        y += 1.6
+    for _ in range(rnd.randint(7, 12)):
+        x, yy = rnd.uniform(-KW + 3, KW - 3), rnd.uniform(-KD + 3, KD - 3)
+        yatik_silindir(g, (x, yy, KZ + 0.75), 0.75, 1.25, rnd.uniform(0, math.pi), 10, r["balya"], r["saman"])
+    # köşede kare balya yığını
+    bx, by = KW - 6.0, KD - 5.0
+    for i in range(3):
+        for j in range(2):
+            kutu(g, bx + i * 1.3, bx + i * 1.3 + 1.2, by + j * 0.9, by + j * 0.9 + 0.8, KZ, KZ + 0.6, r["balya"])
+    for i in range(2):
+        kutu(g, bx + 0.6 + i * 1.3, bx + 0.6 + i * 1.3 + 1.2, by + 0.4, by + 1.2, KZ + 0.6, KZ + 1.2, r["balya"])
+    return g
+
+
+def kir_bag(r, rnd):
+    """Üzüm bağı: direkli, telli asma sıraları; sıra aralarında çimen."""
+    g = Govde()
+    kir_taban(g, r["cim_koyu"])
+    y = -KD + 2.0
+    while y < KD - 1.5:
+        x0, x1 = -KW + 2.0, KW - 2.0
+        kutu(g, x0 + 0.5, x1 - 0.5, y - 0.35, y + 0.35, KZ + 0.5, KZ + 1.6, r["asma"])
+        x = x0
+        while x <= x1 + 0.01:
+            kutu(g, x - 0.08, x + 0.08, y - 0.08, y + 0.08, KZ, KZ + 1.9, r["ahsap"])
+            x += 6.0
+        kutu(g, x0, x1, y - 0.6, y + 0.6, KZ, KZ + 0.05, r["toprak"])
+        y += 2.8
+    return g
+
+
+def kir_meyve(r, rnd, sik):
+    """Meyve bahçesi: çimen üstünde düzenli ağaç sıraları, dallarda meyve."""
+    g = Govde()
+    kir_taban(g, r["cim"])
+    nx, ny = (6, 4) if sik else (5, 3)
+    for i in range(nx):
+        for j in range(ny):
+            x = -KW + 4.0 + i * (2 * KW - 8.0) / (nx - 1)
+            y = -KD + 4.0 + j * (2 * KD - 8.0) / (ny - 1)
+            kir_agac(g, x + rnd.uniform(-0.3, 0.3), y + rnd.uniform(-0.3, 0.3), r, rnd, boy=rnd.uniform(1.6, 2.1), rr=rnd.uniform(1.6, 1.9))
+            b = len(g.f)
+            for _ in range(3):
+                a = rnd.uniform(0, 2 * math.pi)
+                top(g, (x + 1.5 * math.cos(a), y + 1.5 * math.sin(a), KZ + 3.0 + rnd.uniform(-0.4, 0.5)), 0.24, 0.24, 0.24, r["meyve"])
+            cizgisiz(g, b)
+    kir_cit(g, -KW + 0.5, -KD + 0.5, KW - 0.5, -KD + 0.5, r)
+    return g
+
+
+def kir_cayir(r, rnd, inekli):
+    """Çayır: tümsekli çimen, çalılar, çiçekler, bir kenarında ahşap çit; bazen inekler."""
+    g = Govde()
+    kir_taban(g, r["cim"])
+    b = len(g.f)
+    for _ in range(12):
+        x, y = rnd.uniform(-KW + 3, KW - 3), rnd.uniform(-KD + 3, KD - 3)
+        top(g, (x, y, KZ), rnd.uniform(2.5, 5.0), rnd.uniform(2.0, 4.0), rnd.uniform(0.15, 0.35), r["cim_koyu"])
+    cizgisiz(g, b)   # tümsekler çizgisiz: çimenin parçası gibi dursun
+    for _ in range(9):
+        x, y = rnd.uniform(-KW + 2, KW - 2), rnd.uniform(-KD + 2, KD - 2)
+        top(g, (x, y, KZ + 0.5), rnd.uniform(0.8, 1.3), rnd.uniform(0.8, 1.3), 0.7, r["cali"])
+    b = len(g.f)
+    for _ in range(24):
+        x, y = rnd.uniform(-KW + 1, KW - 1), rnd.uniform(-KD + 1, KD - 1)
+        top(g, (x, y, KZ + 0.15), 0.22, 0.22, 0.16, rnd.choice(r["cicek"]))
+    cizgisiz(g, b)
+    kir_cit(g, -KW + 0.5, -KD + 0.5, -KW + 0.5, KD - 0.5, r)
+    kir_cit(g, -KW + 0.5, KD - 0.5, KW - 0.5, KD - 0.5, r)
+    if inekli:
+        for _ in range(rnd.randint(3, 5)):
+            kir_inek(g, rnd.uniform(-KW + 6, KW - 6), rnd.uniform(-KD + 5, KD - 5), rnd.uniform(0, 2 * math.pi), r, rnd)
+        # su yalağı
+        kutu(g, 8.0, 11.0, -3.0, -2.0, KZ, KZ + 0.6, r["ahsap"])
+        kutu(g, 8.15, 10.85, -2.85, -2.15, KZ + 0.6, KZ + 0.62, r["su"])
+    else:
+        kir_agac(g, rnd.uniform(-10, 10), rnd.uniform(-8, 8), r, rnd, boy=3.4, rr=2.6)
+    return g
+
+
+def kir_gol(r, rnd):
+    """Gölet: düzensiz su yüzeyi, kıyıda kamış ve çalılar, küçük ahşap iskele."""
+    g = Govde()
+    kir_taban(g, r["cim"])
+    pts = []
+    n = 16
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        rr = rnd.uniform(0.75, 1.0)
+        pts.append((14.0 * rr * math.cos(a), 10.5 * rr * math.sin(a)))
+    # kıyı (koyu çimen halkası) ve su
+    duz_poligon(g, [(x * 1.12, y * 1.15) for x, y in pts], KZ + 0.02, r["cim_koyu"])
+    duz_poligon(g, pts, KZ + 0.05, r["su"])
+    for i in range(n):
+        if rnd.random() < 0.55:
+            x, y = pts[i]
+            for _ in range(rnd.randint(3, 6)):
+                kx, ky = x * rnd.uniform(0.95, 1.1) + rnd.uniform(-0.6, 0.6), y * rnd.uniform(0.95, 1.1) + rnd.uniform(-0.6, 0.6)
+                h = rnd.uniform(0.8, 1.6)
+                cubuk(g, (kx, ky, KZ), (kx + rnd.uniform(-0.15, 0.15), ky + rnd.uniform(-0.15, 0.15), KZ + h), 0.09, r["kamis"], kabuk=False)
+    for _ in range(6):
+        a = rnd.uniform(0, 2 * math.pi)
+        x, y = 17.5 * math.cos(a), 13.5 * math.sin(a)
+        top(g, (x, y, KZ + 0.6), rnd.uniform(1.0, 1.5), rnd.uniform(1.0, 1.5), 0.8, r["cali"])
+    kir_agac(g, -20.0, 14.0, r, rnd, boy=3.6, rr=2.4)
+    kir_agac(g, 19.0, -14.0, r, rnd, boy=3.2, rr=2.2)
+    # iskele
+    kutu(g, -1.0, 1.0, -12.5, -6.0, KZ + 0.35, KZ + 0.5, r["ahsap"])
+    for yy in (-12.0, -9.0, -6.5):
+        for xx in (-0.85, 0.85):
+            kutu(g, xx - 0.1, xx + 0.1, yy - 0.1, yy + 0.1, KZ - 0.2, KZ + 0.4, r["ahsap"])
+    return g
+
+
+def kir_sera(r, rnd):
+    """Seralar: toprak üstünde yarım silindir tüneller, su deposu."""
+    g = Govde()
+    kir_taban(g, r["toprak"])
+    for i in range(3):
+        y = -12.0 + i * 12.0
+        n = 8
+        R = 3.6
+        pts = []
+        for x in (-18.0, 14.0):
+            for k in range(n + 1):
+                a = math.pi * k / n
+                pts.append((x, y + R * math.cos(a), KZ + R * math.sin(a)))
+        # yan yüzler
+        m = n + 1
+        b = len(g.v)
+        g.v += pts
+        for k in range(n):
+            g.yuz([b + k, b + k + 1, b + m + k + 1, b + m + k], r["sera"], kabuk=False)
+        g.yuz([b + k for k in range(m)][::-1], r["sera_kenar"], kabuk=False)
+        g.yuz([b + m + k for k in range(m)], r["sera_kenar"], kabuk=False)
+        for x in (-18.0, -10.0, -2.0, 6.0, 14.0):
+            for k in range(n):
+                a0, a1 = math.pi * k / n, math.pi * (k + 1) / n
+                cubuk(g, (x, y + R * math.cos(a0), KZ + R * math.sin(a0)), (x, y + R * math.cos(a1), KZ + R * math.sin(a1)), 0.1, r["sera_kenar"], kabuk=False)
+    silindir(g, 19.0, 10.0, KZ, 3.2, 1.6, 10, r["sera_kenar"])
+    kutu(g, 16.5, 21.5, -16.0, -12.0, KZ, KZ + 2.4, r["ahsap"])
+    return g
+
+
+def kir_koru(r, rnd):
+    """Koru: çimen üstünde sık ağaç kümesi (yapraklı ve iğne yapraklı), çalılar."""
+    g = Govde()
+    kir_taban(g, r["cim_koyu"])
+    for _ in range(22):
+        a, d = rnd.uniform(0, 2 * math.pi), math.sqrt(rnd.random())
+        x, y = (KW - 4) * d * math.cos(a), (KD - 4) * d * math.sin(a)
+        kir_agac(g, x, y, r, rnd, cam=rnd.random() < 0.35, mat=rnd.choice((r["yaprak"], r["yaprak_koyu"])))
+    for _ in range(10):
+        x, y = rnd.uniform(-KW + 2, KW - 2), rnd.uniform(-KD + 2, KD - 2)
+        top(g, (x, y, KZ + 0.5), rnd.uniform(0.9, 1.4), rnd.uniform(0.9, 1.4), 0.7, r["cali"])
+    return g
+
+
+def kir_alanlari():
+    r = kir_renkleri()
+    rnd = random.Random(TOHUM * 911)
+    liste = [("Kir_alan_ekin_1", kir_ekin(r, rnd, "genc")), ("Kir_alan_ekin_2", kir_ekin(r, rnd, "bugday")),
+             ("Kir_alan_ekin_3", kir_ekin(r, rnd, "kolza")), ("Kir_alan_ekin_4", kir_ekin(r, rnd, "bugday")),
+             ("Kir_alan_surulmus_1", kir_surulmus(r, rnd)), ("Kir_alan_surulmus_2", kir_surulmus(r, rnd)),
+             ("Kir_alan_saman_1", kir_saman(r, rnd)), ("Kir_alan_saman_2", kir_saman(r, rnd)),
+             ("Kir_alan_bag_1", kir_bag(r, rnd)),
+             ("Kir_alan_meyve_1", kir_meyve(r, rnd, True)), ("Kir_alan_meyve_2", kir_meyve(r, rnd, False)),
+             ("Kir_alan_cayir_1", kir_cayir(r, rnd, True)), ("Kir_alan_cayir_2", kir_cayir(r, rnd, False)),
+             ("Kir_alan_gol_1", kir_gol(r, rnd)), ("Kir_alan_sera_1", kir_sera(r, rnd)), ("Kir_alan_koru_1", kir_koru(r, rnd))]
+    sonuc = []
+    for ad, g in liste:
+        if CIZGI:
+            kabuk(g, CIZGI_KALINLIK * 1.6)   # parsel 50 m: oyunda ~5 kareye küçülür, çizgi orantılı kalınlaşır
+        sonuc.append((ad, g, ortala(g)))
+    return sonuc
 
 # ------------------------------------------------------------------ altı dükkanlı Avrupa binaları (oyundaki dükkanlar + genel dükkanlar)
 
@@ -7229,6 +7538,8 @@ def uret():
         return katalog()
     if MODEL == "hava":
         return hava_parcalari()
+    if MODEL == "kir":
+        return kir_alanlari()
     if MODEL == "blok":
         return bloklar()
     if MODEL == "referans":

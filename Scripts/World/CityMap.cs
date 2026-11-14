@@ -576,6 +576,10 @@ namespace KuryeTycoon
         }
 
         float wetness;                           // ıslak zemin (0–1): yağmurda kararır
+
+        /// <summary>Kar örtüsü ve ıslaklık (0–1): 3D kır zemini ve parselleri de bunlara göre renk değiştirir.</summary>
+        public float KarOrtusu => snowCover;
+        public float Islaklik => wetness;
         float nightAmt;                          // gece (0–1): 2D zemin, kır ve süsler de kararır (3D ışıkla uyumlu)
 
         /// <summary>

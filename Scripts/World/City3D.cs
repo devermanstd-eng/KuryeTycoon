@@ -63,7 +63,7 @@ namespace KuryeTycoon
         };
         public static int OwnBuildingCount { get { LoadPack(); return ownAll.Length; } }
         // Kendi park parçalarımız (Resources/SehirPaketi/Parklar): park kareleri, göl, anıt, meydan çeşmesi
-        static GameObject[] parkTiles, courtTiles, countryExtras;
+        static GameObject[] parkTiles, courtTiles, countryExtras, kirAlanlari;
         /// <summary>Kendi binalarımızın dikey çarpanı: taban kareye sığdığı için binalar basık görünüyordu.</summary>
         const float OwnHeightBoost = 1.18f;
         static GameObject[] ownOld, ownHigh, ownMixed;
@@ -168,11 +168,13 @@ namespace KuryeTycoon
             var tiles = new List<GameObject>();
             var courts = new List<GameObject>();
             var extras = new List<GameObject>();
+            var alanlar = new List<GameObject>();
             parkPond = parkMonument = plazaFountain = null;
             foreach (var p in parks)
             {
                 if (p.name.StartsWith("Park_cim")) tiles.Add(p);
                 else if (p.name.StartsWith("Avlu_")) courts.Add(p);
+                else if (p.name.StartsWith("Kir_alan_")) { if (!p.name.EndsWith("_Hafif")) alanlar.Add(p); }   // kır parselleri (Blender: MODEL = "kir")
                 else if (p.name.StartsWith("Kir_")) extras.Add(p);
                 else if (p.name == "Park_gol") parkPond = p;
                 else if (p.name == "Park_anit") parkMonument = p;
@@ -181,6 +183,7 @@ namespace KuryeTycoon
             parkTiles = tiles.ToArray();
             courtTiles = courts.ToArray();
             countryExtras = extras.ToArray();
+            kirAlanlari = alanlar.ToArray();
 
             // Binalar klasörüne düşmüş direk, lamba, rüzgar gülü (çok ince) ve hazır şehir blokları (çok geniş) elenir
             var widths = new List<float>();
@@ -783,6 +786,7 @@ namespace KuryeTycoon
         void BuildCountryside(CityMap map, bool pack, bool packTreesOk, System.Random rng)
         {
             KirZeminiKur(map);
+            KirParselleriKur(map);
             var anchor = map.HQTile;
             if (UsePack && UseRoads && roadStraight != null)
             {
@@ -842,30 +846,33 @@ namespace KuryeTycoon
         // ---------- Dokulu kır zemini ----------
         // Şehir dışı eskiden ışık almayan düz 2D renk kutularıydı (çayır, tarla): parlak ve düz görünüyordu.
         // Artık tek, ışık ve gölge alan bir zemin: hafif dalgalı çimen, sıra sıra ekilmiş tarlalar, tarla kenarlarında koyu çit izi.
-        // Nehir, kır yolları ve kar örtüsü 2D olarak bunun üstünde kalır. Doku bir kez üretilir (kır düzeni tohumlu, hep aynı).
+        // Zeminin mevsime göre beş dokusu var (taze, yaz, kurak, sonbahar, kış); gerektiğinde üretilir ve saklanır.
+        // Şehre yakın tarlaların üstüne Blender'da modellenmiş kır parselleri oturur (KirParselleriKur).
+        // Nehir, kır yolları ve kar örtüsü 2D olarak zeminin üstünde kalır.
 
         const float KirPay = 44f;
-        static Texture2D kirDoku;
+        static readonly Texture2D[] kirDokular = new Texture2D[5];
         static Material kirMalzeme;
+        int kirDokuDurum = -1;
 
         void KirZeminiKur(CityMap map)
         {
             float x0 = -KirPay - 0.5f, y0 = -KirPay - 0.5f;
             float w = CityMap.Width + 2f * KirPay, h = CityMap.Height + 2f * KirPay;
-            if (kirDoku == null) kirDoku = KirDokusu(map, x0, y0, w, h);
+            kirDokuDurum = KirDurum.EnYakin();
+            if (kirDokular[kirDokuDurum] == null) kirDokular[kirDokuDurum] = KirDokusu(map, x0, y0, w, h, kirDokuDurum);
             if (kirMalzeme == null)
             {
                 var sh = Shader.Find("Universal Render Pipeline/Lit");
                 if (sh == null) sh = Shader.Find("Standard");
                 if (sh == null) return;   // 3D ışık yok: 2D kır zemini kalır
                 kirMalzeme = new Material(sh) { name = "KirZemini" };
-                kirMalzeme.mainTexture = kirDoku;
-                if (kirMalzeme.HasProperty("_BaseMap")) kirMalzeme.SetTexture("_BaseMap", kirDoku);
                 if (kirMalzeme.HasProperty("_BaseColor")) kirMalzeme.SetColor("_BaseColor", Color.white);
                 if (kirMalzeme.HasProperty("_Smoothness")) kirMalzeme.SetFloat("_Smoothness", 0.04f);
                 if (kirMalzeme.HasProperty("_Metallic")) kirMalzeme.SetFloat("_Metallic", 0f);
                 if (kirMalzeme.HasProperty("_Cull")) kirMalzeme.SetFloat("_Cull", 0f);   // iki yüz de çizilsin
             }
+            KirDokuAta(kirDokular[kirDokuDurum]);
 
             var go = new GameObject("Kır zemini (3D)");
             go.transform.SetParent(root, false);
@@ -886,16 +893,29 @@ namespace KuryeTycoon
             map.Kir3DZemin();   // 2D çayır ve tarlalar gizlenir (sadece kar yağınca beyaz örtü olarak görünür)
         }
 
-        static Texture2D KirDokusu(CityMap map, float x0, float y0, float w, float h)
+        static void KirDokuAta(Texture2D t)
+        {
+            if (kirMalzeme == null || t == null) return;
+            kirMalzeme.mainTexture = t;
+            if (kirMalzeme.HasProperty("_BaseMap")) kirMalzeme.SetTexture("_BaseMap", t);
+        }
+
+        /// <summary>Mevsime göre çimen renkleri (taze, yaz, kurak, sonbahar, kış) ve tarlaların o mevsimdeki tonu.</summary>
+        static readonly Color[] KirCimA = { new Color(0.40f, 0.57f, 0.26f), new Color(0.40f, 0.53f, 0.27f), new Color(0.58f, 0.56f, 0.32f), new Color(0.45f, 0.48f, 0.27f), new Color(0.44f, 0.43f, 0.33f) };
+        static readonly Color[] KirCimB = { new Color(0.50f, 0.66f, 0.31f), new Color(0.51f, 0.62f, 0.33f), new Color(0.68f, 0.64f, 0.38f), new Color(0.55f, 0.55f, 0.31f), new Color(0.52f, 0.50f, 0.39f) };
+        static readonly Color[] KirTarlaTon = { new Color(0.45f, 0.62f, 0.30f), Color.clear, new Color(0.80f, 0.70f, 0.42f), new Color(0.55f, 0.43f, 0.30f), new Color(0.50f, 0.44f, 0.36f) };
+        static readonly float[] KirTarlaKarisim = { 0.25f, 0f, 0.35f, 0.35f, 0.55f };
+
+        static Texture2D KirDokusu(CityMap map, float x0, float y0, float w, float h, int durum)
         {
             const int TW = 1536;
             int TH = Mathf.Clamp(Mathf.RoundToInt(TW * h / w), 256, 2048);
             var px = new Color32[TW * TH];
             float sx = w / TW, sy = h / TH;
 
-            // Çimen: iki yumuşak yeşil arasında geniş lekeler, üstüne ince doku
-            var cA = new Color(0.40f, 0.53f, 0.27f);
-            var cB = new Color(0.51f, 0.62f, 0.33f);
+            // Çimen: iki yumuşak ton arasında geniş lekeler, üstüne ince doku
+            var cA = KirCimA[durum];
+            var cB = KirCimB[durum];
             for (int j = 0; j < TH; j++)
             {
                 float wy = y0 + (j + 0.5f) * sy;
@@ -910,12 +930,13 @@ namespace KuryeTycoon
                 }
             }
 
-            // Tarlalar: ekin sıraları (yatay ya da dikey), kenarda koyu çit izi, hafif renk dalgası
+            // Tarlalar: ekin sıraları (yatay ya da dikey), kenarda koyu çit izi, hafif renk dalgası; mevsim tonuna doğru kayar
             int fi = 0;
             foreach (var f in map.Fields)
             {
                 fi++;
                 var r = f.r;
+                var fc = Color.Lerp(f.c, KirTarlaTon[durum], KirTarlaKarisim[durum]);
                 bool yatay = ((fi * 7919) % 2) == 0;
                 float aralik = 0.38f + 0.08f * (fi % 3);
                 int i0 = Mathf.Max(0, Mathf.FloorToInt((r.xMin - x0) / sx)), i1 = Mathf.Min(TW - 1, Mathf.CeilToInt((r.xMax - x0) / sx));
@@ -936,7 +957,7 @@ namespace KuryeTycoon
                             float u = yatay ? wy - r.yMin : wx - r.xMin;
                             float serit = Mathf.Repeat(u / aralik, 1f) < 0.5f ? 0.9f : 1.04f;
                             float n = Mathf.PerlinNoise(wx * 0.35f + fi * 3.3f, wy * 0.35f + fi * 1.7f);
-                            c = f.c * (serit * (0.94f + 0.1f * n));
+                            c = fc * (serit * (0.94f + 0.1f * n));
                         }
                         c.a = 1f;
                         px[k] = c;
@@ -946,11 +967,156 @@ namespace KuryeTycoon
 
             var t = new Texture2D(TW, TH, TextureFormat.RGBA32, true)
             {
-                name = "KirZemini", wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 4
+                name = "KirZemini_" + durum, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 4
             };
             t.SetPixels32(px);
             t.Apply(true, true);
             return t;
+        }
+
+        // ---------- Kır parselleri (Blender: Kir_alan_...) ----------
+        // Şehre yakın tarlalara Blender'da modellenmiş parseller oturur: ekin sıraları, sürülmüş toprak, rulo balyalı anız,
+        // üzüm bağı, meyve bahçesi, inekli çayır, gölet, seralar, koru. Tarlanın boyutuna esnetilir. Uzak tarlalar dokuda kalır.
+        // Malzemeleri ("Kir..." ile başlayanlar) parsele özel kopyalardır: KirGuncelle mevsime, ıslaklığa ve kara göre boyar.
+
+        readonly List<GameObject> kirParseller = new List<GameObject>();
+        static readonly Dictionary<Material, Material> kirKopya = new Dictionary<Material, Material>();
+        static readonly List<(Material m, string etiket, Color asil)> kirBoyali = new List<(Material, string, Color)>();
+        float kirSonGuncelleme = -999f;
+        bool kirGorunur = true;
+
+        static readonly (string on, float agirlik)[] KirTurAgirlik =
+        {
+            ("Kir_alan_ekin", 0.30f), ("Kir_alan_surulmus", 0.14f), ("Kir_alan_saman", 0.12f), ("Kir_alan_cayir", 0.15f),
+            ("Kir_alan_meyve", 0.09f), ("Kir_alan_bag", 0.06f), ("Kir_alan_sera", 0.04f), ("Kir_alan_gol", 0.05f), ("Kir_alan_koru", 0.05f)
+        };
+
+        void KirParselleriKur(CityMap map)
+        {
+            kirParseller.Clear();
+            if (kirAlanlari == null || kirAlanlari.Length == 0) return;
+            float menzil = GrafikKalitesi.Seviye == GrafikKalitesi.Yuksek ? 26f : GrafikKalitesi.Seviye == GrafikKalitesi.Orta ? 18f : 11f;
+            var parent = new GameObject("Kır parselleri (3D)").transform;
+            parent.SetParent(root, false);
+            int fi = 0;
+            foreach (var f in map.Fields)
+            {
+                fi++;
+                var r = f.r;
+                // Şehrin dikdörtgenine uzaklık
+                float dx = Mathf.Max(0f, Mathf.Max(-r.xMax, r.xMin - (CityMap.Width - 1)));
+                float dy = Mathf.Max(0f, Mathf.Max(-r.yMax, r.yMin - (CityMap.Height - 1)));
+                if (Mathf.Sqrt(dx * dx + dy * dy) > menzil) continue;
+                var prefab = KirSec(fi);
+                if (prefab == null) continue;
+                var inst = Instantiate(prefab, parent, false);
+                inst.name = prefab.name;
+                bool cevir = ((fi * 2654435761u) >> 7) % 2 == 1;
+                inst.transform.localRotation = Quaternion.Euler(0f, 0f, cevir ? 180f : 0f) * Quaternion.Euler(-90f, 0f, 0f);
+                inst.transform.localPosition = Vector3.zero;
+                inst.transform.localScale = Vector3.one;
+                foreach (var col in inst.GetComponentsInChildren<Collider>()) Destroy(col);
+                var rs = inst.GetComponentsInChildren<Renderer>();
+                if (rs.Length == 0) { Destroy(inst); continue; }
+                var b = CombinedBounds(rs);
+                float ox = r.width / Mathf.Max(0.01f, b.size.x), oy = r.height / Mathf.Max(0.01f, b.size.y);
+                // FBX −90° X ile döndürülür: yerel X dünya X'i, yerel Z dünya Y'si, yerel Y yükseklik
+                inst.transform.localScale = new Vector3(ox, (ox + oy) * 0.5f, oy);
+                b = CombinedBounds(rs);
+                // Eksen karışırsa (FBX dönüşü) ölçeği dünya boyutuna göre düzelt
+                if (Mathf.Abs(b.size.x - r.width) > 0.05f || Mathf.Abs(b.size.y - r.height) > 0.05f)
+                {
+                    var s = inst.transform.localScale;
+                    inst.transform.localScale = new Vector3(s.x * r.width / Mathf.Max(0.01f, b.size.x), s.y, s.z * r.height / Mathf.Max(0.01f, b.size.y));
+                    b = CombinedBounds(rs);
+                }
+                // Taban kır zemininin hemen üstünde (−Z yukarı: zeminin z'si +0,012)
+                inst.transform.position += new Vector3(r.center.x - b.center.x, r.center.y - b.center.y, 0.006f - b.max.z);
+                foreach (var rr in rs)
+                {
+                    rr.shadowCastingMode = GrafikKalitesi.ZeminGolgesi ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+                    rr.receiveShadows = true;
+                    rr.sortingOrder = 1;
+                    var mats = rr.sharedMaterials;
+                    for (int i = 0; i < mats.Length; i++) mats[i] = KirMalzemesi(mats[i]);
+                    rr.sharedMaterials = mats;
+                }
+                kirParseller.Add(inst);
+            }
+            kirSonGuncelleme = -999f;
+            KirGuncelle();
+        }
+
+        /// <summary>Tarlaya parsel türü: tohumlu, ağırlıklı (her oyunda aynı tarlada aynı tür).</summary>
+        static GameObject KirSec(int fi)
+        {
+            float toplam = 0f;
+            foreach (var t in KirTurAgirlik) toplam += t.agirlik;
+            var rnd = new System.Random(fi * 7331 + 17);
+            float x = (float)rnd.NextDouble() * toplam;
+            string on = KirTurAgirlik[0].on;
+            foreach (var t in KirTurAgirlik) { if (x < t.agirlik) { on = t.on; break; } x -= t.agirlik; }
+            var aday = new List<GameObject>();
+            foreach (var p in kirAlanlari) if (p.name.StartsWith(on)) aday.Add(p);
+            if (aday.Count == 0) return kirAlanlari[rnd.Next(kirAlanlari.Length)];
+            return aday[rnd.Next(aday.Count)];
+        }
+
+        /// <summary>"Kir..." malzemesinin parsellere özel kopyası (asıl malzeme dosyası değişmesin, git'te değişmiş görünmesin).</summary>
+        static Material KirMalzemesi(Material m)
+        {
+            if (m == null) return null;
+            string etiket = m.name.Split('_')[0];
+            if (!etiket.StartsWith("Kir")) return m;
+            if (kirKopya.TryGetValue(m, out var k) && k != null) return k;
+            k = new Material(m) { name = m.name + " (mevsim)" };
+            Color asil = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color;
+            kirKopya[m] = k;
+            kirBoyali.Add((k, etiket, asil));
+            return k;
+        }
+
+        /// <summary>Mevsim, ıslaklık ve kar: parsel malzemeleri ve kır zemini birkaç saniyede bir güncellenir.</summary>
+        void KirGuncelle()
+        {
+            // Düz harita görünümünde 3D parseller gizlenir (binalar gibi)
+            bool goster = MapCamera.I == null || MapCamera.I.Tilt01 > 0.01f;
+            if (goster != kirGorunur)
+            {
+                kirGorunur = goster;
+                foreach (var p in kirParseller) if (p != null) p.SetActive(goster);
+            }
+            if (Time.unscaledTime - kirSonGuncelleme < 1.5f) return;
+            kirSonGuncelleme = Time.unscaledTime;
+            var map = CityMap.I;
+            if (map == null || GameClock.I == null) return;
+
+            var agirlik = KirDurum.Agirliklar();
+            float kar = map.KarOrtusu, islak = map.Islaklik;
+
+            // Zemin dokusu: en ağır mevsim; ıslakken koyulaşır
+            int en = KirDurum.EnYakin();
+            if (en != kirDokuDurum && kirMalzeme != null)
+            {
+                kirDokuDurum = en;
+                if (kirDokular[en] == null)
+                    kirDokular[en] = KirDokusu(map, -KirPay - 0.5f, -KirPay - 0.5f, CityMap.Width + 2f * KirPay, CityMap.Height + 2f * KirPay, en);
+                KirDokuAta(kirDokular[en]);
+            }
+            if (kirMalzeme != null && kirMalzeme.HasProperty("_BaseColor"))
+                kirMalzeme.SetColor("_BaseColor", Color.white * Mathf.Lerp(1f, 0.8f, islak));
+
+            foreach (var (m, etiket, asil) in kirBoyali)
+            {
+                if (m == null) continue;
+                Color c = KirPalet.Renk(etiket, asil, agirlik);
+                float zeminMi = KirPalet.Zemin(etiket);
+                c *= Mathf.Lerp(1f, zeminMi > 0.5f ? 0.76f : 0.88f, islak);           // ıslak toprak ve çimen koyulaşır
+                c = Color.Lerp(c, new Color(0.92f, 0.94f, 0.97f), kar * KirPalet.KarTutar(etiket));
+                c.a = 1f;
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+                if (m.HasProperty("_Color")) m.SetColor("_Color", c);
+            }
         }
 
         /// <summary>Binadan yola doğru birim vektör.</summary>
@@ -1359,6 +1525,7 @@ namespace KuryeTycoon
         void LateUpdate()
         {
             if (CityMap.I == null || MapCamera.I == null || pieces.Count == 0) return;
+            KirGuncelle();
             if (CityMap.I.UnlockLevel != lastUnlock || ContractCount() != lastContracts) Refresh(true);
 
             float g = MapCamera.I.Tilt01;
