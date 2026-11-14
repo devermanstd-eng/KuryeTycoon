@@ -35,6 +35,8 @@ namespace KuryeTycoon
         public int cancelShop;         // dükkanın iptal ettiği
         public int cancelCustomer;     // müşterinin vazgeçtiği (fikir değiştirdi)
         public int cancelDelay;        // müşterinin gecikme yüzünden vazgeçtiği (cancelled içinde)
+        public long isletme;           // işletme giderleri (IsletmeGiderleri: bölge, filo sigortası, yönetim, sosyal katkı)
+        public int tehdit;             // rakiplerin tehdit seviyesi (0 sakin, 1 tetikte, 2 saldırıda)
     }
 
     /// <summary>
@@ -94,7 +96,9 @@ namespace KuryeTycoon
                 avgPickupWait = Telemetry.DayDelivered > 0 ? Telemetry.DayPickupWait / Telemetry.DayDelivered : 0f,
                 cancelShop = om != null ? om.cancelledShopToday : 0,
                 cancelCustomer = om != null ? om.cancelledCustomerToday : 0,
-                cancelDelay = om != null ? om.cancelledDelayToday : 0
+                cancelDelay = om != null ? om.cancelledDelayToday : 0,
+                isletme = s.byCategory[(int)ExpenseCategory.Isletme],
+                tehdit = RivalCompany.I != null ? RivalCompany.I.TehditSeviyesi : 0
             };
             Telemetry.ResetDay();
             Days.Add(d);

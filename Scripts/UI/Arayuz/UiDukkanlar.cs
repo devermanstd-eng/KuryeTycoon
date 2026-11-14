@@ -103,6 +103,12 @@ namespace KuryeTycoon
                 y.Yardim("Bir dükkanla birden çok platform çalışabilir: siparişler itibar, kurye sayısı ve teslimat hızına göre paylaşılır. " +
                          "Münhasır dükkanlarda hiçbir rakip yok. Sözleşmeler 6 ayda bir yenilenir; memnuniyet düşükse bir rakip araya girer. " +
                          "Moralsiz kuryelerini de ayartabilirler.");
+                int sev = rv.TehditSeviyesi;
+                y.Yazi($"Rakiplerin tavrı: {RivalCompany.SeviyeAdlari[sev]} · eşikler: pazar payı %{rv.TehditEsigi1 * 100f:0} (tetikte), %{rv.TehditEsigi2 * 100f:0} (saldırıda)",
+                       sev >= 2 ? "kucuk" : "kucuk soluk", sev >= 2 ? UITheme.Bad : sev == 1 ? (Color?)new Color(1f, 0.62f, 0.2f) : null);
+                y.Yardim("Rakiplerin sertliği takvime değil pazar payına bağlı. Tetikteyken hamleleri sıklaşır ve yatırım ararlar; saldırıdayken her hafta " +
+                         "hamle yapabilir, en değerli (eğitimli, kıdemli) kuryelerine %30 fazla teklif verir, münhasır dükkanlarına bile gelir, fiyat savaşını " +
+                         "en çok sipariş aldığın bölgede açarlar. Dükkan, kurye ve fiyat savaşı hamleleri birkaç gün önceden sağ üstte görünür.");
                 y.Kucuk($"Pazar payın: %{rv.MarketShare * 100f:0} (geçen hafta {(rv.ShareTrend >= 0f ? "+" : "−")}{Mathf.Abs(rv.ShareTrend) * 100f:0.0} puan) · " +
                         $"sen ort. {rv.myAvgMinutes:0} dk, %{rv.myLateRate * 100f:0} geç → müşteri gözünde ×{rv.MyService:0.00} · toplam talep ×{rv.ServiceDemandFactor:0.00}");
                 y.Yardim("Daha hızlı ve dakik teslimat yaptıkça paylaşılan dükkanlarda müşteriler rakipten sana geçer ve şehirde sipariş " +

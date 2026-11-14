@@ -74,6 +74,7 @@ namespace KuryeTycoon
                     y.Dugme("Geçen haftanın raporu", () => EventManager.I.Push(new GameEvent(e.LastWeeklyReportTitle, e.LastWeeklyReport)), true, "kucuk-dg");
                 y.SatirBitir();
                 Kredi(e);
+                IsletmeGiderleriBolumu(e);
                 y.Bolum("Bugün");
                 Donem(e.Today);
             }
@@ -117,6 +118,33 @@ namespace KuryeTycoon
                 y.KartBitir();
             }
 
+            /// <summary>Şirket büyüdükçe artan günlük giderler (IsletmeGiderleri.cs): kalem kalem, tavanla birlikte.</summary>
+            void IsletmeGiderleriBolumu(EconomyManager e)
+            {
+                var dun = e.Yesterday ?? e.Today;
+                var kalemler = IsletmeGiderleri.Hesapla(dun.courierPay, dun.DeliveryProfit, out long tam, out long kesilen, out long tavan,
+                                                        out float oran, out string neden);
+                y.Bolum("İşletme giderleri (günlük)",
+                        "Şirket büyüdükçe artan sabit giderler; her gece kesilir. 10 kurye ve tek bölgeye kadar yok. " +
+                        "Bölge operasyonu (her yeni bölgede saha ekibi ve depo), filo sorumluluk sigortası (11. kuryeden sonra), " +
+                        "yönetim ve İK (15. kuryeden sonra, ekip büyüdükçe pahalanır), kurye sosyal katkısı (21+ kuryede kurye ödemelerinin %3'ü, 36+ kuryede %6'sı).\n\n" +
+                        $"Tavan: toplam, son 7 günün ortalama teslimat kârının %{IsletmeGiderleri.NormalTavan * 100f:0}'ini geçmez; fiyat savaşı sürerken " +
+                        $"%{IsletmeGiderleri.SavasTavani * 100f:0}'sini, son 7 gün zarardaysa %{IsletmeGiderleri.ZararTavani * 100f:0}'ini. Şirket tek seferde batmasın diye.");
+                if (kalemler.Count == 0)
+                {
+                    y.Kucuk("Şirket henüz küçük: işletme gideri yok (11. kurye ya da 2. bölgeyle başlar).");
+                    return;
+                }
+                foreach (var k in kalemler)
+                {
+                    y.KV(k.ad, Ft(k.kesilen) + (k.kesilen < k.tam ? $" (tamamı {Ft(k.tam)})" : ""));
+                    y.Yardim(k.aciklama);
+                }
+                y.KV("Toplam (bu gece kesilecek)", Ft(kesilen), UITheme.Warn);
+                if (kesilen < tam)
+                    y.Not($"Tavan devrede: teslimat kârının %{oran * 100f:0}'i ({Ft(tavan)}){(neden.Length > 0 ? " · " + neden : "")}. Tamamı {Ft(tam)} olurdu.");
+            }
+
             void Odemeler(EconomyManager e)
             {
                 y.Bolum("Kurye ödemeleri");
@@ -145,7 +173,11 @@ namespace KuryeTycoon
                 Donem(e.Year);
                 long vergilenen = System.Math.Max(0L, e.Year.Profit);
                 long tahmin = EconomyManager.ProgressiveTax(vergilenen);
-                y.KV($"Tahmini yıl sonu vergisi (kademeli, ortalama %{EconomyManager.EffectiveTaxRate(vergilenen) * 100f:0.0})", Ft(tahmin));
+                y.KV($"Tahmini yıllık vergi (kademeli, ortalama %{EconomyManager.EffectiveTaxRate(vergilenen) * 100f:0.0})", Ft(tahmin));
+                y.KV("Bu yıl ödenen geçici vergi", Ft(e.GeciciVergiOdenen));
+                y.KV($"Sıradaki geçici vergi ({EconomyManager.SiradakiVergiTarihi(clock.Month)}), şu anki kârla", Ft(e.TahminiGeciciVergi), UITheme.Warn);
+                y.Yardim("Kademeli vergi 3 ayda bir peşin istenir (31 Mart, 30 Haziran, 30 Eylül): yılbaşından bu yana kârın vergisi − bu yıl ödenen. " +
+                         "Yıl sonunda kesin hesap yapılır: kalan fark ödenir, fazlası iade edilir. Ertelemek %10 ceza ve günlük %2 faiz getirir."); 
                 if (e.Yesterday != null)
                 {
                     y.Bolum("Dün");

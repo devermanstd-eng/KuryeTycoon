@@ -185,6 +185,23 @@ namespace KuryeTycoon
             }
         }
         bool biriktiriyordu;
+
+        /// <summary>
+        /// Sıradaki platform paketi yakında gerekecek mi: son paket değil ve (hesaplar dolu ya da dolmasına 3 kurye kaldı,
+        /// ya da kayıtta hesap bekleyen var, ya da darboğaz). Bir kuryenin ayrılması bunu değiştirmez.
+        /// </summary>
+        bool PlatformParasiLazim
+        {
+            get
+            {
+                var up = UpgradeManager.I;
+                if (up == null || up.NextCost(UpgradeKind.Platform) <= 0) return false;
+                var ks = KayitSistemi.I;
+                bool dolmakUzere = CourierManager.I.Couriers.Count >= up.CourierCap - 3;
+                bool bekleyen = ks != null && ks.HesapBekleyen > 0;
+                return dolmakUzere || bekleyen || KuryeDarbogazi;
+            }
+        }
         long HaftalikKuryeOdemesi => (long)(Ort(7, d => d.courierPay) * 7f);
         long GunlukTeslimatKari => (long)Ort(7, d => d.deliveryProfit);
         float OrtMoral
@@ -562,9 +579,11 @@ namespace KuryeTycoon
             var eco = EconomyManager.I;
             var due = loan.NextDue;
             // Kasa çok rahatsa borcun tamamını kapat (riski sıfırla). Faiz baştan sabit, erken ödemek para kazandırmaz:
-            // kurye hesapları doluyken para önce platform paketine gider.
+            // sıradaki platform paketi yakında gerekecekse (hesaplar dolu ya da dolmak üzere, hesap bekleyen var) onun parası ayrılır.
+            // 14.11 testinde bir kurye ayrılınca hesaplar bir anlığına boş göründü ve bot 36. gün paketin parasını krediye gömdü.
             long sabit = 200000 + UpgradeManager.I.TotalDailyCost * 7L;
-            if (!UpgradeManager.I.CourierCapFull && eco.FreeCash > loan.Remaining + sabit + 400000)
+            long platformPayi = PlatformParasiLazim ? System.Math.Max(0, UpgradeManager.I.NextCost(UpgradeKind.Platform)) : 0;
+            if (eco.FreeCash > loan.Remaining + sabit + 400000 + platformPayi)
             {
                 long kalan = loan.Remaining;
                 if (loan.Pay(kalan)) { Eylem("Borç", $"Kasa rahat (serbest {Ft(eco.FreeCash + kalan)}): borcun tamamı kapatıldı ({Ft(kalan)})"); return; }
@@ -731,7 +750,19 @@ namespace KuryeTycoon
         {
             var rv = RivalCompany.I;
             var clk = GameClock.I;
-            if (rv == null || clk.Day - sonPazarlikGun < 7) return;
+            if (rv == null) return;
+            // Rakip bir dükkana teklif hazırlıyorsa (önceden duyurulur): şansı makulse münhasırlık öner, rakip geri çekilir
+            foreach (var t in rv.Tehditler)
+            {
+                var ts = rv.TehditDukkani(t);
+                if (ts == null || ts.exclusive || !rv.CanOfferExclusive(ts) || rv.ExclusiveChance(ts) < 0.4f) continue;
+                var tr = rv.RakipAt(t.rakip);
+                Eylem("Pazarlık", $"{ts.Name}'a münhasırlık önerildi: {(tr != null ? tr.ad : "rakip")} teklif hazırlıyor (şans %{rv.ExclusiveChance(ts) * 100f:0})");
+                rv.OfferExclusive(ts);
+                sonPazarlikGun = clk.Day;
+                return;
+            }
+            if (clk.Day - sonPazarlikGun < 7) return;
             Shop enM = null, enP = null;
             foreach (var s in CityMap.I.Shops)
             {
