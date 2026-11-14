@@ -644,7 +644,8 @@ namespace KuryeTycoon
                 c = Color.Lerp(c, wet, wetness * 0.8f * Mathf.Min(1f, mul + 0.3f));
             }
             if (snowCover <= 0f) return c;
-            return Color.Lerp(c, SnowColor, snowCover * mul);
+            // Kar örtüsü en fazla ~0,55: yoğun karda zemin ve kır tamamen beyaz olsun (yollar mul ile yarı)
+            return Color.Lerp(c, SnowColor, Mathf.Clamp01(snowCover / 0.5f) * mul);
         }
         readonly List<Vector2Int> waterTiles = new List<Vector2Int>();
         SpriteRenderer hq;
