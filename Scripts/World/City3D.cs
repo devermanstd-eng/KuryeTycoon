@@ -1237,7 +1237,9 @@ namespace KuryeTycoon
             var map = CityMap.I;
             if (map == null || GameClock.I == null || mevsimBoyali.Count == 0) return;
             var agirlik = KirDurum.Agirliklar();
-            float kar = map.KarOrtusu, islak = map.Islaklik;
+            // Hava kar örtüsünü en fazla 0,55'e çıkarır: burada 0–1'e açılır (tam kar = tam beyaz çatı)
+            float kar = Mathf.Clamp01(map.KarOrtusu / 0.5f), islak = map.Islaklik;
+            KarKatmaniGuncelle(kar);
             var karRenk = new Color(0.93f, 0.95f, 0.98f);
             foreach (var (m, etiket, asil, tohum) in mevsimBoyali)
             {
@@ -1246,13 +1248,195 @@ namespace KuryeTycoon
                 if (SehirMevsim.Islanir(etiket)) c *= Mathf.Lerp(1f, 0.78f, islak);   // ıslak asfalt ve taş koyulaşır
                 // Kar önce en çok tutan yüzeylerde görünür: az karda çatı ve çim beyazlar, yol ancak yoğun karda
                 float tut = SehirMevsim.KarTutar(etiket);
-                float k = Mathf.Clamp01(kar * tut * (1f + (1f - tut) * 0.3f));
-                k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(k * 1.15f - (1f - tut) * 0.15f));
+                // tutan yüzey erken beyazlar (çatı yarım karda bile çoğunlukla beyaz), yol ancak yoğun karda
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(kar * (0.6f + tut * 1.2f) - (1f - tut) * 0.35f)) * tut;
                 c = Color.Lerp(c, karRenk, k);
                 c.a = asil.a;
                 if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
                 if (m.HasProperty("_Color")) m.SetColor("_Color", c);
             }
+        }
+
+        // ---------- Kar katmanı: yukarı bakan her yüzeyin üstünde biriken kar ----------
+        // Kar yağınca her parçanın (bina, ağaç, bank, araba, çit…) yukarı bakan yüzeylerinden ince bir "kar kabuğu" mesh'i
+        // üretilir ve biraz yukarı kaydırılır. Duvarlar renkli kalır, çatı, saçak, pencere pervazı, ağaç tepesi beyazlar.
+        // Katman yarı saydam başlar, kar arttıkça koyulaşır; az karda yalnızca düz yüzeyler, yoğun karda eğimli çatılar da örtülür.
+        // Mesh'ler ilk karda bir kez (birkaç karede parça parça) üretilir; aynı modeller aynı mesh'i paylaşır.
+        static readonly Dictionary<(Mesh, int, int, int, int), (Mesh duz, Mesh egik)> karMeshOnbellek = new Dictionary<(Mesh, int, int, int, int), (Mesh, Mesh)>();
+        readonly List<GameObject> karDuz = new List<GameObject>(), karEgik = new List<GameObject>();
+        Renderer[] karKuyruk;
+        int karSira;
+        Transform karKoku;
+        bool karKuruldu;
+        Material karMalzeme;
+        float karSonAlfa = -1f;
+        bool karDuzGorunur, karEgikGorunur;
+
+        static readonly Vector3 DunyaYukari = Vector3.back;   // −Z yukarı
+
+        /// <summary>Kar tutmayan malzemeler: siyah çizgi, cam, ışık, su, yazı.</summary>
+        static bool KarTutmaz(Material m)
+        {
+            if (m == null) return true;
+            string n = m.name;
+            return n.StartsWith("Cizgi") || n.StartsWith("Cam") || n.StartsWith("Vitrin") || n.StartsWith("Vitray") || n.StartsWith("Isik") ||
+                   n.StartsWith("Simsek") || n.StartsWith("Bulut") || n.StartsWith("Yazi") || n.StartsWith("Su_") || n.StartsWith("PSu") ||
+                   n.StartsWith("KirSu") || n.StartsWith("OfisCam") || n.StartsWith("Kar_") || n.StartsWith("Reklam") || n.StartsWith("Pano");
+        }
+
+        void KarKatmaniGuncelle(float kar)
+        {
+            if (root == null) return;
+            if (karKoku != null && karKoku.parent != root) { karKoku = null; karKuruldu = false; }   // şehir yeniden kuruldu
+            if (karKoku == null) { karDuz.Clear(); karEgik.Clear(); karKuyruk = null; karKuruldu = false; karDuzGorunur = karEgikGorunur = false; karSonAlfa = -1f; }
+
+            bool gerek = kar > 0.04f;
+            if (!gerek && !karKuruldu && karKuyruk == null) return;
+
+            // İlk kar: kuyruğu doldur ve birkaç karede üret (oyun takılmasın)
+            if (gerek && !karKuruldu && karKuyruk == null && (MapCamera.I == null || MapCamera.I.Tilt01 > 0.95f))
+            {
+                karKoku = new GameObject("KarKatmani").transform;
+                karKoku.SetParent(root, false);
+                karKuyruk = root.GetComponentsInChildren<Renderer>(true);
+                karSira = 0;
+            }
+            if (karKuyruk != null)
+            {
+                int son = Mathf.Min(karKuyruk.Length, karSira + 600);
+                for (; karSira < son; karSira++) KarKabuguEkle(karKuyruk[karSira]);
+                if (karSira >= karKuyruk.Length) { karKuyruk = null; karKuruldu = true; karSonAlfa = -1f; karDuzGorunur = karEgikGorunur = false; }
+                else sehirSonGuncelleme = Time.unscaledTime - 1.95f;   // sonraki karede devam
+            }
+            if (!karKuruldu || karMalzeme == null) return;
+
+            // Az kar: düz yüzeyler, ince ve yarı saydam. Yoğun kar: eğimli çatılar da, tamamen beyaz.
+            bool duz = kar > 0.04f, egik = kar > 0.4f;
+            if (duz != karDuzGorunur) { karDuzGorunur = duz; foreach (var g in karDuz) if (g != null) g.SetActive(duz); }
+            if (egik != karEgikGorunur) { karEgikGorunur = egik; foreach (var g in karEgik) if (g != null) g.SetActive(egik); }
+            float alfa = Mathf.Clamp01(Mathf.InverseLerp(0.04f, 0.75f, kar));
+            alfa = Mathf.Lerp(0.35f, 1f, alfa);
+            if (Mathf.Abs(alfa - karSonAlfa) > 0.01f)
+            {
+                karSonAlfa = alfa;
+                var c = new Color(0.94f, 0.96f, 0.99f, alfa);
+                if (karMalzeme.HasProperty("_BaseColor")) karMalzeme.SetColor("_BaseColor", c);
+                if (karMalzeme.HasProperty("_Color")) karMalzeme.SetColor("_Color", c);
+            }
+        }
+
+        /// <summary>Kar katmanı malzemesi: şehirdeki bir malzemenin (URP Lit) yarı saydam beyaz kopyası.</summary>
+        Material KarMalzemesiYap(Material ornek)
+        {
+            var m = new Material(ornek) { name = "Kar_katmani" };
+            m.SetFloat("_Surface", 1f);
+            m.SetFloat("_Blend", 0f);
+            m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            if (m.HasProperty("_SrcBlendAlpha")) m.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            if (m.HasProperty("_DstBlendAlpha")) m.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_ZWrite", 0f);
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.DisableKeyword("_ALPHATEST_ON");
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.SetShaderPassEnabled("DepthOnly", false);
+            m.SetShaderPassEnabled("ShadowCaster", false);
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent - 10;
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", 0.25f);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", 0f);
+            if (m.HasProperty("_EmissionColor")) { m.SetColor("_EmissionColor", Color.black); m.DisableKeyword("_EMISSION"); }
+            m.SetColor("_BaseColor", new Color(0.94f, 0.96f, 0.99f, 0.35f));
+            return m;
+        }
+
+        void KarKabuguEkle(Renderer r)
+        {
+            if (r == null || r is ParticleSystemRenderer || r is SkinnedMeshRenderer || r.isPartOfStaticBatch) return;
+            if (karKoku != null && r.transform.IsChildOf(karKoku)) return;
+            var mf = r.GetComponent<MeshFilter>();
+            if (mf == null || mf.sharedMesh == null) return;
+            var mesh = mf.sharedMesh;
+            if (!mesh.isReadable) return;
+            var mats = r.sharedMaterials;
+            int maske = 0;
+            for (int i = 0; i < mats.Length && i < mesh.subMeshCount && i < 30; i++)
+            {
+                if (KarTutmaz(mats[i])) continue;
+                maske |= 1 << i;
+                if (karMalzeme == null && mats[i].HasProperty("_BaseColor")) karMalzeme = KarMalzemesiYap(mats[i]);
+            }
+            if (maske == 0 || karMalzeme == null) return;
+
+            // Dünya yukarısının modelin kendi uzayındaki yönü (ölçek dahil) ve 1 cm'lik kaydırmanın yerel boyu
+            var M = r.transform.localToWorldMatrix;
+            var Mi = M.inverse;
+            Vector3 d = Mi.MultiplyVector(DunyaYukari);
+            if (d.sqrMagnitude < 1e-12f) return;
+            float olcek = M.MultiplyVector(d.normalized).magnitude;
+            if (olcek < 1e-6f) return;
+            float kalinlik = 0.006f / olcek;            // ~6 cm (1 birim = 10 m)
+            d.Normalize();
+            var anahtar = (mesh, Mathf.RoundToInt(d.x * 32f), Mathf.RoundToInt(d.y * 32f), Mathf.RoundToInt(d.z * 32f) * 1000 + Mathf.RoundToInt(Mathf.Log(kalinlik) * 8f), maske);
+            if (!karMeshOnbellek.TryGetValue(anahtar, out var ikili))
+            {
+                ikili = (KarMesh(mesh, maske, d, kalinlik, Mi, M, 0.82f, 2f), KarMesh(mesh, maske, d, kalinlik, Mi, M, 0.42f, 0.82f));
+                karMeshOnbellek[anahtar] = ikili;
+            }
+            if (ikili.duz != null) karDuz.Add(KarParcasi(r, ikili.duz, "duz"));
+            if (ikili.egik != null) karEgik.Add(KarParcasi(r, ikili.egik, "egik"));
+        }
+
+        GameObject KarParcasi(Renderer r, Mesh m, string ad)
+        {
+            var go = new GameObject("Kar_" + ad);
+            go.transform.SetParent(r.transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = m;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = karMalzeme;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = true;
+            go.SetActive(false);
+            return go;
+        }
+
+        /// <summary>Yukarı bakan üçgenlerden (eğim [min, max) aralığında) kaydırılmış kar kabuğu.</summary>
+        static Mesh KarMesh(Mesh kaynak, int maske, Vector3 yukari, float kalinlik, Matrix4x4 Mi, Matrix4x4 M, float min, float max)
+        {
+            var v = kaynak.vertices;
+            var yeniV = new List<Vector3>();
+            var yeniN = new List<Vector3>();
+            var tri = new List<int>();
+            var MiT = Mi.transpose;
+            for (int s = 0; s < kaynak.subMeshCount && s < 30; s++)
+            {
+                if ((maske & (1 << s)) == 0) continue;
+                if (kaynak.GetTopology(s) != MeshTopology.Triangles) continue;
+                var t = kaynak.GetTriangles(s);
+                for (int i = 0; i + 2 < t.Length; i += 3)
+                {
+                    Vector3 a = v[t[i]], b = v[t[i + 1]], c = v[t[i + 2]];
+                    Vector3 n = Vector3.Cross(b - a, c - a);
+                    if (n.sqrMagnitude < 1e-14f) continue;
+                    // Dünya uzayındaki eğim (ölçek dahil): normal ters-devrik matrisle çevrilir
+                    Vector3 dn = MiT.MultiplyVector(n).normalized;
+                    float yukariMi = Vector3.Dot(dn, DunyaYukari);
+                    if (yukariMi < min || yukariMi >= max) continue;
+                    Vector3 kay = yukari * kalinlik;
+                    int k = yeniV.Count;
+                    yeniV.Add(a + kay); yeniV.Add(b + kay); yeniV.Add(c + kay);
+                    var ln = n.normalized;
+                    yeniN.Add(ln); yeniN.Add(ln); yeniN.Add(ln);
+                    tri.Add(k); tri.Add(k + 1); tri.Add(k + 2);
+                }
+            }
+            if (tri.Count == 0) return null;
+            var m = new Mesh { name = kaynak.name + "_kar" };
+            if (yeniV.Count > 65000) m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            m.SetVertices(yeniV);
+            m.SetNormals(yeniN);
+            m.SetTriangles(tri, 0);
+            m.RecalculateBounds();
+            return m;
         }
 
         /// <summary>Binadan yola doğru birim vektör.</summary>

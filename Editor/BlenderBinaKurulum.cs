@@ -156,7 +156,8 @@ namespace KuryeTycoon.EditorTools
             // Hava parçaları (damla, kar, yaprak) parçacık sisteminde kullanılır: mesh oyunda okunabilir olmalı
             // Yol ve park parçaları da okunur olmalı: GeceIsiklari lambaların yerini mesh'ten bulup oraya gerçek ışık koyar
             string dosya = Path.GetFileName(yol);
-            bool okunur = dosya.StartsWith("Hava_") || dosya.StartsWith("Yol_") || dosya.StartsWith("Park_") || dosya.StartsWith("Meydan_");
+            // Kar katmanı (City3D) yukarı bakan yüzeyleri mesh'ten çıkarır: bütün şehir modelleri okunur olmalı (kır parselleri hariç)
+            bool okunur = !dosya.StartsWith("Kir_");
             if (okunur && !mi.isReadable) { mi.isReadable = true; degisti = true; }
             if (degisti) mi.SaveAndReimport();
         }
