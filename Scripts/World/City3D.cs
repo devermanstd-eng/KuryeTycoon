@@ -1332,6 +1332,9 @@ namespace KuryeTycoon
         /// <summary>Kar katmanı malzemesi: şehirdeki bir malzemenin (URP Lit) yarı saydam beyaz kopyası.</summary>
         Material KarMalzemesiYap(Material ornek)
         {
+            // Hazır saydam malzeme (Resources/Gorsel): oyun derlemesinde URP'nin saydam Lit çeşidi atılmasın diye diskte durur
+            var hazir = Resources.Load<Material>("Gorsel/Kar_katmani");
+            if (hazir != null) return new Material(hazir) { name = "Kar_katmani" };
             var m = new Material(ornek) { name = "Kar_katmani" };
             m.SetFloat("_Surface", 1f);
             m.SetFloat("_Blend", 0f);
