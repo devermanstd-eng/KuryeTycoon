@@ -671,24 +671,14 @@ namespace KuryeTycoon
                 long kaliteEsigi = (long)Mathf.Lerp(8000000f, 3000000f, r.kaliteEgilimi);
                 if (r.money > kaliteEsigi && r.quality < 1f) { r.money -= 3000000; r.quality = Mathf.Min(1f, r.quality + 0.05f); }
 
-                // Yeni dükkan anlaşması (senin sözleşmeli dükkanların da olabilir, münhasırlar hariç)
-                if (Random.value < 0.25f * r.buyume)
-                {
-                    var cands = new List<Shop>();
-                    foreach (var s in CityMap.I.Shops) if (!Var(s, i) && !s.exclusive && !s.own) cands.Add(s);
-                    if (cands.Count > 0)
-                    {
-                        var s = cands[Random.Range(0, cands.Count)];
-                        Ekle(s, i);
-                        if (s.contracted)
-                            EventManager.I.Push(new GameEvent($"{r.ad} {s.Name} ile anlaştı",
-                                $"Rakip platform {r.ad} ({r.Tanim}), {s.Name} ile de çalışmaya başladı. Bu dükkanın siparişleri artık " +
-                                $"{(DukkanRakipSayisi(s) > 1 ? "rakiplerle" : "ikiniz arasında")} paylaşılacak (şu an payın ~%{MyFraction(s) * 100f:0}). " +
-                                "Dükkanlar sekmesinden münhasırlık teklif ederek rakipleri çıkarabilirsin."));
-                        else
-                            EventManager.I.Notify($"{r.ad}, {s.Name} ile anlaştı.");
-                    }
-                }
+                // Yeni dükkan anlaşması: pazar payın büyüdükçe sıklaşır (sakin %25, tetikte %45, saldırıda %70 × büyüme hızı;
+                // yatırım almış rakip saldırıdayken haftada iki). Tetikteyken ve saldırıdayken çoğunlukla senin en çok sipariş
+                // aldığın (münhasır olmayan) dükkanlarına girer: payını ancak senin dükkanlarında sipariş paylaşarak alabilir.
+                // 14.11 (e1) testinde rakipler 60 günde sadece 4 dükkanla anlaştı, pay %44'ten %65'e çıktı.
+                float anlasmaSansi = (seviye >= 2 ? 0.7f : seviye == 1 ? 0.45f : 0.25f) * r.buyume;
+                int anlasma = Random.value < anlasmaSansi ? 1 : 0;
+                if (seviye >= 2 && r.fundingRounds > 0 && Random.value < 0.5f) anlasma++;
+                for (int a = 0; a < anlasma; a++) YeniDukkanAnlasmasi(i, seviye);
             }
 
             // Rakiplerin haftalık hamlesi: rakip sayısı arttıkça biraz daha sık, hamleyi büyük ve saldırgan olan yapar
@@ -722,6 +712,37 @@ namespace KuryeTycoon
                         break;
                     }
                 }
+        }
+
+        /// <summary>Rakip yeni bir dükkanla anlaşır (münhasır dükkanlar hariç). Senin dükkanınsa siparişler paylaşılmaya başlar.</summary>
+        void YeniDukkanAnlasmasi(int i, int seviye)
+        {
+            var r = Rakipler[i];
+            var cands = new List<Shop>();
+            Shop s = null;
+            if (seviye >= 1 && Random.value < 0.6f)
+            {
+                foreach (var d in CityMap.I.Shops) if (d.contracted && !d.own && !d.exclusive && !Var(d, i)) cands.Add(d);
+                cands.Sort((a, b) => (b.lastMonthOrders + b.monthOrders).CompareTo(a.lastMonthOrders + a.monthOrders));
+                if (cands.Count > 0) s = cands[Random.Range(0, Mathf.Min(3, cands.Count))];
+            }
+            if (s == null)
+            {
+                cands.Clear();
+                foreach (var d in CityMap.I.Shops) if (!Var(d, i) && !d.exclusive && !d.own) cands.Add(d);
+                if (cands.Count == 0) return;
+                s = cands[Random.Range(0, cands.Count)];
+            }
+            Ekle(s, i);
+            if (s.contracted)
+            {
+                Telemetry.Add("Rakip: senin dükkanınla anlaştı");
+                // Sık olabildiği için oyunu durduran kart değil bildirim; Dükkanlar'da da yazar
+                EventManager.I.Notify($"{r.ad}, {s.Name} ile de anlaştı: bu dükkanın siparişleri artık " +
+                                      $"{(DukkanRakipSayisi(s) > 1 ? "rakiplerle" : "ikiniz arasında")} paylaşılıyor (payın ~%{MyFraction(s) * 100f:0}). " +
+                                      "Münhasırlık önerirsen rakipler çıkar.");
+            }
+            else EventManager.I.Notify($"{r.ad}, {s.Name} ile anlaştı.");
         }
 
         // ================================================================ rakiplerin hamleleri

@@ -40,6 +40,16 @@ namespace KuryeTycoon
         /// <summary>Akıllı: kartları okuyup oyuncu gibi seçer ve bütün menüleri kullanır (TestModuAkilli.cs). Diğer ikisi basit bot.</summary>
         public enum BotTuru { Akilli, IlkSecenek, Rastgele }
         public static BotTuru Tur = BotTuru.Akilli;
+
+        /// <summary>
+        /// Denge karşılaştırması için sabit tohum: her test aynı şehirle ve aynı bot tohumuyla başlar (14.11'deki testin şehri).
+        /// Oyunun geri kalanı kare süresine bağlı olduğu için iki test birebir aynı olmaz ama şehir ve botun zarları aynıdır.
+        /// false: her test farklı şehir (genel hata avı için).
+        /// </summary>
+        public static bool SabitTohum = true;
+        public const int SabitHaritaTohumu = 785852933, SabitBotTohumu = 40109562;
+        /// <summary>StartGame bu tohumu kullanır (test başlarken dolar, oyun kurulunca boşalır).</summary>
+        public static int? TestHaritaTohumu;
         public static string TurAdi(BotTuru t) => t == BotTuru.Akilli ? "akıllı oyuncu" : t == BotTuru.Rastgele ? "rastgele seçim" : "hep ilk seçenek";
 
         public static bool Aktif { get; private set; }
@@ -60,7 +70,10 @@ namespace KuryeTycoon
             var go = new GameObject("Otomatik Test");
             go.transform.SetParent(GameBootstrap.I.transform, false);
             var t = go.AddComponent<TestModu>();   // Awake: klasör, dosyalar, kayıt kapalı
+            TestHaritaTohumu = SabitTohum ? SabitHaritaTohumu : (int?)null;
             GameBootstrap.I.StartGame();
+            TestHaritaTohumu = null;
+            if (SabitTohum) Random.InitState(SabitBotTohumu);   // olayların zarları da aynı yerden başlasın
             t.OyunBasladi();
         }
 
@@ -75,7 +88,7 @@ namespace KuryeTycoon
         {
             I = this;
             Aktif = true;
-            tohum = System.Environment.TickCount & 0x7fffffff;
+            tohum = SabitTohum ? SabitBotTohumu : System.Environment.TickCount & 0x7fffffff;
             rnd = new System.Random(tohum);
             eskiArkaPlan = Application.runInBackground;
             Application.runInBackground = true;   // başka pencereye geçince test durmasın
@@ -758,7 +771,8 @@ namespace KuryeTycoon
                               $"geçici vergi bu yıl {GameData.Ft(ecoOz != null ? ecoOz.GeciciVergiOdenen : 0)} · " +
                               $"rakipler: sakin {sakinGun} gün, tetikte {tetikGun} gün, saldırıda {saldiriGun} gün · " +
                               $"duyurulan hamle {Sayac("Rakip: hamle duyuruldu")} (dükkan {Sayac("Rakip: dükkan teklifi") + Sayac("Rakip: münhasır dükkan teklifi")}, " +
-                              $"kurye {Sayac("Rakip: kurye teklifi")}, fiyat savaşı {Sayac("Rakip: fiyat savaşı")}, yatırım turu {Sayac("Rakip: yatırım turu")})");
+                              $"kurye {Sayac("Rakip: kurye teklifi")}, fiyat savaşı {Sayac("Rakip: fiyat savaşı")}, yatırım turu {Sayac("Rakip: yatırım turu")}) · " +
+                              $"rakiplerin senin dükkanlarınla anlaşması {Sayac("Rakip: senin dükkanınla anlaştı")}");
 
                 Baslik(sb, "HAFTA HAFTA");
                 sb.AppendLine("hafta | teslimat | iptal % | net          | hafta sonu kasa | kurye | dükkan | itibar");
