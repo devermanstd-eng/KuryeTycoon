@@ -420,6 +420,17 @@ namespace KuryeTycoon
             return false;
         }
 
+        /// <summary>Kırda nokta dolu mu: tarla, nehir, kır yolu ya da ağaca çok yakın (çayır parçaları buraya konmaz).</summary>
+        public bool KirdaDolu(Vector2 p, float pay)
+        {
+            if (InField(p, pay * 0.5f)) return true;
+            if ((p.x < 0f || p.x > Width - 1f) && Mathf.Abs(p.y - RiverCurveY(p.x)) < 2.2f + pay) return true;
+            if (p.x >= -1f && p.x <= Width && Mathf.Abs(p.y - RiverY) < 2.5f) return true;
+            if (NearCountryRoad(p, pay * 0.6f)) return true;
+            foreach (var f in Farms) if ((f - p).sqrMagnitude < 2.5f) return true;
+            return false;
+        }
+
         /// <summary>Nokta bir tarlanın içinde mi (kenar payıyla)?</summary>
         bool InField(Vector2 p, float margin)
         {

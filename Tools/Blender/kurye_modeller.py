@@ -3335,6 +3335,55 @@ def kir_koru(r, rnd):
     return g
 
 
+# Çayır parçaları (20 × 20 m, tabansız): kır zemininin üstüne serpilir; ot kümeleri, çalı, kır çiçeği, kaya, sazlık.
+# Ot rengi "KirOt": mevsime göre değişir (ilkbahar taze, yaz sonu sarı, sonbahar zeytin, kış soluk), kar yağınca beyazlar.
+CW = 10.0   # yarı boy
+
+
+def ot_kumesi(g, x, y, rx, ry, h, mat):
+    top(g, (x, y, 0.0), rx, ry, h, mat)
+
+
+def kir_cimen(r, rnd, tur):
+    g = Govde()
+    ot = M("KirOt", "#7aa64e")
+    ot_koyu = M("KirOtKoyu", "#62903f")
+    ot_acik = M("KirOtAcik", "#94b95c")
+    b = len(g.f)
+    n = {"sade": 9, "cicekli": 7, "calili": 6, "kayalik": 6, "sazlik": 5}[tur]
+    for _ in range(n):
+        x, y = rnd.uniform(-CW + 1.5, CW - 1.5), rnd.uniform(-CW + 1.5, CW - 1.5)
+        ot_kumesi(g, x, y, rnd.uniform(1.4, 3.2), rnd.uniform(1.2, 2.8), rnd.uniform(0.25, 0.6), rnd.choice((ot, ot_koyu, ot_acik)))
+    if tur == "cicekli":
+        for _ in range(4):
+            cx, cy = rnd.uniform(-CW + 2, CW - 2), rnd.uniform(-CW + 2, CW - 2)
+            renk = rnd.choice(r["cicek"])
+            for _ in range(rnd.randint(5, 9)):
+                top(g, (cx + rnd.uniform(-1.4, 1.4), cy + rnd.uniform(-1.4, 1.4), 0.35), 0.28, 0.28, 0.2, renk)
+    if tur in ("calili", "sade"):
+        for _ in range(3 if tur == "calili" else 1):
+            x, y = rnd.uniform(-CW + 2, CW - 2), rnd.uniform(-CW + 2, CW - 2)
+            top(g, (x, y, 0.55), rnd.uniform(0.9, 1.5), rnd.uniform(0.9, 1.4), 0.8, r["cali"])
+            if rnd.random() < 0.5:
+                top(g, (x + 0.9, y + 0.3, 0.4), 0.7, 0.6, 0.55, r["cali"])
+    if tur == "kayalik":
+        for _ in range(rnd.randint(2, 4)):
+            x, y = rnd.uniform(-CW + 2, CW - 2), rnd.uniform(-CW + 2, CW - 2)
+            s = rnd.uniform(0.6, 1.3)
+            top(g, (x, y, s * 0.25), s, s * 0.8, s * 0.55, r["tas"])
+            top(g, (x + s * 0.9, y - 0.3, s * 0.15), s * 0.5, s * 0.45, s * 0.35, r["tas"])
+    if tur == "sazlik":
+        pts = poligon(9, rnd.uniform(2.5, 3.5), rnd.uniform(1.8, 2.6), 0.0, 0.0, rnd.uniform(0, 1))
+        duz_poligon(g, [(x * 1.25, y * 1.25) for x, y in pts], 0.03, ot_koyu)
+        duz_poligon(g, pts, 0.05, r["su"])
+        for x, y in pts:
+            for _ in range(3):
+                kx, ky = x * rnd.uniform(1.0, 1.25) + rnd.uniform(-0.4, 0.4), y * rnd.uniform(1.0, 1.25) + rnd.uniform(-0.4, 0.4)
+                cubuk(g, (kx, ky, 0.0), (kx + rnd.uniform(-0.1, 0.1), ky + rnd.uniform(-0.1, 0.1), rnd.uniform(0.8, 1.5)), 0.08, r["kamis"], kabuk=False)
+    cizgisiz(g, b)   # çayır çizgisiz: zeminin bir parçası gibi
+    return g
+
+
 def kir_alanlari():
     r = kir_renkleri()
     rnd = random.Random(TOHUM * 911)
@@ -3346,9 +3395,11 @@ def kir_alanlari():
              ("Kir_alan_meyve_1", kir_meyve(r, rnd, True)), ("Kir_alan_meyve_2", kir_meyve(r, rnd, False)),
              ("Kir_alan_cayir_1", kir_cayir(r, rnd, True)), ("Kir_alan_cayir_2", kir_cayir(r, rnd, False)),
              ("Kir_alan_gol_1", kir_gol(r, rnd)), ("Kir_alan_sera_1", kir_sera(r, rnd)), ("Kir_alan_koru_1", kir_koru(r, rnd))]
+    for i, tur in enumerate(("sade", "sade", "cicekli", "cicekli", "calili", "kayalik", "sazlik")):
+        liste.append((f"Kir_cimen_{tur}_{i + 1}", kir_cimen(r, rnd, tur)))
     sonuc = []
     for ad, g in liste:
-        if CIZGI:
+        if CIZGI and not ad.startswith("Kir_cimen_"):
             kabuk(g, CIZGI_KALINLIK * 1.6)   # parsel 50 m: oyunda ~5 kareye küçülür, çizgi orantılı kalınlaşır
         sonuc.append((ad, g, ortala(g)))
     return sonuc

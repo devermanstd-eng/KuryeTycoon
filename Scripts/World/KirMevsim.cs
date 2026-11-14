@@ -87,6 +87,9 @@ namespace KuryeTycoon
             { "KirCam",        new[] { "#4f7f4a", "#4f7f4a", "#55784a", "#4b7448", "#47704a" } },
             { "KirMeyve",      new[] { "#f4f0ea", "#d9473a", "#d9473a", "#e08a3a", "#7a6a52" } },
             { "KirSu",         new[] { "#5f9fc8", "#5f9fc8", "#6a9fb8", "#557f9a", "#b8cfdc" } },
+            { "KirOt",         new[] { "#7fb04e", "#76a24c", "#aaa35c", "#86884c", "#6a7352" } },
+            { "KirOtKoyu",     new[] { "#669a40", "#5f8c3e", "#8f8a4c", "#6c7340", "#58624a" } },
+            { "KirOtAcik",     new[] { "#9ac45c", "#8fb75a", "#c2b86a", "#a19456", "#7a8160" } },
         };
 
         static readonly Dictionary<string, Color[]> renk = new Dictionary<string, Color[]>();
@@ -123,6 +126,7 @@ namespace KuryeTycoon
             {
                 case "KirCim": case "KirCimKoyu": case "KirToprak": case "KirToprakKoyu": case "KirEkin": case "KirEkinUc":
                 case "KirBugday": case "KirBugdayUc": case "KirKolza": case "KirKolzaUc": case "KirSaman": case "KirBalya":
+                case "KirOt": case "KirOtKoyu": case "KirOtAcik":
                     return 1f;
                 default: return 0f;
             }
@@ -143,6 +147,76 @@ namespace KuryeTycoon
                 case "KirAhsap": return 0.35f;
                 default: return 0.1f;
             }
+        }
+    }
+
+    /// <summary>
+    /// Şehirdeki modellerin (binalar, yollar, parklar, ağaçlar) mevsim ve kar renkleri. Malzeme adının "_" öncesine bakılır.
+    /// Kar örtüsü arttıkça çatılar, kubbeler, çim, kaldırım ve ağaçlar beyazlar (yollar daha az: trafik eritir);
+    /// ağaçlar ve çimen mevsime göre renk değiştirir (sonbaharda sarı-kızıl, kışın soluk).
+    /// </summary>
+    public static class SehirMevsim
+    {
+        /// <summary>Kar tutma oranı (0: hiç, 1: tam beyaz). Tabloda olmayan malzemeye dokunulmaz.</summary>
+        public static float KarTutar(string etiket)
+        {
+            switch (etiket)
+            {
+                case "Cati": case "CatiKoyu": case "CatiZemin": case "OfisCatiZemin": case "Kubbe": case "Cinko": case "Sacak": return 0.92f;
+                case "YCim": case "Cim": case "Saha": case "YYesil": case "YToprak": case "Toprak": case "PKum": case "Kum": return 0.95f;
+                case "PCakil": case "Patika": case "Meydan": case "OfisMeydan": case "YKaldirim": case "YKaldirim2": case "Kaldirim":
+                case "TKaldirim": case "YBordur": case "TBordur": case "PTas": case "ParkeTas": case "ArnavutTasi": case "AvluTas":
+                case "TasAvlu": case "TuglaZemin": case "Kaya": case "Tas": return 0.72f;
+                case "PBeton": case "TBeton": case "Taban": case "Kopru": case "Konteyner": case "Silo": case "Depo": return 0.5f;
+                case "YAsfalt": case "TAsfalt": case "Yol": case "YolKoyu": return 0.28f;
+                case "Agac": case "AgacCam": case "Cali": return 0.55f;
+                case "Bitki": case "OfisBitki": case "Cicek": case "Lale": case "Yaprak": case "Salkim": return 0.45f;
+                case "Araba": case "Taksi": case "Kamyon": return 0.3f;   // park hâlindeki araçların tavanı
+                case "PSu": return 0.6f;
+                case "Tente": case "Semsiye": return 0.5f;
+                default: return 0f;
+            }
+        }
+
+        /// <summary>Mevsimle renk değiştiren bitki malzemesi mi.</summary>
+        public static bool Bitki(string etiket) =>
+            etiket == "Agac" || etiket == "Cali" || etiket == "YCim" || etiket == "Cim" || etiket == "Saha" || etiket == "YYesil" ||
+            etiket == "Bitki" || etiket == "OfisBitki" || etiket == "Yaprak" || etiket == "Salkim";
+
+        /// <summary>Islakken koyulaşan zemin malzemesi (yol, kaldırım, taş, toprak).</summary>
+        public static bool Islanir(string etiket)
+        {
+            float k = KarTutar(etiket);
+            return (k > 0.2f && k < 0.9f && !Bitki(etiket) && etiket != "Araba" && etiket != "Taksi" && etiket != "Kamyon" && etiket != "Tente" && etiket != "Semsiye" && etiket != "PSu")
+                || etiket == "Toprak" || etiket == "YToprak" || etiket == "Kum" || etiket == "PKum";
+        }
+
+        static readonly Color Kahve = new Color(0.50f, 0.44f, 0.33f);
+        static readonly Color Saman = new Color(0.74f, 0.68f, 0.40f);
+        static readonly Color Turuncu = new Color(0.86f, 0.52f, 0.20f);
+        static readonly Color Kizil = new Color(0.72f, 0.28f, 0.18f);
+        static readonly Color Sari = new Color(0.88f, 0.72f, 0.26f);
+
+        /// <summary>Bitkinin mevsimdeki rengi (asıl renkten). tohum: aynı türden ağaçlar farklı sonbahar renkleri alsın.</summary>
+        public static Color Mevsim(string etiket, Color asil, float[] w, int tohum)
+        {
+            if (!Bitki(etiket)) return asil;
+            bool cim = etiket == "YCim" || etiket == "Cim" || etiket == "Saha" || etiket == "YYesil";
+            // ilkbahar: biraz daha taze ve açık
+            Color taze = Color.Lerp(asil, new Color(asil.r * 0.92f, Mathf.Min(1f, asil.g * 1.12f), asil.b * 0.9f), 0.8f);
+            Color yaz = asil;
+            Color kurak = Color.Lerp(asil, Saman, cim ? 0.45f : 0.22f);
+            Color sonbahar;
+            if (cim) sonbahar = Color.Lerp(asil, new Color(0.56f, 0.56f, 0.32f), 0.4f);
+            else
+            {
+                int k = Mathf.Abs(tohum) % 3;
+                sonbahar = Color.Lerp(asil, k == 0 ? Turuncu : k == 1 ? Sari : Kizil, 0.62f);
+            }
+            Color kis = Color.Lerp(asil, Kahve, cim ? 0.45f : 0.62f);
+            Color c = taze * w[KirDurum.Taze] + yaz * w[KirDurum.Yaz] + kurak * w[KirDurum.Kurak] + sonbahar * w[KirDurum.Sonbahar] + kis * w[KirDurum.Kis];
+            c.a = 1f;
+            return c;
         }
     }
 }
