@@ -118,6 +118,7 @@ namespace KuryeTycoon
             Ekle(hedefKok);
             Ekle(olayKok);
             Ekle(aracKok);
+            Ekle(durumKok);
             if (heatMenuOpen) Ekle(katmanMenu);
             hedef?.AddRange(uiHaritaDolu);
         }

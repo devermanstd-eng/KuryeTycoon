@@ -472,7 +472,8 @@ namespace KuryeTycoon
                 GUI.Label(new Rect(pr.x + 8f, pr.y, sz.x + 4f, 20f), e.title, eventPill);
             }
 
-            // Sağ üstte etkinlik rozeti (alanı olmayan etkinlikler de görünsün)
+            // Sağ üstte etkinlik rozeti (alanı olmayan etkinlikler de görünsün). Yeni arayüzde sağ üstteki durum sütununda.
+            if (UiAktif) return;
             string txt = $"{e.title} · {e.TimeText}";
             eventPill.normal.textColor = UITheme.Yazi(UITheme.Text);
             var s2 = eventPill.CalcSize(new GUIContent(txt));

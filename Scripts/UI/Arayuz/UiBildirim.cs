@@ -99,6 +99,7 @@ namespace KuryeTycoon
             float sw = UiEkranGenisligi;
             float sol = MapLeftGui;
             float sag = popupCourier != null || InfoOpen ? sw - 376f : sw;
+            if (durumKok != null && U.Gorunur(durumKok) && durumKok.worldBound.width > 1f) sag = Mathf.Min(sag, durumKok.worldBound.x - 12f);   // sağ üstteki durum sütunu
             float w = Mathf.Min(460f, Mathf.Max(260f, sag - sol - 24f));
             float x = Mathf.Max(sol + 12f, (sol + sag) / 2f - w / 2f);
             bildirimKok.style.left = x;
