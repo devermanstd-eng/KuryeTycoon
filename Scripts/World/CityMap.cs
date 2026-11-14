@@ -1061,7 +1061,7 @@ namespace KuryeTycoon
 
         void Kir2DGizle()
         {
-            float a = Mathf.Clamp01(snowCover * 1.3f);
+            float a = Mathf.Clamp01(snowCover * 2f);   // kar örtüsü en çok ~0,55: yoğun karda kır tamamen beyaz
             void Ayarla(SpriteRenderer sr)
             {
                 if (sr == null) return;

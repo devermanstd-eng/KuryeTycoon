@@ -391,15 +391,9 @@ namespace KuryeTycoon
                         if (gnd != null && !ownGround) AddFlat(gnd, tile, 0f);
                     }
 
-                    // Nehir kıyısı (kıvrımlı nehrin suyu olmayan tarafı): çimenli set, seyrek ağaç ve çalı
-                    if (zone == Zone.River)
-                    {
-                        AddTrees(tile, rng, 1 + rng.Next(3), packTreesOk);
-                        if (UsePack && countryExtras != null && countryExtras.Length > 0 && rng.NextDouble() < 0.35)
-                            AddPrefab(countryExtras[rng.Next(countryExtras.Length)], tile, 0f, (float)rng.NextDouble() * 360f, null,
-                                      new Vector2((float)rng.NextDouble() * 0.5f - 0.25f, (float)rng.NextDouble() * 0.5f - 0.25f), 0.06f, false);
-                        continue;
-                    }
+                    // Nehir kıyısı (kıvrımlı nehrin suyu olmayan tarafı): sadece çimenli set. Ağaç konmaz: yukarıdan nehrin
+                    // içinde ağaç varmış gibi görünüyordu.
+                    if (zone == Zone.River) continue;
 
                     if (simgeBlok != null && simgeBlok.Count > 0 && !frontageRoadOnly(map, x, y))
                     {
@@ -1155,7 +1149,8 @@ namespace KuryeTycoon
             if (map == null || GameClock.I == null) return;
 
             var agirlik = KirDurum.Agirliklar();
-            float kar = map.KarOrtusu, islak = map.Islaklik;
+            // Hava kar örtüsünü en fazla ~0,55'e çıkarır: tarlalar da şehir gibi 0–1 aralığında beyazlasın
+            float kar = Mathf.Clamp01(map.KarOrtusu / 0.5f), islak = map.Islaklik;
 
             // Zemin dokusu: en ağır mevsim; ıslakken koyulaşır
             int en = KirDurum.EnYakin();
@@ -1175,7 +1170,10 @@ namespace KuryeTycoon
                 Color c = KirPalet.Renk(etiket, asil, agirlik);
                 float zeminMi = KirPalet.Zemin(etiket);
                 c *= Mathf.Lerp(1f, zeminMi > 0.5f ? 0.76f : 0.88f, islak);           // ıslak toprak ve çimen koyulaşır
-                c = Color.Lerp(c, new Color(0.92f, 0.94f, 0.97f), kar * KirPalet.KarTutar(etiket));
+                // Kar önce düz tarla ve çayırı örter (sürülmüş toprakta bile sıralar karın altında kaybolur), ağaç ve çit daha az tutar
+                float tut = KirPalet.KarTutar(etiket);
+                float k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(kar * (0.7f + tut * 1.1f) - (1f - tut) * 0.3f)) * Mathf.Max(tut, 0.15f);
+                c = Color.Lerp(c, new Color(0.92f, 0.94f, 0.97f), k);
                 c.a = 1f;
                 if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
                 if (m.HasProperty("_Color")) m.SetColor("_Color", c);
@@ -1718,20 +1716,50 @@ namespace KuryeTycoon
             bool cadde = st == 0f ? AvenueColumn(t.x) : AvenueRow(t.y);
             if (av && cadde)
             {
-                // Ana cadde: geniş, çoğu ağaçlı (referanstaki bulvarlar)
-                var c = avenueStraightTrees != null && ((t.x * 7 + t.y * 13) % 5) != 0 ? avenueStraightTrees : avenueStraight;
+                // Ana cadde: bulvar boyunca ağaçlı (her karede aynı), ama gökdelen ve eski şehir merkezinde, köprüde ve
+                // nehir kenarında ağaçsız
+                var c = avenueStraightTrees != null && AgacliOlur(map, t, st, true) ? avenueStraightTrees : avenueStraight;
                 AddFlat(c, t, st, order);
                 return;
             }
             var straight = roadStraight;
             if (roadStraightTrees != null && CityMap.InCity(t.x, t.y))
             {
-                // Caddeler yoksa eski davranış (ana yollar ağaçlı); varsa sokakların küçük bir kısmı ağaçlı
-                bool avenue = st == 0f ? (t.x / CityMap.Block) % 2 == 0 : (t.y / CityMap.Block) % 2 == 1;
-                if (!av && avenue && ((t.x * 7 + t.y * 13) % 5) != 0) straight = roadStraightTrees;
-                else if (av && ((t.x * 11 + t.y * 5) % 4) == 0) straight = roadStraightTrees;
+                // Ağaçlı sokak: rastgele tek tük kare değil, sokağın tamamı. Yalnızca konut, park ve kampüs arasındaki sokaklar
+                // (sık şehir merkezinde binalar kaldırıma yaslı, ağaç yok); köprüde ve nehir kenarında hiç ağaç yok.
+                int hat = st == 0f ? t.x : t.y;
+                if (AgacliOlur(map, t, st, false) && ((hat * 7 + 3) % 3) != 0) straight = roadStraightTrees;
             }
             AddFlat(straight, t, st + RoadOffset(0), order);
+        }
+
+        /// <summary>Düz yol karesine kaldırım ağacı uygun mu: iki yanındaki bölgelere, köprüye ve suya bakar.</summary>
+        static bool AgacliOlur(CityMap map, Vector2Int t, float st, bool cadde)
+        {
+            if (CityMap.BridgeAt(t.x, t.y)) return false;
+            for (int dx = -2; dx <= 2; dx++)
+                for (int dy = -2; dy <= 2; dy++)
+                {
+                    int x = t.x + dx, y = t.y + dy;
+                    if (x < 0 || y < 0 || x >= CityMap.Width || y >= CityMap.Height) continue;
+                    if (CityMap.WaterAt(x, y) || CityMap.BridgeAt(x, y) || CityMap.ZoneOf(x, y) == Zone.River) return false;
+                }
+            // Yolun iki yanı (kuzey-güney yolda doğu ve batı, doğu-batı yolda kuzey ve güney)
+            var a = st == 0f ? new Vector2Int(t.x - 1, t.y) : new Vector2Int(t.x, t.y - 1);
+            var b = st == 0f ? new Vector2Int(t.x + 1, t.y) : new Vector2Int(t.x, t.y + 1);
+            return YanUygun(map, a, cadde) && YanUygun(map, b, cadde);
+        }
+
+        static bool YanUygun(CityMap map, Vector2Int p, bool cadde)
+        {
+            if (!map.InBounds(p)) return false;
+            if (map.IsRoad(p.x, p.y)) return true;
+            switch (CityMap.ZoneOf(p))
+            {
+                case Zone.Houses: case Zone.Park: case Zone.Campus: return true;
+                case Zone.Mixed: return cadde;            // karma bölgede yalnızca geniş caddeler ağaçlı
+                default: return false;                    // gökdelen, eski şehir, çarşı, meydan, AVM, sanayi, kır
+            }
         }
 
         /// <summary>Düz parça: kareyi tam kaplar, yüzeyi zeminin hemen üstünde, yükselmez.</summary>
