@@ -228,6 +228,7 @@ namespace KuryeTycoon
             GUI.depth = 10;
             if (Event.current.type != EventType.Repaint) return;
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
+            if (GameUI.OrtaKutuAcik) return;   // yeni arayüzde ortada kutu açık: gece ışıkları kartın üstüne binmesin
             // GUI.depth her olayda (Start'ta da) ayarlanır: arayüzün (GameUI) altında kalsın
             GUI.matrix = Matrix4x4.identity;
             // Efektler yalnızca haritanın çizildiği alana (kameranın görüntü alanı) çizilir: üst çubuk, sol menü ve
