@@ -165,7 +165,12 @@ namespace KuryeTycoon
                 var ks = KayitSistemi.I;
                 if (!up.CourierCapFull || ks == null || ks.HesapBekleyen == 0) return false;
                 var son = SonGun();
-                return KayipOrani(3) > 0.05f || (son != null && son.avgAssignWait > 8f);
+                // Kuryeler gerçekten yoğun olmalı: kurye başı az teslimat varsa kayıplar kurye eksikliğinden değil
+                // (dükkan sırası, düşük moral, az dükkan); yeni platform paketi değil yeni dükkan lazım.
+                // (14.11 Mac testi: 22 kurye, 2 dükkan, kurye başı ~2.5 teslimat; bot 30 gün platform için biriktirdi,
+                // hiç dükkan almadı, iki dükkan da memnuniyetsizlikten gitti.)
+                if (son == null || son.deliveries / (float)Mathf.Max(1, son.couriers) < 8f) return false;
+                return KayipOrani(3) > 0.05f || son.avgAssignWait > 8f;
             }
         }
 
@@ -691,7 +696,9 @@ namespace KuryeTycoon
             int kurye = CourierManager.I.Couriers.Count, dukkan = SozlesmeliDukkan();
             float kuryeBasi = son.deliveries / (float)Mathf.Max(1, son.couriers);
             bool servisIyi = iptal < 0.04f && son.avgAssignWait < 5f;
-            bool kuryeBos = kuryeBasi < 14f && iptal < 0.06f;   // kuryeler boş kalıyor: iş lazım
+            // kuryeler boş kalıyor: iş lazım. Kurye başı çok azsa iptaller kurye eksikliğinden değil (tek tük dükkanın sırası):
+            // yeni dükkan siparişleri dağıtır, iptal oranına bakılmaz
+            bool kuryeBos = kuryeBasi < 14f && (iptal < 0.06f || kuryeBasi < 6f);
             if (!servisIyi && !kuryeBos) return;
             if (kurye < Mathf.CeilToInt((dukkan + 1) * 2f) && !(UpgradeManager.I.CourierCapFull && servisIyi)) return;   // yeni dükkana yetecek kurye yok
 
