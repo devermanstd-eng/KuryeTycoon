@@ -91,7 +91,7 @@ namespace KuryeTycoon
                 costs = new[] { 250000, 700000, 1800000, 12000000 },
                 daily = new[] { 4000, 7000, 12000, 20000, 32000 },
                 levelNames = new[] { "Kiralık küçük ofis", "Sokak katında ofis", "Kat ofisi", "Şirket binası", "Şirket binası + bölge ofisleri" },
-                effect = lv => $"en fazla {SupportCapAt(lv)} destek personeli" + (lv > 0 ? $", kurye başvurusu +{Pct(OfficeAppsAt(lv))}" : ""),
+                effect = lv => $"en fazla {SupportCapAt(lv)} destek personeli" + (lv > 0 ? $", kurye kaydı +{Pct(OfficeAppsAt(lv))}" : ""),
                 reqDistrict = new[] { 0, 2, 3, 5 },
                 category = ExpenseCategory.Kira,
             },
@@ -189,11 +189,11 @@ namespace KuryeTycoon
             new UpgradeDef
             {
                 kind = UpgradeKind.Reklam, name = "Reklam ve marka bilinirliği",
-                summary = "Reklam kalıcı değildir: her gün bütçe harcar. Daha çok sipariş ve kurye başvurusu getirir. İstediğin zaman küçültebilirsin.",
+                summary = "Reklam kalıcı değildir: her gün bütçe harcar. Daha çok sipariş ve kurye kaydı getirir. İstediğin zaman küçültebilirsin.",
                 costs = new[] { 50000, 150000, 300000, 8000000 },
                 daily = new[] { 0, 2000, 6000, 12000, 30000 },
                 levelNames = new[] { "Reklam yok", "Sosyal medya", "Şehir panoları", "Radyo + influencer", "TV + spor kulübü sponsorluğu" },
-                effect = lv => lv == 0 ? "ağızdan ağıza" : $"sipariş +{Pct(OrdersAt(lv))}, kurye başvurusu +{Pct(AdAppsAt(lv))}",
+                effect = lv => lv == 0 ? "ağızdan ağıza" : $"sipariş +{Pct(OrdersAt(lv))}, kurye kaydı +{Pct(AdAppsAt(lv))}",
                 reqDistrict = new[] { 0, 2, 3, 5 },
                 category = ExpenseCategory.Reklam,
             },
@@ -216,13 +216,13 @@ namespace KuryeTycoon
             {
                 kind = UpgradeKind.EFilo, name = "E-bisiklet ve scooter filosu",
                 summary = "Şirket elektrikli bisiklet ve scooter kiralar, kuryelere düşük ücretle verir (Wolt ve Foodora'nın kiralık araç " +
-                          "anlaşmaları gibi). Bisikletli kuryeler hızlanır; aracı olmayanlar da başvurabildiği için başvuru artar.",
+                          "anlaşmaları gibi). Bisikletli kuryeler hızlanır; aracı olmayanlar da kaydolabildiği için kayıt artar.",
                 costs = new[] { 8000000, 24000000 },
                 daily = new[] { 0, 8000, 20000 },
                 levelNames = new[] { "Yok", "E-bisiklet kiralama", "+ E-scooter ve batarya değişim istasyonları" },
                 effect = lv => lv == 0 ? "her kurye kendi aracıyla"
                              : $"bisiklet kuryeleri +{Pct(EBikeAt(lv))} hızlı" + (lv >= 2 ? $", e-scooter kuryeleri +{Pct(EScooterAt(lv))} hızlı" : "")
-                               + $", kurye başvurusu +{Pct(FleetAppsAt(lv))}",
+                               + $", kurye kaydı +{Pct(FleetAppsAt(lv))}",
                 reqDistrict = new[] { 3, 5 },
                 extraLock = lv => lv == 2 ? Need(UpgradeKind.Hub, 1) : "",
                 category = ExpenseCategory.Ekipman,

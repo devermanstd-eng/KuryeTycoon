@@ -321,22 +321,22 @@ namespace KuryeTycoon
             if (!early && !lastDayBad) return;
             if (couriers >= want && !lastDayBad) return;
             bool canHire = !UpgradeManager.I.CourierCapFull;
-            int apps = cm.Applications.Count;
+            int apps = KayitSistemi.I != null ? KayitSistemi.I.Adaylar.Count : 0;
 
             if (hour == 16 && hintDay != day)
             {
                 hintDay = day;
                 string why = lastDayBad ? $"Dün {hist[hist.Count - 1].cancelled + hist[hist.Count - 1].lost} sipariş iptal oldu ya da kaçtı. " : "";
                 string how = !canHire ? "Kurye hesabı sınırı dolu: Gelişim'den platform seviyesini yükselt."
-                           : apps > 0 ? $"İşe Alım'da {apps} başvuru bekliyor: kurye al."
-                           : "İşe Alım'dan ilan ver ve kurye al.";
+                           : apps > 0 ? $"Kayıt sürecinde {apps} aday var: Kayıtlar'dan yeni kurye bonusu ya da reklamla hızlandır."
+                           : "Kayıtlar'dan reklam ver ya da yeni kurye bonusu aç.";
                 EventManager.I.Notify($"İpucu: akşam yoğunluğu (18:00–21:00) yaklaşıyor. {why}{couriers} kuryen var, bu kadar dükkan için en az {want} önerilir. {how}");
             }
             else if (hour == 10 && lunchHintDay != day && early && couriers < want - 1)
             {
                 lunchHintDay = day;
                 EventManager.I.Notify($"İpucu: öğle yoğunluğu (12:00–14:00) yaklaşıyor ve sadece {couriers} kuryen var. Siparişler bekletilirse iptal olur — " +
-                                      (canHire ? "İşe Alım'dan kurye al." : "Gelişim'den kurye sınırını artır."));
+                                      (canHire ? "Kayıtlar'dan kayıt kampanyası başlat." : "Gelişim'den kurye sınırını artır."));
             }
         }
 

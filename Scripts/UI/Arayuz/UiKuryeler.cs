@@ -32,7 +32,8 @@ namespace KuryeTycoon
                 public Label ad, durum, yildiz, bugun, moralDeger, yorgDeger, aracAd;
                 public U.Cubuk moral, yorgunluk;
                 public Label meslek, kapasite, kazanc, hesap, sigorta, hedef, ekipman, canta, eksikler;
-                public Button cantaDugme, cikarDugme;
+                public Button cantaDugme, cikarDugme, askiDugme;
+                public Label puan;
                 public int portreRuh = -1;
                 public VisualElement ozellikSatir;
                 public readonly List<(Button b, Label durum, KuryeEgitim.Tur t)> egitimler = new List<(Button, Label, KuryeEgitim.Tur)>();
@@ -126,7 +127,8 @@ namespace KuryeTycoon
                 k.hedef = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
                 k.ekipman = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
                 k.canta = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                foreach (var l in new[] { k.meslek, k.kapasite, k.kazanc, k.hesap, k.sigorta, k.hedef, k.ekipman, k.canta }) l.style.marginTop = 3;
+                k.puan = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
+                foreach (var l in new[] { k.meslek, k.kapasite, k.kazanc, k.hesap, k.sigorta, k.hedef, k.ekipman, k.canta, k.puan }) l.style.marginTop = 3;
 
                 // Eğitimler: şirket öder, beceri artar ya da yeni sipariş türü açılır
                 U.Bolum(k.ayrinti, "EĞİTİM");
@@ -150,13 +152,23 @@ namespace KuryeTycoon
                 U.Dugme(dugmeler, "Ekipman", () => { ui.selectedCourier = k.c; ui.tab = Tab.Ekipman; ui.panelOpen = true; ui.scroll = Vector2.zero; }, "kucuk-dg");
                 k.cantaDugme = U.Dugme(dugmeler, "Yeni çanta", () => CourierManager.I.ReplaceBag(k.c), "kucuk-dg");
                 U.Gecirgen(dugmeler, "bosluk");
-                k.cikarDugme = U.Dugme(dugmeler, "İşten çıkar", () =>
+                k.askiDugme = U.Dugme(dugmeler, "Askıya al", () =>
                 {
                     var cr = k.c;
-                    ui.AskConfirm("Kuryeyle yolları ayır",
-                        $"{cr.courierName} ({cr.V.name}, {cr.deliveries} teslimat) işten çıkarılsın mı? " +
+                    var ks = KayitSistemi.I;
+                    if (ks == null) return;
+                    ui.AskConfirm("Hesabı askıya al",
+                        $"{cr.courierName} hesabı {KayitSistemi.AskiGun} gün askıya alınsın mı? Bu sürede sipariş alamaz, morali düşer. " +
+                        "60 gün içinde 3. askıda hesap kendiliğinden kapanır.",
+                        "Evet, askıya al", () => ks.AskiyaAl(cr, "operasyon kararı", true));
+                }, "kucuk-dg");
+                k.cikarDugme = U.Dugme(dugmeler, "Hesabı kapat", () =>
+                {
+                    var cr = k.c;
+                    ui.AskConfirm("Kurye hesabını kapat",
+                        $"{cr.courierName} ({cr.V.name}, {cr.deliveries} teslimat) kurye hesabı kapatılsın mı? " +
                         $"Hesabında bekleyen {Ft(cr.balance)} ve varsa depozitosu ödenir. Bu geri alınamaz.",
-                        "Evet, işten çıkar", () => CourierManager.I.Fire(cr));
+                        "Evet, hesabı kapat", () => CourierManager.I.Fire(cr));
                 }, "kucuk-dg", "tehlike");
                 return k;
             }
@@ -268,7 +280,16 @@ namespace KuryeTycoon
                     b.SetEnabled(aracUygun && serbest >= bedel);
                 }
                 k.cikarDugme.SetEnabled(c.OrderCount == 0);
-                U.Metin(k.cikarDugme, c.OrderCount == 0 ? "İşten çıkar" : "İşten çıkar (paketi var)");
+                U.Metin(k.cikarDugme, c.OrderCount == 0 ? "Hesabı kapat" : "Hesabı kapat (paketi var)");
+                var ks = KayitSistemi.I;
+                bool askida = ks != null && ks.Askida(c);
+                k.askiDugme.SetEnabled(ks != null && c.OrderCount == 0 && !askida);
+                U.Metin(k.askiDugme, askida ? "Askıda" : $"Askıya al ({KayitSistemi.AskiGun} gün)");
+                string puan = c.puanAdet >= 5 ? $"Müşteri puanı: {c.puanOrt:0.0} (son ~30 teslimat)" : "Müşteri puanı: henüz az teslimat";
+                if (askida) puan += $" · hesabı askıda ({c.askiBitis - GameClock.I.Day} gün)";
+                else if (c.askiSayisi > 0 && GameClock.I.Day - c.sonAskiGun <= 60) puan += $" · son 60 günde {c.askiSayisi} askı";
+                if (c.aktifGun > 0 && !c.ilkHaftaTamam) puan += " · ilk haftası";
+                U.Metin(k.puan, puan);
             }
 
             static int Kiyasla(Courier a, Courier b, int sira)
@@ -331,7 +352,7 @@ namespace KuryeTycoon
                 liste.Sort((a, b) => Kiyasla(a, b, s));
                 U.Goster(bosNot, liste.Count == 0);
                 if (liste.Count == 0)
-                    U.Metin(bosNot, cm.Couriers.Count == 0 ? "Henüz kurye yok: İşe Alım sekmesinden başvurulara bak."
+                    U.Metin(bosNot, cm.Couriers.Count == 0 ? "Henüz kurye yok: Kayıtlar sekmesinden kayıt sürecine bak."
                                                            : "Bu araçla çalışan kurye yok.");
                 kartlar.Esitle(liste);
                 acik.RemoveWhere(c => !cm.Couriers.Contains(c));

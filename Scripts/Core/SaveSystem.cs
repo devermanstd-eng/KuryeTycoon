@@ -158,6 +158,7 @@ namespace KuryeTycoon
         public int supportHandledThisMonth;
         public OpsSave ops;
         public RivalSave rival;
+        public KayitSave kayit;               // kurye kayıt hunisi (eski kayıtlarda null)
         public GoalSave goals;
         public LoanSave loan;
         public List<DayRecord> history = new List<DayRecord>();
@@ -391,6 +392,7 @@ namespace KuryeTycoon
                 supportHandledThisMonth = SupportManager.I.handledThisMonth,
                 ops = OperationsManager.I.CaptureSave(),
                 rival = RivalCompany.I.CaptureSave(),
+                kayit = KayitSistemi.I != null ? KayitSistemi.I.CaptureSave() : null,
                 goals = GoalManager.I != null ? GoalManager.I.CaptureSave() : null,
                 loan = FamilyLoan.I.CaptureSave(),
                 guide = Guide.I != null ? Guide.I.CaptureSave() : null,
@@ -496,6 +498,7 @@ namespace KuryeTycoon
             SupportManager.I.handledThisMonth = d.supportHandledThisMonth;
             if (d.ops != null) OperationsManager.I.RestoreSave(d.ops);
             if (d.rival != null) RivalCompany.I.RestoreSave(d.rival);
+            if (d.kayit != null && KayitSistemi.I != null) KayitSistemi.I.RestoreSave(d.kayit);
             if (d.goals != null && GoalManager.I != null) GoalManager.I.RestoreSave(d.goals);
             WeatherSystem.I.Restore((WeatherKind)d.weather);
             if (StatsHistory.I != null) StatsHistory.I.Restore(d.history);

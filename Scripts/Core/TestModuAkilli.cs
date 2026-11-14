@@ -562,68 +562,51 @@ namespace KuryeTycoon
 
         int bugunAlinan, alimGunu = -1;
 
+        /// <summary>
+        /// Kayıt politikası (eski işe alım yerine): kurye lazımsa kayıtları açar, yeni kurye bonusu, reklam ve tavsiye primi kullanır;
+        /// kuryeler boştaysa bonusu kapatır, çok boştaysa bisiklet kaydını kapatır. Günde en fazla bir karar.
+        /// </summary>
         void AkilliIseAlim(bool acilMi)
         {
+            var ks = KayitSistemi.I;
+            if (ks == null) return;
             var cm = CourierManager.I;
             var clk = GameClock.I;
             if (alimGunu != clk.Day) { alimGunu = clk.Day; bugunAlinan = 0; }
-            if (cm.Applications.Count == 0 || UpgradeManager.I.CourierCapFull) return;
+            if (bugunAlinan > 0) return;
 
             var son = SonGun();
             int kurye = cm.Couriers.Count, dukkan = SozlesmeliDukkan();
             float iptal = son != null && son.deliveries + son.cancelled > 0 ? son.cancelled / (float)(son.deliveries + son.cancelled) : 0f;
             float kuryeBasi = son != null ? son.deliveries / (float)Mathf.Max(1, son.couriers) : 0f;
-            // Bugünün durumu (gün içi acil alım): saatlik iptal
             int bugunIptal = OrderManager.I.cancelledToday;
 
-            int hedef;   // bugün en fazla kaç kurye alınır
-            string neden;
-            if (kurye < Mathf.CeilToInt(dukkan * 2.5f)) { hedef = 2; neden = $"dükkan başına kurye az ({kurye}/{dukkan}, hedef 2,5)"; }
-            else if (iptal > 0.10f) { hedef = 2; neden = $"dün iptal %{iptal * 100f:0}"; }
-            else if (iptal > 0.03f || (son != null && son.avgAssignWait > 5f)) { hedef = 1; neden = $"dün iptal %{iptal * 100f:0}, atama bekleme {(son != null ? son.avgAssignWait : 0f):0.0} dk"; }
-            else { hedef = 0; neden = ""; }
-            if (acilMi)
-            {
-                // Gün içinde: sadece iptaller patlıyorsa (bugün 15+ iptal) ve günde 3'ü geçmeden
-                if (bugunIptal < 15 || bugunAlinan >= 3) return;
-                hedef = bugunAlinan + 1; neden = $"bugün şimdiden {bugunIptal} iptal";
-            }
-            if (bugunAlinan >= hedef) return;
-            if (!acilMi && kuryeBasi > 0f && kuryeBasi < 10f && iptal < 0.05f) return;   // kuryeler zaten boş, kazançları düşmesin
-            if (EconomyManager.I.FreeCash < 100000) return;   // başlangıç kiti bile alınamaz
+            string neden = null;
+            if (kurye < Mathf.CeilToInt(dukkan * 2.5f)) neden = $"dükkan başına kurye az ({kurye}/{dukkan}, hedef 2,5)";
+            else if (iptal > 0.03f) neden = $"dün iptal %{iptal * 100f:0}";
+            else if (son != null && son.avgAssignWait > 5f) neden = $"atama bekleme {son.avgAssignWait:0.0} dk";
+            if (acilMi) { if (bugunIptal < 15) return; neden = $"bugün şimdiden {bugunIptal} iptal"; }
 
-            // İptal profili yoksa (ilk gün) tipik yoğunluk: öğle ve akşam
-            float[] prof = new float[24];
-            float profTop = 0f;
-            for (int h = 0; h < 24; h++) { prof[h] = iptalProfili[h]; profTop += prof[h]; }
-            if (profTop < 1f) for (int h = 0; h < 24; h++) prof[h] = (h >= 11 && h < 14) || (h >= 17 && h < 21) ? 1f : 0.1f;
-
-            CourierCandidate en = null;
-            float enPuan = float.MinValue, enKapsama = 0f;
-            float profMax = 0f;
-            for (int h = 0; h < 24; h++) profMax += prof[h];
-            foreach (var a in cm.Applications)
+            if (neden != null)
             {
-                if (a.pickiness > 0.75f) continue;   // çok seçici: teklifleri reddeder
-                float kapsama = 0f;
-                for (int h = 0; h < 24; h++) kapsama += prof[h] * SaatUygunlugu(a.occupation, h);
-                kapsama /= Mathf.Max(0.01f, profMax);
-                if (kapsama < 0.25f && (acilMi || cm.Applications.Count > 2)) continue;   // iptal saatlerinde çalışmayacak
-                float hiz = a.vehicle == VehicleKind.Motosiklet ? 0.25f : a.vehicle == VehicleKind.Araba ? 0.15f : a.vehicle == VehicleKind.EScooter ? 0.1f : 0f;
-                float p = kapsama * 3f + a.speedSkill + a.care + a.stamina * 0.5f - a.pickiness * 1.2f + a.level * 0.1f + hiz;
-                if (p > enPuan) { enPuan = p; en = a; enKapsama = kapsama; }
+                bugunAlinan = 1;
+                for (int v = 0; v < 4; v++)
+                    if (!ks.acik[v]) { ks.acik[v] = true; Eylem("Kayıt", $"{GameData.Vehicle((VehicleKind)v).name} kaydı açıldı · neden: {neden}"); }
+                if (ks.yeniBonus == 0 && EconomyManager.I.FreeCash > 200000)
+                { ks.yeniBonus = 1; Eylem("Kayıt", $"yeni kurye bonusu açıldı (+{GameData.Ft(ks.YeniKuryeBonusu)}/paket) · neden: {neden} · süreçte {ks.Adaylar.Count} aday"); }
+                if (!ks.ReklamAktif && iptal > 0.06f && !UpgradeManager.I.CourierCapFull && ks.Adaylar.Count < 8 && EconomyManager.I.FreeCash > ks.ReklamBedeli * 4)
+                { ks.ReklamVer(); Eylem("Kayıt", $"sosyal medya reklamı ({GameData.Ft(ks.ReklamBedeli)}) · neden: {neden}"); }
+                if (ks.tavsiyePrim == 0 && kurye >= 6)
+                { ks.tavsiyePrim = 1; Eylem("Kayıt", $"tavsiye primi açıldı ({GameData.Ft(ks.TavsiyePrimi)})"); }
+                return;
             }
-            if (en == null) return;
-            int once = cm.Couriers.Count;
-            cm.Hire(en);
-            if (cm.Couriers.Count > once)
+
+            // Kuryeler boşta: bonusu kapat, çok boştaysa en kalabalık tür olan bisiklet kaydını kapat
+            if (!acilMi && kuryeBasi > 0f && kuryeBasi < 8f && iptal < 0.03f)
             {
-                bugunAlinan++;
-                int yogun = 0; float yogunDeger = -1f;
-                for (int h = 0; h < 24; h++) if (prof[h] > yogunDeger) { yogunDeger = prof[h]; yogun = h; }
-                Eylem("İşe alım", $"{en.name} ({GameData.Vehicle(en.vehicle).name}, {CourierManager.ShortOccupation(en.occupation)}, seviye {en.level}, " +
-                                   $"seçicilik {en.pickiness:0.00}) · neden: {neden} · iptallerin en yoğun saati {yogun:00}:00, bu kuryenin o saatleri karşılaması %{enKapsama * 100f:0} · " +
-                                   $"{cm.Applications.Count + 1} başvuru arasından");
+                if (ks.yeniBonus > 0) { ks.yeniBonus = 0; bugunAlinan = 1; Eylem("Kayıt", $"yeni kurye bonusu kapatıldı: kurye başı dün {kuryeBasi:0.#} teslimat"); }
+                if (kuryeBasi < 5f && ks.acik[(int)VehicleKind.Bisiklet])
+                { ks.acik[(int)VehicleKind.Bisiklet] = false; bugunAlinan = 1; Eylem("Kayıt", $"bisiklet kaydı kapatıldı: kurye başı dün {kuryeBasi:0.#} teslimat"); }
             }
         }
 
@@ -740,7 +723,7 @@ namespace KuryeTycoon
             long bos = Bos;
 
             // Kurye hesabı doldu ve hâlâ kurye lazım: platform paketi (bekletilmez)
-            if (up.CourierCapFull && cm.Applications.Count > 0 && IptalOrani(2) > 0.03f && Al(UpgradeKind.Platform, bos, "kurye hesapları dolu, iptaller sürüyor")) return;
+            if (up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0 && IptalOrani(2) > 0.03f && Al(UpgradeKind.Platform, bos, "kurye hesapları dolu, iptaller sürüyor")) return;
 
             if (son == null || clk.Day - sonAkilliGelistirmeGun < 3) return;
             long gelir = OrtalamaGelir(7);

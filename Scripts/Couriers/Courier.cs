@@ -65,6 +65,18 @@ namespace KuryeTycoon
         public int monthDeliveries;
         public bool monthlyRewardClaimed;
         public int pickupCancelsThisMonth;      // dükkanda sıra yüzünden teslim almayı iptal (ayda en fazla 10)
+
+        [Header("Kurye hesabı (KayitSistemi)")]
+        public int kayitTuru;                  // KayitTuru (0 bireysel; başlangıç kuryeleri ve eski kayıtlar da 0)
+        public int aktifGun;                   // hesabın açıldığı gün (0: başlangıç kuryesi / eski kayıt)
+        public bool ilkHaftaTamam;
+        public int tavsiyeEden;                // tavsiye eden kuryenin courierId'si
+        public bool tavsiyePrimOdendi;
+        public float puanOrt = 4.6f;           // son ~30 teslimatın müşteri puanı ortalaması
+        public int puanAdet;
+        public int askiSayisi;                 // son 60 gündeki hesap askısı
+        public int sonAskiGun = -999;
+        public int askiBitis;                  // bu güne kadar hesabı askıda
         public const int MaxPickupCancels = 10;
 
         [Header("Kendi parası")]

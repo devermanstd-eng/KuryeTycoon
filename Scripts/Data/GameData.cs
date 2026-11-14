@@ -162,6 +162,7 @@ namespace KuryeTycoon
             {
                 foreach (var c in cm.Couriers) if (c.courierName == n) return true;
                 foreach (var a in cm.Applications) if (a.name == n) return true;
+                if (KayitSistemi.I != null) foreach (var k in KayitSistemi.I.Adaylar) if (k.aday != null && k.aday.name == n) return true;
             }
             var sm = SupportManager.I;
             if (sm != null)

@@ -5,7 +5,7 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Sade menü: sol çubukta 6 ana menü, her birinin içinde sekmeler (Two Point / Game Dev Tycoon tarzı).
-    ///   Siparişler · Mesajlar · Hedefler · Ekip (Kuryeler, İşe Alım, Ekipman, Destek)
+    ///   Siparişler · Mesajlar · Hedefler · Ekip (Kuryeler, Kayıtlar, Ekipman, Destek)
     ///   İşletme (Dükkanlar, Market, Kampanya) · Şirket (Finans, Gelişim, Grafik) · en altta Ayarlar
     /// Henüz açılmamış sekme görünmez ("Kilitli" yazısı yok); açılınca sekmede ve menüde "yeni" noktası çıkar.
     /// Pencerelerin içi (DrawOrders, DrawCouriers...) değişmedi; sadece nasıl açıldıkları değişti.
@@ -29,7 +29,7 @@ namespace KuryeTycoon
             {
                 label = "Ekip", title = "Ekip", icon = Icons.Kind.Couriers,
                 tabs = new[] { Tab.Kuryeler, Tab.IseAlim, Tab.Ekipman, Tab.Destek },
-                tabLabels = new[] { "Kuryeler", "İşe Alım", "Ekipman", "Destek" }
+                tabLabels = new[] { "Kuryeler", "Kayıtlar", "Ekipman", "Destek" }
             },
             new MenuGroupDef
             {

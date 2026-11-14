@@ -35,9 +35,9 @@ namespace KuryeTycoon
             switch (d)
             {
                 case DifficultyLevel.Kolay:
-                    return "Oyunu öğrenmek için: daha çok sipariş (+%15), kuryeler daha az seçici, başvurular daha sık.";
+                    return "Oyunu öğrenmek için: daha çok sipariş (+%15), kuryeler daha az seçici, kurye kayıtları daha sık.";
                 case DifficultyLevel.Zor:
-                    return "Deneyimliler için: daha az sipariş (−%12), kuryeler daha seçici, başvurular daha seyrek.";
+                    return "Deneyimliler için: daha az sipariş (−%12), kuryeler daha seçici, kurye kayıtları daha seyrek.";
                 default:
                     return "Oyunun dengelendiği seviye.";
             }
