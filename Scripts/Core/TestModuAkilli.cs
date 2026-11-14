@@ -707,6 +707,8 @@ namespace KuryeTycoon
             foreach (var s in map.Shops)
             {
                 if (s.contracted || s.own || !map.IsUnlocked(s.tile) || clk.Day < s.resignBlockedUntil) continue;
+                // Eczane: ilaç sertifikalı kurye yoksa siparişlerinin hepsi kaçar (14.11 testinde son kalan dükkan buydu)
+                if (s.def.eczane && KuryeEgitim.Sayi(KuryeEgitim.Tur.Ilac, false) == 0) continue;
                 // 60 günlük beklenen katkı − imza bedeli
                 float deger = DukkanDegeri(s) * 60f - s.def.contractCost;
                 if (en == null || deger > enDeger) { en = s; enDeger = deger; }

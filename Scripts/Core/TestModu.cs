@@ -808,6 +808,9 @@ namespace KuryeTycoon
             if (fpsGun > 0)
                 sb.AppendLine($"Ortalama FPS {fpsToplam / fpsGun:0} · en kötü gün {enKotuFps:0} FPS ({enKotuFpsGun}. gün) · 30 FPS altı gün: {fpsDusukGun}/{fpsGun}");
             sb.AppendLine($"Kendiliğinden duraklama: {durakSayisi} kez");
+            if (GameClock.I != null && GameClock.I.SinirliKare > 0)
+                sb.AppendLine($"Hız sınırı: {GameClock.I.SinirliKare} karede oyun saati karede {GameClock.MaxKareDakika:0} dk ile sınırlandı " +
+                              "(FPS düşük: simülasyon doğru kalsın diye test istenen hızdan yavaş aktı)");
             sb.AppendLine("(Hız yüksek olduğu için FPS normal oyundan biraz düşük çıkabilir; günlük değerler gunluk.csv'de.)");
 
             Baslik(sb, "MENÜLER");

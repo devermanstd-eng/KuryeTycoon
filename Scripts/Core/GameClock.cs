@@ -32,6 +32,10 @@ namespace KuryeTycoon
 
         public float TotalMinutes { get; private set; }
         public float DeltaMinutes { get; private set; }
+        /// <summary>Bir karede ilerleyebilecek en fazla oyun dakikası (60 FPS'te 128× ≈ 4,3 dk).</summary>
+        public const float MaxKareDakika = 4f;
+        /// <summary>Hızı bu sınıra takılan kare sayısı (test raporu için).</summary>
+        public int SinirliKare { get; set; }
         public float SpeedMultiplier { get; set; } = 1f;
         public bool Paused { get; set; }
         /// <summary>Bir olay kartı açıkken oyun otomatik durur.</summary>
@@ -158,6 +162,11 @@ namespace KuryeTycoon
         void Update()
         {
             DeltaMinutes = (Paused || EventPause) ? 0f : Time.deltaTime * minutesPerSecond * EffectiveSpeed;
+            // Bir karede en fazla birkaç oyun dakikası: yavaş bilgisayarda yüksek hızda (ör. 14 FPS'te 128× = karede ~18 dk)
+            // her durum geçişi (dükkana vardı, paketi aldı, kapıya geldi…) yarım kare ≈ 9 dk boşa gidiyordu; teslimatlar
+            // ~60 dk sürüyor, %90'ı geç kalıyor, dükkanlar memnuniyetsizlikten gidiyordu (14.11 Mac testi). Sınırla
+            // simülasyon her bilgisayarda aynı sonucu verir; yavaş bilgisayarda yüksek hız sadece daha yavaş akar.
+            if (DeltaMinutes > MaxKareDakika) { DeltaMinutes = MaxKareDakika; SinirliKare++; }
             TotalMinutes += DeltaMinutes;
 
             if (Day != lastDay)
