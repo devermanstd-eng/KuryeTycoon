@@ -901,10 +901,10 @@ namespace KuryeTycoon
         }
 
         /// <summary>Mevsime göre çimen renkleri (taze, yaz, kurak, sonbahar, kış) ve tarlaların o mevsimdeki tonu.</summary>
-        static readonly Color[] KirCimA = { new Color(0.40f, 0.57f, 0.26f), new Color(0.40f, 0.53f, 0.27f), new Color(0.58f, 0.56f, 0.32f), new Color(0.45f, 0.48f, 0.27f), new Color(0.44f, 0.43f, 0.33f) };
-        static readonly Color[] KirCimB = { new Color(0.50f, 0.66f, 0.31f), new Color(0.51f, 0.62f, 0.33f), new Color(0.68f, 0.64f, 0.38f), new Color(0.55f, 0.55f, 0.31f), new Color(0.52f, 0.50f, 0.39f) };
-        static readonly Color[] KirTarlaTon = { new Color(0.45f, 0.62f, 0.30f), Color.clear, new Color(0.80f, 0.70f, 0.42f), new Color(0.55f, 0.43f, 0.30f), new Color(0.50f, 0.44f, 0.36f) };
-        static readonly float[] KirTarlaKarisim = { 0.25f, 0f, 0.35f, 0.35f, 0.55f };
+        static readonly Color[] KirCimA = { new Color(0.40f, 0.57f, 0.26f), new Color(0.40f, 0.53f, 0.27f), new Color(0.58f, 0.56f, 0.32f), new Color(0.45f, 0.48f, 0.27f), new Color(0.37f, 0.43f, 0.29f) };
+        static readonly Color[] KirCimB = { new Color(0.50f, 0.66f, 0.31f), new Color(0.51f, 0.62f, 0.33f), new Color(0.68f, 0.64f, 0.38f), new Color(0.55f, 0.55f, 0.31f), new Color(0.45f, 0.50f, 0.35f) };
+        static readonly Color[] KirTarlaTon = { new Color(0.45f, 0.62f, 0.30f), Color.clear, new Color(0.80f, 0.70f, 0.42f), new Color(0.55f, 0.43f, 0.30f), new Color(0.46f, 0.42f, 0.33f) };
+        static readonly float[] KirTarlaKarisim = { 0.25f, 0f, 0.35f, 0.35f, 0.45f };
 
         static Texture2D KirDokusu(CityMap map, float x0, float y0, float w, float h, int durum)
         {

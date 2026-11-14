@@ -459,6 +459,19 @@ namespace KuryeTycoon
                     Fields.Add(new Field { r = r, c = fieldColors[rng.Next(fieldColors.Length)] });
                 }
 
+            // Boşlukları doldur: şehrin girintili kenarı ve büyük tarlaların arasında kalan yerlere küçük tarlalar
+            // (yoksa şehirle tarlalar arasında geniş boş çimen şeritleri kalıyordu)
+            for (float x = -ring; x < Width + ring; x += 3f)
+                for (float y = -ring; y < Height + ring; y += 2.6f)
+                {
+                    if (rng.NextDouble() < 0.25) continue;
+                    float w = 2.4f + (float)rng.NextDouble() * 0.5f, h = 2.0f + (float)rng.NextDouble() * 0.4f;
+                    var r = new Rect(x + 0.15f, y + 0.15f, w, h);
+                    if (InField(r.center, Mathf.Max(w, h) * 0.5f + 0.2f)) continue;
+                    if (!RectClear(r, 0.5f)) continue;
+                    Fields.Add(new Field { r = r, c = fieldColors[rng.Next(fieldColors.Length)] });
+                }
+
             // Ormanlar: rastgele kümeler
             for (int k = 0; k < 28; k++)   // performans: orman sayısı sınırlı
             {
