@@ -1266,14 +1266,14 @@ namespace KuryeTycoon
             else
                 GUILayout.Label("Basit atama: en yakın kuryeye teklif eder. Akıllı atama Gelişim menüsünde.", small);
             if (om.IsBusy)
-                GUILayout.Label("YOĞUNLUK: bekleyen sipariş boştaki kuryeden fazla, bazı müşteriler sipariş vermiyor. Çözüm: daha çok kurye veya boost.", warn);
+                GUILayout.Label("YOĞUNLUK: bekleyen sipariş boştaki kuryeden fazla. Bazı müşteriler sipariş vermiyor (bir kısmı düşük puan bırakıyor), teslimat alanı daraldı. Çözüm: daha çok kurye ya da boost; kurye hesapların doluysa yeni dükkan alma.", warn);
             int lostTotal = om.busyLostToday + om.lostToday + om.cancelledToday + om.heavyLostToday;
             Intro("siparisler", $"Bugün kaybedilen sipariş: {lostTotal} · toplu teslimat: {om.batchedToday}",
                   $"Yoğunluk yüzünden sipariş vermeyen {om.busyLostToday} · vazgeçen müşteri (ücret pahalı) {om.lostToday} · " +
                   $"iptal {om.cancelledToday} (kuryeler reddetti {om.cancelledRejectedToday}, müşteri gecikmeden vazgeçti {om.cancelledDelayToday}) · " +
                   $"dükkan iptal etti {om.cancelledShopToday} · müşteri fikrini değiştirdi {om.cancelledCustomerToday} · taşıyacak kurye olmadığı için alınamayan {om.heavyLostToday} · " +
                   $"kuryelerin reddettiği teklif {om.rejectedToday}.\n" +
-                  "Yoğunlukta uygulama müşterilere uzun teslimat uyarısı gösterir; itibar düşmez ama sipariş kaybolur.\n" +
+                  "Yoğunlukta uygulama müşterilere uzun teslimat uyarısı gösterir: sipariş kaybolur, vazgeçenlerin dörtte biri uygulamaya 2 yıldız verir (itibar düşer). Teslimat alanı da daralır: uzak sipariş alınmaz.\n" +
                   $"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; {GameData.HeavyKg:0} kg ve üstü sadece araba.");
 
             GUILayout.Space(6);

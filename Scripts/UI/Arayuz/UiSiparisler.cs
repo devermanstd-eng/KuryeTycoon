@@ -60,7 +60,7 @@ namespace KuryeTycoon
                 karOncele = U.OnayEkle(kok, "Atamada kârı öncele (kapalıysa en hızlı kurye)", () => OrderManager.I.prioritizeProfit,
                                        v => OrderManager.I.prioritizeProfit = v);
                 basitNot = U.Yazi(kok, "Basit atama: en yakın kuryeye teklif eder. Akıllı atama Gelişim menüsünde.", "kucuk", "soluk");
-                yogunluk = U.Yazi(kok, "YOĞUNLUK: bekleyen sipariş boştaki kuryeden fazla, bazı müşteriler sipariş vermiyor. Çözüm: daha çok kurye veya boost.",
+                yogunluk = U.Yazi(kok, "YOĞUNLUK: bekleyen sipariş boştaki kuryeden fazla. Bazı müşteriler sipariş vermiyor (bir kısmı düşük puan bırakıyor), teslimat alanı daraldı. Çözüm: daha çok kurye ya da boost; kurye hesapların doluysa yeni dükkan alma.",
                                   "kucuk", "uyari-renk");
                 yogunluk.style.marginTop = 4;
                 kayipOzet = U.Yazi(kok, "", "kucuk", "soluk");
@@ -72,7 +72,7 @@ namespace KuryeTycoon
                            $"iptal {o.cancelledToday} (kuryeler reddetti {o.cancelledRejectedToday}, müşteri gecikmeden vazgeçti {o.cancelledDelayToday}) · " +
                            $"dükkan iptal etti {o.cancelledShopToday} · müşteri fikrini değiştirdi {o.cancelledCustomerToday} · " +
                            $"taşıyacak kurye olmadığı için alınamayan {o.heavyLostToday} · kuryelerin reddettiği teklif {o.rejectedToday}.\n" +
-                           "Yoğunlukta uygulama müşterilere uzun teslimat uyarısı gösterir; itibar düşmez ama sipariş kaybolur.\n" +
+                           "Yoğunlukta uygulama müşterilere uzun teslimat uyarısı gösterir: sipariş kaybolur, vazgeçenlerin dörtte biri uygulamaya 2 yıldız verir (itibar düşer). Teslimat alanı da daralır: uzak sipariş alınmaz.\n" +
                            $"Ağırlık: 20 kg'a kadar bisiklet, scooter, motor ve araba; {GameData.HeavyKg:0} kg ve üstü sadece araba.";
                 });
 

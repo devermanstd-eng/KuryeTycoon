@@ -37,6 +37,9 @@ namespace KuryeTycoon
         public int cancelDelay;        // müşterinin gecikme yüzünden vazgeçtiği (cancelled içinde)
         public long isletme;           // işletme giderleri (IsletmeGiderleri: bölge, filo sigortası, yönetim, sosyal katkı)
         public int tehdit;             // rakiplerin tehdit seviyesi (0 sakin, 1 tetikte, 2 saldırıda)
+        public int yogunKacan;         // lost içinde: kuryeler yetişmediği için "yoğun" görüp vazgeçen
+        public int hesapTavani;        // gün sonu kurye hesabı sınırı (platform paketi)
+        public int hesapBekleyen;      // gün sonu kayıtta hesap bekleyen aday
     }
 
     /// <summary>
@@ -98,7 +101,10 @@ namespace KuryeTycoon
                 cancelCustomer = om != null ? om.cancelledCustomerToday : 0,
                 cancelDelay = om != null ? om.cancelledDelayToday : 0,
                 isletme = s.byCategory[(int)ExpenseCategory.Isletme],
-                tehdit = RivalCompany.I != null ? RivalCompany.I.TehditSeviyesi : 0
+                tehdit = RivalCompany.I != null ? RivalCompany.I.TehditSeviyesi : 0,
+                yogunKacan = om != null ? om.yogunKacanToday : 0,
+                hesapTavani = UpgradeManager.I != null ? UpgradeManager.I.CourierCap : 0,
+                hesapBekleyen = KayitSistemi.I != null ? KayitSistemi.I.HesapBekleyen : 0
             };
             Telemetry.ResetDay();
             Days.Add(d);

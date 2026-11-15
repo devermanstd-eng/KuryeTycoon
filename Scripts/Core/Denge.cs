@@ -53,8 +53,11 @@ namespace KuryeTycoon
             return Mathf.Round(m * 4f) / 4f;
         }
 
-        /// <summary>Kurulum bedelini şirketin büyüklüğüne göre ölçekler (1 000 Ft'a yuvarlı).</summary>
-        public static long Olcekle(long taban)
+        /// <summary>
+        /// Kurulum bedelini şirketin büyüklüğüne göre ölçekler (1 000 Ft'a yuvarlı). agirlik: çarpanın ne kadarının uygulanacağı
+        /// (1 = tamamı; kurye platformu paketleri 0,5: büyümenin kapısı, işletme giderleri de geldiği için duvar olmasın).
+        /// </summary>
+        public static long Olcekle(long taban, float agirlik = 1f)
         {
             float m = FiyatCarpani;
             if (m <= 1f || taban <= 0) return taban;
@@ -62,6 +65,7 @@ namespace KuryeTycoon
             float w = taban <= TamOlcekSiniri ? 1f
                     : taban >= AzOlcekSiniri ? 0.2f
                     : Mathf.Lerp(1f, 0.2f, Mathf.InverseLerp(Mathf.Log(TamOlcekSiniri), Mathf.Log(AzOlcekSiniri), Mathf.Log(taban)));
+            w *= Mathf.Clamp01(agirlik);
             float etkin = 1f + (m - 1f) * w;
             return (long)(Mathf.Round(taban * etkin / 1000f) * 1000f);
         }

@@ -132,6 +132,8 @@ namespace KuryeTycoon
 
         /// <summary>Serbest kasadan sabit giderlere ve yaklaşan taksite ayrılan pay düşülünce harcanabilecek para.</summary>
         long Bos => EconomyManager.I.FreeCash - Rezerv();
+        /// <summary>Darboğazı çözen alım (platform paketi, onun istediği bölge/ofis) için: ince yedek (InceRezerv) düşülünce kalan.</summary>
+        long BosDar => EconomyManager.I.FreeCash - InceRezerv();
 
         /// <summary>Son n günün ortalaması (DayRecord alanından).</summary>
         float Ort(int n, System.Func<DayRecord, float> f)
@@ -152,6 +154,13 @@ namespace KuryeTycoon
             return t > 0 ? (d.cancelled + d.lost) / (float)t : 0f;
         });
 
+        /// <summary>Yoğunluk kaybı: bütün kuryeler meşgulken gelen müşterinin vazgeçtiği siparişlerin oranı (kurye eksikliğinin doğrudan işareti).</summary>
+        float YogunKayipOrani(int n) => Ort(n, d =>
+        {
+            int t = d.deliveries + d.cancelled + d.lost;
+            return t > 0 ? d.yogunKacan / (float)t : 0f;
+        });
+
         /// <summary>
         /// Kurye darboğazı: kurye hesapları dolu, kayıtta hesap bekleyen var ve siparişler kaçıyor (ya da atama uzun sürüyor).
         /// 14.11 testinde kurye sayısı 35 gün 22'de kaldı (139 kişi bekliyordu, günde 50–190 sipariş kaçtı): bot bir sonraki
@@ -164,6 +173,10 @@ namespace KuryeTycoon
                 var up = UpgradeManager.I;
                 var ks = KayitSistemi.I;
                 if (!up.CourierCapFull || ks == null || ks.HesapBekleyen == 0) return false;
+                // Yoğunluk kaybı sürüyorsa kurye eksik: yağmurda, etkinlikte kurye başı teslimat 8'in altına düşse de.
+                // (15.11 testi: 32 kuryede kötü günlerde kurye başı 6 teslimat görülünce darboğaz "bitti" sanıldı; bot o gün
+                // "iş lazım" diye yeni dükkan, reklam ve başka geliştirmeler aldı, platform paketi 30 gün gecikti.)
+                if (YogunKayipOrani(3) > 0.04f && Ort(3, d => d.deliveries / (float)Mathf.Max(1, d.couriers)) >= 6f) return true;
                 var son = SonGun();
                 // Kuryeler gerçekten yoğun olmalı: kurye başı az teslimat varsa kayıplar kurye eksikliğinden değil
                 // (dükkan sırası, düşük moral, az dükkan); yeni platform paketi değil yeni dükkan lazım.
@@ -587,8 +600,11 @@ namespace KuryeTycoon
             // sıradaki platform paketi yakında gerekecekse (hesaplar dolu ya da dolmak üzere, hesap bekleyen var) onun parası ayrılır.
             // 14.11 testinde bir kurye ayrılınca hesaplar bir anlığına boş göründü ve bot 36. gün paketin parasını krediye gömdü.
             long sabit = 200000 + UpgradeManager.I.TotalDailyCost * 7L;
+            // Sıradaki platform paketi varken hiç erken kapatılmaz (15.11 testinde paket alındıktan hemen sonra hesaplar bir an boş
+            // göründü, bot 5 185 €'yu krediye yatırdı, iki gün sonra 17 115 €'luk paket için biriktirmeye başladı).
+            bool paketVar = UpgradeManager.I.NextCost(UpgradeKind.Platform) > 0;
             long platformPayi = PlatformParasiLazim ? System.Math.Max(0, UpgradeManager.I.NextCost(UpgradeKind.Platform)) : 0;
-            if (eco.FreeCash > loan.Remaining + sabit + 400000 + platformPayi)
+            if (!paketVar && eco.FreeCash > loan.Remaining + sabit + 400000 + platformPayi)
             {
                 long kalan = loan.Remaining;
                 if (loan.Pay(kalan)) { Eylem("Borç", $"Kasa rahat (serbest {Ft(eco.FreeCash + kalan)}): borcun tamamı kapatıldı ({Ft(kalan)})"); return; }
@@ -692,6 +708,7 @@ namespace KuryeTycoon
             var son = SonGun();
             if (son == null) return;   // ilk gün bitmeden yok
             if (Biriktir) return;      // kurye yetmiyor: yeni dükkan daha çok kaçan sipariş demek
+            if (YogunKayipOrani(3) > 0.03f) return;   // siparişler yoğunluktan kaçıyor: kuryeler boş değil, iş lazım değil
             float iptal = IptalOrani(2);
             int kurye = CourierManager.I.Couriers.Count, dukkan = SozlesmeliDukkan();
             float kuryeBasi = son.deliveries / (float)Mathf.Max(1, son.couriers);
@@ -742,8 +759,8 @@ namespace KuryeTycoon
             if (enIyiKalan > ortalama * 0.5f && !platformBolgeBekliyor) return;
             if (IptalOrani(3) > 0.05f && !platformBolgeBekliyor) return;   // servis oturmadan büyüme yok
             long bedel = CityMap.BolgeBedeli(map.UnlockLevel + 1);
-            // Darboğazı çözen bölge için boş paranın tamamı kullanılabilir; diğer bölgeler için yarısı
-            if (bedel > (platformBolgeBekliyor && KuryeDarbogazi ? Bos : Bos / 2)) return;
+            // Darboğazı çözen bölge için boş paranın tamamı (ince yedekle) kullanılabilir; diğer bölgeler için yarısı
+            if (bedel > (platformBolgeBekliyor && KuryeDarbogazi ? BosDar : Bos / 2)) return;
             if (map.TryUnlockNext())
             {
                 sonBolgeAcmaGun = clk.Day;
@@ -821,10 +838,12 @@ namespace KuryeTycoon
             if (darbogaz)
             {
                 var ks = KayitSistemi.I;
-                string neden = $"kurye hesapları dolu ({up.CourierCap}), {ks.HesapBekleyen} kişi hesap bekliyor, son 3 günde siparişlerin %{KayipOrani(3) * 100f:0}'i kaçtı";
+                string neden = $"kurye hesapları dolu ({up.CourierCap}), {ks.HesapBekleyen} kişi hesap bekliyor, son 3 günde siparişlerin %{KayipOrani(3) * 100f:0}'i kaçtı" +
+                               $" (yoğunluktan %{YogunKayipOrani(3) * 100f:0})";
                 string kilit = up.LockReason(UpgradeKind.Platform);
-                if (kilit.Length == 0 && Al(UpgradeKind.Platform, bos, neden, true)) { biriktiriyordu = false; return; }
-                if (kilit.Contains("ofis") && Al(UpgradeKind.Ofis, bos, "platform paketi daha büyük ofis istiyor · " + neden, true)) return;
+                long bosDar = BosDar;
+                if (kilit.Length == 0 && Al(UpgradeKind.Platform, bosDar, neden, true)) { biriktiriyordu = false; return; }
+                if (kilit.Contains("ofis") && Al(UpgradeKind.Ofis, bosDar, "platform paketi daha büyük ofis istiyor · " + neden, true)) return;
             }
             else if (up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0 && IptalOrani(2) > 0.03f &&
                      Al(UpgradeKind.Platform, bos, "kurye hesapları dolu, iptaller sürüyor")) return;
@@ -853,7 +872,9 @@ namespace KuryeTycoon
             if (son.avgPickupWait > 12f) adaylar.Add((UpgradeKind.Restoran, $"dükkanda bekleme {son.avgPickupWait:0.0} dk"));
             if (dunAdres >= 3) adaylar.Add((UpgradeKind.Adres, $"dün {dunAdres} adres/evde yok sorunu"));
             if (OrtMoral < 0.6f) adaylar.Add((UpgradeKind.Dinlenme, $"ort. moral {OrtMoral:0.00}"));
-            if (iptal < 0.03f && kuryeBasi < 12f && cm.Couriers.Count >= 5) adaylar.Add((UpgradeKind.Reklam, $"servis iyi, kurye başı {kuryeBasi:0} teslimat: talep lazım"));
+            bool hesapBekleyen = up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0;
+            if (iptal < 0.03f && kuryeBasi < 12f && cm.Couriers.Count >= 5 && YogunKayipOrani(3) < 0.02f && !hesapBekleyen)
+                adaylar.Add((UpgradeKind.Reklam, $"servis iyi, kurye başı {kuryeBasi:0} teslimat: talep lazım"));
             if (SupportManager.I != null && SupportManager.I.Agents.Count >= up.SupportCap && cm.Couriers.Count >= 15) adaylar.Add((UpgradeKind.Ofis, "destek ekibi sınırda"));
             if (cm.Couriers.Count >= 15) adaylar.Add((UpgradeKind.Hub, $"{cm.Couriers.Count} kurye: dağıtım merkezi"));
             // Geç oyun: kargo bisikleti (bisikletli kurye çoksa), paket dolabı (adres sorunu), robot (büyük ekip, kısa siparişler)
@@ -992,6 +1013,15 @@ namespace KuryeTycoon
                 int eski = eco.baseFee;
                 eco.baseFee = Mathf.Max(200, Mathf.RoundToInt(eco.baseFee * 0.9f / 10f) * 10);
                 Eylem("Fiyat", $"Geçen hafta {kacan} müşteri ücreti pahalı bulup vazgeçti (teslimatın %{oran * 100f:0}): taban ücret {Ft(eski)} → {Ft(eco.baseFee)}");
+            }
+            else if (YogunKayipOrani(7) > 0.05f && UpgradeManager.I.CourierCapFull && oran < 0.04f && eco.baseFee < baslangicTaban * 1.3f)
+            {
+                // Kurye hesapları dolu, kuryeler yetişmiyor: zaten kaçan talebin bir kısmını fiyatla karşıla (sipariş başı gelir artar,
+                // biraz talep düşer, yoğunluk azalır). Platform paketi parası daha çabuk birikir.
+                int eski = eco.baseFee;
+                eco.baseFee = Mathf.RoundToInt(eco.baseFee * 1.05f / 10f) * 10;
+                Eylem("Fiyat", $"Kuryeler yetişmiyor (son 7 günde siparişlerin %{YogunKayipOrani(7) * 100f:0}'i yoğunluktan kaçtı), hesaplar dolu: " +
+                               $"taban ücret {Ft(eski)} → {Ft(eco.baseFee)}");
             }
             else if (oran < 0.01f && IptalOrani(7) < 0.04f && eco.baseFee < baslangicTaban * 1.2f)
             {

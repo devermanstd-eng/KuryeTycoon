@@ -349,6 +349,25 @@ namespace KuryeTycoon
             return r;
         }
 
+        /// <summary>
+        /// Kurye darboğazını çözen alım için ince yedek: 500 € + 2 günlük sabit ve işletme gideri + 7 gün içindeki taksit
+        /// (+ çeyreğin son 10 gününde geçici vergi). Normal yedek 5 günlük gider ve 21 gün içindeki taksiti ayırıyor; 15.11 testinde
+        /// 45 hesaplık paket için 3 500 € fazladan bekletiyordu (kasa 32 kuryede günde ~400 € büyüyordu).
+        /// </summary>
+        long InceRezerv()
+        {
+            long r = 200000 + UpgradeManager.I.TotalDailyCost * 2L;
+            var loan = FamilyLoan.I;
+            if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null && loan.DaysUntil(loan.NextDue) <= 7)
+                r += loan.NextDue.Remaining;
+            var son = SonGun();
+            if (son != null) r += son.isletme * 2L;
+            var clk = GameClock.I;
+            if (clk != null && EconomyManager.I != null && (clk.Month == 3 || clk.Month == 6 || clk.Month == 9) && clk.DayOfMonth >= 20)
+                r += EconomyManager.I.TahminiGeciciVergi;
+            return r;
+        }
+
         DayRecord SonGun()
         {
             var d = StatsHistory.I != null ? StatsHistory.I.Days : null;
@@ -532,7 +551,7 @@ namespace KuryeTycoon
             "gun;tarih;teslimat;iptal;kacan;gelir;gider;net;kasa;serbest_kasa;itibar;kurye;dukkan;bolge;gec;gec_15dk;soguk;ort_teslim_dk;" +
             "ort_atama_bekleme_dk;ort_alma_bekleme_dk;dukkan_iptali;musteri_vazgecti;gecikme_iptali;kurye_odemesi;ekipman;maaslar;" +
             "ort_moral;ort_yorgunluk;ort_birikmis_yorgunluk;basvuru;pazar_payi;aile_borcu_kalan;gelistirme_gunluk;fiyat_carpani;fps_ort;fps_en_dusuk;gercek_saniye;" +
-            "isletme_gideri;rakip_tehdit;rakip_hamle_bekleyen";
+            "isletme_gideri;rakip_tehdit;rakip_hamle_bekleyen;yogun_kacan;hesap_tavani;hesap_bekleyen";
 
         long enDusukKasa;
         int enDusukKasaGun;
@@ -573,7 +592,8 @@ namespace KuryeTycoon
                     P(d.courierPay), P(d.equipment), P(d.salaries),
                     F(moral / n), F(yorgun / n), F(birikmis / n), (KayitSistemi.I != null ? KayitSistemi.I.Adaylar.Count : 0).ToString(Inv), F(pay), P(borc),
                     P(UpgradeManager.I.TotalDailyCost), F(Denge.FiyatCarpani), F(fpsOrt), F(fpsMin), F(gercek),
-                    P(d.isletme), d.tehdit.ToString(Inv), (RivalCompany.I != null ? RivalCompany.I.Tehditler.Count : 0).ToString(Inv)
+                    P(d.isletme), d.tehdit.ToString(Inv), (RivalCompany.I != null ? RivalCompany.I.Tehditler.Count : 0).ToString(Inv),
+                    d.yogunKacan.ToString(Inv), d.hesapTavani.ToString(Inv), d.hesapBekleyen.ToString(Inv)
                 }));
 
             if (gunNo == 1 || gunNo % 10 == 0) haritaBekliyor = true;
@@ -722,6 +742,41 @@ namespace KuryeTycoon
 
         // ------------------------------------------------------------------ özet
 
+        /// <summary>
+        /// Kurye hesabı tavanında geçen süre (hedef: 32 hesapta 10–13 gün), yoğunluk kayıpları ve itibarın dibi.
+        /// "Dolu": gün sonunda kurye sayısı = hesap sınırı. "Bekleyenli": üstelik kayıtta hesap bekleyen aday var.
+        /// </summary>
+        void KapasiteOzeti(StringBuilder sb, List<DayRecord> gunler, long kacToplam)
+        {
+            var tavanlar = new List<int>();
+            var dolu = new Dictionary<int, int>();
+            var bekleyenli = new Dictionary<int, int>();
+            var ilk = new Dictionary<int, int>();
+            var sonGun = new Dictionary<int, int>();
+            var enCokBekleyen = new Dictionary<int, int>();
+            long yogun = 0;
+            float enDusuk = 6f; int enDusukGun = 0;
+            for (int i = 0; i < gunler.Count; i++)
+            {
+                var d = gunler[i];
+                yogun += d.yogunKacan;
+                if (i >= 3 && d.reputation < enDusuk) { enDusuk = d.reputation; enDusukGun = i + 1; }   // ilk 3 gün açılış
+                int t = d.hesapTavani;
+                if (t <= 0 || d.couriers < t) continue;
+                if (!dolu.ContainsKey(t)) { tavanlar.Add(t); dolu[t] = 0; bekleyenli[t] = 0; ilk[t] = i + 1; enCokBekleyen[t] = 0; }
+                dolu[t]++;
+                sonGun[t] = i + 1;
+                if (d.hesapBekleyen > 0) bekleyenli[t]++;
+                enCokBekleyen[t] = Mathf.Max(enCokBekleyen[t], d.hesapBekleyen);
+            }
+            var parca = new List<string>();
+            foreach (int t in tavanlar)
+                parca.Add($"{t} hesap: {dolu[t]} gün dolu ({ilk[t]}–{sonGun[t]}. gün), {bekleyenli[t]} gün aday bekledi (en çok {enCokBekleyen[t]} kişi)");
+            sb.AppendLine("Kapasite: " + (parca.Count > 0 ? string.Join(" · ", parca) : "kurye hesapları hiç dolmadı"));
+            sb.AppendLine($"Kaçan siparişin {yogun}'i yoğunluktan (%{Yuzde(yogun, kacToplam):0}) · yoğunlukta uzak yerine yakından gelen " +
+                          $"{Sayac("Sipariş: yoğunlukta uzak yerine yakından")} · itibarın dibi {(enDusukGun > 0 ? $"{enDusuk:0.00} ({enDusukGun}. gün sonu)" : "-")}");
+        }
+
         string Ozet(List<string> kilitli)
         {
             var sb = new StringBuilder();
@@ -780,16 +835,20 @@ namespace KuryeTycoon
                               $"duyurulan hamle {Sayac("Rakip: hamle duyuruldu")} (dükkan {Sayac("Rakip: dükkan teklifi") + Sayac("Rakip: münhasır dükkan teklifi")}, " +
                               $"kurye {Sayac("Rakip: kurye teklifi")}, fiyat savaşı {Sayac("Rakip: fiyat savaşı")}, yatırım turu {Sayac("Rakip: yatırım turu")}) · " +
                               $"rakiplerin senin dükkanlarınla anlaşması {Sayac("Rakip: senin dükkanınla anlaştı")}");
+                KapasiteOzeti(sb, gunler, kac);
 
                 Baslik(sb, "HAFTA HAFTA");
-                sb.AppendLine("hafta | teslimat | iptal % | net          | hafta sonu kasa | kurye | dükkan | itibar");
+                sb.AppendLine("hafta | teslimat | iptal % | kaçan | geç % | net          | hafta sonu kasa | kurye | dükkan | itibar");
                 for (int i = 0; i < gunler.Count; i += 7)
                 {
-                    long ht = 0, hi = 0, hn = 0;
+                    long ht = 0, hi = 0, hn = 0, hk = 0, hg = 0;
                     int son = Mathf.Min(gunler.Count, i + 7);
-                    for (int j = i; j < son; j++) { ht += gunler[j].deliveries; hi += gunler[j].cancelled; hn += gunler[j].net; }
+                    for (int j = i; j < son; j++)
+                    {
+                        ht += gunler[j].deliveries; hi += gunler[j].cancelled; hn += gunler[j].net; hk += gunler[j].lost; hg += gunler[j].late;
+                    }
                     var s = gunler[son - 1];
-                    sb.AppendLine($"{i / 7 + 1,5} | {ht,8} | {Yuzde(hi, ht + hi),6:0.0} | {Ft(hn),12} | {Ft(s.cash),15} | {s.couriers,5} | {s.contractedShops,6} | {s.reputation:0.00}");
+                    sb.AppendLine($"{i / 7 + 1,5} | {ht,8} | {Yuzde(hi, ht + hi),6:0.0} | {hk,5} | {Yuzde(hg, ht),5:0} | {Ft(hn),12} | {Ft(s.cash),15} | {s.couriers,5} | {s.contractedShops,6} | {s.reputation:0.00}");
                 }
             }
 
