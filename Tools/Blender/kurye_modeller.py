@@ -7795,6 +7795,72 @@ def kapi_paneli(g, s, ana_hat, o, mat, ic_mat=None, ic_o=0.035):
             _duz(g, ic, (-s, 0.0, 0.0), ic_mat)
 
 
+def polo_lamba_yan(g, s, ys, bantlar, o, cerceve, cerceve_pay=0.008):
+    """Gövde yanına (kesiti izleyerek) yapışık lamba camı: ys istasyonları boyunca hücre hücre, z bantlarına göre malzeme.
+    Hücreler küçük olduğundan yüzey gövdeyle aynı eğriyi izler (tek düz çokgen gövdenin içinde kalırdı)."""
+    def P(y, z, oo):
+        return (s * (_govde_x(y, z) + oo), y, z)
+    z_alt, z_ust = bantlar[0][0], bantlar[-1][1]
+    for y0, y1 in zip(ys, ys[1:]):
+        # siyah yuva (camın biraz dışına taşar)
+        e0 = y0 - (cerceve_pay if y0 == ys[0] else 0.0)
+        e1 = y1 + (cerceve_pay if y1 == ys[-1] else 0.0)
+        _duz(g, [P(e0, z_alt - cerceve_pay, o * 0.5), P(e1, z_alt - cerceve_pay, o * 0.5),
+                 P(e1, z_ust + cerceve_pay, o * 0.5), P(e0, z_ust + cerceve_pay, o * 0.5)], (s, 0.0, 0.0), cerceve)
+        for za, zb, mat in bantlar:
+            _duz(g, [P(y0, za, o), P(y1, za, o), P(y1, zb, o), P(y0, zb, o)], (s, 0.0, 0.0), mat)
+
+
+def polo_arka_lamba(g, s, bantlar, geri, cerceve):
+    """Arka lamba: arka yüzde (y = sabit) gövdenin daralan kenarına kadar, köşeden yana dönerek."""
+    YA = 1.846                       # arka yüz (bagaj kapağı sacının hizası)
+    YK = 1.828                       # köşe: buradan yana döner
+    xi = 0.566                       # iç kenar (bagaj kapağının derzinin yanı)
+    z_alt, z_ust = bantlar[0][0], bantlar[-1][1]
+
+    def xd(z):                       # o yükseklikte gövdenin yarı eni (köşe)
+        return _govde_x(YK, z)
+
+    # arka yüz: her bant bir dörtgen (dış kenar gövdeyle birlikte üstte içe kayar)
+    pay = 0.008
+    _duz(g, [(s * (xi - pay), YA - 0.001, z_alt - pay), (s * (xd(z_alt - pay) + 0.002), YA - 0.001, z_alt - pay),
+             (s * (xd(z_ust + pay) + 0.002), YA - 0.001, z_ust + pay), (s * (xi - pay), YA - 0.001, z_ust + pay)],
+         (0.0, 1.0, 0.0), cerceve)
+    for za, zb, mat in bantlar:
+        _duz(g, [(s * xi, YA + 0.004, za), (s * xd(za), YA + 0.004, za), (s * xd(zb), YA + 0.004, zb), (s * xi, YA + 0.004, zb)],
+             (0.0, 1.0, 0.0), mat)
+        # köşe pahı: arka yüzden yan yüze
+        _duz(g, [(s * xd(za), YA + 0.004, za), (s * (xd(za) + 0.006), YK, za), (s * (xd(zb) + 0.006), YK, zb), (s * xd(zb), YA + 0.004, zb)],
+             (s, 1.0, 0.0), mat)
+    # alt bantta içte beyaz geri vites
+    za, zb, _ = bantlar[0]
+    _duz(g, [(s * (xi + 0.012), YA + 0.007, za + 0.012), (s * (xi + 0.095), YA + 0.007, za + 0.012),
+             (s * (xi + 0.095), YA + 0.007, zb - 0.012), (s * (xi + 0.012), YA + 0.007, zb - 0.012)], (0.0, 1.0, 0.0), geri)
+    # kırmızının içinde ince ayraçlar (lamba bölmeleri)
+    for za, zb, _ in bantlar[1:]:
+        _duz(g, [(s * xi, YA + 0.006, za - 0.008), (s * xd(za - 0.008), YA + 0.006, za - 0.008),
+                 (s * xd(za), YA + 0.006, za), (s * xi, YA + 0.006, za)], (0.0, 1.0, 0.0), cerceve)
+    # yana dönen kısım
+    polo_lamba_yan(g, s, [1.755, 1.79, YK], bantlar, 0.007, cerceve)
+
+
+def polo_ayna(g, s, kapak, siyah, ayna_cami):
+    """Yan ayna: kapıdaki siyah üçgen tabandan çıkan kol, öne doğru daralan gövde rengi kapak, arkada ayna camı."""
+    x0 = 0.755
+    yonlu_kutu(g, (s * (x0 + 0.03), -0.585, 1.005), (0.032, 0.0, 0.0), (0.0, 0.03, 0.0), (0.0, 0.0, 0.022), siyah)
+    # kapak: arka yüz (y = -0.50) geniş, ön yüz (y = -0.585) dar ve içe kayık
+    xa0, xa1 = x0 + 0.045, x0 + 0.185
+    on = [(xa0 + 0.012, -0.588, 0.978), (xa1 - 0.025, -0.588, 0.985), (xa0 + 0.012, -0.588, 1.048), (xa1 - 0.025, -0.588, 1.040)]
+    ar = [(xa0, -0.505, 0.968), (xa1, -0.505, 0.975), (xa0, -0.505, 1.062), (xa1, -0.505, 1.055)]
+    # OBOX sırası: k = x biti + 2*y biti + 4*z biti
+    pts = [on[0], on[1], ar[0], ar[1], on[2], on[3], ar[2], ar[3]]
+    pts = [(s * x, y, z) for x, y, z in pts]
+    dis_bukey(g, pts, OBOX_YUZ, kapak)
+    # ayna camı (arka yüzde, kenarlardan içeride)
+    _duz(g, [(s * (xa0 + 0.012), -0.501, 0.980), (s * (xa1 - 0.012), -0.501, 0.986),
+             (s * (xa1 - 0.012), -0.501, 1.044), (s * (xa0 + 0.012), -0.501, 1.050)], (0.0, 1.0, 0.0), ayna_cami)
+
+
 def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     g = Govde()
     g.parcalar = []          # (ad, Govde, pivot, üst parça adı): oyunda hareket eden parçalar (kapılar, bagaj, tekerler, silecekler, farlar)
@@ -7847,12 +7913,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         kabin_cam_yuzu(g, p, q, z0, z1, 0.045, 0.010, cam, on_yon)
     if DETAY:
         y0 = _cizgi_y(Bp, B, 1.385)
-        kutu(g, -0.10, 0.10, y0 + 0.02, y0 + 0.05, 1.355, 1.385, plastik)
-        pts = [(x, _cizgi_y(A, Bp, z), z) for z, x in ((1.0, 0.18), (1.0, 0.30), (1.33, 0.22), (1.33, 0.10))]
-        n = norm(cross(sub(pts[1], pts[0]), sub(pts[3], pts[0])))
-        if dot(n, on_yon) < 0:
-            n = mul(n, -1)
-        _duz(g, [add(p_, mul(n, 0.013)) for p_ in pts], on_yon, cam_isik)
+        kutu(g, -0.10, 0.10, y0 + 0.02, y0 + 0.05, 1.355, 1.385, plastik)          # dikiz aynası tabanı
     z = 1.0
     for ad, x0 in (("Silecek_Sag", -0.62), ("Silecek_Sol", -0.08)):
         p0 = (x0, _cizgi_y(A, Bp, z) - 0.02, z + 0.004)
@@ -7895,7 +7956,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     def zalt(y):
         return 0.935 + (y + 0.8) * 0.014
     zust = POLO_CAM_UST - 0.012
-    on_kenar = lambda z: _cizgi_y(A, Bp, z) + 0.13
+    on_kenar = lambda z: _cizgi_y(A, Bp, z) + 0.085
     cer = [(on_kenar(zalt(-0.70)), zalt(-0.70)), (on_kenar(zust), zust), (1.07, zust), (1.07, zalt(1.07))]
     ic = [(on_kenar(zalt(-0.68) + 0.02) + 0.035, zalt(-0.68) + 0.02), (on_kenar(zust - 0.022) + 0.03, zust - 0.022),
           (1.05, zust - 0.022), (1.05, zalt(1.05) + 0.02)]
@@ -7960,13 +8021,13 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     # ---- farlar (ayrı parçalar: gece yanar ve ışık saçar), ızgara, VW, tampon, plaka, sis farları
     for s in (-1, 1):
         fp = parca("Far_" + ("Sol" if s > 0 else "Sag"), (s * 0.605, -1.842, 0.640))
-        yonlu_kutu(fp, (s * 0.605, -1.842, 0.640), (0.178, 0, 0), (0, 0.026, 0.0), (0, 0.016, 0.086), far)
-        yonlu_kutu(fp, (s * 0.795, -1.76, 0.642), (0.018, 0, 0), (0, 0.06, 0.0), (0, 0.0, 0.075), far)
+        yonlu_kutu(fp, (s * 0.592, -1.842, 0.640), (0.163, 0, 0), (0, 0.026, 0.0), (0, 0.016, 0.086), far)     # çamurluğun dışına taşmaz
+        polo_lamba_yan(fp, s, [-1.835, -1.80, -1.765, -1.74], [(0.600, 0.690, sinyal)], 0.008, siyah)
         if DETAY:
             yatik_silindir(fp, (s * 0.53, -1.870, 0.640), 0.068, 0.006, math.pi / 2, 14, far_ic)
             yatik_silindir(fp, (s * 0.53, -1.874, 0.640), 0.030, 0.006, math.pi / 2, 10, krom)
-            yatik_silindir(fp, (s * 0.70, -1.868, 0.645), 0.052, 0.006, math.pi / 2, 12, far_ic)
-            yatik_silindir(fp, (s * 0.70, -1.872, 0.645), 0.022, 0.006, math.pi / 2, 10, krom)
+            yatik_silindir(fp, (s * 0.69, -1.868, 0.645), 0.050, 0.006, math.pi / 2, 12, far_ic)
+            yatik_silindir(fp, (s * 0.69, -1.872, 0.645), 0.021, 0.006, math.pi / 2, 10, krom)
     kutu(g, -0.40, 0.40, -1.866, -1.80, 0.555, 0.685, siyah)
     if DETAY:
         for zz in (0.585, 0.615, 0.645):
@@ -7987,12 +8048,11 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         yazi(g, "KRY-616", govde_on, 0.02, 0.362, 0.012, 0.075, 0.40, yazi_m, derinlik=0.006)
 
     # ---- arka: stoplar, tampon, plaka, egzoz
+    # 6N2 arka lambası: dikey, bagaj kapağının iki yanında; üstte kırmızı stop, ortada turuncu sinyal, altta kırmızı
+    # (içte beyaz geri vites). Gövdenin üste doğru daralan köşesini izler ve yana ~8 cm döner.
+    bantlar = [(0.665, 0.770, stop_koyu), (0.778, 0.842, sinyal), (0.850, 0.940, stop)]
     for s in (-1, 1):
-        kutu(g, s * 0.555, s * 0.795, 1.826, 1.848, 0.665, 0.94, stop)
-        if DETAY:
-            kutu(g, s * 0.57, s * 0.78, 1.846, 1.851, 0.68, 0.72, geri)
-            kutu(g, s * 0.57, s * 0.78, 1.846, 1.851, 0.80, 0.84, stop_koyu)
-        govde_yan(g, s, [(1.66, 0.74), (1.835, 0.665), (1.835, 0.94), (1.70, 0.96)], stop, 0.008)
+        polo_arka_lamba(g, s, bantlar, geri, siyah)
     for s in (-1, 1):
         kutu(g, s * 0.30, s * 0.83, 1.86, 1.885, 0.48, 0.545, plastik)
     kutu(g, -0.30, 0.30, 1.866, 1.875, 0.335, 0.505, siyah)
@@ -8009,10 +8069,8 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         govde_yan(g, s, [(-0.78, 0.215), (0.90, 0.215), (0.90, 0.27), (-0.78, 0.27)], esik, 0.012)
         kabin_yan(g, s, [(on_kenar(zalt(-0.70)) - 0.005, zalt(-0.72)), (on_kenar(zalt(-0.70)) + 0.06, zalt(-0.70)),
                          (on_kenar(1.07) - 0.01, 1.07)], siyah, 0.008)
-        yonlu_kutu(g, (s * 0.765, -0.56, 1.0), (0.04, 0.0, 0.0), (0.0, 0.035, 0.0), (0.0, 0.0, 0.03), siyah)
-        yonlu_kutu(g, (s * 0.84, -0.535, 1.015), (0.065, 0.0, 0.0), (0.0, 0.062, 0.0), (0.0, 0.0, 0.058), gv)
+        polo_ayna(g, s, gv, siyah, cam_isik)
         if DETAY:
-            yonlu_kutu(g, (s * 0.85, -0.471, 1.015), (0.05, 0.0, 0.0), (0.0, 0.003, 0.0), (0.0, 0.0, 0.042), cam_isik, kabuk=False)
             govde_yan(g, s, [(-0.955, 0.77), (-0.925, 0.77), (-0.925, 0.79), (-0.955, 0.79)], sinyal, 0.012)
     if DETAY:
         b = len(g.f)
