@@ -395,7 +395,9 @@ namespace KuryeTycoon
         {
             var d = Def(k);
             int lv = Level(k);
-            return lv >= d.MaxLevel ? -1 : (int)Denge.Olcekle(d.costs[lv]);   // şirket büyüdükçe kurulum bedeli artar
+            // Şirket büyüdükçe kurulum bedeli artar. Kurye platformu paketi çarpanın yarısını alır: 15.11 testinde (işletme giderleri
+            // ve geçici vergiyle) kurye sayısı 30 gün 32'de kaldı, 45 hesaplık paket 9 000–9 900 €'ya çıkmıştı; kayıplar ve geç teslim arttı.
+            return lv >= d.MaxLevel ? -1 : (int)Denge.Olcekle(d.costs[lv], k == UpgradeKind.Platform ? 0.5f : 1f);
         }
 
         public bool Buy(UpgradeKind k)

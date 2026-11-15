@@ -587,8 +587,11 @@ namespace KuryeTycoon
             // sıradaki platform paketi yakında gerekecekse (hesaplar dolu ya da dolmak üzere, hesap bekleyen var) onun parası ayrılır.
             // 14.11 testinde bir kurye ayrılınca hesaplar bir anlığına boş göründü ve bot 36. gün paketin parasını krediye gömdü.
             long sabit = 200000 + UpgradeManager.I.TotalDailyCost * 7L;
+            // Sıradaki platform paketi varken hiç erken kapatılmaz (15.11 testinde paket alındıktan hemen sonra hesaplar bir an boş
+            // göründü, bot 5 185 €'yu krediye yatırdı, iki gün sonra 17 115 €'luk paket için biriktirmeye başladı).
+            bool paketVar = UpgradeManager.I.NextCost(UpgradeKind.Platform) > 0;
             long platformPayi = PlatformParasiLazim ? System.Math.Max(0, UpgradeManager.I.NextCost(UpgradeKind.Platform)) : 0;
-            if (eco.FreeCash > loan.Remaining + sabit + 400000 + platformPayi)
+            if (!paketVar && eco.FreeCash > loan.Remaining + sabit + 400000 + platformPayi)
             {
                 long kalan = loan.Remaining;
                 if (loan.Pay(kalan)) { Eylem("Borç", $"Kasa rahat (serbest {Ft(eco.FreeCash + kalan)}): borcun tamamı kapatıldı ({Ft(kalan)})"); return; }
