@@ -7881,7 +7881,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         for z in (0.585, 0.615, 0.645):
             kutu(g, -0.39, 0.39, -1.870, -1.866, z - 0.006, z + 0.006, plastik)
     vw_logo(g, (0.0, -1.876, 0.618), -1, 0.068, krom, siyah)
-    govde_on = Cephe((0.0, -1.876, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0))
+    govde_on = Cephe((0.0, -1.876, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
     kutu(g, -0.83, 0.83, -1.885, -1.84, 0.448, 0.522, plastik)              # tampon koruma bandı
     kutu(g, -0.40, 0.40, -1.882, -1.84, 0.175, 0.305, siyah)               # alt hava girişi
     if DETAY:
@@ -7904,7 +7904,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         govde_yan(g, s, [(1.66, 0.74), (1.835, 0.665), (1.835, 0.94), (1.70, 0.96)], stop, 0.008)
         kutu(g, s * 0.548, s * 0.556, 1.83, 1.846, 0.60, 0.95, derz)       # bagaj kapağı yan derzi
     kutu(g, -0.548, 0.548, 1.836, 1.846, 0.592, 0.60, derz)               # alt derz
-    arka_fc = Cephe((0.0, 1.84, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0))
+    arka_fc = Cephe((0.0, 1.84, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
     vw_logo(g, (0.0, 1.846, 0.84), 1, 0.065, krom, siyah)
     if DETAY:
         yazi(g, "POLO", arka_fc, -0.33, 0.865, 0.004, 0.035, 0.16, krom, derinlik=0.006)
@@ -7916,7 +7916,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     kutu(g, -0.26, 0.26, 1.873, 1.882, 0.35, 0.49, plaka)
     kutu(g, -0.26, -0.22, 1.880, 1.886, 0.35, 0.49, eu)
     if DETAY:
-        yazi(g, "KRY-616", Cephe((0.0, 1.882, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0)), 0.02, 0.42, 0.0, 0.08, 0.40, yazi_m, derinlik=0.006)
+        yazi(g, "KRY-616", Cephe((0.0, 1.882, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)), 0.02, 0.42, 0.0, 0.08, 0.40, yazi_m, derinlik=0.006)
         yatik_silindir(g, (0.45, 1.80, 0.17), 0.028, 0.12, math.pi / 2, 10, plastik)   # egzoz
 
     # ---- yan: koruma bantları, eşik, kapı derzleri, kollar, aynalar, depo kapağı, çamurluk sinyali
