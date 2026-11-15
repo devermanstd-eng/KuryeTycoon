@@ -7914,7 +7914,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         kutu(g, s * 0.30, s * 0.83, 1.86, 1.885, 0.48, 0.545, plastik)      # arka tampon bantları
     kutu(g, -0.30, 0.30, 1.866, 1.875, 0.335, 0.505, siyah)                # plaka yuvası
     kutu(g, -0.26, 0.26, 1.873, 1.882, 0.35, 0.49, plaka)
-    kutu(g, -0.26, -0.22, 1.880, 1.886, 0.35, 0.49, eu)
+    kutu(g, 0.22, 0.26, 1.880, 1.886, 0.35, 0.49, eu)                     # AB şeridi arkadan bakınca solda
     if DETAY:
         yazi(g, "KRY-616", Cephe((0.0, 1.882, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)), 0.02, 0.42, 0.0, 0.08, 0.40, yazi_m, derinlik=0.006)
         yatik_silindir(g, (0.45, 1.80, 0.17), 0.028, 0.12, math.pi / 2, 10, plastik)   # egzoz
@@ -7947,8 +7947,11 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
             yonlu_kutu(g, (s * 0.85, -0.471, 1.015), (0.05, 0.0, 0.0), (0.0, 0.003, 0.0), (0.0, 0.0, 0.042), cam_isik, kabuk=False)
             govde_yan(g, s, [(-0.955, 0.77), (-0.925, 0.77), (-0.925, 0.79), (-0.955, 0.79)], sinyal, 0.012)
     if DETAY:
-        yatik_silindir(g, (0.826, 1.40, 0.84), 0.068, 0.012, 0.0, 16, gv)    # depo kapağı (sol arka)
         b = len(g.f)
+        yatik_silindir(g, (0.822, 1.40, 0.84), 0.074, 0.006, 0.0, 16, derz)   # depo kapağı (sol arka): ince derz halkası
+        yatik_silindir(g, (0.826, 1.40, 0.84), 0.066, 0.008, 0.0, 16, gv)
+        for i in range(b, len(g.f)):
+            g.kabuksuz[i] = True                                             # çizgisiz: kalın siyah halka olmasın
 
     # ---- çamurluk içleri: yandan bakınca karşı taraf görünmesin
     for ay in POLO_AKS:
