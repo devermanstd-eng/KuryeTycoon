@@ -100,8 +100,8 @@ namespace KuryeTycoon
             get
             {
                 float h = HourF;
-                if (h >= 12f) return 0.62f;
-                if (h < 5f) return Mathf.Lerp(0.5f, 0.14f, h / 5f);
+                if (h >= 12f) return 0.55f;
+                if (h < 5f) return Mathf.Lerp(0.38f, 0.12f, h / 5f);   // gece yarısından sonra çoğu ev uyur
                 return 0.32f;
             }
         }
@@ -203,10 +203,20 @@ namespace KuryeTycoon
         static bool OnScreen(Rect vp, Vector3 sp, float margin) =>
             sp.z > 0f && sp.x > vp.xMin - margin && sp.x < vp.xMax + margin && sp.y > vp.yMin - margin && sp.y < vp.yMax + margin;
 
+        /// <summary>
+        /// Sokak lambaları. 14.11 testinde gece (04:21) uzaktan bakınca her kavşakta ve yarım blokta 1,5 kare büyüklüğünde
+        /// sarı hale vardı: harita sarı lekelerle kaplanıyor, kurye ve dükkan etiketleri zor okunuyordu. Şimdi:
+        ///  • Hale ~0,8 kare (en fazla 22 piksel) ve daha soluk; uzaklaştıkça daha da sönükleşir.
+        ///  • Ara yol lambaları sadece yakından (kare ≥ 18 piksel) görünür; uzaktan kavşakların ~yarısı yanar.
+        /// </summary>
         static void DrawStreetLamps(Camera cam, Rect vp, float tilePx, float lights)
         {
             var g = Glow();
-            float size = tilePx * 1.5f;
+            float yakin = Mathf.InverseLerp(6f, 22f, tilePx);              // 0 uzak, 1 yakın
+            float size = Mathf.Min(tilePx * 0.8f, 22f);
+            float haleA = 0.26f * Mathf.Lerp(0.55f, 1f, yakin);
+            float seyrek = Mathf.Lerp(0.45f, 1f, Mathf.InverseLerp(8f, 18f, tilePx));   // uzaktan yanan kavşak oranı
+            bool araYol = tilePx >= 18f;
             float sh = Screen.height;
             int b = CityMap.Block;
             for (int y = 0; y < CityMap.Height; y += 2)
@@ -214,18 +224,19 @@ namespace KuryeTycoon
                 {
                     if (!CityMap.RoadAt(x, y)) continue;
                     bool cross = x % b == 0 && y % b == 0;
-                    // Kavşaklarda her zaman, ara yollarda yarım blokta bir lamba
-                    if (!cross && !((x % b == 2 && y % b == 0) || (y % b == 2 && x % b == 0))) continue;
+                    // Kavşaklarda (uzaktan bir kısmında), yakından ara yollarda yarım blokta bir lamba
+                    if (cross) { if (Rand01(x, y, 19) > seyrek) continue; }
+                    else if (!araYol || !((x % b == 2 && y % b == 0) || (y % b == 2 && x % b == 0))) continue;
                     if (CityMap.WaterAt(x, y)) continue;
                     var sp = cam.WorldToScreenPoint(new Vector3(x, y, -0.05f));
                     if (!OnScreen(vp, sp, size)) continue;
                     // Yer yer yanıp sönen, sıcak sarı lambalar
                     float flicker = Rand01(x, y, 7) < 0.04f ? (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 9f + x)) : 1f;
-                    float s = size * (cross ? 1.15f : 0.85f);
-                    GUI.color = new Color(1f, 0.80f, 0.45f, 0.42f * lights * flicker);
+                    float s = size * (cross ? 1f : 0.75f);
+                    GUI.color = new Color(1f, 0.80f, 0.45f, haleA * lights * flicker);
                     GUI.DrawTexture(new Rect(sp.x - s / 2f, sh - sp.y - s / 2f, s, s), g);
-                    float c = Mathf.Max(2f, tilePx * 0.12f);
-                    GUI.color = new Color(1f, 0.95f, 0.80f, 0.9f * lights * flicker);
+                    float c = Mathf.Clamp(tilePx * 0.09f, 1.5f, 4f);
+                    GUI.color = new Color(1f, 0.95f, 0.80f, 0.75f * lights * flicker);
                     GUI.DrawTexture(new Rect(sp.x - c / 2f, sh - sp.y - c / 2f, c, c), g);
                 }
         }
@@ -257,9 +268,9 @@ namespace KuryeTycoon
                 bool warm = Rand01(t.x, t.y, 11) < 0.75f;
                 var col = warm ? new Color(1f, 0.83f, 0.45f) : new Color(0.75f, 0.88f, 1f);
 
-                // Hafif hale (uzaktan bakınca bina ışıl ışıl görünsün)
-                float hs = tilePx * 0.9f;
-                GUI.color = new Color(col.r, col.g, col.b, 0.16f * lights);
+                // Hafif hale (uzaktan bakınca bina ışıl ışıl görünsün). Küçük ve soluk: lekeler etiketleri kapatmasın.
+                float hs = Mathf.Min(tilePx * 0.55f, 18f);
+                GUI.color = new Color(col.r, col.g, col.b, 0.10f * lights);
                 GUI.DrawTexture(new Rect(top.x - hs / 2f, sh - top.y - hs / 2f, hs, hs), g);
                 if (!detail) continue;
 

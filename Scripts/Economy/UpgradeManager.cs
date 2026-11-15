@@ -72,7 +72,9 @@ namespace KuryeTycoon
                 kind = UpgradeKind.Platform, name = "Kurye platformu paketi",
                 summary = "Kuryeler kendi işinin patronu ama her biri uygulamanda bir hesapla çalışır. Paket kaç aktif kurye hesabını " +
                           "kaldırabileceğini belirler; büyük paketin sunucu ve lisans ücreti de yüksek. Büyük paketler şehir büyüdükçe açılır.",
-                costs = new[] { 80000, 200000, 450000, 900000, 1600000, 2800000, 4500000, 20000000, 40000000, 70000000, 120000000 },
+                // Metropol (32 → 45) 1,6 M'dan 1,1 M'ya, Kurumsal (45 → 60) 2,8 M'dan 2,4 M'ya indi: 15.11 testinde kurye sayısı 30 gün
+                // 32'de kaldı (hedef 10–13 gün); önce Batı Liman bölgesi (4 700 €) de açılması gerektiği için duvar çok yüksekti.
+                costs = new[] { 80000, 200000, 450000, 900000, 1100000, 2400000, 4500000, 20000000, 40000000, 70000000, 120000000 },
                 daily = new[] { 0, 1500, 3000, 5000, 8000, 12000, 17000, 24000, 34000, 46000, 62000, 85000 },
                 levelNames = new[] { "Başlangıç", "Büyüme", "Profesyonel", "Bölgesel", "Şehir", "Metropol", "Kurumsal", "Kurumsal+",
                                      "Büyük şehir", "Büyük şehir+", "Bölge lideri", "Pazar lideri" },
@@ -397,6 +399,7 @@ namespace KuryeTycoon
             int lv = Level(k);
             // Şirket büyüdükçe kurulum bedeli artar. Kurye platformu paketi çarpanın yarısını alır: 15.11 testinde (işletme giderleri
             // ve geçici vergiyle) kurye sayısı 30 gün 32'de kaldı, 45 hesaplık paket 9 000–9 900 €'ya çıkmıştı; kayıplar ve geç teslim arttı.
+            // Metropol tabanı da 1,6 M'dan 1,1 M'ya indi (çarpan 2,75'te ~5 100 €).
             return lv >= d.MaxLevel ? -1 : (int)Denge.Olcekle(d.costs[lv], k == UpgradeKind.Platform ? 0.5f : 1f);
         }
 

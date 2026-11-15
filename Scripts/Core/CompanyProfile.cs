@@ -35,9 +35,13 @@ namespace KuryeTycoon
     /// Eskiden her teslimatta puana doğru %4 kayıyordu: bir günde ±1 yıldız oynuyordu, %24 geç teslimatla bile 4,9'da kalıyordu.
     /// Şimdi bir günün etkisi en fazla iki haftanın bir günü kadar; olaylar (viral övgü, ceza) iki haftada söner.
     /// Veri azken (oyunun başı) 3,5 yıldızlık bir başlangıç ağırlığı ortalamayı tutar.
+    /// 15.11 testinde 2 666 kaçan sipariş ve %32 geç teslimata rağmen itibar 4,83'ten sadece 4,58'e indi: geç teslimat cezası
+    /// sertleşti (OrderManager), "yoğunluk" yüzünden vazgeçen müşterinin bir kısmı da uygulamaya düşük puan verir (Yogunluk).
     /// </summary>
     public static class Itibar
     {
+        /// <summary>Yoğunluk uyarısı görüp vazgeçen müşterinin uygulamaya düşük puan verme olasılığı ve verdiği puan.</summary>
+        public const float YogunlukOlasiligi = 0.25f, YogunlukPuani = 2f;
         public const int GunSayisi = 14;
         // Başlangıçta 250 puanlık 3,5 varsayılır: ilk gün 40 iptalle itibar 3,5'ten 2,9'a düşmesin (birkaç günde silinir)
         const float OnDeger = 3.5f, OnAgirlik = 250f;
@@ -77,6 +81,16 @@ namespace KuryeTycoon
             toplam[gun] += 1f;
             adet[gun]++;
             Hesapla();
+        }
+
+        /// <summary>
+        /// Uygulama "yoğunluk var, teslimat uzun sürebilir" gösterdiği için sipariş vermeyen müşteri: dörtte biri
+        /// uygulamaya 2 yıldız bırakır (kuryeler yetişmiyorsa itibar da düşer; eskiden hiç etkilemiyordu).
+        /// Gece hiç kurye çevrimiçi değilken "şu an teslimat yok" görenler sayılmaz.
+        /// </summary>
+        public static void Yogunluk()
+        {
+            if (Random.value < YogunlukOlasiligi) Puan(YogunlukPuani);
         }
 
         public static void Olay(float delta)

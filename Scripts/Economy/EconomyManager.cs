@@ -821,7 +821,8 @@ namespace KuryeTycoon
                 if (om.cancelledShopToday > 0) extra.Add($"{om.cancelledShopToday} sipariş dükkan iptal etti (ürün kalmadı / mutfak kapandı; senin suçun değil)");
                 if (om.cancelledCustomerToday > 0) extra.Add($"{om.cancelledCustomerToday} müşteri siparişten vazgeçti");
                 if (om.lostToday > 0) extra.Add($"{om.lostToday} müşteri ücret pahalı diye vazgeçti");
-                if (om.busyLostToday > 0) extra.Add($"{om.busyLostToday} müşteri yoğunluk uyarısını görüp sipariş vermedi");
+                if (om.yogunKacanToday > 0) extra.Add($"{om.yogunKacanToday} müşteri yoğunluk uyarısını görüp sipariş vermedi (dörtte biri uygulamaya 2 yıldız bıraktı)");
+                if (om.busyLostToday > om.yogunKacanToday) extra.Add($"{om.busyLostToday - om.yogunKacanToday} müşteri çevrimiçi kurye yokken \"şu an teslimat yok\" gördü");
                 if (om.heavyLostToday > 0) extra.Add($"{om.heavyLostToday} taşıyacak kurye yoktu");
                 if (extra.Count > 0) sb.Append(" · " + string.Join(" · ", extra));
             }

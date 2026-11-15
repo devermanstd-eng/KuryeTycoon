@@ -55,7 +55,8 @@ namespace KuryeTycoon
             gItibar = GostergeEkle(sol, Icons.Kind.Star, ItibarRengi, () =>
             {
                 float f = ItibarFarki();
-                return $"İtibar {CompanyProfile.Reputation:0.00} / 5. Son 14 günün müşteri puanı ortalaması (iptal 1 yıldız sayılır). " +
+                return $"İtibar {CompanyProfile.Reputation:0.00} / 5. Son 14 günün müşteri puanı ortalaması (iptal 1 yıldız sayılır; geç teslim " +
+                       "en az yarım yıldız götürür; yoğunluk yüzünden vazgeçen müşterilerin dörtte biri 2 yıldız bırakır). " +
                        $"Bugün {(f >= 0 ? "+" : "−")}{Mathf.Abs(f):0.00}. İtibar yükseldikçe sipariş artar.";
             });
             gKurye = GostergeEkle(sol, Icons.Kind.Couriers, UITheme.Accent, () =>
@@ -331,6 +332,7 @@ namespace KuryeTycoon
                           () => SekmeyeGit(Tab.Dukkanlar));
             }
             if (rv != null) RakipDurumlari(rv);
+            KapasiteDurumlari(eco);
 
             // Para
             var loan = FamilyLoan.I;
@@ -382,6 +384,50 @@ namespace KuryeTycoon
         }
 
         const float DurumGenislik = 300f;
+
+        /// <summary>
+        /// Kuryeler yetişmiyor (yoğunluk: müşteri vazgeçiyor, itibar düşüyor, teslimat alanı daraldı) ve kurye hesapları dolu
+        /// (kaç kişi bekliyor, sıradaki paket ve onun istediği bölge ne kadar). 15.11 testinde 32 kuryede 30 gün beklenirken
+        /// oyuncunun ne yapacağını gösteren bir şey yoktu; binlerce sipariş sessizce kaçıyordu.
+        /// </summary>
+        void KapasiteDurumlari(EconomyManager eco)
+        {
+            var om = OrderManager.I;
+            if (om != null && (om.IsBusy || om.yogunKacanToday >= 15))
+            {
+                int toplam = om.yogunKacanToday + EconomyManager.I.Today.deliveries;
+                DurumEkle("yogun", Icons.Kind.Warning, om.IsBusy ? UITheme.Bad : Turuncu, "Yoğunluk: kuryeler yetişmiyor",
+                          $"Bugün {om.yogunKacanToday} müşteri vazgeçti (%{(toplam > 0 ? om.yogunKacanToday * 100f / toplam : 0f):0}) · itibar düşüyor · " +
+                          "teslimat alanı daraldı · çare: kurye, boost ya da biraz daha yüksek ücret",
+                          () => SekmeyeGit(Tab.Siparisler));
+            }
+
+            var up = UpgradeManager.I;
+            var ks = KayitSistemi.I;
+            if (up == null || ks == null || CityMap.I == null || !up.CourierCapFull || ks.HesapBekleyen == 0) return;
+            long paket = up.NextCost(UpgradeKind.Platform);
+            if (paket <= 0) return;
+            var pd = UpgradeManager.Def(UpgradeKind.Platform);
+            int sonraki = up.Level(UpgradeKind.Platform) + 1;
+            int bolge = pd.ReqDistrict(sonraki);
+            var map = CityMap.I;
+            string alt;
+            bool bolgeLazim = bolge > 0 && map.UnlockLevel < bolge;
+            if (bolgeLazim)
+            {
+                long bb = 0;
+                for (int b = map.UnlockLevel + 1; b <= bolge; b++) bb += CityMap.BolgeBedeli(b);
+                alt = $"Önce {CityMap.DistrictNames[bolge]} bölgesi ({Ft(bb)}), sonra {pd.levelNames[sonraki]} paketi ({Ft(paket)}) · harcanabilir {Ft(eco.FreeCash)}";
+            }
+            else
+            {
+                string kilit = up.LockReason(UpgradeKind.Platform);
+                alt = kilit.Length > 0 ? $"{pd.levelNames[sonraki]} paketi ({Ft(paket)}): {kilit}"
+                                       : $"{pd.levelNames[sonraki]} paketi {Ft(paket)} ({pd.effect(sonraki)}) · harcanabilir {Ft(eco.FreeCash)}";
+            }
+            DurumEkle("hesap", Icons.Kind.Couriers, Turuncu, $"Kurye hesapları dolu · {ks.HesapBekleyen} kişi bekliyor", alt,
+                      () => SekmeyeGit(bolgeLazim ? Tab.Dukkanlar : Tab.Gelistirmeler));
+        }
 
         /// <summary>
         /// Rakiplerin tehdit seviyesi (pazar payına göre), önceden duyurulan hamleleri (kaç gün kaldığıyla) ve yeni yatırım alanlar.

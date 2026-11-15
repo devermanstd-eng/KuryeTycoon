@@ -24,7 +24,9 @@ namespace KuryeTycoon
 
         public int lostToday;       // ücret pahalı geldiği için vazgeçen müşteri
         public int cancelledToday;  // kurye bulunamadığı için iptal (toplam)
-        public int busyLostToday;   // platform "yoğun" gösterdiği için sipariş vermeyen müşteri (itibar düşmez)
+        public int busyLostToday;   // platform "yoğun" ya da "şu an teslimat yok" gösterdiği için sipariş vermeyen müşteri
+        public int yogunKacanToday; // bunlardan: kuryeler yetişmediği için "yoğun" görüp vazgeçen (bir kısmı düşük puan bırakır)
+        public int alanDaraldiToday;   // yoğunlukta uzak yerine yakından gelen sipariş (teslimat alanı daraldı)
         public int cancelledShopToday;      // dükkan iptal etti (ürün kalmadı, mutfak kapandı, çok yoğun)
         public int cancelledCustomerToday;  // müşteri vazgeçti (fikrini değiştirdi) — şirketin suçu değil
         public int cancelledDelayToday;     // müşteri beklemekten vazgeçti (kurye gecikti) — cancelledToday'e de dahil
@@ -56,7 +58,7 @@ namespace KuryeTycoon
             reputationAtDayStart = CompanyProfile.Reputation;
             markerRoot = new GameObject("Müşteriler").transform;
             markerRoot.SetParent(transform, false);
-            GameClock.I.OnNewDay += () => { Itibar.YeniGun(); eczaneUyarildiBugun = false; busyLostToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; cancelledShopToday = 0; cancelledCustomerToday = 0; cancelledDelayToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
+            GameClock.I.OnNewDay += () => { Itibar.YeniGun(); eczaneUyarildiBugun = false; busyLostToday = 0; yogunKacanToday = 0; alanDaraldiToday = 0; cancelledRejectedToday = 0; System.Array.Clear(cancelledByHour, 0, 24); reputationAtDayStart = CompanyProfile.Reputation; lostToday = 0; cancelledToday = 0; cancelledShopToday = 0; cancelledCustomerToday = 0; cancelledDelayToday = 0; rejectedToday = 0; heavyLostToday = 0; heavyWarnedToday = false; batchedToday = 0; };
         }
 
         /// <summary>
@@ -313,8 +315,9 @@ namespace KuryeTycoon
 
         /// <summary>
         /// Wolt gibi yoğunluk modu: bekleyen sipariş boştaki kuryeleri çok aşarsa uygulama müşteriye
-        /// "yoğunluk var, teslimat uzun sürebilir" gösterir; bir kısmı hiç sipariş vermez. İtibar düşmez,
-        /// ama o sipariş de kaybolur.
+        /// "yoğunluk var, teslimat uzun sürebilir" gösterir; bir kısmı hiç sipariş vermez, vazgeçenlerin dörtte biri uygulamaya
+        /// 2 yıldız bırakır (Itibar.Yogunluk). Yoğunlukta teslimat alanı da daralır: uzak sipariş alınmaz, yarıçap ~%25 küçülür
+        /// (kısa teslimat = kuryeler daha çabuk boşalır, daha az geç teslim).
         /// </summary>
         public int BusyExcess
         {
@@ -326,6 +329,13 @@ namespace KuryeTycoon
             }
         }
         public bool IsBusy => BusyExcess > 0;
+
+        /// <summary>
+        /// Geç teslimatın müşteri puanından götürdüğü: her gecikme en az yarım yıldız, sonra 8 dakikada bir yıldız (en fazla 3,5).
+        /// Eskiden late/10 (en fazla 3): 15.11 testinde %32 geç teslimatla itibar 4,58'de kalıyordu. Hesap: %10–15 geç teslimatla
+        /// itibar ~4,5–4,7, %35–40 geçle ~3,9–4,0 civarına iner (eskiden ~4,2–4,3).
+        /// </summary>
+        public static float GecCezasi(float late) => late > 0f ? Mathf.Min(3.5f, 0.5f + late / 8f) : 0f;
 
         void TrySpawn()
         {
@@ -344,16 +354,23 @@ namespace KuryeTycoon
             if (excess > 0 && Random.value < Mathf.Min(0.75f, excess * 0.12f))
             {
                 busyLostToday++;
+                yogunKacanToday++;
+                Telemetry.Add("Kaçan sipariş: yoğunluk");
+                Itibar.Yogunluk();
                 OrderHeat.Record(shop.tile, true);   // müşteri henüz belli değil: dükkanın yeri
                 return;
             }
 
             var map = CityMap.I;
             // Çoğu müşteri dükkanın yakınından sipariş verir, ama bazıları şehrin uzak bir yerinden de verebilir
-            // (uzak siparişte teslimat ücreti, kurye kazancı ve söz verilen süre mesafeyle birlikte artar)
-            var custTile = Random.value < farOrderChance
+            // (uzak siparişte teslimat ücreti, kurye kazancı ve söz verilen süre mesafeyle birlikte artar).
+            // Yoğunlukta teslimat alanı daralır: uzak sipariş yok, yarıçap %25 küçük.
+            bool dar = excess > 0;
+            bool uzak = Random.value < farOrderChance;
+            if (dar && uzak) { alanDaraldiToday++; Telemetry.Add("Sipariş: yoğunlukta uzak yerine yakından"); }
+            var custTile = uzak && !dar
                 ? map.RandomCustomerTile(shop.tile)
-                : map.RandomCustomerTileNear(shop.tile, deliveryRadius);
+                : map.RandomCustomerTileNear(shop.tile, dar ? Mathf.Max(8, deliveryRadius * 3 / 4) : deliveryRadius);
             // Şehir etkinliği (konser, festival): siparişlerin bir kısmı etkinlik alanının çevresinden gelir
             if (CityEvents.TryEventSpot(out var spot, out int spotRadius))
                 custTile = map.RandomCustomerTileNear(spot, spotRadius);
@@ -908,7 +925,7 @@ namespace KuryeTycoon
             if (late > 0f) Telemetry.DayLate++;
             if (late > 15f) Telemetry.DayLate15++;
             float rating = 4.6f;   // robotlar güler yüzlü değil ama dakik ve temiz
-            if (late > 0f) rating -= Mathf.Min(3f, late / 10f);
+            rating -= GecCezasi(late);
             if (o.shop.def.hotFood && now - o.pickedAt > 25f) { rating -= 0.8f; o.deliveredCold = true; Telemetry.DayCold++; }
             if (o.customerType == CustomerType.Zor) rating -= 0.7f;
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
@@ -995,7 +1012,7 @@ namespace KuryeTycoon
             if (late > 15f) Telemetry.Add("Teslim: 15 dk'dan fazla geç");
             Telemetry.Add($"Teslim süresi (dk): {Mathf.Min(120, Mathf.FloorToInt((now - o.createdAt) / 10f) * 10):000}–{Mathf.Min(130, Mathf.FloorToInt((now - o.createdAt) / 10f) * 10 + 10):000}");
             float rating = 5f;
-            if (late > 0f) rating -= Mathf.Min(3f, late / 10f);
+            rating -= GecCezasi(late);
             rating += (c.politeness - 0.75f) * 2f;
             rating += (c.morale - 0.6f) * 0.8f; // mutlu kurye güler yüzlüdür
             if (o.shop.def.hotFood)
@@ -1027,7 +1044,9 @@ namespace KuryeTycoon
             EconomyManager.I.RegisterDelivery(o);
             MapFx.Delivered(o);   // haritada "+350 Ft" ve teslimat sesi
             Itibar.Puan(o.rating);   // itibar: son 14 günün puan ortalaması
-            if (o.rating < 3f) c.morale = Mathf.Clamp01(c.morale - 0.01f);   // kötü puan canını sıkar (iyi puan artık moral eklemez)
+            // Çok kötü puan canını sıkar (iyi puan artık moral eklemez). Eşik 3'ten 2,5'e indi: geç teslim cezası sertleşti, kurye moralini
+            // eskisi kadar etkilesin (eskiden 20 dk'dan fazla gecikme, şimdi ~17 dk; yoksa yoğunlukta moral sarmalı başlayabilirdi).
+            if (o.rating < 2.5f) c.morale = Mathf.Clamp01(c.morale - 0.01f);
 
             if (o.marker != null) Destroy(o.marker.gameObject);
             Active.Remove(o);
