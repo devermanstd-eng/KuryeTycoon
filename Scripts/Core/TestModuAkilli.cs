@@ -771,14 +771,23 @@ namespace KuryeTycoon
                 sonPazarlikGun = clk.Day;
                 return;
             }
-            if (clk.Day - sonPazarlikGun < 7) return;
+            // Rakipler tetikteyken/saldırıdayken senin dükkanlarına sık girer (#33): münhasırlıkla geri almak 3 günde bir ve biraz daha
+            // düşük şansla da denenir, en çok sipariş getiren paylaşılan dükkandan başlanır. Komisyon pazarlığı yine haftada bir.
+            int sev = rv.TehditSeviyesi;
+            int gecen = clk.Day - sonPazarlikGun;
+            if (gecen < (sev >= 1 ? 3 : 7)) return;
+            float esikM = sev >= 1 ? 0.55f : 0.65f;
             Shop enM = null, enP = null;
             foreach (var s in CityMap.I.Shops)
             {
                 if (!s.contracted || s.own) continue;
-                if (s.rivalContracted && rv.CanOfferExclusive(s) && rv.ExclusiveChance(s) >= 0.65f && DukkanPayi(s) >= 0.1f) enM = s;
+                if (s.rivalContracted && rv.CanOfferExclusive(s) && rv.ExclusiveChance(s) >= esikM && DukkanPayi(s) >= 0.1f)
+                {
+                    if (enM == null || DukkanPayi(s) > DukkanPayi(enM)) enM = s;
+                }
                 else if (rv.CanNegotiate(s) && rv.NegotiateChance(s) >= 0.5f && (enP == null || DukkanPayi(s) > DukkanPayi(enP))) enP = s;
             }
+            if (enM == null && gecen < 7) return;
             if (enM != null)
             {
                 sonPazarlikGun = clk.Day;

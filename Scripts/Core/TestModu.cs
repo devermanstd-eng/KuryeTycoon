@@ -339,6 +339,13 @@ namespace KuryeTycoon
             var loan = FamilyLoan.I;
             if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null && loan.DaysUntil(loan.NextDue) <= 21)
                 r += loan.NextDue.Remaining;
+            // İşletme giderleri (IsletmeGiderleri): dünkü kesintinin 5 günlüğü
+            var son = SonGun();
+            if (son != null) r += son.isletme * 5L;
+            // Geçici vergi: çeyreğin son 10 gününde tahmini tutar ayrılır (31 Mart, 30 Haziran, 30 Eylül; ertelemek %10 ceza)
+            var clk = GameClock.I;
+            if (clk != null && EconomyManager.I != null && (clk.Month == 3 || clk.Month == 6 || clk.Month == 9) && clk.DayOfMonth >= 20)
+                r += EconomyManager.I.TahminiGeciciVergi;
             return r;
         }
 
