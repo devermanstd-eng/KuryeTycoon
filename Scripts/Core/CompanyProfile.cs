@@ -47,7 +47,11 @@ namespace KuryeTycoon
         const float OnDeger = 3.5f, OnAgirlik = 250f;
         // Olayların toplam etkisi en fazla ±0,4 (60 günlük testte destek aramaları ve viral övgüler birikip itibarı 5,0'a kilitliyordu)
         const float OlaySiniri = 0.4f;
-        /// <summary>Bundan küçük etkiler olay değil, tek bir müşterinin puanı sayılır (destek araması +0,01 gibi).</summary>
+        /// <summary>
+        /// Bundan küçük etkiler olay değil, tek bir müşterinin puanı sayılır. Sipariş başına olan şeyler (destek araması gibi)
+        /// Olay değil doğrudan Puan çağırmalı: 0,05'lik bir etki sınıra takılmayıp olay sayılıyordu ve günde birkaç kez gelince
+        /// olay etkisi sürekli +0,4'te kalıyordu (15.11 a3 testi).
+        /// </summary>
         const float KucukEtki = 0.05f;
 
         static readonly float[] toplam = new float[GunSayisi];

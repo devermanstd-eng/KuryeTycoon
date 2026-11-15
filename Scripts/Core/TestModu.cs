@@ -350,15 +350,17 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Kurye darboğazını çözen alım için ince yedek: 500 € + 2 günlük sabit ve işletme gideri + 7 gün içindeki taksit
+        /// Kurye darboğazını çözen alım için ince yedek: 500 € + 2 günlük sabit ve işletme gideri + 4 gün içindeki taksit
         /// (+ çeyreğin son 10 gününde geçici vergi). Normal yedek 5 günlük gider ve 21 gün içindeki taksiti ayırıyor; 15.11 testinde
         /// 45 hesaplık paket için 3 500 € fazladan bekletiyordu (kasa 32 kuryede günde ~400 € büyüyordu).
+        /// Taksit penceresi 7 günden 4 güne indi: bot taksiti vadeden 3 gün önce kasadan öder; 15.11 (a3) testinde 6 gün sonraki
+        /// 1 295 €'luk taksit yüzünden Batı Liman 2–3 gün geç açıldı (32 kuryede 14 gün, hedef 10–13).
         /// </summary>
         long InceRezerv()
         {
             long r = 200000 + UpgradeManager.I.TotalDailyCost * 2L;
             var loan = FamilyLoan.I;
-            if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null && loan.DaysUntil(loan.NextDue) <= 7)
+            if (loan != null && !loan.Finished && !loan.Failed && loan.NextDue != null && loan.DaysUntil(loan.NextDue) <= 4)
                 r += loan.NextDue.Remaining;
             var son = SonGun();
             if (son != null) r += son.isletme * 2L;
@@ -551,7 +553,7 @@ namespace KuryeTycoon
             "gun;tarih;teslimat;iptal;kacan;gelir;gider;net;kasa;serbest_kasa;itibar;kurye;dukkan;bolge;gec;gec_15dk;soguk;ort_teslim_dk;" +
             "ort_atama_bekleme_dk;ort_alma_bekleme_dk;dukkan_iptali;musteri_vazgecti;gecikme_iptali;kurye_odemesi;ekipman;maaslar;" +
             "ort_moral;ort_yorgunluk;ort_birikmis_yorgunluk;basvuru;pazar_payi;aile_borcu_kalan;gelistirme_gunluk;fiyat_carpani;fps_ort;fps_en_dusuk;gercek_saniye;" +
-            "isletme_gideri;rakip_tehdit;rakip_hamle_bekleyen;yogun_kacan;hesap_tavani;hesap_bekleyen";
+            "isletme_gideri;rakip_tehdit;rakip_hamle_bekleyen;yogun_kacan;hesap_tavani;hesap_bekleyen;itibar_puan_ort;itibar_olay";
 
         long enDusukKasa;
         int enDusukKasaGun;
@@ -593,7 +595,8 @@ namespace KuryeTycoon
                     F(moral / n), F(yorgun / n), F(birikmis / n), (KayitSistemi.I != null ? KayitSistemi.I.Adaylar.Count : 0).ToString(Inv), F(pay), P(borc),
                     P(UpgradeManager.I.TotalDailyCost), F(Denge.FiyatCarpani), F(fpsOrt), F(fpsMin), F(gercek),
                     P(d.isletme), d.tehdit.ToString(Inv), (RivalCompany.I != null ? RivalCompany.I.Tehditler.Count : 0).ToString(Inv),
-                    d.yogunKacan.ToString(Inv), d.hesapTavani.ToString(Inv), d.hesapBekleyen.ToString(Inv)
+                    d.yogunKacan.ToString(Inv), d.hesapTavani.ToString(Inv), d.hesapBekleyen.ToString(Inv),
+                    F(Itibar.PuanOrtalamasi), F(Itibar.OlayEtkisi)
                 }));
 
             if (gunNo == 1 || gunNo % 10 == 0) haritaBekliyor = true;
@@ -760,7 +763,7 @@ namespace KuryeTycoon
             {
                 var d = gunler[i];
                 yogun += d.yogunKacan;
-                if (i >= 3 && d.reputation < enDusuk) { enDusuk = d.reputation; enDusukGun = i + 1; }   // ilk 3 gün açılış
+                if (i >= 7 && d.reputation < enDusuk) { enDusuk = d.reputation; enDusukGun = i + 1; }   // ilk hafta açılış (3,5 ön değeri)
                 int t = d.hesapTavani;
                 if (t <= 0 || d.couriers < t) continue;
                 if (!dolu.ContainsKey(t)) { tavanlar.Add(t); dolu[t] = 0; bekleyenli[t] = 0; ilk[t] = i + 1; enCokBekleyen[t] = 0; }
@@ -796,7 +799,8 @@ namespace KuryeTycoon
 
             Baslik(sb, "SONUÇ");
             sb.AppendLine($"Kasa: {Ft(baslangicKasa)} → {Ft(eco.money)} · en düşük {Ft(enDusukKasa)} ({(enDusukKasaGun > 0 ? enDusukKasaGun + ". gün sonu" : "başlangıç")}) · serbest kasa {Ft(eco.FreeCash)}");
-            sb.AppendLine($"İtibar: {baslangicItibar:0.00} → {CompanyProfile.Reputation:0.00}");
+            sb.AppendLine($"İtibar: {baslangicItibar:0.00} → {CompanyProfile.Reputation:0.00} (son 14 günün puan ortalaması {Itibar.PuanOrtalamasi:0.00}, " +
+                          $"olay etkisi {(Itibar.OlayEtkisi >= 0f ? "+" : "−")}{Mathf.Abs(Itibar.OlayEtkisi):0.00}; en fazla ±0,40)");
             sb.AppendLine($"Kurye: {cm.Couriers.Count} (sınır {UpgradeManager.I.CourierCap}) · kayıt sürecinde {(KayitSistemi.I != null ? KayitSistemi.I.Adaylar.Count : 0)} · " +
                           $"ayrılan {Sayac("Kurye ayrıldı")} · sözleşmeli dükkan {SozlesmeliDukkan()}/{CityMap.I.Shops.Count} · bölge {CityMap.I.UnlockLevel}/{CityMap.I.MaxLevel}");
             if (RivalCompany.I != null) sb.AppendLine($"Pazar payı (geçen hafta): %{RivalCompany.I.MarketShare * 100f:0}");

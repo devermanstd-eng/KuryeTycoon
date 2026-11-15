@@ -284,7 +284,7 @@ namespace KuryeTycoon
             float share = Mathf.Lerp(0.6f, 0.3f, Mathf.InverseLerp(0.5f, 1f, a.skill));
             long cost = GameData.Round10(value * share);
             EconomyManager.I.Spend(cost, $"Destek çözümü #{o.id} ({problem})", ExpenseCategory.Iade);
-            if (a.skill >= 0.85f) CompanyProfile.AddReputation(0.02f);
+            if (a.skill >= 0.85f) Itibar.Puan(5f);   // memnun kalan müşteri 5 yıldız bırakır (tek müşteri: olay değil)
 
             a.handledTotal++;
             a.savedTotal += value - cost;
@@ -295,7 +295,9 @@ namespace KuryeTycoon
 
         /// <summary>
         /// Yanlış işaretlenmiş adres: vardiyadaki destek müşteriyi arayıp doğru adresi bulur.
-        /// Başarı yeteneğe bağlı (%70–95). Başarırsa müşterinin şirkete güveni (itibar) artar.
+        /// Başarı yeteneğe bağlı (%70–95). Başarırsa müşteri uygulamaya 5 yıldız bırakır.
+        /// Tek bir müşterinin puanı sayılır, "olay" değil: 15.11 (a3) testinde bu +0,05'ler olay etkisi olarak birikip
+        /// itibara sürekli +0,4 ekliyordu (60 günde 155 kez); geç teslimat ve yoğunluk cezası görünmüyordu.
         /// </summary>
         public bool TryResolveWrongAddress(Order o)
         {
@@ -308,12 +310,12 @@ namespace KuryeTycoon
                 EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisine ulaşamadı.");
                 return false;
             }
-            CompanyProfile.AddReputation(0.05f);
-            EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisini arayıp doğru adresi buldu, kurye yönlendirildi. Müşterinin güveni arttı (itibar +0.05).");
+            Itibar.Puan(5f);
+            EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisini arayıp doğru adresi buldu, kurye yönlendirildi. Müşteri memnun kaldı (5 yıldız).");
             return true;
         }
 
-        /// <summary>Müşteri evde yok: destek arar, %80 müşteri döner (itibar biraz artar).</summary>
+        /// <summary>Müşteri evde yok: destek arar, %80 müşteri döner ve 5 yıldız bırakır (tek müşteri).</summary>
         public bool TryReachAbsentCustomer(Order o)
         {
             var a = OnDutyAgent();
@@ -321,8 +323,8 @@ namespace KuryeTycoon
             a.handledTotal++;
             handledThisMonth++;
             if (Random.value > 0.8f) return false;
-            CompanyProfile.AddReputation(0.03f);
-            EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisini aradı, müşteri eve döndü ve siparişini aldı (itibar +0.03).");
+            Itibar.Puan(5f);
+            EventManager.I.Notify($"Destek ({a.name.Split(' ')[0]}) #{o.id} müşterisini aradı, müşteri eve döndü ve siparişini aldı (5 yıldız).");
             return true;
         }
 
