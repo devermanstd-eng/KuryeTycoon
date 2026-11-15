@@ -98,6 +98,9 @@ namespace KuryeTycoon
             kapiArkaSag = Hazirla("Kapi_ArkaSag", yukari, e => Vector3.Dot(Quaternion.AngleAxis(10f, e) * -ileri, -sol));
             // bagaj: alt kenarı geriye ve yukarı
             bagaj = Hazirla("Bagaj", sol, e => Vector3.Dot(Quaternion.AngleAxis(10f, e) * -yukari, -ileri));
+            // arka silecek bagaj kapağının üstünde: bagaj açılınca onunla kalksın (modelde gövdeye bağlı gelir)
+            var silArkaTr = Bul(transform, "Silecek_Arka");
+            if (silArkaTr != null && bagajT != null && silArkaTr.parent != bagajT) silArkaTr.SetParent(bagajT, true);
             // silecekler: ön cam ve bagaj camı düzleminde, uçları yukarı doğru
             Vector3 onCam = (ileri * 0.604f + yukari * 0.797f).normalized;
             Vector3 arkaCam = (-ileri * 0.819f + yukari * 0.574f).normalized;

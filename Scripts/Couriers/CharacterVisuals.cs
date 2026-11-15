@@ -28,8 +28,9 @@ namespace KuryeTycoon
         public static float CarLength = 0.62f;
         public const string CarFolder = "KuryeAraclari";
         public const string CarName = "Arac";
-        /// <summary>Aracın burnu modelde ters yöne bakıyorsa düzeltme (derece).</summary>
-        public static float CarYawOffset = 180f;
+        /// <summary>Aracın burnu modelde ters yöne bakıyorsa düzeltme (derece). Polo'nun burnu Unity'de +Z'de
+        /// (karakterlerle aynı), bu yüzden 0: 180 iken araçlar geri geri gidiyordu.</summary>
+        public static float CarYawOffset = 0f;
         static GameObject[] cars;  // karakterin boyu (1 = bir kare ≈ bina katı); binaların yanında insan ölçeğinde
         static RuntimeAnimatorController walkController;
 

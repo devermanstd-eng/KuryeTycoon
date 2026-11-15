@@ -7948,7 +7948,9 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         yatik_silindir(bg, (0.11, 1.854, 0.665), 0.014, 0.008, math.pi / 2, 10, krom)
     za, zb = 0.995, 1.12
     p0 = (0.0, _cizgi_y(F, Ep, za) + 0.024, za)
-    sw = parca("Silecek_Arka", p0, ust="Bagaj")
+    # Bagaja değil gövdeye bağlı: FBX dışa aktarımı iç içe parçanın eksenini bozuyor (Unity'de silecek tavana kayıyordu).
+    # Oyunda AracAnimasyon onu bagajın çocuğu yapar, bagaj açılınca birlikte kalkar.
+    sw = parca("Silecek_Arka", p0)
     cubuk(sw, p0, (-0.40, _cizgi_y(F, Ep, zb) + 0.024, zb), 0.02, siyah, kabuk=False)
     yatik_silindir(sw, p0, 0.022, 0.03, math.pi / 2, 8, siyah)
 
@@ -7981,6 +7983,17 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         for ad, hat, y0, y1, menteşe_y in (("Kapi_On" + taraf, on_kapi, -2.0, YB, -0.80), ("Kapi_Arka" + taraf, arka_kapi, YB, 3.0, YB + 0.01)):
             kp = parca(ad, (s * 0.80, menteşe_y, 0.60))
             kapi_paneli(kp, s, hat, 0.011, gv, ic_renk)
+            # kapının üst kenarı (pencere eşiği): gövdenin omzundan cama kadar. Bu olmadan kapı açılınca cam
+            # kapının sacından ~6 cm içeride havada kalıyordu.
+            ya, yb2 = (max(y0, -0.80), YB - 0.004) if y0 < 0 else (YB + 0.004, 1.33)
+            esik_pts = []
+            for yy in (ya, yb2):
+                _, _, _, z1_, _, _, h1_ = polo_kesit(yy, kemer=False)
+                esik_pts.append(((s * (h1_ + 0.011), yy, z1_ + 0.002), (s * (_kabin_x(z1_ + 0.006) + 0.011), yy, z1_ + 0.006)))
+            (a0, a1), (b0, b1) = esik_pts
+            _duz(kp, [a0, b0, b1, a1], (s * 0.3, 0.0, 1.0), gv)
+            _duz(kp, [add(a1, (0.0, 0.0, -0.001)), add(b1, (0.0, 0.0, -0.001)), add(b1, (s * 0.012, 0.0, 0.004)),
+                      add(a1, (s * 0.012, 0.0, 0.004))], (s * 0.3, 0.0, 1.0), siyah)          # cam fitili
             # cam çerçevesi ve camlar
             fr = kirp_y(cer, y0 + (0.0 if y0 < 0 else 0.004), min(y1, 1.07) - 0.004)
             if len(fr) >= 3:
