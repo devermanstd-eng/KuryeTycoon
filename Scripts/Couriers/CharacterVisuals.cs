@@ -92,6 +92,8 @@ namespace KuryeTycoon
                 go.transform.position += new Vector3(parent.position.x - b.center.x, parent.position.y - b.center.y, -0.02f - b.max.z);
             }
             if (Mode == 0) EnsureLight();
+            var aracAnim = go.AddComponent<AracAnimasyon>();
+            aracAnim.kurye = kurye;
             return go;
         }
 
@@ -197,8 +199,6 @@ namespace KuryeTycoon
                 anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
             if (Mode == 0) EnsureLight();
-            var anim = go.AddComponent<AracAnimasyon>();
-            anim.kurye = kurye;
             return go;
         }
 
