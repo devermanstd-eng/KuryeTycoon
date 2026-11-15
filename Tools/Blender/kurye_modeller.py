@@ -7767,10 +7767,46 @@ def vw_logo(g, c, yon, r, krom, siyah):
         cubuk(g, (x + a[0] * r, yy, z + a[1] * r), (x + b[0] * r, yy, z + b[1] * r), t, krom, kabuk=False)
 
 
+def kirp_z(poly, zmin, zmax):
+    """Çokgeni z ∈ [zmin, zmax] şeridine kırp (y, z) çiftleri için."""
+    t = [(z, y) for y, z in poly]
+    return [(y, z) for z, y in kirp_y(t, zmin, zmax)]
+
+
+def _govde_x(y, z):
+    """Alt gövde yanının (x+) yarı eni: kesitin iki düzlemi arasında."""
+    _, z0, zw, z1, h0, hw, h1 = polo_kesit(y, kemer=False)
+    if z >= zw:
+        return hw + (h1 - hw) * max(0.0, min(1.0, (z - zw) / max(1e-6, z1 - zw)))
+    return h0 + (hw - h0) * max(0.0, min(1.0, (z - z0) / max(1e-6, zw - z0)))
+
+
+def kapi_paneli(g, s, ana_hat, o, mat, ic_mat=None, ic_o=0.035):
+    """Kapının dış sacı: gövde yanına o kadar dışarıda; kesitin iki düzlemine göre iki parça. ic_mat: içte koyu döşeme."""
+    zw = polo_kesit(0.0, kemer=False)[2]
+    for z0, z1 in ((0.0, zw), (zw, 2.0)):
+        p = kirp_z(ana_hat, z0, z1)
+        if len(p) < 3:
+            continue
+        dis = [(s * (_govde_x(y, z) + o), y, z) for y, z in p]
+        _duz(g, dis, (s, 0.0, 0.0), mat)
+        if ic_mat:
+            ic = [(s * (_govde_x(y, z) - ic_o), y, z) for y, z in p]
+            _duz(g, ic, (-s, 0.0, 0.0), ic_mat)
+
+
 def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     g = Govde()
+    g.parcalar = []          # (ad, Govde, pivot, üst parça adı): oyunda hareket eden parçalar (kapılar, bagaj, tekerler, silecekler, farlar)
+
+    def parca(ad, pivot, ust=None):
+        pg = Govde()
+        g.parcalar.append((ad, pg, pivot, ust))
+        return pg
+
     gv = M("Araba", govde_hex)
     alt = M("AracAlt", "#2a2b2e")
+    ic_renk = M("AracIc", "#3b3d42")
     siyah = M("AracSiyah", "#1c1d20")
     plastik = M("AracPlastik", "#2e3034")
     esik = M("AracEsik", "#aeb2b6")
@@ -7791,7 +7827,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     yazi_m = M("AracPlakaYazi", "#202226")
     derz = M("AracDerz", "#5b6066")
 
-    # ---- alt gövde: enine kesitlerden dilimler
+    # ---- alt gövde ve kabin
     kesitler = [polo_kesit(y) for y in polo_istasyonlar()]
     for i, (s0, s1) in enumerate(zip(kesitler, kesitler[1:])):
         polo_dilim(g, s0, s1, gv, alt, i == 0, i == len(kesitler) - 2)
@@ -7803,142 +7839,174 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     ye = _cizgi_y(F, E, POLO_CAM_UST)
     Bp, Ep = (yb, POLO_CAM_UST), (ye, POLO_CAM_UST)
 
-    # ---- ön cam: siyah kenar + cam (cam bandında ve tavan kapağında iki parça), silecekler
+    # ---- ön cam (gövdede), silecekler (ayrı parçalar: yağmurda çalışır)
     on_yon = (0.0, -1.0, 0.75)
     for (p, q, z0, z1) in ((A, Bp, 0.975, POLO_CAM_UST), (Bp, B, POLO_CAM_UST, 1.412)):
         kabin_cam_yuzu(g, p, q, z0, z1, 0.012, 0.006, siyah, on_yon)
     for (p, q, z0, z1) in ((A, Bp, 0.99, POLO_CAM_UST), (Bp, B, POLO_CAM_UST, 1.398)):
         kabin_cam_yuzu(g, p, q, z0, z1, 0.045, 0.010, cam, on_yon)
     if DETAY:
-        # dikiz aynası (içeride, camın üstünde koyu leke) ve yansıma
         y0 = _cizgi_y(Bp, B, 1.385)
         kutu(g, -0.10, 0.10, y0 + 0.02, y0 + 0.05, 1.355, 1.385, plastik)
-        for x0, x1 in ((0.18, 0.30),):
-            pts = []
-            for z, x in ((1.0, x0), (1.0, x1), (1.33, x1 - 0.08), (1.33, x0 - 0.08)):
-                pts.append((x, _cizgi_y(A, Bp, z), z))
-            n = norm(cross(sub(pts[1], pts[0]), sub(pts[3], pts[0])))
-            if dot(n, on_yon) < 0:
-                n = mul(n, -1)
-            _duz(g, [add(p_, mul(n, 0.013)) for p_ in pts], on_yon, cam_isik)
-        for x0 in (-0.62, -0.08):                                  # silecekler kaputun arka kenarında
-            z = 1.0
-            cubuk(g, (x0, _cizgi_y(A, Bp, z) - 0.02, z + 0.004), (x0 + 0.48, _cizgi_y(A, Bp, z + 0.06) - 0.02, z + 0.064),
-                  0.018, siyah, kabuk=False)
+        pts = [(x, _cizgi_y(A, Bp, z), z) for z, x in ((1.0, 0.18), (1.0, 0.30), (1.33, 0.22), (1.33, 0.10))]
+        n = norm(cross(sub(pts[1], pts[0]), sub(pts[3], pts[0])))
+        if dot(n, on_yon) < 0:
+            n = mul(n, -1)
+        _duz(g, [add(p_, mul(n, 0.013)) for p_ in pts], on_yon, cam_isik)
+    z = 1.0
+    for ad, x0 in (("Silecek_Sag", -0.62), ("Silecek_Sol", -0.08)):
+        p0 = (x0, _cizgi_y(A, Bp, z) - 0.02, z + 0.004)
+        p1 = (x0 + 0.48, _cizgi_y(A, Bp, z + 0.06) - 0.02, z + 0.064)
+        sg = parca(ad, p0)
+        cubuk(sg, p0, p1, 0.018, siyah, kabuk=False)
+        yatik_silindir(sg, p0, 0.02, 0.02, 0.0, 8, siyah)
 
-    # ---- bagaj camı: siyah kenar, cam, üçüncü stop, silecek
+    # ---- bagaj kapağı (ayrı parça: menteşe tavanın arkasında). Altında gövde koyu (bagaj içi).
+    mentese = (0.0, 1.45, 1.43)
+    bg = parca("Bagaj", mentese)
     arka_yon = (0.0, 1.0, 0.7)
-    kabin_cam_yuzu(g, F, Ep, 0.965, 1.352, 0.012, 0.006, siyah, arka_yon)
-    kabin_cam_yuzu(g, F, Ep, 0.985, 1.33, 0.055, 0.010, cam, arka_yon)
+    kabin_cam_yuzu(g, F, Ep, 0.965, 1.352, 0.012, 0.004, ic_renk, arka_yon)           # açılınca görünen iç
+    kabin_cam_yuzu(bg, F, Ep, 0.965, 1.352, 0.012, 0.008, siyah, arka_yon)
+    kabin_cam_yuzu(bg, F, Ep, 0.985, 1.33, 0.055, 0.012, cam, arka_yon)
+    kutu(bg, -0.548, 0.548, 1.836, 1.848, 0.60, 0.955, gv)                          # kapağın alt sacı
+    kutu(g, -0.54, 0.54, 1.830, 1.836, 0.61, 0.95, ic_renk, atla=("yn",))
+    for sx in (-1, 1):
+        kutu(bg, sx * 0.548, sx * 0.556, 1.836, 1.850, 0.60, 0.955, derz)
+    kutu(bg, -0.548, 0.548, 1.84, 1.850, 0.592, 0.60, derz)
+    vw_logo(bg, (0.0, 1.854, 0.84), 1, 0.065, krom, siyah)
     if DETAY:
         pts = [(-0.18, _cizgi_y(F, Ep, 1.315), 1.315), (0.18, _cizgi_y(F, Ep, 1.315), 1.315),
                (0.18, _cizgi_y(F, Ep, 1.34), 1.34), (-0.18, _cizgi_y(F, Ep, 1.34), 1.34)]
-        _duz(g, [add(p_, (0.0, 0.012, 0.008)) for p_ in pts], arka_yon, stop)
-        za, zb = 0.995, 1.12
-        cubuk(g, (0.0, _cizgi_y(F, Ep, za) + 0.02, za), (-0.40, _cizgi_y(F, Ep, zb) + 0.02, zb), 0.02, siyah, kabuk=False)
-        for z in (1.08, 1.16, 1.24):                               # rezistans çizgileri
-            pts = [(-0.5, _cizgi_y(F, Ep, z), z), (0.5, _cizgi_y(F, Ep, z), z),
-                   (0.5, _cizgi_y(F, Ep, z + 0.006), z + 0.006), (-0.5, _cizgi_y(F, Ep, z + 0.006), z + 0.006)]
-            _duz(g, [add(p_, (0.0, 0.011, 0.008)) for p_ in pts], arka_yon, cam_isik)
+        _duz(bg, [add(p_, (0.0, 0.014, 0.010)) for p_ in pts], arka_yon, stop)
+        for zz in (1.08, 1.16, 1.24):
+            pts = [(-0.5, _cizgi_y(F, Ep, zz), zz), (0.5, _cizgi_y(F, Ep, zz), zz),
+                   (0.5, _cizgi_y(F, Ep, zz + 0.006), zz + 0.006), (-0.5, _cizgi_y(F, Ep, zz + 0.006), zz + 0.006)]
+            _duz(bg, [add(p_, (0.0, 0.013, 0.009)) for p_ in pts], arka_yon, cam_isik)
+        yazi(bg, "POLO", Cephe((0.0, 1.848, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)), -0.33, 0.865, 0.0, 0.035, 0.16, krom, derinlik=0.006)
+        kutu(bg, -0.08, 0.08, 1.846, 1.858, 0.645, 0.685, krom)
+        yatik_silindir(bg, (0.11, 1.854, 0.665), 0.014, 0.008, math.pi / 2, 10, krom)
+    za, zb = 0.995, 1.12
+    p0 = (0.0, _cizgi_y(F, Ep, za) + 0.024, za)
+    sw = parca("Silecek_Arka", p0, ust="Bagaj")
+    cubuk(sw, p0, (-0.40, _cizgi_y(F, Ep, zb) + 0.024, zb), 0.02, siyah, kabuk=False)
+    yatik_silindir(sw, p0, 0.022, 0.03, math.pi / 2, 8, siyah)
 
-    # ---- yan camlar: siyah kapı çerçeveleri, B direği siyah, arka kapıda ayrık sabit cam, arkada küçük üçgen cam
+    # ---- yan camlar ve kapılar: her kapı kendi camı, çerçevesi, sacı, kolu ve bandıyla ayrı parça
     def zalt(y):
         return 0.935 + (y + 0.8) * 0.014
     zust = POLO_CAM_UST - 0.012
     on_kenar = lambda z: _cizgi_y(A, Bp, z) + 0.13
+    cer = [(on_kenar(zalt(-0.70)), zalt(-0.70)), (on_kenar(zust), zust), (1.07, zust), (1.07, zalt(1.07))]
+    ic = [(on_kenar(zalt(-0.68) + 0.02) + 0.035, zalt(-0.68) + 0.02), (on_kenar(zust - 0.022) + 0.03, zust - 0.022),
+          (1.05, zust - 0.022), (1.05, zalt(1.05) + 0.02)]
+    q = [(1.095, zalt(1.095)), (1.095, zust), (1.25, zust), (1.30, zust - 0.03), (1.325, zust - 0.09), (1.335, zalt(1.335) + 0.06),
+         (1.32, zalt(1.32))]
+    q2 = [(1.115, zalt(1.115) + 0.02), (1.115, zust - 0.02), (1.24, zust - 0.02), (1.285, zust - 0.045),
+          (1.305, zust - 0.095), (1.31, zalt(1.31) + 0.07), (1.30, zalt(1.30) + 0.02)]
+    ay = POLO_AKS[1]
+    yol = [(1.335, POLO_KUSAK)] + [(ay + 0.43 * math.cos(math.radians(a)), POLO_TEKER_R + 0.43 * math.sin(math.radians(a)))
+                                   for a in (78, 95, 112, 130, 148)] + [(ay - 0.43 * 0.91, 0.40)]
+    YB = 0.345                                              # iki kapı arasındaki derz
+    on_kapi = [(-0.825, 0.275), (YB, 0.275), (YB, POLO_KUSAK), (-0.825, POLO_KUSAK)]
+    arka_kapi = [(YB, 0.275), (yol[-1][0], 0.275)] + yol[::-1] + [(YB, POLO_KUSAK)]
     for s in (-1, 1):
-        cer = [(on_kenar(zalt(-0.70)), zalt(-0.70)), (on_kenar(zust), zust), (1.07, zust), (1.07, zalt(1.07))]
-        kabin_yan(g, s, cer, siyah, 0.006)
-        ic = [(on_kenar(zalt(-0.68) + 0.02) + 0.035, zalt(-0.68) + 0.02), (on_kenar(zust - 0.022) + 0.03, zust - 0.022),
-              (1.05, zust - 0.022), (1.05, zalt(1.05) + 0.02)]
-        for y0, y1 in ((-2.0, 0.305), (0.405, 0.855), (0.885, 3.0)):
-            p = kirp_y(ic, y0, y1)
-            if len(p) >= 3:
-                kabin_yan(g, s, p, cam, 0.010)
-        # arka çeyrek cam (C direği gövde renginde, arka üst köşesi yuvarlak)
-        q = [(1.095, zalt(1.095)), (1.095, zust), (1.25, zust), (1.30, zust - 0.03), (1.325, zust - 0.09), (1.335, zalt(1.335) + 0.06),
-             (1.32, zalt(1.32))]
-        kabin_yan(g, s, q, siyah, 0.006)
-        q2 = [(1.115, zalt(1.115) + 0.02), (1.115, zust - 0.02), (1.24, zust - 0.02), (1.285, zust - 0.045),
-              (1.305, zust - 0.095), (1.31, zalt(1.31) + 0.07), (1.30, zalt(1.30) + 0.02)]
-        kabin_yan(g, s, q2, cam, 0.010)
-        if DETAY:
-            p = kirp_y(ic, -0.2, 0.0)
-            kabin_yan(g, s, [(y, z) for y, z in p if True][:0] or [(-0.15, zalt(-0.15) + 0.06), (-0.05, zalt(-0.05) + 0.06),
-                                                                  (0.12, zust - 0.06), (0.02, zust - 0.06)], cam_isik, 0.012)
+        sol = s > 0
+        taraf = "Sol" if sol else "Sag"
+        # gövdede kapı boşlukları koyu (kapı açılınca iç görünür)
+        kapi_paneli(g, s, on_kapi, 0.004, ic_renk)
+        kapi_paneli(g, s, arka_kapi, 0.004, ic_renk)
+        kabin_yan(g, s, cer, ic_renk, 0.003)
+        kabin_yan(g, s, q, ic_renk, 0.003)
+        for ad, hat, y0, y1, menteşe_y in (("Kapi_On" + taraf, on_kapi, -2.0, YB, -0.80), ("Kapi_Arka" + taraf, arka_kapi, YB, 3.0, YB + 0.01)):
+            kp = parca(ad, (s * 0.80, menteşe_y, 0.60))
+            kapi_paneli(kp, s, hat, 0.011, gv, ic_renk)
+            # cam çerçevesi ve camlar
+            fr = kirp_y(cer, y0 + (0.0 if y0 < 0 else 0.004), min(y1, 1.07) - 0.004)
+            if len(fr) >= 3:
+                kabin_yan(kp, s, fr, siyah, 0.007)
+            for c0, c1 in (((-2.0, 0.305) if y0 < 0 else (0.405, 0.855)), ((9, 9) if y0 < 0 else (0.885, 3.0))):
+                if c0 > c1:
+                    continue
+                p = kirp_y(ic, c0, c1)
+                if len(p) >= 3:
+                    kabin_yan(kp, s, p, cam, 0.011)
+            if y0 > 0:
+                kabin_yan(kp, s, q, siyah, 0.007)
+                kabin_yan(kp, s, q2, cam, 0.011)
+            # koruma bandı, kol, derzler
+            bant = kirp_y([(-0.82, 0.508), (1.04, 0.508), (1.04, 0.558), (-0.82, 0.558)], max(y0, -0.82) + 0.006, min(y1, 1.04) - 0.006)
+            if len(bant) >= 3:
+                govde_yan(kp, s, bant, siyah, 0.016)
+            if y0 < 0:
+                govde_yan(kp, s, [(0.07, 0.78), (0.28, 0.78), (0.28, 0.818), (0.07, 0.818)], siyah, 0.020)
+            else:
+                govde_yan(kp, s, [(1.01, 0.82), (1.22, 0.82), (1.22, 0.858), (1.01, 0.858)], siyah, 0.020)
+            for (ya, za_), (yb_, zb_) in zip(hat, hat[1:] + hat[:1]):
+                if za_ < 0.28 and zb_ < 0.28:
+                    continue                                   # alt kenar eşiğin arkasında
+                dy, dz = yb_ - ya, zb_ - za_
+                L = math.hypot(dy, dz)
+                if L < 1e-6:
+                    continue
+                ny, nz = -dz / L * 0.005, dy / L * 0.005
+                govde_yan(kp, s, [(ya - ny, za_ - nz), (yb_ - ny, zb_ - nz), (yb_ + ny, zb_ + nz), (ya + ny, za_ + nz)], derz, 0.014)
+            if kurye and y0 < 0:
+                sr, sr2 = M("SirketRengi", "#2e9be6"), M("SirketRengi2", "#ffffff")
+                govde_yan(kp, s, [(-0.66, 0.60), (-0.04, 0.60), (-0.04, 0.80), (-0.66, 0.80)], sr, 0.018)
+                govde_yan(kp, s, [(-0.61, 0.665), (-0.09, 0.665), (-0.09, 0.735), (-0.61, 0.735)], sr2, 0.021)
+        # B direği (iki kapının arasında, siyah) gövdede
+        kabin_yan(g, s, [(YB - 0.035, zalt(YB)), (YB - 0.035, zust), (YB + 0.055, zust), (YB + 0.055, zalt(YB))], siyah, 0.005)
 
-    # ---- ön: farlar (iç içe iki yuvarlak reflektör), ızgara, VW, tampon, plaka, sis farları
+    # ---- farlar (ayrı parçalar: gece yanar ve ışık saçar), ızgara, VW, tampon, plaka, sis farları
     for s in (-1, 1):
-        yonlu_kutu(g, (s * 0.605, -1.842, 0.640), (0.178, 0, 0), (0, 0.026, 0.0), (0, 0.016, 0.086), far)
-        yonlu_kutu(g, (s * 0.795, -1.76, 0.642), (0.018, 0, 0), (0, 0.06, 0.0), (0, 0.0, 0.075), far)
+        fp = parca("Far_" + ("Sol" if s > 0 else "Sag"), (s * 0.605, -1.842, 0.640))
+        yonlu_kutu(fp, (s * 0.605, -1.842, 0.640), (0.178, 0, 0), (0, 0.026, 0.0), (0, 0.016, 0.086), far)
+        yonlu_kutu(fp, (s * 0.795, -1.76, 0.642), (0.018, 0, 0), (0, 0.06, 0.0), (0, 0.0, 0.075), far)
         if DETAY:
-            yatik_silindir(g, (s * 0.53, -1.870, 0.640), 0.068, 0.006, math.pi / 2, 14, far_ic)
-            yatik_silindir(g, (s * 0.53, -1.874, 0.640), 0.030, 0.006, math.pi / 2, 10, krom)
-            yatik_silindir(g, (s * 0.70, -1.868, 0.645), 0.052, 0.006, math.pi / 2, 12, far_ic)
-            yatik_silindir(g, (s * 0.70, -1.872, 0.645), 0.022, 0.006, math.pi / 2, 10, krom)
-    kutu(g, -0.40, 0.40, -1.866, -1.80, 0.555, 0.685, siyah)                # ızgara
+            yatik_silindir(fp, (s * 0.53, -1.870, 0.640), 0.068, 0.006, math.pi / 2, 14, far_ic)
+            yatik_silindir(fp, (s * 0.53, -1.874, 0.640), 0.030, 0.006, math.pi / 2, 10, krom)
+            yatik_silindir(fp, (s * 0.70, -1.868, 0.645), 0.052, 0.006, math.pi / 2, 12, far_ic)
+            yatik_silindir(fp, (s * 0.70, -1.872, 0.645), 0.022, 0.006, math.pi / 2, 10, krom)
+    kutu(g, -0.40, 0.40, -1.866, -1.80, 0.555, 0.685, siyah)
     if DETAY:
-        for z in (0.585, 0.615, 0.645):
-            kutu(g, -0.39, 0.39, -1.870, -1.866, z - 0.006, z + 0.006, plastik)
+        for zz in (0.585, 0.615, 0.645):
+            kutu(g, -0.39, 0.39, -1.870, -1.866, zz - 0.006, zz + 0.006, plastik)
     vw_logo(g, (0.0, -1.876, 0.618), -1, 0.068, krom, siyah)
     govde_on = Cephe((0.0, -1.876, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
-    kutu(g, -0.83, 0.83, -1.885, -1.84, 0.448, 0.522, plastik)              # tampon koruma bandı
-    kutu(g, -0.40, 0.40, -1.882, -1.84, 0.175, 0.305, siyah)               # alt hava girişi
+    kutu(g, -0.83, 0.83, -1.885, -1.84, 0.448, 0.522, plastik)
+    kutu(g, -0.40, 0.40, -1.882, -1.84, 0.175, 0.305, siyah)
     if DETAY:
-        for z in (0.215, 0.26):
-            kutu(g, -0.39, 0.39, -1.885, -1.882, z - 0.008, z + 0.008, plastik)
+        for zz in (0.215, 0.26):
+            kutu(g, -0.39, 0.39, -1.885, -1.882, zz - 0.008, zz + 0.008, plastik)
     for s in (-1, 1):
-        kutu(g, s * 0.50, s * 0.76, -1.88, -1.84, 0.18, 0.31, siyah)       # sis farı yuvası
+        kutu(g, s * 0.50, s * 0.76, -1.88, -1.84, 0.18, 0.31, siyah)
         yatik_silindir(g, (s * 0.645, -1.882, 0.25), 0.042, 0.01, math.pi / 2, 12, far)
-    kutu(g, -0.26, 0.26, -1.884, -1.874, 0.31, 0.415, plaka)                # ön plaka
+    kutu(g, -0.26, 0.26, -1.884, -1.874, 0.31, 0.415, plaka)
     kutu(g, -0.26, -0.22, -1.888, -1.882, 0.31, 0.415, eu)
     if DETAY:
         yazi(g, "KRY-616", govde_on, 0.02, 0.362, 0.012, 0.075, 0.40, yazi_m, derinlik=0.006)
 
-    # ---- arka: stoplar (geri vites beyaz), bagaj kapağı derzleri, logo, POLO yazısı, kol, tampon, plaka
+    # ---- arka: stoplar, tampon, plaka, egzoz
     for s in (-1, 1):
         kutu(g, s * 0.555, s * 0.795, 1.826, 1.848, 0.665, 0.94, stop)
         if DETAY:
             kutu(g, s * 0.57, s * 0.78, 1.846, 1.851, 0.68, 0.72, geri)
             kutu(g, s * 0.57, s * 0.78, 1.846, 1.851, 0.80, 0.84, stop_koyu)
         govde_yan(g, s, [(1.66, 0.74), (1.835, 0.665), (1.835, 0.94), (1.70, 0.96)], stop, 0.008)
-        kutu(g, s * 0.548, s * 0.556, 1.83, 1.846, 0.60, 0.95, derz)       # bagaj kapağı yan derzi
-    kutu(g, -0.548, 0.548, 1.836, 1.846, 0.592, 0.60, derz)               # alt derz
-    arka_fc = Cephe((0.0, 1.84, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
-    vw_logo(g, (0.0, 1.846, 0.84), 1, 0.065, krom, siyah)
-    if DETAY:
-        yazi(g, "POLO", arka_fc, -0.33, 0.865, 0.004, 0.035, 0.16, krom, derinlik=0.006)
-        kutu(g, -0.08, 0.08, 1.838, 1.852, 0.645, 0.685, krom)            # bagaj kolu
-        yatik_silindir(g, (0.11, 1.848, 0.665), 0.014, 0.008, math.pi / 2, 10, krom)
     for s in (-1, 1):
-        kutu(g, s * 0.30, s * 0.83, 1.86, 1.885, 0.48, 0.545, plastik)      # arka tampon bantları
-    kutu(g, -0.30, 0.30, 1.866, 1.875, 0.335, 0.505, siyah)                # plaka yuvası
+        kutu(g, s * 0.30, s * 0.83, 1.86, 1.885, 0.48, 0.545, plastik)
+    kutu(g, -0.30, 0.30, 1.866, 1.875, 0.335, 0.505, siyah)
     kutu(g, -0.26, 0.26, 1.873, 1.882, 0.35, 0.49, plaka)
-    kutu(g, 0.22, 0.26, 1.880, 1.886, 0.35, 0.49, eu)                     # AB şeridi arkadan bakınca solda
+    kutu(g, 0.22, 0.26, 1.880, 1.886, 0.35, 0.49, eu)
     if DETAY:
         yazi(g, "KRY-616", Cephe((0.0, 1.882, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0)), 0.02, 0.42, 0.0, 0.08, 0.40, yazi_m, derinlik=0.006)
-        yatik_silindir(g, (0.45, 1.80, 0.17), 0.028, 0.12, math.pi / 2, 10, plastik)   # egzoz
+        yatik_silindir(g, (0.45, 1.80, 0.17), 0.028, 0.12, math.pi / 2, 10, plastik)
 
-    # ---- yan: koruma bantları, eşik, kapı derzleri, kollar, aynalar, depo kapağı, çamurluk sinyali
+    # ---- yan (gövdede kalanlar): tampon bantları, eşik, aynalar, depo kapağı, çamurluk sinyali
     for s in (-1, 1):
-        govde_yan(g, s, [(-0.82, 0.508), (1.04, 0.508), (1.04, 0.558), (-0.82, 0.558)], siyah, 0.010)
         govde_yan(g, s, [(-1.875, 0.47), (-1.55, 0.50), (-1.55, 0.555), (-1.875, 0.525)], siyah, 0.010)
         govde_yan(g, s, [(1.62, 0.535), (1.875, 0.52), (1.875, 0.575), (1.62, 0.59)], siyah, 0.010)
         govde_yan(g, s, [(-0.78, 0.215), (0.90, 0.215), (0.90, 0.27), (-0.78, 0.27)], esik, 0.012)
-        for y in (-0.825, 0.345):
-            govde_yan(g, s, [(y - 0.005, 0.28), (y + 0.005, 0.28), (y + 0.005, POLO_KUSAK), (y - 0.005, POLO_KUSAK)], derz, 0.007)
-        # arka kapının arka kenarı: kemerden aşağı inip çamurluğun üstünden kıvrılır
-        ay = POLO_AKS[1]
-        yol = [(1.335, POLO_KUSAK)] + [(ay + 0.43 * math.cos(math.radians(a)), POLO_TEKER_R + 0.43 * math.sin(math.radians(a)))
-                                       for a in (78, 95, 112, 130, 148)] + [(ay - 0.43 * 0.91, 0.40)]
-        for (y0, z0), (y1, z1) in zip(yol, yol[1:]):
-            dy, dz = y1 - y0, z1 - z0
-            L = math.hypot(dy, dz)
-            ny, nz = -dz / L * 0.005, dy / L * 0.005
-            govde_yan(g, s, [(y0 - ny, z0 - nz), (y1 - ny, z1 - nz), (y1 + ny, z1 + nz), (y0 + ny, z0 + nz)], derz, 0.007)
-        for y0, z0 in ((0.07, 0.78), (1.01, 0.82)):                          # kapı kolları
-            govde_yan(g, s, [(y0, z0), (y0 + 0.21, z0), (y0 + 0.21, z0 + 0.038), (y0, z0 + 0.038)], siyah, 0.016)
-        # dikiz aynası: camın ön köşesinde siyah üçgen, gövde renginde kapak
         kabin_yan(g, s, [(on_kenar(zalt(-0.70)) - 0.005, zalt(-0.72)), (on_kenar(zalt(-0.70)) + 0.06, zalt(-0.70)),
                          (on_kenar(1.07) - 0.01, 1.07)], siyah, 0.008)
         yonlu_kutu(g, (s * 0.765, -0.56, 1.0), (0.04, 0.0, 0.0), (0.0, 0.035, 0.0), (0.0, 0.0, 0.03), siyah)
@@ -7948,57 +8016,72 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
             govde_yan(g, s, [(-0.955, 0.77), (-0.925, 0.77), (-0.925, 0.79), (-0.955, 0.79)], sinyal, 0.012)
     if DETAY:
         b = len(g.f)
-        yatik_silindir(g, (0.822, 1.40, 0.84), 0.074, 0.006, 0.0, 16, derz)   # depo kapağı (sol arka): ince derz halkası
+        yatik_silindir(g, (0.822, 1.40, 0.84), 0.074, 0.006, 0.0, 16, derz)
         yatik_silindir(g, (0.826, 1.40, 0.84), 0.066, 0.008, 0.0, 16, gv)
         for i in range(b, len(g.f)):
-            g.kabuksuz[i] = True                                             # çizgisiz: kalın siyah halka olmasın
+            g.kabuksuz[i] = True
 
-    # ---- çamurluk içleri: yandan bakınca karşı taraf görünmesin
-    for ay in POLO_AKS:
-        kavis = [(ay + POLO_KEMER_R * math.cos(math.pi * k / 10), POLO_TEKER_R + POLO_KEMER_R * math.sin(math.pi * k / 10)) for k in range(11)]
+    # ---- çamurluk içleri
+    for ay_ in POLO_AKS:
+        kavis = [(ay_ + POLO_KEMER_R * math.cos(math.pi * k / 10), POLO_TEKER_R + POLO_KEMER_R * math.sin(math.pi * k / 10)) for k in range(11)]
         for s in (-1, 1):
             _duz(g, [(s * 0.60, y, z) for y, z in kavis], (s, 0.0, 0.0), alt)
 
-    # ---- tekerlekler: lastik, siyah çelik jant (4 delik), göbek
-    for ay in POLO_AKS:
+    # ---- tekerlekler (ayrı parçalar: araç giderken döner)
+    for ay_, on_arka in ((POLO_AKS[0], "On"), (POLO_AKS[1], "Arka")):
         for s in (-1, 1):
             cx = s * 0.705
-            yatik_silindir(g, (cx, ay, POLO_TEKER_R), POLO_TEKER_R, 0.175, 0.0, 18 if DETAY else 10, lastik)
-            yatik_silindir(g, (cx + s * 0.005, ay, POLO_TEKER_R), 0.18, 0.178, 0.0, 16 if DETAY else 8, jant)
-            yatik_silindir(g, (cx + s * 0.01, ay, POLO_TEKER_R), 0.058, 0.18, 0.0, 10, gobek)
+            tg = parca(f"Teker_{on_arka}{'Sol' if s > 0 else 'Sag'}", (cx, ay_, POLO_TEKER_R))
+            yatik_silindir(tg, (cx, ay_, POLO_TEKER_R), POLO_TEKER_R, 0.175, 0.0, 18 if DETAY else 10, lastik)
+            yatik_silindir(tg, (cx + s * 0.005, ay_, POLO_TEKER_R), 0.18, 0.178, 0.0, 16 if DETAY else 8, jant)
+            yatik_silindir(tg, (cx + s * 0.01, ay_, POLO_TEKER_R), 0.058, 0.18, 0.0, 10, gobek)
             if DETAY:
                 for k in range(4):
                     a = math.pi / 4 + k * math.pi / 2
-                    yatik_silindir(g, (cx + s * 0.0905, ay + 0.118 * math.cos(a), POLO_TEKER_R + 0.118 * math.sin(a)),
+                    yatik_silindir(tg, (cx + s * 0.0905, ay_ + 0.118 * math.cos(a), POLO_TEKER_R + 0.118 * math.sin(a)),
                                    0.032, 0.004, 0.0, 8, siyah)
-                for k in range(4):                                         # bijon
+                for k in range(4):
                     a = k * math.pi / 2
-                    yatik_silindir(g, (cx + s * 0.1, ay + 0.035 * math.cos(a), POLO_TEKER_R + 0.035 * math.sin(a)),
+                    yatik_silindir(tg, (cx + s * 0.1, ay_ + 0.035 * math.cos(a), POLO_TEKER_R + 0.035 * math.sin(a)),
                                    0.008, 0.01, 0.0, 6, krom)
 
-    # ---- tavan: anten (tavanın arkasında, geriye yatık)
+    # ---- tavan: anten
     if DETAY:
         kutu(g, -0.025, 0.025, 1.24, 1.32, 1.425, 1.455, siyah)
         cubuk(g, (0.0, 1.29, 1.45), (0.0, 1.54, 1.78), 0.011, siyah, kabuk=False)
 
-    # ---- kurye sürümü: ön kapılarda şirket renginde mıknatıslı tabela, tavanda termal kutu
+    # ---- kurye sürümü: tavanda termal kutu (kapı tabelaları kapılarda)
     if kurye:
         sr, sr2 = M("SirketRengi", "#2e9be6"), M("SirketRengi2", "#ffffff")
-        for s in (-1, 1):
-            govde_yan(g, s, [(-0.66, 0.60), (-0.04, 0.60), (-0.04, 0.80), (-0.66, 0.80)], sr, 0.012)
-            govde_yan(g, s, [(-0.61, 0.665), (-0.09, 0.665), (-0.09, 0.735), (-0.61, 0.735)], sr2, 0.015)
         kutu(g, -0.22, 0.22, 0.25, 0.75, 1.445, 1.47, siyah)
         kutu(g, -0.20, 0.20, 0.31, 0.69, 1.47, 1.69, sr)
         kutu(g, -0.205, 0.205, 0.305, 0.695, 1.57, 1.60, sr2)
 
     if CIZGI:
         kabuk(g, CIZGI_KALINLIK * 0.6)
+        for _, pg, _, _ in g.parcalar:
+            kabuk(pg, CIZGI_KALINLIK * 0.6)
     return g
+
+
+# Volkswagen'in 6N2 (1999–2001) fabrika renkleri (boya kodu, adı, yaklaşık renk). Oyunda kurye arabaları bunlardan alır.
+POLO_RENKLERI = [
+    ("LA7W", "Reflex Silber", "#c3c7cb"), ("LB9A", "Candy Weiss", "#f1f1ec"), ("L041", "Schwarz", "#141416"),
+    ("LC9Z", "Black Magic Perleffekt", "#1b1b20"), ("LP3G", "Flash Rot", "#c3161d"), ("LC3X", "Murano Rot", "#7f1c27"),
+    ("LC3W", "Rosewood Rot", "#5e2a2c"), ("LW5Z", "Jazz Blau Perleffekt", "#1e3c86"), ("LB5N", "Indigo Blau Perleffekt", "#232c58"),
+    ("LA5M", "Mercato Blau", "#2d4a78"), ("LA5F", "Summer Blau", "#6e9dcc"), ("LA5C", "Surf Blau", "#3b78b2"),
+    ("LC7V", "Blue Anthracite Perleffekt", "#2a3038"), ("LS7N", "Satin Grau", "#7c8086"), ("LC6M", "Brillant Grün Perleffekt", "#1f5a3a"),
+    ("LC6X", "Oceanic Grün Perleffekt", "#2e5b5a"), ("LA6C", "Ever Grün", "#1e3b2b"), ("LA6S", "Science Grün", "#8dbb3c"),
+]
 
 
 def araclar():
     sonuc = [("Arac_polo_6n2", polo_6n2()), ("Arac_polo_6n2_kurye", polo_6n2(kurye=True))]
-    return [(ad, g, ortala(g)) for ad, g in sonuc]
+    out = []
+    for ad, g in sonuc:
+        xs = [p[0] for p in g.v]
+        out.append((ad, g, max(xs) - min(xs)))     # ortalama yok: parçaların menteşeleri gövdeyle aynı koordinatta kalsın
+    return out
 
 
 def hava_parcalari():
@@ -8125,10 +8208,32 @@ def blender_obje(g, ad, k):
     return ob
 
 
+def parcali_kur(ob, g, ad, k):
+    """Araç gibi hareketli parçaları olan modeller: her parça kendi menteşesinde (pivot) ayrı obje, gövdenin çocuğu."""
+    objeler = {}
+    for pad, pg, pivot, ust in getattr(g, "parcalar", []):
+        pg.v = [(v[0] - pivot[0], v[1] - pivot[1], v[2] - pivot[2]) for v in pg.v]
+        po = blender_obje(pg, pad, k)
+        po.name = pad
+        po.data.name = ad + "_" + pad
+        objeler[pad] = (po, pivot)
+    for pad, pg, pivot, ust in getattr(g, "parcalar", []):
+        po = objeler[pad][0]
+        if ust and ust in objeler:
+            uo, up = objeler[ust]
+            po.parent = uo
+            po.location = (pivot[0] - up[0], pivot[1] - up[1], pivot[2] - up[2])
+        else:
+            po.parent = ob
+            po.location = pivot
+
+
 def fbx_kaydet(ob, yol):
     for o in bpy.context.view_layer.objects:
         o.select_set(False)
     ob.select_set(True)
+    for c in ob.children_recursive:
+        c.select_set(True)
     bpy.context.view_layer.objects.active = ob
     eski = tuple(ob.location)
     ob.location = (0.0, 0.0, 0.0)
@@ -8308,6 +8413,7 @@ def main():
                 except Exception as e:      # hata olursa en azından ne olduğunu göster
                     satir.append(f"{ad}: FBX hatası: {e}")
         else:
+            parcali_kur(ob, g, ad, k)
             ob.location = (x + gen / 2, 0.0, 0.0)
             x += gen + 4.0
             if DISA_AKTAR:

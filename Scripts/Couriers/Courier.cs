@@ -156,6 +156,8 @@ namespace KuryeTycoon
         readonly List<Order> toPick = new List<Order>();    // atanmış, henüz dükkandan alınmamış
         readonly List<Order> carrying = new List<Order>();  // çantada, teslim edilecek
         Order current;
+        /// <summary>Kuryenin şu an taşıdığı sipariş (araç animasyonu bagajı mı arka kapıyı mı açacağını buna göre seçer).</summary>
+        public Order AktifSiparis => current;
         List<Vector2Int> path;
         int pathIndex;
         float breakUntil;
@@ -286,7 +288,7 @@ namespace KuryeTycoon
             if (model != null) Destroy(model);
             // Arabalı kurye: yürüyen karakter yerine aracı (VW Polo 6N2, kurye sürümü) görünür
             modelArac = vehicle == VehicleKind.Araba && CharacterVisuals.CarAvailable;
-            model = modelArac ? CharacterVisuals.SpawnCar(transform) : CharacterVisuals.Spawn(transform, courierName);
+            model = modelArac ? CharacterVisuals.SpawnCar(transform, this) : CharacterVisuals.Spawn(transform, courierName);
             if (body != null) body.enabled = true;
             lastModelPos = Position;
         }

@@ -2736,6 +2736,35 @@ namespace KuryeTycoon
                     }
                     GUILayout.Space(8);
 
+                    Section("Kurye arabaları (VW Polo 6N2)");
+                    if (!CharacterVisuals.CarAvailable)
+                        GUILayout.Label("Araç modeli bulunamadı (Unity menüsü: Kurye Tycoon > Blender Binalarını Prefab Yap).", small);
+                    else
+                    {
+                        GUILayout.Label($"Arabalı kuryeler haritada Polo ile gezer: tekerler döner, durunca kapı ve bagaj açılır, yağışta silecekler çalışır, " +
+                                        $"karanlıkta farlar yanar. Renk: Polo 6N2'nin {AracRenkleri.Polo6N2.Length} fabrika renginden.", small);
+                        GUILayout.BeginHorizontal();
+                        int am = AracRenkleri.Mod;
+                        if (SelectButton(am == 0, "Karışık (her kurye kendi rengi)", smallButton)) deferred = () => { AracRenkleri.Mod = 0; CharacterVisuals.Refresh(); };
+                        if (SelectButton(am == 1, "Şirket rengi", smallButton)) deferred = () => { AracRenkleri.Mod = 1; CharacterVisuals.Refresh(); };
+                        if (SelectButton(am == 2, "Tek fabrika rengi", smallButton)) deferred = () => { AracRenkleri.Mod = 2; CharacterVisuals.Refresh(); };
+                        GUILayout.EndHorizontal();
+                        if (am == 2)
+                        {
+                            var rk = AracRenkleri.Polo6N2[AracRenkleri.Secili];
+                            GUILayout.BeginHorizontal();
+                            if (GUILayout.Button("◀", smallButton, GUILayout.Width(36))) deferred = () => { AracRenkleri.Secili--; CharacterVisuals.Refresh(); };
+                            var eski = GUI.color;
+                            GUI.color = AracRenkleri.Renk(AracRenkleri.Secili);
+                            GUILayout.Label("■■■", GUILayout.Width(40));
+                            GUI.color = eski;
+                            GUILayout.Label($"{rk.ad} ({rk.kod}) · {AracRenkleri.Secili + 1}/{AracRenkleri.Polo6N2.Length}", small);
+                            if (GUILayout.Button("▶", smallButton, GUILayout.Width(36))) deferred = () => { AracRenkleri.Secili++; CharacterVisuals.Refresh(); };
+                            GUILayout.EndHorizontal();
+                        }
+                    }
+                    GUILayout.Space(8);
+
                     Section("Hata ayıklama raporu",
                         "Oyunun o anki bütün durumunu (kasa, gider dökümü, günlük geçmiş, kuryeler, dükkanlar, siparişler, geliştirmeler, " +
                         "iptal ve kaçan sipariş sebepleri, son bildirimler ve kaydın tamamı) tek bir metin dosyasına yazar. " +

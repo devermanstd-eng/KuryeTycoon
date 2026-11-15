@@ -55,7 +55,7 @@ namespace KuryeTycoon
         }
 
         /// <summary>Arabalı kurye için araç modeli (kurye sürümü: tavanda şirket renginde kutu, kapılarda tabela).</summary>
-        public static GameObject SpawnCar(Transform parent)
+        public static GameObject SpawnCar(Transform parent, Courier kurye = null)
         {
             if (!CarAvailable) return null;
             GameObject secilen = cars[0];
@@ -66,13 +66,20 @@ namespace KuryeTycoon
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = Facing(180f + CarYawOffset);
             foreach (var col in go.GetComponentsInChildren<Collider>()) Object.Destroy(col);
+            foreach (var lg in go.GetComponentsInChildren<LODGroup>()) Object.Destroy(lg);
             var renderers = go.GetComponentsInChildren<Renderer>();
+            Color govdeRengi = AracRenkleri.Icin(kurye != null ? kurye.courierName : "");
             foreach (var r in renderers)
             {
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 r.receiveShadows = false;
                 r.sortingOrder = 20;
                 TintCompanyColors(r);
+                // gövde rengi: Polo 6N2'nin fabrika renklerinden (Ayarlar > Gelişmiş > Kurye arabaları)
+                var mats = r.materials;
+                foreach (var m in mats)
+                    if (m != null && m.name.StartsWith("Araba_")) m.color = govdeRengi;
+                r.materials = mats;
                 if (Mode == 1) MakeUnlit(r);
             }
             var b = CombinedBounds(renderers);
@@ -190,6 +197,8 @@ namespace KuryeTycoon
                 anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
             if (Mode == 0) EnsureLight();
+            var anim = go.AddComponent<AracAnimasyon>();
+            anim.kurye = kurye;
             return go;
         }
 
