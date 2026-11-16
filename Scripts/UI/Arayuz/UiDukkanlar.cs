@@ -5,8 +5,9 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Dükkanlar penceresi (UI Toolkit, Yazıcı ile). Üstte (kaymaz) dükkan filtresi; altta bölge açma, rakipler, krizler ve
-    /// dükkan kartları. Her dükkan tek satır başlık (ad, durum, memnuniyet); tıklayınca ayrıntı ve sözleşme işlemleri açılır.
-    /// İçerik IMGUI'deki DrawShops / DrawShopCard ile aynı.
+    /// dükkan kartları. Sade: rakipler sayı kutuları ve "sen + rakipler" tablosuyla (pay, itibar, kurye, dükkan yan yana);
+    /// her dükkan tek satır başlık + kararın sayıları (bu ay sipariş ve farkı, komisyon, payın); tıklayınca ayrıntı açılır.
+    /// Uzun açıklamalar "?" ve satır ipuçlarında.
     /// </summary>
     public partial class GameUI
     {
@@ -86,61 +87,85 @@ namespace KuryeTycoon
                 var map = CityMap.I;
                 string durum;
                 Color? renk;
-                if (!map.IsUnlocked(s.tile)) { durum = "Kilitli"; renk = U.Soluk; }
+                bool kilitli = !map.IsUnlocked(s.tile);
+                if (kilitli) { durum = "Kilitli"; renk = U.Soluk; }
                 else if (s.exclusive) { durum = $"Münhasır · {s.satisfaction:0}/100"; renk = UITheme.Good; }
                 else if (s.contracted) { durum = $"Sözleşmeli · {s.satisfaction:0}/100"; renk = s.satisfaction < 40f ? UITheme.Warn : UITheme.Good; }
                 else if (GameClock.I.Day < s.resignBlockedUntil) { durum = "Ayrıldı"; renk = UITheme.Bad; }
                 else { durum = $"Sözleşme yok · {Ft(s.def.contractCost)}"; renk = null; }
                 y.AcilirBaslik(s.Name, durum, renk, ac, tik);
-                string ek = s.rivalContracted ? $" · {(rv != null ? rv.DukkanRakipleri(s) : "rakip")} ile de çalışıyor" : "";
-                y.Kucuk($"{ShopHours.StatusText(s.def)} · komisyon %{s.Commission * 100f:0.#} · toplam {s.ordersTotal} sipariş{ek}");
+                if (kilitli)
+                    y.Kucuk($"{CityMap.DistrictNames[s.def.unlockLevel]} bölgesinde · komisyon %{s.def.commission * 100f:0.#}");
+                else if (!s.contracted)
+                    y.Kucuk($"Komisyon %{s.Commission * 100f:0.#} · sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · hazırlık ~{s.def.prepMinutes:0} dk");
+                else
+                {
+                    int fark = s.monthOrders - s.lastMonthOrders;
+                    string pay = s.exclusive ? "münhasır" : s.rivalContracted && rv != null ? $"payın %{rv.MyFraction(s) * 100f:0}" : "rakip yok";
+                    y.Kucuk($"Bu ay {s.monthOrders} sipariş" + (s.lastMonthOrders > 0 ? $" ({(fark >= 0 ? "+" : "−")}{Mathf.Abs(fark)} geçen aya göre)" : "") +
+                            $" · komisyon %{s.Commission * 100f:0.#} · {pay}");
+                }
             }
 
             void Rakipler(RivalCompany rv)
             {
-                y.KartBasla();
-                y.Baslik($"Rakipler: {rv.Rakipler.Count} platform (yapay zekâ)");
-                y.Yardim("Bir dükkanla birden çok platform çalışabilir: siparişler itibar, kurye sayısı ve teslimat hızına göre paylaşılır. " +
-                         "Münhasır dükkanlarda hiçbir rakip yok. Sözleşmeler 6 ayda bir yenilenir; memnuniyet düşükse bir rakip araya girer. " +
-                         "Moralsiz kuryelerini de ayartabilirler.");
                 int sev = rv.TehditSeviyesi;
-                y.Yazi($"Rakiplerin tavrı: {RivalCompany.SeviyeAdlari[sev]} · eşikler: pazar payı %{rv.TehditEsigi1 * 100f:0} (tetikte), %{rv.TehditEsigi2 * 100f:0} (saldırıda)",
-                       sev >= 2 ? "kucuk" : "kucuk soluk", sev >= 2 ? UITheme.Bad : sev == 1 ? (Color?)new Color(1f, 0.62f, 0.2f) : null);
-                y.Yardim("Rakiplerin sertliği takvime değil pazar payına bağlı. Tetikteyken hamleleri sıklaşır ve yatırım ararlar; saldırıdayken her hafta " +
-                         "hamle yapabilir, en değerli (eğitimli, kıdemli) kuryelerine %30 fazla teklif verir, münhasır dükkanlarına bile gelir, fiyat savaşını " +
-                         "en çok sipariş aldığın bölgede açarlar. Dükkan, kurye ve fiyat savaşı hamleleri birkaç gün önceden sağ üstte görünür.");
-                y.Kucuk($"Pazar payın: %{rv.MarketShare * 100f:0} (geçen hafta {(rv.ShareTrend >= 0f ? "+" : "−")}{Mathf.Abs(rv.ShareTrend) * 100f:0.0} puan) · " +
-                        $"sen ort. {rv.myAvgMinutes:0} dk, %{rv.myLateRate * 100f:0} geç → müşteri gözünde ×{rv.MyService:0.00} · toplam talep ×{rv.ServiceDemandFactor:0.00}");
-                y.Yardim("Daha hızlı ve dakik teslimat yaptıkça paylaşılan dükkanlarda müşteriler rakipten sana geçer ve şehirde sipariş " +
-                         "vermek isteyen insan sayısı artar. 40 dk ortalama nötr; her dakika hızlı ≈ +%2, geç kalan siparişler düşürür. " +
-                         "Kurye fazlan varken siparişler toplu taşınmaz, boştaki kuryeye gider.\n\n" +
-                         "Pazar payın büyüdükçe (3 rakipte %35'ten sonra) rakipler saldırganlaşır: yatırım bulur, kurye alır, hizmetini iyileştirir; " +
-                         "en iyi dükkanlarına ve kuryelerine teklif yapar, bir bölgede fiyat savaşı ya da reklam atağı başlatır. " +
-                         "İtibarını yüksek tut, iyi dükkanlarla münhasırlık yap, kuryelerinin moralini koru.");
+                y.KartBasla();
+                y.Yazi($"Rakipler · {RivalCompany.SeviyeAdlari[sev]}", "yz-baslik",
+                       sev >= 2 ? UITheme.Bad : sev == 1 ? (Color?)new Color(1f, 0.62f, 0.2f) : null);
+                y.Yardim("Bir dükkanla birden çok platform çalışabilir: siparişler itibar, kurye sayısı ve teslimat hızına göre paylaşılır. " +
+                         "Münhasır dükkanlarda rakip yok. Sözleşmeler 6 ayda bir yenilenir; memnuniyet düşükse bir rakip araya girer. " +
+                         "Moralsiz kuryelerini de ayartabilirler.\n\n" +
+                         $"Rakiplerin sertliği pazar payına bağlı: %{rv.TehditEsigi1 * 100f:0}'ten sonra tetikte (hamleler sıklaşır, yatırım ararlar), " +
+                         $"%{rv.TehditEsigi2 * 100f:0}'den sonra saldırıda (her hafta hamle, eğitimli kuryelerine %30 fazla teklif, münhasır dükkanlarına bile " +
+                         "teklif, fiyat savaşı en çok sipariş aldığın bölgede). Hamleler birkaç gün önceden sağ üstte görünür.");
+
+                y.KutularBasla();
+                float trend = rv.ShareTrend * 100f;
+                y.Kutu("Pazar payın", $"%{rv.MarketShare * 100f:0}", $"{(trend >= 0f ? "+" : "−")}{Mathf.Abs(trend):0.0} puan (hafta)",
+                       sev >= 2 ? UITheme.Bad : (Color?)null,
+                       $"Eşikler: %{rv.TehditEsigi1 * 100f:0} tetikte, %{rv.TehditEsigi2 * 100f:0} saldırıda.",
+                       trend > 0.05f ? UITheme.Good : trend < -0.05f ? UITheme.Bad : (Color?)null);
+                y.Kutu("Hizmetin", $"×{rv.MyService:0.00}", $"{rv.myAvgMinutes:0} dk · %{rv.myLateRate * 100f:0} geç", null,
+                       "Müşteri gözündeki hızın: 40 dk ortalama nötr, her dakika hızlı ≈ +%2, geç kalanlar düşürür. " +
+                       "Paylaşılan dükkanlarda müşteriler daha hızlı olana geçer.");
+                y.Kutu("Toplam talep", $"×{rv.ServiceDemandFactor:0.00}", "hizmete göre", null,
+                       "Hızlı ve dakik teslimat yaptıkça şehirde sipariş vermek isteyen insan sayısı artar.");
+                y.KutularBitir();
+
+                // Sen ve rakipler yan yana: farklar tek bakışta
+                y.Tablo(new[] { "Platform", "Pay", "İtibar", "Kurye", "Dükkan" }, true);
+                int benimDukkan = 0;
+                foreach (var d in CityMap.I.Shops) if (d.contracted && !d.own) benimDukkan++;
+                y.Tablo(new[] { "Sen", $"%{rv.MarketShare * 100f:0}", $"{CompanyProfile.Reputation:0.0}",
+                                CourierManager.I.Couriers.Count.ToString(), benimDukkan.ToString() }, false, UITheme.Accent);
                 for (int ri = 0; ri < rv.Rakipler.Count; ri++)
                 {
                     var r = rv.Rakipler[ri];
-                    y.Noktali($"{r.ad} · {r.Tanim}", r.renk);
-                    y.Kucuk($"pay %{rv.PayiOf(r) * 100f:0} · itibar {r.reputation:0.0}/5{(r.marketingDays > 0 ? $" (reklamla {r.EffectiveReputation:0.0})" : "")} · " +
-                            $"{r.couriers} kurye · {rv.ShopCountOf(ri)} dükkan · ~{r.deliveriesLastWeek} teslimat · ~{r.avgMinutes:0} dk, %{r.lateRate * 100f:0} geç (×{r.Service:0.00}) · " +
-                            $"tavrı: {r.MoodText}{(r.fundingRounds > 0 ? $" · yatırım turu {r.fundingRounds}" : "")}");
-                    if (r.marketingDays > 0) y.Uyari($"Reklam atağı: {r.marketingDays} gün daha müşterilere daha iyi görünüyor.");
+                    string itibar = r.marketingDays > 0 ? $"{r.EffectiveReputation:0.0}*" : $"{r.reputation:0.0}";
+                    y.Tablo(new[] { r.ad, $"%{rv.PayiOf(r) * 100f:0}", itibar, r.couriers.ToString(), rv.ShopCountOf(ri).ToString() }, false, r.renk,
+                            new Color?[] { null, null, r.marketingDays > 0 ? UITheme.Warn : (Color?)null, null, null },
+                            $"{r.ad} · {r.Tanim} · tavrı: {r.MoodText}{(r.fundingRounds > 0 ? $" · yatırım turu {r.fundingRounds}" : "")}\n" +
+                            $"~{r.deliveriesLastWeek} teslimat/hafta · ~{r.avgMinutes:0} dk, %{r.lateRate * 100f:0} geç (×{r.Service:0.00})" +
+                            (r.marketingDays > 0 ? $"\nReklam atağı: {r.marketingDays} gün daha müşterilere daha iyi görünüyor (*)." : ""));
                 }
                 if (rv.shareHistory.Count > 1)
                 {
-                    var hs = new System.Text.StringBuilder("Son haftalar: ");
-                    foreach (var v in rv.shareHistory) hs.Append($"%{v * 100f:0} ");
+                    var hs = new System.Text.StringBuilder("Payın son haftalar: ");
+                    for (int i = 0; i < rv.shareHistory.Count; i++) hs.Append(i > 0 ? " → " : "").Append($"%{rv.shareHistory[i] * 100f:0}");
+                    y.Bosluk(4);
                     y.Kucuk(hs.ToString());
                 }
                 if (rv.priceWarDays > 0 && rv.warDistrict > 0)
-                    y.Uyari($"Fiyat savaşı: {(rv.RakipAt(rv.warOwner) != null ? rv.RakipAt(rv.warOwner).ad : "rakip")} {CityMap.DistrictNames[rv.warDistrict]} bölgesinde {rv.priceWarDays} gün daha ücret kırıyor " +
-                            $"(oradaki siparişlerin −%{(1f - rv.warFactor) * 100f:0}).");
+                    y.Uyari($"Fiyat savaşı: {(rv.RakipAt(rv.warOwner) != null ? rv.RakipAt(rv.warOwner).ad : "rakip")} {CityMap.DistrictNames[rv.warDistrict]} bölgesinde " +
+                            $"{rv.priceWarDays} gün daha ücret kırıyor (oradaki siparişler −%{(1f - rv.warFactor) * 100f:0}).");
                 y.KartBitir();
             }
         }
 
         /// <summary>
         /// Dükkanın ayrıntısı ve sözleşme işlemleri (Yazıcı ile; IMGUI'deki DrawShopCard'ın başlıksız hali).
+        /// Önce kararın sayıları kutularda (sipariş ve farkı, komisyon, payın, sözleşmenin kalanı), sonra memnuniyet ve işlemler.
         /// Haritadaki bina kartı UI Toolkit'e taşınınca o da bunu kullanır.
         /// </summary>
         void UiDukkanAyrinti(Yazici y, Shop s, RivalCompany rv)
@@ -149,18 +174,22 @@ namespace KuryeTycoon
             var clock = GameClock.I;
             bool acikMi = ShopHours.IsOpen(s.def);
             y.Yazi($"{ShopHours.StatusText(s.def)} · {ShopHours.HoursText(s.def)}", acikMi ? "kucuk not-renk" : "kucuk uyari-renk");
-            y.Kucuk($"Komisyon %{s.Commission * 100f:0.#} · Hazırlık ~{s.def.prepMinutes:0} dk · " +
-                    $"Sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · Ağırlık {GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)} · Toplam sipariş {s.ordersTotal}");
-            if (s.def.kgMax >= GameData.HeavyKg)
-                y.Uyari($"{GameData.HeavyKg:0} kg üstü ağır siparişler gelir: bunlar için arabalı kurye gerekir.");
 
             if (!map.IsUnlocked(s.tile))
             {
                 y.Kucuk($"Kilitli: önce \"{CityMap.DistrictNames[s.def.unlockLevel]}\" bölgesini aç.");
                 return;
             }
+            string agir = s.def.kgMax >= GameData.HeavyKg ? $"{GameData.HeavyKg:0} kg üstü ağır siparişler gelir: arabalı kurye gerekir." : null;
             if (!s.contracted)
             {
+                y.KutularBasla();
+                y.Kutu("Komisyon", $"%{s.Commission * 100f:0.#}", "sepetten");
+                y.Kutu("Sepet", $"{Ft(s.def.basketMin)}–{Ft(s.def.basketMax)}", $"{GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)}");
+                y.Kutu("Hazırlık", $"~{s.def.prepMinutes:0} dk", null);
+                y.Kutu("Sözleşme", Ft(s.def.contractCost), "bir kez");
+                y.KutularBitir();
+                if (agir != null) y.Uyari(agir);
                 var dukkan = s;
                 if (clock.Day < s.resignBlockedUntil)
                     y.Uyari($"Seninle çalışmayı bıraktı; {clock.DateOf(s.resignBlockedUntil)} tarihinden sonra yeniden teklif edebilirsin.");
@@ -174,15 +203,28 @@ namespace KuryeTycoon
             if (rv == null) return;
 
             var shop = s;
+            int fark = s.monthOrders - s.lastMonthOrders;
+            int kalan = s.contractEndDay - clock.Day;
+            float bonus = s.commissionBonus * 100f;
+            y.KutularBasla();
+            y.Kutu("Bu ay", $"{s.monthOrders} sipariş", s.lastMonthOrders > 0 ? $"{(fark >= 0 ? "+" : "−")}{Mathf.Abs(fark)} (geçen ay {s.lastMonthOrders})" : $"toplam {s.ordersTotal}",
+                   null, null, s.lastMonthOrders > 0 ? (fark >= 0 ? UITheme.Good : UITheme.Bad) : (Color?)null);
+            y.Kutu("Komisyon", $"%{s.Commission * 100f:0.#}", Mathf.Abs(bonus) > 0.01f ? $"temel %{s.def.commission * 100f:0.#} ({(bonus > 0 ? "+" : "−")}{Mathf.Abs(bonus):0.#})" : "temel oran",
+                   null, "Pazarlıkla +2 puan, münhasırlıkla −3 puan değişir.", bonus > 0.01f ? UITheme.Good : bonus < -0.01f ? UITheme.Warn : (Color?)null);
+            y.Kutu("Senin payın", s.exclusive || !s.rivalContracted ? "%100" : $"%{rv.MyFraction(s) * 100f:0}",
+                   s.exclusive ? "münhasır · +%15 sipariş" : s.rivalContracted ? rv.DukkanRakipleri(s) : "rakip yok", null,
+                   s.rivalContracted && !s.exclusive ? "Dükkanın müşterilerinin ne kadarı seni seçiyor: itibar, kurye sayısı ve hıza göre paylaşılır. Münhasırlık bütün rakipleri çıkarır." : null);
+            y.Kutu("Sözleşme", $"{Mathf.Max(0, kalan)} gün", clock.DateOf(s.contractEndDay), null, null, kalan <= 14 ? UITheme.Warn : (Color?)null);
+            y.KutularBitir();
+
             Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);
             y.Cubuk("Memnuniyet", s.satisfaction / 100f, sc, $"{s.satisfaction:0}/100");
             y.Kucuk(RivalCompany.PerformanceText(s));
-            y.Kucuk($"Sözleşme bitişi: {clock.DateOf(s.contractEndDay)} · bu ay {s.monthOrders} sipariş (geçen ay {s.lastMonthOrders}) · " +
-                    (s.exclusive ? "münhasır: siparişler +%15" : s.rivalContracted ? $"{rv.DukkanRakipleri(s)} ile paylaşılıyor: müşterilerin ~%{rv.MyFraction(s) * 100f:0}'i seni seçiyor" : "rakip yok"));
-            if (s.commissionBonus != 0f)
-                y.Kucuk($"Pazarlık/anlaşma farkı: {(s.commissionBonus > 0 ? "+" : "−")}{Mathf.Abs(s.commissionBonus) * 100f:0.#} puan (temel %{s.def.commission * 100f:0.#})");
+            y.Kucuk($"Hazırlık ~{s.def.prepMinutes:0} dk · sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · " +
+                    $"{GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)} · toplam {s.ordersTotal} sipariş");
+            if (agir != null) y.Uyari(agir);
             y.SatirBasla();
-            y.Dugme($"Pazarlık: komisyon +2 puan (şans %{rv.NegotiateChance(s) * 100f:0})", () => rv.Negotiate(shop), rv.CanNegotiate(s), "kucuk-dg");
+            y.Dugme($"Pazarlık: +2 puan (şans %{rv.NegotiateChance(s) * 100f:0})", () => rv.Negotiate(shop), rv.CanNegotiate(s), "kucuk-dg");
             y.Dugme(s.exclusive ? "Münhasır" : $"Münhasırlık öner: −3 puan (şans %{rv.ExclusiveChance(s) * 100f:0})", () => AskConfirm("Münhasırlık öner",
                     $"{shop.def.name} sadece seninle çalışsın diye teklif edilsin mi? Kabul ederse bütün rakipler çıkar, siparişler %15 artar, " +
                     "komisyonun 3 puan düşer ve sözleşme 6 ay uzar. Reddederse memnuniyeti biraz düşer ve 30 gün tekrar teklif edemezsin. " +

@@ -40,21 +40,5 @@ namespace KuryeTycoon
             GUILayout.Label(Anlatici.Aciklamalar[setupAnlatici] + " Oyun sırasında Ayarlar'dan değiştirilebilir.", small);
         }
 
-        /// <summary>Ayarlar > Arayüz: olay anlatıcısını oyun içinde değiştirme.</summary>
-        void DrawAnlaticiAyari()
-        {
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Olay anlatıcısı", body, GUILayout.Width(130));
-            for (int i = 0; i < Anlatici.Adlar.Length; i++)
-            {
-                int k = i;
-                if (SelectButton((int)Anlatici.Secili == i, Anlatici.Adlar[i], smallButton)) deferred = () => Anlatici.Secili = (Anlatici.Tur)k;
-            }
-            GUILayout.EndHorizontal();
-            GUILayout.Label(Anlatici.Aciklamalar[(int)Anlatici.Secili], small);
-            if (Senaryo.Secili != Senaryo.Tur.Klasik)
-                GUILayout.Label($"Oyun türü: {Senaryo.Adlar[(int)Senaryo.Secili]}" + (Senaryo.HedefVar ? $" · {Senaryo.IlerlemeYazisi}" : ""), small);
-            GUILayout.Space(4);
-        }
     }
 }

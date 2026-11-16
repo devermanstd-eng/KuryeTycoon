@@ -8,7 +8,9 @@ namespace KuryeTycoon
     /// Kuryeler penceresi (UI Toolkit). Üstte ekibin özeti, araç filtresi ve sıralama; her kurye sade bir kart:
     /// profil resmi (tecrübe rozeti) · isim ve araç · tek durum etiketi · moral ve yorgunluk çubukları · bugünkü iş.
     /// Sorunlar (yorgunluk, nakit, çanta, eksikler, bırakma riski) tek bir uyarı simgesinde toplanır; üstüne gelince listesi.
-    /// Karta tıklayınca ayrıntı açılır: beceriler, meslek, hesap, sigorta, hedefler ve işlemler (büyüt, telefon, ekipman, çanta, işten çıkar).
+    /// Karta tıklayınca ayrıntı açılır (sade): dört sayı kutusu (puan, hesap, kapasite, toplam), 2×2 beceri yıldızları,
+    /// üç kısa bilgi satırı (meslek, sigorta, ekipman), eğitim çipleri ve işlemler (büyüt, telefon, ekipman, çanta, askı, kapat).
+    /// Ayrıntılar (kazanç formülü, ders programı, seçicilik…) kutuların ipucunda.
     /// </summary>
     public partial class GameUI
     {
@@ -31,9 +33,12 @@ namespace KuryeTycoon
                 public VisualElement kok, ust, portre, sorun, aracSimge, ayrinti, yildizlar;
                 public Label ad, durum, yildiz, bugun, moralDeger, yorgDeger, aracAd;
                 public U.Cubuk moral, yorgunluk;
-                public Label meslek, kapasite, kazanc, hesap, sigorta, hedef, ekipman, canta, eksikler;
+                public Label eksikler;
                 public Button cantaDugme, cikarDugme, askiDugme;
-                public Label puan;
+                public Label puan, puanAlt, hesap, hesapAlt, kapasite, kapasiteAlt, toplam, toplamAlt;
+                public string puanIpucu = "", hesapIpucu = "", kapasiteIpucu = "", toplamIpucu = "", meslekIpucu = "";
+                public VisualElement hedefSatir;
+                public Label meslek, sigorta, ekipman, hedef;
                 public int portreRuh = -1;
                 public VisualElement ozellikSatir;
                 public readonly List<(Button b, Label durum, KuryeEgitim.Tur t)> egitimler = new List<(Button, Label, KuryeEgitim.Tur)>();
@@ -110,37 +115,43 @@ namespace KuryeTycoon
                 k.yorgunluk = U.CubukEkle(y, 0f, FatigueColor);
                 k.yorgDeger = U.Yazi(y, "", "olcu-deger");
 
-                // Ayrıntı
+                // Ayrıntı (sade): sayı kutuları, beceriler, kısa bilgi, eğitim çipleri, işlemler
                 k.ayrinti = U.El(k.kok, "kolon");
                 k.ayrinti.style.marginTop = 8;
                 k.eksikler = U.Yazi(k.ayrinti, "", "kucuk", "uyari-renk");
-                k.yildizlar = U.El(k.ayrinti, "kolon");
+                k.eksikler.style.marginBottom = 4;
+                var kutular = U.Gecirgen(k.ayrinti, "yz-kutular");
+                (k.puan, k.puanAlt) = MetrikKutu(kutular, "PUAN", () => k.puanIpucu);
+                (k.hesap, k.hesapAlt) = MetrikKutu(kutular, "HESABI", () => k.hesapIpucu);
+                (k.kapasite, k.kapasiteAlt) = MetrikKutu(kutular, "KAPASİTE", () => k.kapasiteIpucu);
+                (k.toplam, k.toplamAlt) = MetrikKutu(kutular, "TOPLAM", () => k.toplamIpucu);
+
+                k.yildizlar = U.Gecirgen(k.ayrinti, "beceri-izgara");
                 BeceriSatiri(k.yildizlar, k, "Hız", c2 => SpeedStars(c2.speedSkill), "teslimatları daha çabuk bitirir.");
                 BeceriSatiri(k.yildizlar, k, "Dikkat", c2 => CareStars(c2.care), "siparişte eksik ve hasar az olur.");
                 BeceriSatiri(k.yildizlar, k, "Nezaket", c2 => CareStars(c2.politeness), "müşteriler daha yüksek puan verir.");
                 BeceriSatiri(k.yildizlar, k, "Dayanıklılık", c2 => StaminaStars(c2.stamina), "geç yorulur, kapıya ve kata daha çabuk çıkar.");
-                k.meslek = U.Yazi(k.ayrinti, "", "kucuk");
-                k.kapasite = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                k.kazanc = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                k.hesap = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                k.sigorta = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                k.hedef = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                k.ekipman = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                k.canta = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                k.puan = U.Yazi(k.ayrinti, "", "kucuk", "soluk");
-                foreach (var l in new[] { k.meslek, k.kapasite, k.kazanc, k.hesap, k.sigorta, k.hedef, k.ekipman, k.canta, k.puan }) l.style.marginTop = 3;
 
-                // Eğitimler: şirket öder, beceri artar ya da yeni sipariş türü açılır
-                U.Bolum(k.ayrinti, "EĞİTİM");
+                k.meslek = BilgiSatiri(k.ayrinti, "Meslek", out var meslekSatir);
+                ui.Ipucu(meslekSatir, () => k.meslekIpucu);
+                k.sigorta = BilgiSatiri(k.ayrinti, "Sigorta", out _);
+                k.ekipman = BilgiSatiri(k.ayrinti, "Ekipman", out _);
+                k.hedef = BilgiSatiri(k.ayrinti, "Hedefler", out k.hedefSatir);
+
+                // Eğitimler: şirket öder, beceri artar ya da yeni sipariş türü açılır. Alınanlar yeşil çip, alınmayanlar düğme.
+                var egitim = U.El(k.ayrinti, "satir");
+                egitim.style.flexWrap = Wrap.Wrap;
+                egitim.style.marginTop = 6;
+                U.Yazi(egitim, "Eğitim", "kucuk", "soluk").style.width = 72;
                 foreach (KuryeEgitim.Tur t in System.Enum.GetValues(typeof(KuryeEgitim.Tur)))
                 {
                     var tt = t;
-                    var sat = U.El(k.ayrinti, "satir");
-                    sat.style.marginBottom = 4;
-                    var ad = U.Yazi(sat, KuryeEgitim.Adlar[(int)t], "kucuk", "esnek", "tek-satir");
-                    ui.Ipucu(ad, () => KuryeEgitim.Aciklamalar[(int)tt]);
-                    var durum = U.Yazi(sat, "Alındı ✓", "minik", "iyi");
-                    var b = U.Dugme(sat, "", () => KuryeEgitim.Ver(k.c, tt), "kucuk-dg");
+                    var durum = U.Cip(egitim, "✓ " + KuryeEgitim.Adlar[(int)t], UITheme.Good);
+                    ui.Ipucu(durum, () => KuryeEgitim.Aciklamalar[(int)tt]);
+                    var b = U.Dugme(egitim, "", () => KuryeEgitim.Ver(k.c, tt), "kucuk-dg", "ilk");
+                    b.style.marginRight = 4;
+                    b.style.marginBottom = 3;
+                    ui.Ipucu(b, () => KuryeEgitim.Aciklamalar[(int)tt]);
                     k.egitimler.Add((b, durum, t));
                 }
 
@@ -173,12 +184,27 @@ namespace KuryeTycoon
                 return k;
             }
 
+            (Label deger, Label alt) MetrikKutu(VisualElement ust, string baslik, System.Func<string> ipucu)
+            {
+                var e = U.Gecirgen(ust, "yz-kutu");
+                U.Yazi(e, baslik, "yz-kutu-baslik");
+                var d = U.Kalin(e, "", "yz-kutu-deger");
+                var a = U.Yazi(e, "", "yz-kutu-alt");
+                ui.Ipucu(e, ipucu);
+                return (d, a);
+            }
+
+            static Label BilgiSatiri(VisualElement ust, string ad, out VisualElement satir)
+            {
+                satir = U.Gecirgen(ust, "kurye-bilgi");
+                U.Yazi(satir, ad, "kurye-bilgi-ad");
+                return U.Yazi(satir, "", "kurye-bilgi-deger");
+            }
+
             void BeceriSatiri(VisualElement ust, Kart k, string ad, System.Func<Courier, int> yildiz, string aciklama)
             {
-                var s = U.Gecirgen(ust, "satir");
-                s.style.marginTop = 2;
-                var l = U.Yazi(s, ad, "kucuk", "soluk");
-                l.style.width = 96;
+                var s = U.Gecirgen(ust, "beceri");
+                var l = U.Yazi(s, ad, "beceri-ad");
                 var y = U.Gecirgen(s, "satir");
                 for (int i = 0; i < 5; i++)
                 {
@@ -242,29 +268,54 @@ namespace KuryeTycoon
                     var yildizKap = satir[1];
                     for (int i = 0; i < yildizKap.childCount; i++) U.SimgeAyarla(yildizKap[i], Icons.Kind.Star, i < n ? StarOn : StarOff);
                 }
-                U.Metin(k.meslek, $"Meslek: {c.OccupationName} · Bugün: {c.OccupationStatus}" + (c.dayOff ? " · izin günü" : "") +
-                                  (c.occupation == Occupation.Ogrenci ? $"\nDers programı: {Courier.ScheduleText(c.scheduleSeed, GameClock.I)}" : ""));
+                // Sayı kutuları
+                var ks = KayitSistemi.I;
+                bool askida = ks != null && ks.Askida(c);
+                U.Metin(k.puan, c.puanAdet >= 5 ? $"{c.puanOrt:0.0}★" : "—");
+                U.Renk(k.puan, c.puanAdet < 5 ? UITheme.Text : c.puanOrt >= 4.5f ? UITheme.Good : c.puanOrt >= 3.8f ? UITheme.Text : UITheme.Warn);
+                string puanAlt = askida ? $"askıda · {c.askiBitis - GameClock.I.Day} gün"
+                               : c.aktifGun > 0 && !c.ilkHaftaTamam ? "ilk haftası"
+                               : c.puanAdet >= 5 ? "son ~30 teslimat" : "az teslimat";
+                U.Metin(k.puanAlt, puanAlt);
+                U.Renk(k.puanAlt, askida ? UITheme.Bad : U.Soluk);
+                k.puanIpucu = "Müşterilerin bu kuryeye verdiği puanların ortalaması (son ~30 teslimat)." +
+                              (c.askiSayisi > 0 && GameClock.I.Day - c.sonAskiGun <= 60 ? $" Son 60 günde {c.askiSayisi} kez askıya alındı." : "");
+
+                U.Metin(k.hesap, Ft(c.balance));
+                U.Metin(k.hesapAlt, c.pendingPayout > 0 ? $"yatacak {Ft(c.pendingPayout)}" : $"kesim {EconomyManager.I.NextCutText}");
+                k.hesapIpucu = $"Hesabında biriken kazanç; kesim {EconomyManager.I.NextCutText}. Bugüne kadar yatan {Ft(c.receivedTotal)}." +
+                               $"\nKazanç: {Ft(c.V.basePay)}/paket + {Ft(c.V.payPerKm)}/km + bonus" +
+                               (c.tipsTotal > 0 ? $" · bahşiş toplamı {Ft(c.tipsTotal)}" : "");
+
                 string capNote = "";
                 if (c.morale >= 0.8f) capNote += ", moral yüksek +1";
                 if (c.morale < 0.35f) capNote += ", moral düşük −1";
                 if (c.fatigue >= 0.6f) capNote += ", yorgun −1";
                 if (UpgradeManager.I.KargoBisikletiVar(c)) capNote += ", kargo bisikleti +2";
-                U.Metin(k.kapasite, $"Aynı anda {c.EffectiveCapacity} paket (araç {c.V.capacity}{capNote}) · taşır: {GameData.CarryText(c.V)}");
-                U.Metin(k.kazanc, $"Kazanç: {Ft(c.V.basePay)}/paket + {Ft(c.V.payPerKm)}/km + bonus · araçları: {c.VehiclesText}" +
-                                  (c.tipsTotal > 0 ? $" · bahşiş toplam {Ft(c.tipsTotal)}" : ""));
-                U.Metin(k.hesap, $"Hesabı: {Ft(c.balance)} (kesim {EconomyManager.I.NextCutText})" +
-                                 (c.pendingPayout > 0 ? $" · yatacak {Ft(c.pendingPayout)}" : "") + $" · bugüne kadar yatan {Ft(c.receivedTotal)}");
-                U.Metin(k.sigorta, c.insured ? $"Sigorta: var ({(c.insuredViaCompany ? EconomyManager.I.Plan.name : "dışarıdan")}, haftalık {Ft(c.CurrentPremium)})"
-                                             : "Sigorta: yok (kazada masrafları kendi öder, daha uzun süre çalışamaz)");
+                int fark = c.EffectiveCapacity - c.V.capacity;
+                U.Metin(k.kapasite, $"{c.EffectiveCapacity} paket");
+                U.Metin(k.kapasiteAlt, fark == 0 ? $"araç {c.V.capacity}" : $"araç {c.V.capacity} ({(fark > 0 ? "+" : "−")}{Mathf.Abs(fark)})");
+                U.Renk(k.kapasiteAlt, fark > 0 ? UITheme.Good : fark < 0 ? UITheme.Warn : U.Soluk);
+                k.kapasiteIpucu = $"Aynı anda {c.EffectiveCapacity} paket (araç {c.V.capacity}{capNote}). Taşır: {GameData.CarryText(c.V)}." +
+                                  $"\nTeklif seçiciliği: {c.PickinessText}";
+
+                U.Metin(k.toplam, $"{c.deliveries}");
+                U.Metin(k.toplamAlt, "teslimat");
+                k.toplamIpucu = $"Bugüne kadar {c.deliveries} teslimat. Araçları: {c.VehiclesText}.";
+
+                // Kısa bilgi
+                U.Metin(k.meslek, $"{c.OccupationName} · bugün {c.OccupationStatus}" + (c.dayOff ? " · izin günü" : ""));
+                k.meslekIpucu = c.occupation == Occupation.Ogrenci ? $"Ders programı: {Courier.ScheduleText(c.scheduleSeed, GameClock.I)}" : null;
+                U.Metin(k.sigorta, c.insured ? $"var · {(c.insuredViaCompany ? EconomyManager.I.Plan.name : "dışarıdan")} · {Ft(c.CurrentPremium)}/hafta"
+                                             : "yok (kazada masrafını kendi öder, daha uzun süre çalışamaz)");
+                U.Renk(k.sigorta, c.insured ? UITheme.Text : UITheme.Warn);
+                U.Metin(k.ekipman, $"{EquipmentText(c)} · çanta {c.bagUses}/{Courier.BagWornUses}" + (c.BagWorn ? " (yıprandı)" : ""));
                 var camp = CampaignManager.I;
                 var hedefler = new List<string>();
-                if (camp.weeklyChallenge) hedefler.Add(c.weeklyRewardClaimed ? "haftalık hedef tamam" : $"haftalık {c.weekDeliveries}/{camp.weeklyTarget}");
-                if (camp.monthlyChallenge) hedefler.Add(c.monthlyRewardClaimed ? "aylık hedef tamam" : $"aylık {c.monthDeliveries}/{camp.monthlyTarget}");
-                U.Goster(k.hedef, hedefler.Count > 0);
-                U.Metin(k.hedef, "Hedefler: " + string.Join(" · ", hedefler));
-                U.Metin(k.ekipman, $"Ekipman: {EquipmentText(c)}");
-                U.Metin(k.canta, $"Çanta kullanımı: {c.bagUses}/{Courier.BagWornUses}" + (c.BagWorn ? " · yıprandı" : "") +
-                                 $" · teklif seçiciliği: {c.PickinessText}");
+                if (camp.weeklyChallenge) hedefler.Add(c.weeklyRewardClaimed ? "haftalık tamam" : $"haftalık {c.weekDeliveries}/{camp.weeklyTarget}");
+                if (camp.monthlyChallenge) hedefler.Add(c.monthlyRewardClaimed ? "aylık tamam" : $"aylık {c.monthDeliveries}/{camp.monthlyTarget}");
+                U.Goster(k.hedefSatir, hedefler.Count > 0);
+                U.Metin(k.hedef, string.Join(" · ", hedefler));
                 k.cantaDugme.SetEnabled(c.BagWorn);
                 U.Metin(k.cantaDugme, $"Yeni çanta (−{Ft(GameData.Equip(EquipmentKind.TermalCanta).price)})");
                 long serbest = EconomyManager.I.FreeCash;
@@ -276,20 +327,14 @@ namespace KuryeTycoon
                     if (alindi) continue;
                     int bedel = KuryeEgitim.Bedel((int)t);
                     bool aracUygun = t != KuryeEgitim.Tur.Catering || c.vehicle == VehicleKind.Motosiklet || c.vehicle == VehicleKind.Araba;
-                    U.Metin(b, aracUygun ? $"Ver — {Ft(bedel)}" : "Motor/araba gerekir");
+                    string ad = KuryeEgitim.Adlar[(int)t];
+                    U.Metin(b, aracUygun ? $"{ad} · {Ft(bedel)}" : $"{ad} · motor/araba gerekir");
                     b.SetEnabled(aracUygun && serbest >= bedel);
                 }
                 k.cikarDugme.SetEnabled(c.OrderCount == 0);
                 U.Metin(k.cikarDugme, c.OrderCount == 0 ? "Hesabı kapat" : "Hesabı kapat (paketi var)");
-                var ks = KayitSistemi.I;
-                bool askida = ks != null && ks.Askida(c);
                 k.askiDugme.SetEnabled(ks != null && c.OrderCount == 0 && !askida);
                 U.Metin(k.askiDugme, askida ? "Askıda" : $"Askıya al ({KayitSistemi.AskiGun} gün)");
-                string puan = c.puanAdet >= 5 ? $"Müşteri puanı: {c.puanOrt:0.0} (son ~30 teslimat)" : "Müşteri puanı: henüz az teslimat";
-                if (askida) puan += $" · hesabı askıda ({c.askiBitis - GameClock.I.Day} gün)";
-                else if (c.askiSayisi > 0 && GameClock.I.Day - c.sonAskiGun <= 60) puan += $" · son 60 günde {c.askiSayisi} askı";
-                if (c.aktifGun > 0 && !c.ilkHaftaTamam) puan += " · ilk haftası";
-                U.Metin(k.puan, puan);
             }
 
             static int Kiyasla(Courier a, Courier b, int sira)

@@ -11,6 +11,8 @@ namespace KuryeTycoon
     /// metin ağırlıklı pencereler (Finans, Ekipman, Dükkanlar…) IMGUI kodundan neredeyse satır satır taşınır.
     /// Kullanım: Kur'da y = new Yazici(ui, kok); Yenile'de y.Basla(); … y.Bitir();
     /// Elle tasarlanmış sekmeler (Siparişler, Kuryeler) bunu kullanmaz; ikisi birlikte de kullanılabilir.
+    /// Sayı ağırlıklı parçalar: Kutu (başlık, büyük değer, küçük fark), Tablo (sağa yaslı sütunlar), Kaydirici, Onay, CokluSecim;
+    /// grafik ve özel çizimler için Ozel (eleman bir kez kurulur, çağıran günceller).
     /// </summary>
     public partial class GameUI
     {
@@ -32,6 +34,13 @@ namespace KuryeTycoon
                 public readonly List<Label> secenekler = new List<Label>();
                 public Action<int> secim;
                 public string secImza;
+                public Label c;
+                public Slider kay;
+                public Action<float> kayYaz;
+                public U.Onay onay;
+                public bool deger;
+                public Action<bool> onayYaz;
+                public readonly List<Label> hucreler = new List<Label>();
             }
 
             class Kap
@@ -185,7 +194,8 @@ namespace KuryeTycoon
             public void Yardim(string metin)
             {
                 if (son == null) return;
-                if (son.tur == "yazi" || son.tur == "kv" || son.tur == "bolum" || son.tur == "baslikli") YardimRozeti(son, metin);
+                if (son.tur == "yazi" || son.tur == "kv" || son.tur == "bolum" || son.tur == "baslikli" || son.tur == "onay" || son.tur == "kaydir")
+                    YardimRozeti(son, metin);
                 else IpucuVer(son, son.e, metin);
             }
 
@@ -267,6 +277,163 @@ namespace KuryeTycoon
                     else if (sarar) { U.Zemin(l, new Color(1f, 1f, 1f, 0.08f)); U.Renk(l, UITheme.Text); }
                     else { U.Zemin(l, new Color(0, 0, 0, 0)); U.Renk(l, U.Soluk); }
                 }
+            }
+
+            /// <summary>Birden çok seçilebilen çipler (ör. operasyon sorumlusunun teklif edeceği ekipmanlar). Tıklayınca seçim tersine döner.</summary>
+            public void CokluSecim(IList<string> adlar, Func<int, bool> secili, Action<int> tik)
+            {
+                var o = Al("coklu", () =>
+                {
+                    var x = new Oge { e = U.El(null, "yz-cipler") };
+                    x.e.style.marginTop = 2;
+                    x.e.style.marginBottom = 4;
+                    return x;
+                });
+                o.secim = tik;
+                string imza = string.Join("\u0001", adlar);
+                if (imza != o.secImza)
+                {
+                    o.secImza = imza;
+                    o.e.Clear();
+                    o.secenekler.Clear();
+                    for (int i = 0; i < adlar.Count; i++)
+                    {
+                        int k = i;
+                        var l = U.Kalin(o.e, adlar[i], "yz-cip");
+                        U.Tikla(l, () => o.secim?.Invoke(k));
+                        o.secenekler.Add(l);
+                    }
+                }
+                for (int i = 0; i < o.secenekler.Count; i++)
+                {
+                    var l = o.secenekler[i];
+                    bool sec = secili(i);
+                    U.Metin(l, (sec ? "✓ " : "") + adlar[i]);
+                    if (sec) { U.Zemin(l, U.A(UITheme.Accent, 0.85f)); U.Renk(l, UITheme.AccentText); }
+                    else { U.Zemin(l, new Color(1f, 1f, 1f, 0.08f)); U.Renk(l, U.Soluk); }
+                }
+            }
+
+            // ------------------------------------------------------------------ sayılar: kutu, tablo
+
+            /// <summary>Yan yana sayı kutuları: KutularBasla(); Kutu(...); Kutu(...); KutularBitir(). Sığmazsa alt satıra geçer.</summary>
+            public void KutularBasla() => KapAc("kutular", "yz-kutular", null);
+            public void KutularBitir() => KapKapat();
+
+            /// <summary>Sayı kutusu: küçük başlık, büyük değer, altında kısa fark/açıklama. İpucu verilirse üstüne gelince açılır.</summary>
+            public void Kutu(string baslik, string deger, string alt = null, Color? renk = null, string ipucu = null, Color? altRenk = null)
+            {
+                var o = Al("kutu", () =>
+                {
+                    var x = new Oge { e = U.Gecirgen(null, "yz-kutu") };
+                    x.a = U.Yazi(x.e, "", "yz-kutu-baslik");
+                    x.b = U.Kalin(x.e, "", "yz-kutu-deger");
+                    x.c = U.Yazi(x.e, "", "yz-kutu-alt");
+                    return x;
+                });
+                U.Metin(o.a, BuyukHarf(baslik));
+                U.Metin(o.b, deger);
+                RenkAyarla(o.b, renk);
+                bool altVar = !string.IsNullOrEmpty(alt);
+                U.Goster(o.c, altVar);
+                if (altVar) { U.Metin(o.c, alt); RenkAyarla(o.c, altRenk); }
+                if (!string.IsNullOrEmpty(ipucu) || o.ipucuKayitli) IpucuVer(o, o.e, ipucu);
+            }
+
+            /// <summary>
+            /// Tablo satırı: ilk hücre sola yaslı ve esnek, diğerleri sağa yaslı sabit genişlikte (sütunlar alt alta hizalanır).
+            /// baslik: soluk küçük başlık satırı. nokta: ilk hücrenin solunda renkli nokta. renkler: hücre renkleri (null = normal).
+            /// Hücreler zengin metin kabul eder (yıldızlar gibi).
+            /// </summary>
+            public void Tablo(IList<string> hucreler, bool baslik = false, Color? nokta = null, IList<Color?> renkler = null, string ipucu = null)
+            {
+                var o = Al(baslik ? "tablo-baslik" : "tablo", () =>
+                {
+                    var x = new Oge { e = U.Gecirgen(null, "yz-tablo-satir") };
+                    if (baslik) x.e.AddToClassList("baslik");
+                    x.rozet = U.Gecirgen(x.e, "yz-nokta");
+                    return x;
+                });
+                U.Goster(o.rozet, nokta.HasValue);
+                if (nokta.HasValue) U.Zemin(o.rozet, nokta.Value);
+                while (o.hucreler.Count < hucreler.Count)
+                {
+                    var l = U.Yazi(o.e, "", o.hucreler.Count == 0 ? "yz-tablo-ilk" : "yz-tablo-hucre");
+                    l.enableRichText = true;
+                    o.hucreler.Add(l);
+                }
+                while (o.hucreler.Count > hucreler.Count)
+                {
+                    o.hucreler[o.hucreler.Count - 1].RemoveFromHierarchy();
+                    o.hucreler.RemoveAt(o.hucreler.Count - 1);
+                }
+                for (int i = 0; i < hucreler.Count; i++)
+                {
+                    U.Metin(o.hucreler[i], hucreler[i]);
+                    RenkAyarla(o.hucreler[i], renkler != null && i < renkler.Count ? renkler[i] : null);
+                }
+                if (!string.IsNullOrEmpty(ipucu) || o.ipucuKayitli) IpucuVer(o, o.e, ipucu);
+            }
+
+            // ------------------------------------------------------------------ ayar kontrolleri
+
+            /// <summary>Onay kutusu (açık/kapalı ayar). Tıklayınca hemen görünür, değer yaz ile modele yazılır.</summary>
+            public void Onay(string metin, bool deger, Action<bool> yaz)
+            {
+                var o = Al("onay", () =>
+                {
+                    var x = new Oge();
+                    x.onay = U.OnayEkle(null, "", () => x.deger, v => { x.deger = v; x.onayYaz?.Invoke(v); });
+                    x.e = x.onay.kok;
+                    return x;
+                });
+                o.deger = deger;
+                o.onayYaz = yaz;
+                U.Metin(o.onay.yazi, metin);
+                o.onay.Yenile();
+                YardimRozeti(o, null);
+            }
+
+            /// <summary>
+            /// Etiket · kaydırıcı · değer. Kaydırılan değer yaz ile modele yazılır (adımlama orada yapılır); ekrandaki konum her
+            /// yenilemede modeldeki değere döner. Odak almaz: ok tuşları ve boşluk oyunun kısayolları olarak kalır.
+            /// </summary>
+            public void Kaydirici(string ad, float deger, float min, float max, string degerYazi, Action<float> yaz)
+            {
+                var o = Al("kaydir", () =>
+                {
+                    var x = new Oge { e = U.El(null, "yz-kaydir") };
+                    x.a = U.Yazi(x.e, "", "yz-kaydir-ad");
+                    x.kay = new Slider(0f, 1f);
+                    x.kay.AddToClassList("yz-slider");
+                    x.kay.focusable = false;
+                    x.kay.RegisterValueChangedCallback(ev => x.kayYaz?.Invoke(ev.newValue));
+                    x.e.Add(x.kay);
+                    x.b = U.Kalin(x.e, "", "yz-kaydir-deger");
+                    return x;
+                });
+                o.kayYaz = yaz;
+                U.Metin(o.a, ad);
+                if (o.kay.lowValue != min || o.kay.highValue != max)
+                {
+                    // Sıra önemli: alt sınır üst sınırı geçmesin
+                    if (min >= o.kay.highValue) { o.kay.highValue = max; o.kay.lowValue = min; }
+                    else { o.kay.lowValue = min; o.kay.highValue = max; }
+                }
+                float v = Mathf.Clamp(deger, Mathf.Min(min, max), Mathf.Max(min, max));
+                if (Mathf.Abs(o.kay.value - v) > 1e-4f) o.kay.SetValueWithoutNotify(v);
+                U.Metin(o.b, degerYazi);
+                YardimRozeti(o, null);
+            }
+
+            /// <summary>
+            /// Özel eleman (grafik, saat çizelgesi…): aynı anahtarla ilk çağrıda kur ile kurulur, sonra hep aynısı döner;
+            /// çağıran değerlerini kendisi günceller.
+            /// </summary>
+            public T Ozel<T>(string anahtar, Func<T> kur) where T : VisualElement
+            {
+                var o = Al("ozel:" + anahtar, () => new Oge { e = kur() });
+                return (T)o.e;
             }
 
             // ------------------------------------------------------------------ çubuk, boşluk
