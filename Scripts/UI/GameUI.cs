@@ -83,6 +83,7 @@ namespace KuryeTycoon
             // Pencere açıkken harita pencerenin sağına kayar (Ayarlar'dan kapatılırsa pencere haritanın üstünde yüzer).
             if (MapCamera.I == null) return;
             UpdateMapViewport();
+            UiHaritaKatmaniYenile();   // hava, gece/gündüz ve harita katmanı: haritanın üstünde, arayüzün altında (Arayuz/UiHaritaKatmani.cs)
         }
 
         // =====================================================================
@@ -122,7 +123,7 @@ namespace KuryeTycoon
             bool eskiArayuz = !UiAktif;
             var haritaAlani = new Rect(MapLeftGui, TopBar, Mathf.Max(0f, sw - MapLeftGui), Mathf.Max(0f, sh - TopBar));
             if (!eskiArayuz) GUI.BeginClip(haritaAlani, -haritaAlani.position, Vector2.zero, false);
-            DrawHeat();          // harita katmanı (etiketlerin altında)
+            if (!Ciz2D.UitkCiziyor && Event.current.type == EventType.Repaint) Ciz2D.Isi.Oynat();   // harita katmanı: normalde UI Toolkit'te, arayüzün altında
             DrawWorldLabels();
             DrawMapPops();       // uçan "+350 Ft" yazıları
             DrawInfoMarker();    // seçili binanın üstündeki işaret (bina kartı UI Toolkit'te: Arayuz/UiBinaKarti.cs)
@@ -612,6 +613,8 @@ namespace KuryeTycoon
                     if (!hit) { q.r = r; ok = true; break; }
                 }
                 if (!ok && !q.onemli) q.skip = true;   // yer yoksa çizilmez (üst üste binen etiket okunmuyor)
+                // Önemli etiket (seçili kurye, merkez) de UI Toolkit kutusunun altına girmez: IMGUI kutunun üstüne çizilirdi
+                if (!ok && q.onemli && UiAktif && UiHaritaUstuDoluMu(q.r)) q.skip = true;
                 if (!q.skip) labelPlaced.Add(q.r);
                 labelReqs[i] = q;
             }

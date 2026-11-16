@@ -110,15 +110,19 @@ namespace KuryeTycoon
                 var c = ToGui(cam, CityMap.ToWorld(e.Spot));
                 var edge = ToGui(cam, CityMap.ToWorld(e.Spot) + new Vector3(e.spotRadius, 0f, 0f));
                 float rad = Mathf.Max(18f, Vector2.Distance(c, edge));
-                UITheme.Outline(new Rect(c.x - rad, c.y - rad, rad * 2f, rad * 2f), UITheme.WithAlpha(col, 0.35f + pulse * 0.3f), 2f, rad);
-                float d = 12f + pulse * 4f;
-                UITheme.Box(new Rect(c.x - d / 2f, c.y - d / 2f, d, d), UITheme.WithAlpha(col, 0.85f), d / 2f);
-                Icons.Draw(new Rect(c.x - 7f, c.y - 7f, 14f, 14f), Icons.Kind.Calendar, Color.white);
-                eventPill.normal.textColor = UITheme.Yazi(Color.white);
-                var sz = eventPill.CalcSize(new GUIContent(e.title));
-                var pr = new Rect(c.x - sz.x / 2f - 8f, c.y - d / 2f - 26f, sz.x + 16f, 20f);
-                UITheme.Box(pr, new Color(0.05f, 0.08f, 0.14f, 0.85f), 10f);
-                GUI.Label(new Rect(pr.x + 8f, pr.y, sz.x + 4f, 20f), e.title, eventPill);
+                bool kartAltinda = UiAktif && UiHaritaUstuDoluMu(new Rect(c.x - 40f, c.y - 40f, 80f, 60f));
+                if (!kartAltinda)
+                {
+                    UITheme.Outline(new Rect(c.x - rad, c.y - rad, rad * 2f, rad * 2f), UITheme.WithAlpha(col, 0.35f + pulse * 0.3f), 2f, rad);
+                    float d = 12f + pulse * 4f;
+                    UITheme.Box(new Rect(c.x - d / 2f, c.y - d / 2f, d, d), UITheme.WithAlpha(col, 0.85f), d / 2f);
+                    Icons.Draw(new Rect(c.x - 7f, c.y - 7f, 14f, 14f), Icons.Kind.Calendar, Color.white);
+                    eventPill.normal.textColor = UITheme.Yazi(Color.white);
+                    var sz = eventPill.CalcSize(new GUIContent(e.title));
+                    var pr = new Rect(c.x - sz.x / 2f - 8f, c.y - d / 2f - 26f, sz.x + 16f, 20f);
+                    UITheme.Box(pr, new Color(0.05f, 0.08f, 0.14f, 0.85f), 10f);
+                    GUI.Label(new Rect(pr.x + 8f, pr.y, sz.x + 4f, 20f), e.title, eventPill);
+                }
             }
 
             // Sağ üstte etkinlik rozeti (alanı olmayan etkinlikler de görünsün). Yeni arayüzde sağ üstteki durum sütununda.

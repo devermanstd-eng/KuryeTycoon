@@ -101,8 +101,9 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Haritanın üstündeki UI Toolkit kutularının dikdörtgenleri (GUI koordinatı). IMGUI harita etiketleri ve uçan yazılar
-        /// bunların altına girmesin diye dolu sayılır.
+        /// Haritanın üstündeki UI Toolkit kutularının dikdörtgenleri (GUI koordinatı). IMGUI (harita etiketleri, uçan yazılar,
+        /// seçili bina işareti, etkinlik işareti) her zaman UI Toolkit'in üstüne çizildiği için bunlarla kesişen hiçbir şey
+        /// çizilmez: kurye telefonunun, bina kartının, durum kartlarının, bildirimlerin ve rehberin üstüne isim binmez (16.11).
         /// </summary>
         readonly List<Rect> uiHaritaDolu = new List<Rect>();
 
@@ -120,6 +121,11 @@ namespace KuryeTycoon
             Ekle(aracKok);
             Ekle(durumKok);
             if (heatMenuOpen) Ekle(katmanMenu);
+            Ekle(telKok);        // kurye telefonu (kayarken de)
+            Ekle(binaKok);       // bina kartı
+            Ekle(rehberKart);
+            if (bildirimKok != null && U.Gorunur(bildirimKok))
+                foreach (var b in bildirimKok.Children()) Ekle(b);   // bildirimler tek tek (aralarındaki harita boş)
             hedef?.AddRange(uiHaritaDolu);
         }
 

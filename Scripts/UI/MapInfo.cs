@@ -128,6 +128,7 @@ namespace KuryeTycoon
             var top = CityMap.ToWorld(t) + MapCamera.LabelOffset(0.6f, BuildingTop(t) + 0.15f);
             var p = ToGui(cam, top);
             var r = new Rect(p.x - 9f, p.y - 22f, 18f, 18f);
+            if (UiAktif && UiHaritaUstuDoluMu(r)) return;   // kartın (telefon, bina kartı, durum) altında: üstüne binmesin
             UITheme.Box(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f), UITheme.WithAlpha(Color.black, 0.45f), 12f);
             UITheme.Box(r, UITheme.Accent, 9f);
         }
