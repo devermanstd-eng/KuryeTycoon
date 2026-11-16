@@ -43,7 +43,7 @@ namespace KuryeTycoon
             });
             k.serit = U.Gecirgen(k.kok, "bildirim-serit");
             k.simgeKutu = U.Gecirgen(k.kok, "bildirim-simge-kutu");
-            k.simge = U.Simge(k.simgeKutu, Icons.Kind.Star, Color.white, 16f);
+            k.simge = U.Simge(k.simgeKutu, Icons.Kind.Star, Color.white, 20f);   // elle çizilmiş renkli simge
             var yazi = U.Gecirgen(k.kok, "bildirim-yazi");
             k.bas = U.Kalin(yazi, "", "minik");
             k.metin = U.Yazi(yazi, "", "bildirim-metin");
@@ -54,7 +54,7 @@ namespace KuryeTycoon
         {
             switch (t.type)
             {
-                case ToastType.Good: renk = UITheme.Good; simge = Icons.Kind.Star; bas = "Harika"; break;
+                case ToastType.Good: renk = U.Iyi; simge = Icons.Kind.Star; bas = "Harika"; break;
                 case ToastType.Boost: renk = new Color(1f, 0.62f, 0.20f); simge = Icons.Kind.Bolt; bas = "Boost"; break;
                 case ToastType.Info:
                     renk = new Color(0.40f, 0.70f, 1f);
@@ -63,7 +63,7 @@ namespace KuryeTycoon
                     bas = sehir ? "Şehir" : "İpucu";
                     break;
                 case ToastType.Message: renk = new Color(0.55f, 0.85f, 0.65f); simge = Icons.Kind.Phone; bas = "Kurye mesajı · tıkla"; break;
-                default: renk = UITheme.Bad; simge = Icons.Kind.Warning; bas = "Dikkat"; break;
+                default: renk = U.Kotu; simge = Icons.Kind.Warning; bas = "Dikkat"; break;
             }
         }
 
@@ -77,7 +77,7 @@ namespace KuryeTycoon
                 U.Zemin(k.simgeKutu, U.A(renk, 0.2f));
                 U.SimgeAyarla(k.simge, simge, renk);
                 U.Metin(k.bas, bas);
-                U.Renk(k.bas, renk);
+                U.Renk(k.bas, U.Okunur(renk));
             }
             U.Metin(k.metin, t.text + (t.count > 1 ? $"  (+{t.count - 1})" : ""));
             // Belirme ve kaybolma: 0,25 sn'de gelir, son yarım saniyede söner
@@ -95,16 +95,55 @@ namespace KuryeTycoon
             U.Goster(bildirimKok, toasts.Count > 0);
             if (toasts.Count == 0) { bildirimler.Esitle(toasts); return; }
 
-            // Haritanın görünen kısmının ortası (açık pencere solda, kurye telefonu / bina kartı sağda kalır)
-            float sw = UiEkranGenisligi;
-            float sol = MapLeftGui;
-            float sag = sw - SagKartGenisligi;
-            if (durumKok != null && U.Gorunur(durumKok) && durumKok.worldBound.width > 1f) sag = Mathf.Min(sag, durumKok.worldBound.x - 12f);   // sağ üstteki durum sütunu
-            float w = Mathf.Min(460f, Mathf.Max(260f, sag - sol - 24f));
-            float x = Mathf.Max(sol + 12f, (sol + sag) / 2f - w / 2f);
+            BildirimYeri(out float x, out float y, out float w);
             bildirimKok.style.left = x;
+            bildirimKok.style.top = y;
             bildirimKok.style.width = w;
             bildirimler.Esitle(toasts);
+        }
+
+        const float BildirimEnAz = 300f, BildirimEnFazla = 460f, BildirimAra = 12f;
+
+        /// <summary>
+        /// Bildirimlerin yeri: haritanın görünen kısmında, hiçbir kutunun üstüne binmeyen ilk boş alan (16.11 akşam: telefon ya
+        /// da bina kartı açılınca durum sütunu sola kayıyor, ortalanan bildirimler Haftalık hedefler'in üstüne biniyordu).
+        ///  1. Üstte, Haftalık hedefler ile durum sütunu (yoksa sağdaki kart) arasında.
+        ///  2. Sığmazsa Haftalık hedefler'in altında.
+        ///  3. O da olmazsa durum sütununun altında.
+        /// Sol sınır açık pencere (MapLeftGui), sağ sınır kurye telefonu / bina kartı (SagKartGenisligi).
+        /// </summary>
+        void BildirimYeri(out float x, out float y, out float w)
+        {
+            float sw = UiEkranGenisligi;
+            float sol = MapLeftGui + BildirimAra;
+            float sag = sw - SagKartGenisligi - BildirimAra;
+            float ust = TopBar + BildirimAra;
+
+            Rect durum = Rect.zero, hedef = Rect.zero;
+            bool durumVar = durumKok != null && U.Gorunur(durumKok) && durumKok.childCount > 0 && durumKok.worldBound.width > 1f;
+            if (durumVar) durum = durumKok.worldBound;
+            // Hedef kutusu açık pencerenin altında kalmışsa (pencere üstünde) yok sayılır
+            bool hedefVar = hedefKok != null && U.Gorunur(hedefKok) && hedefKok.worldBound.width > 1f && hedefKok.worldBound.xMax + BildirimAra > sol;
+            if (hedefVar) hedef = hedefKok.worldBound;
+            float durumSol = durumVar ? Mathf.Min(sag, durum.x - BildirimAra) : sag;
+
+            // 1. Üstte, hedeflerin sağında
+            float sol1 = hedefVar ? Mathf.Max(sol, hedef.xMax + BildirimAra) : sol;
+            if (durumSol - sol1 >= BildirimEnAz) { Ortala(sol1, durumSol, ust, out x, out y, out w); return; }
+            // 2. Hedeflerin altında (durum sütununun solunda)
+            if (hedefVar && durumSol - sol >= BildirimEnAz) { Ortala(sol, durumSol, hedef.yMax + BildirimAra, out x, out y, out w); return; }
+            // 3. Durum sütununun (ve hedeflerin) altında, sağdaki karta kadar
+            float alt = ust;
+            if (durumVar) alt = Mathf.Max(alt, durum.yMax + BildirimAra);
+            if (hedefVar) alt = Mathf.Max(alt, hedef.yMax + BildirimAra);
+            Ortala(sol, Mathf.Max(sol + 260f, sag), alt, out x, out y, out w);
+        }
+
+        static void Ortala(float sol, float sag, float ust, out float x, out float y, out float w)
+        {
+            w = Mathf.Clamp(sag - sol, 260f, BildirimEnFazla);
+            x = sol + Mathf.Max(0f, (sag - sol - w) / 2f);
+            y = ust;
         }
 
         // ------------------------------------------------------------------ ilk gün rehberi

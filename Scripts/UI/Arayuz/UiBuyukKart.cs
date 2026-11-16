@@ -70,7 +70,7 @@ namespace KuryeTycoon
             bkAd.style.flexShrink = 1;
             U.Gecirgen(adSatir, "bosluk");
             var arac = U.Gecirgen(adSatir, "bk-arac");
-            bkAracSimge = U.Simge(arac, Icons.Kind.Bike, UITheme.TextDim, 14f);
+            bkAracSimge = U.Simge(arac, Icons.Kind.Bike, U.Soluk, 14f);
             bkArac = U.Yazi(arac, "", "kucuk");
             bkArac.style.marginLeft = 5f;
             bkMeslek = U.Yazi(sag, "", "kucuk", "soluk");
@@ -79,7 +79,7 @@ namespace KuryeTycoon
             bkCipler = U.Gecirgen(sag, "cipler");
             var m = U.Gecirgen(sag, "olcu");
             U.Yazi(m, "Moral", "olcu-ad");
-            bkMoral = U.CubukEkle(m, 0f, UITheme.Good);
+            bkMoral = U.CubukEkle(m, 0f, U.Iyi);
             bkMoralDeger = U.Yazi(m, "", "olcu-deger");
             var yo = U.Gecirgen(sag, "olcu");
             U.Yazi(yo, "Yorgunluk", "olcu-ad");
@@ -148,7 +148,7 @@ namespace KuryeTycoon
             U.Goster(bkSeviye, c.level > 0);
             U.Metin(bkSeviye, "★" + c.level);
             U.Metin(bkAd, c.courierName);
-            U.SimgeAyarla(bkAracSimge, Icons.Of(c.vehicle), UITheme.TextDim);
+            U.SimgeAyarla(bkAracSimge, Icons.Of(c.vehicle), U.Soluk);
             U.Metin(bkArac, c.V.name);
             U.Metin(bkMeslek, c.OccupationName);
             U.Metin(bkSaatler, "Çalışma saatleri: " + string.Join("  ·  ", WorkInfoFor(c.occupation, c.scheduleSeed, GameClock.I).lines));
@@ -171,7 +171,7 @@ namespace KuryeTycoon
         {
             bkCipAd.Clear(); bkCipRenk.Clear();
             bkCipAd.Add(c.StateName); bkCipRenk.Add(CourierStateColor(c));
-            if (c.fatigue >= 0.6f) { bkCipAd.Add("Yorgun"); bkCipRenk.Add(UITheme.Warn); }
+            if (c.fatigue >= 0.6f) { bkCipAd.Add("Yorgun"); bkCipRenk.Add(U.Uyari); }
             if (!c.insured) { bkCipAd.Add("Sigortasız"); bkCipRenk.Add(NeutralTone); }
             while (bkCipler.childCount < bkCipAd.Count) U.Cip(bkCipler, "", Color.white);
             while (bkCipler.childCount > bkCipAd.Count) bkCipler.RemoveAt(bkCipler.childCount - 1);
@@ -253,7 +253,7 @@ namespace KuryeTycoon
             y.Yazi("EKİPMAN", "bk-baslik");
             y.Kucuk(EquipmentText(c));
             y.Bosluk(4);
-            y.KV("Çanta kullanımı", $"{c.bagUses}/{Courier.BagWornUses}", c.BagWorn ? UITheme.Warn : (Color?)null);
+            y.KV("Çanta kullanımı", $"{c.bagUses}/{Courier.BagWornUses}", c.BagWorn ? U.Uyari : (Color?)null);
             if (c.BagWorn) y.Uyari("Çanta yıprandı, yenisi gerekiyor.");
             y.KV("Sigorta", c.insured ? $"var · haftalık {Ft(c.CurrentPremium)}" : "yok");
             y.KV("Araçları", c.VehiclesText);

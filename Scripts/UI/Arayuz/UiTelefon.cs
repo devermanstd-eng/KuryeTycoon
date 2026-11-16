@@ -23,16 +23,18 @@ namespace KuryeTycoon
         float phoneAnim;            // 0 → 1: telefon sağdan kayarak gelir
         Courier phoneAnimFor;
 
-        // ---------- Renkler (koyu lacivert, şirket rengi vurgulu) ----------
-        static readonly Color PBg = new Color(0.045f, 0.05f, 0.075f);
-        static readonly Color PSheet = new Color(0.085f, 0.09f, 0.135f);
-        static readonly Color PCard = new Color(0.12f, 0.13f, 0.185f);
-        static readonly Color PLine = new Color(1f, 1f, 1f, 0.08f);
-        static readonly Color PDim = new Color(0.58f, 0.61f, 0.72f);
-        static Color PAccent => Color.Lerp(CompanyProfile.Primary, Color.white, 0.32f);
-        static readonly Color PGreen = new Color(0.45f, 0.85f, 0.45f);
-        static readonly Color PRed = new Color(0.98f, 0.45f, 0.40f);
-        static readonly Color PKoyu = new Color(0.04f, 0.05f, 0.08f);   // açık zemin üstündeki yazı
+        // ---------- Renkler (kâğıt tema, 16.11 akşam: krem ekran, mürekkep yazı, şirket rengi vurgulu) ----------
+        // Eskiden koyu lacivert uygulama temasıydı. Yazıcı ile yazılan renkli yazılar U.Okunur ile koyulaşır; düğme ve
+        // hap zeminleri açık, üstlerindeki yazı koyu.
+        static readonly Color PBg = new Color32(246, 241, 231, 255);
+        static readonly Color PSheet = new Color32(252, 249, 243, 255);
+        static readonly Color PCard = new Color32(236, 228, 212, 255);
+        static readonly Color PLine = new Color(0.17f, 0.15f, 0.14f, 0.14f);
+        static readonly Color PDim = new Color32(118, 104, 90, 255);
+        static Color PAccent => Color.Lerp(CompanyProfile.Primary, Color.white, 0.25f);
+        static readonly Color PGreen = new Color(0.36f, 0.70f, 0.38f);
+        static readonly Color PRed = new Color(0.86f, 0.36f, 0.30f);
+        static readonly Color PKoyu = new Color32(38, 34, 30, 255);   // açık zemin üstündeki yazı (mürekkep)
 
         // ---------- Haritanın sağındaki kartlar (telefon, bina kartı) ----------
         const float TelGenislik = 340f, BinaGenislik = 370f, SagKartKenar = 18f;
@@ -218,7 +220,7 @@ namespace KuryeTycoon
             if (clock != null) U.Metin(telSaat, $"{clock.Hour:00}:{clock.Minute:00}");
             float pil = c.Has(EquipmentKind.Powerbank) ? 0.95f : Mathf.Clamp(1f - c.onlineMinutesToday / 720f, 0.08f, 1f);
             telPilDolu.style.width = Length.Percent(pil * 100f);
-            U.Zemin(telPilDolu, pil < 0.2f ? PRed : Color.white);
+            U.Zemin(telPilDolu, pil < 0.2f ? PRed : PKoyu);
 
             bool ana = phoneScreen == PhoneScreen.Home;
             bool menu = phoneScreen == PhoneScreen.Menu;
@@ -316,7 +318,7 @@ namespace KuryeTycoon
             y.Bosluk(8);
             TelBoostYaz(y);
             y.Bosluk(10);
-            TelHapYaz(y, c.IsOnline ? "Çevrimiçi · sipariş bekliyor" : "Çevrimdışı", c.IsOnline ? PAccent : new Color(0.30f, 0.32f, 0.40f), true);
+            TelHapYaz(y, c.IsOnline ? "Çevrimiçi · sipariş bekliyor" : "Çevrimdışı", c.IsOnline ? PAccent : new Color(0.80f, 0.77f, 0.72f), true);
             y.Yazi(c.OccupationStatus, "tel-soluk");
         }
 
@@ -380,11 +382,11 @@ namespace KuryeTycoon
 
         /// <summary>Uygulama düğmesi (yuvarlak köşeli, renkli).</summary>
         static void TelDugme(Yazici y, string metin, Action tik, Color zemin, Color yazi, bool etkin = true, string ek = null)
-            => y.Dugme(metin, tik, etkin, "tel-dg" + (ek != null ? " " + ek : ""), zemin, yazi);
+            => y.Dugme(metin, tik, etkin, "tel-dg" + (ek != null ? " " + ek : ""), zemin, U.Okunur(yazi));   // zeminler açık: yazı koyu
 
         /// <summary>Şirket renginde yazı bağlantısı ("Destekle iletişime geç", "Çevir").</summary>
         static void TelBaglanti(Yazici y, string metin, Action tik, string ek = null)
-            => y.Dugme(metin, tik, true, "tel-baglanti" + (ek != null ? " " + ek : ""), new Color(0, 0, 0, 0), PAccent);
+            => y.Dugme(metin, tik, true, "tel-baglanti" + (ek != null ? " " + ek : ""), new Color(0, 0, 0, 0), U.Okunur(PAccent));
 
         /// <summary>Sipariş kartı: durum etiketi, ürünler, adres, kat, nakit, kalan süre.</summary>
         void OrderCard(Yazici y, Order o, Courier c, bool inBag, float now)

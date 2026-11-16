@@ -105,7 +105,7 @@ namespace KuryeTycoon
                                  : !t.kabul ? $"{KurumsalSiparisler.SaatYazi(t.sonKabul)}'e kadar"
                                  : !t.siparisVerildi ? "Kabul edildi" : t.siparis != null && t.siparis.courier != null ? "Yolda" : "Kurye bekliyor";
                     U.Metin(r.durum, durum);
-                    U.CipRengi(r.durum, t.bitti ? (t.basarili ? UITheme.Good : UITheme.Bad) : t.kabul ? UITheme.Accent : UITheme.Warn);
+                    U.CipRengi(r.durum, t.bitti ? (t.basarili ? U.Iyi : U.Kotu) : t.kabul ? UITheme.Accent : U.Uyari);
                 });
 
                 bekleyenBaslik = U.Bolum(kok, "BEKLEYEN");
@@ -121,12 +121,12 @@ namespace KuryeTycoon
                     var y = new YoldaSatir();
                     y.kok = U.Gecirgen(null, "satir");
                     y.kok.style.minHeight = 22;
-                    y.simge = U.Simge(y.kok, Icons.Of(c.vehicle), UITheme.TextDim, 14f, "mini-simge");
+                    y.simge = U.Simge(y.kok, Icons.Of(c.vehicle), U.Soluk, 14f, "mini-simge");
                     y.yazi = U.Yazi(y.kok, "", "kucuk", "tek-satir", "esnek");
                     return y;
                 }, y => y.kok, (y, c) =>
                 {
-                    U.SimgeAyarla(y.simge, Icons.Of(c.vehicle), UITheme.TextDim);
+                    U.SimgeAyarla(y.simge, Icons.Of(c.vehicle), U.Soluk);
                     string ids = c.CurrentOrder != null ? "#" + c.CurrentOrder.id : "";
                     foreach (var q in c.QueuedOrders) ids += " #" + q.id;
                     U.Metin(y.yazi, $"{c.ShortName} · {c.OrderCount}/{c.EffectiveCapacity} paket · {ShortState(c)} · {ids}");
@@ -147,7 +147,7 @@ namespace KuryeTycoon
                     string ek = o.keptByCourier ? " · müşteriye ulaşılamadı" : o.deliveredCold ? " · soğuk" : o.dolap ? " · dolaba" : o.batched ? " · toplu" : "";
                     string yildiz = o.keptByCourier ? "puan yok" : $"★{o.rating:0.0}";
                     U.Metin(s.yazi, $"#{o.id} {o.shop.Name} → {kim} · {GameData.KmText(o.distance)} · {yildiz} · kâr {Ft(o.Profit)}{ek}");
-                    U.Renk(s.yazi, o.keptByCourier ? UITheme.Warn : UITheme.TextDim);
+                    U.Renk(s.yazi, o.keptByCourier ? U.Uyari : U.Soluk);
                 });
             }
 
@@ -191,7 +191,7 @@ namespace KuryeTycoon
                 var k = new KuryeSecim { c = c };
                 k.kok = U.Gecirgen(null, "satir");
                 k.kok.style.minHeight = 28;
-                k.simge = U.Simge(k.kok, Icons.Of(c.vehicle), UITheme.Text, 14f, "mini-simge");
+                k.simge = U.Simge(k.kok, Icons.Of(c.vehicle), U.Murekkep, 14f, "mini-simge");
                 k.yazi = U.Yazi(k.kok, "", "kucuk", "tek-satir", "esnek");
                 k.ata = U.Dugme(k.kok, "Ata", () => { OrderManager.I.Assign(s.o, k.c, true); ui.UiSekmeyiYenile(); }, "kucuk-dg");
                 return k;
@@ -213,7 +213,7 @@ namespace KuryeTycoon
                            : p >= 0 ? $"{c.ShortName} · kâr az ({Ft(p)})"
                            : $"{c.ShortName} · zarar {Ft(p)}";
                 U.Metin(k.yazi, txt);
-                U.Renk(k.yazi, p >= need && !rejected ? UITheme.Text : UITheme.TextDim);
+                U.Renk(k.yazi, p >= need && !rejected ? U.Murekkep : U.Soluk);
                 k.ata.SetEnabled(p >= need && !rejected);
             }
 
@@ -228,7 +228,7 @@ namespace KuryeTycoon
                 float now = GameClock.I.TotalMinutes;
                 float kalan = Mathf.Max(0f, o.createdAt + om.pendingTimeout - now);
                 U.Metin(s.sure, $"{kalan:0} dk");
-                U.CipRengi(s.sure, kalan <= 5f ? UITheme.Bad : kalan <= 10f ? UITheme.Warn : U.Notr);
+                U.CipRengi(s.sure, kalan <= 5f ? U.Kotu : kalan <= 10f ? U.Uyari : U.Notr);
                 U.Metin(s.ad, $"#{o.id} {o.shop.Name}");
                 var bilgi = new List<string> { GameData.KmText(o.distance), GameData.KgText(o.weightKg), o.CustomerTypeName };
                 if (o.IsHeavy) bilgi.Add("ağır: araba");

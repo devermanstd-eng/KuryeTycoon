@@ -39,9 +39,10 @@ namespace KuryeTycoon
         void UiUstKur()
         {
             ustKok = U.El(katHud, "ust");
-            ustLogo = U.El(ustKok, "logo");
+            var marka = U.Gecirgen(ustKok, "marka");   // logo + şirket adı tek kapsülde (kâğıt tema)
+            ustLogo = U.El(marka, "logo");
             ustLogoHarf = U.Kalin(ustLogo, "", "logo-harf");
-            ustAd = U.Kalin(ustKok, "", "sirket-adi");
+            ustAd = U.Kalin(marka, "", "sirket-adi");
 
             var sol = U.Gecirgen(ustKok, "ust-gostergeler");
             gKasa = GostergeEkle(sol, Icons.Kind.Wallet, KasaRengi, () =>
@@ -114,8 +115,8 @@ namespace KuryeTycoon
         {
             U.Metin(g.deger, deger);
             U.Metin(g.alt, alt);
-            U.Renk(g.deger, degerRengi ?? UITheme.Text);
-            U.Renk(g.alt, altRengi ?? U.Soluk);
+            U.Renk(g.deger, U.Okunur(degerRengi ?? U.Murekkep));   // kâğıt üstünde okunur
+            U.Renk(g.alt, U.Okunur(altRengi ?? U.Soluk));
             U.SimgeAyarla(g.simge, simge ?? (Icons.Kind)g.simge.userData, simgeRengi);
             U.Zemin(g.simgeKutu, U.A(simgeRengi, 0.18f));
         }
@@ -155,13 +156,13 @@ namespace KuryeTycoon
 
             // Hız düğmeleri her karede (tıklama hemen görünsün)
             bool paused = clock.Paused;
-            if (paused) U.Zemin(ustOynat, UITheme.Warn); else ZeminSil(ustOynat);
-            U.SimgeAyarla(ustOynatSimge, paused ? Icons.Kind.Play : Icons.Kind.Pause, paused ? new Color(0.12f, 0.08f, 0.02f) : UITheme.Text);
+            if (paused) U.Zemin(ustOynat, U.Uyari); else ZeminSil(ustOynat);
+            U.SimgeAyarla(ustOynatSimge, paused ? Icons.Kind.Play : Icons.Kind.Pause, paused ? new Color(0.12f, 0.08f, 0.02f) : U.Murekkep);
             foreach (var (l, sp) in hizDilimleri)
             {
                 bool on = IsSpeed(clock, sp);
                 if (on) U.Zemin(l, prim); else ZeminSil(l);
-                U.Renk(l, on ? sec : (paused ? U.A(UITheme.TextDim, 0.6f) : UITheme.TextDim));
+                U.Renk(l, on ? sec : (paused ? U.A(U.Soluk, 0.6f) : U.Soluk));
             }
             bool ek = !paused && clock.SpeedMultiplier > 32.5f;
             U.Goster(hizEk, ek);
@@ -185,7 +186,7 @@ namespace KuryeTycoon
             U.Metin(ustAd, CompanyProfile.Name);
 
             bool eksi = eco.FreeCash < 0;
-            GostergeAyarla(gKasa, Ft(eco.money), "harcanabilir " + Ft(eco.FreeCash), KasaRengi, null, eksi ? UITheme.Bad : (Color?)null);
+            GostergeAyarla(gKasa, Ft(eco.money), "harcanabilir " + Ft(eco.FreeCash), KasaRengi, null, eksi ? U.Kotu : (Color?)null);
             float fark = ItibarFarki();
             GostergeAyarla(gItibar, $"{CompanyProfile.Reputation:0.0}" + (fark > 0.01f ? " ▲" : fark < -0.01f ? " ▼" : ""), "itibar", ItibarRengi,
                            fark < -0.01f ? new Color(1f, 0.6f, 0.5f) : (Color?)null);
@@ -220,7 +221,7 @@ namespace KuryeTycoon
             foreach (var r in rv.Rakipler) if (!r.satinAlindi && (enb == null || rv.PayiOf(r) > rv.PayiOf(enb))) enb = r;
             float enbPay = enb != null ? rv.PayiOf(enb) : 0f;
             // En büyük rakibi açık ara geçtiysen yeşil, başa başsa turuncu, gerideysen kırmızı
-            Color renk = pay >= enbPay * 1.15f ? KasaRengi : pay >= enbPay * 0.8f ? Turuncu : UITheme.Bad;
+            Color renk = pay >= enbPay * 1.15f ? KasaRengi : pay >= enbPay * 0.8f ? Turuncu : U.Kotu;
             GostergeAyarla(gPazar, $"%{pay * 100f:0}" + (tr > 0.005f ? " ▲" : tr < -0.005f ? " ▼" : ""),
                            enb != null ? $"pazar payı · {enb.kisa} %{enbPay * 100f:0}" : "pazar payı", renk);
         }
@@ -313,9 +314,9 @@ namespace KuryeTycoon
 
             // Acil olanlar üstte
             if (CrisisManager.OrdersBlocked)
-                DurumEkle("cokme", Icons.Kind.Warning, UITheme.Bad, "Uygulama çöktü", $"{CrisisManager.OutageMinutesLeft:0} dk daha sipariş gelmiyor");
+                DurumEkle("cokme", Icons.Kind.Warning, U.Kotu, "Uygulama çöktü", $"{CrisisManager.OutageMinutesLeft:0} dk daha sipariş gelmiyor");
             if (eco.taxDebt > 0)
-                DurumEkle("vergi", Icons.Kind.Warning, UITheme.Bad, $"Vergi borcu {Ft(eco.taxDebt)}", "Her gün %2 büyür · tıkla: Finans",
+                DurumEkle("vergi", Icons.Kind.Warning, U.Kotu, $"Vergi borcu {Ft(eco.taxDebt)}", "Her gün %2 büyür · tıkla: Finans",
                           () => { financePage = 0; SekmeyeGit(Tab.Finans); });
             if (CrisisManager.I != null)
             {
@@ -327,7 +328,7 @@ namespace KuryeTycoon
             if (rv != null && rv.priceWarDays > 0 && rv.warDistrict > 0)
             {
                 var wo = rv.RakipAt(rv.warOwner);
-                DurumEkle("savas", Icons.Kind.Flag, UITheme.Bad, $"Fiyat savaşı: {(wo != null ? wo.ad : "rakip")}",
+                DurumEkle("savas", Icons.Kind.Flag, U.Kotu, $"Fiyat savaşı: {(wo != null ? wo.ad : "rakip")}",
                           $"{CityMap.DistrictNames[rv.warDistrict]} · {rv.priceWarDays} gün · oradaki siparişler −%{(1f - rv.warFactor) * 100f:0}",
                           () => SekmeyeGit(Tab.Dukkanlar));
             }
@@ -340,7 +341,7 @@ namespace KuryeTycoon
             {
                 var n = loan.NextDue;
                 int gun = loan.DaysUntil(n);
-                Color r = gun <= 3 && eco.money < n.Remaining ? UITheme.Bad : gun <= 7 ? Turuncu : BilgiRengi;
+                Color r = gun <= 3 && eco.money < n.Remaining ? U.Kotu : gun <= 7 ? Turuncu : BilgiRengi;
                 DurumEkle("kredi", Icons.Kind.Wallet, r, $"Taksit {Ft(n.Remaining)} · {n.DueText}",
                           $"{(gun <= 0 ? "bugün" : gun + " gün kaldı")} · kalan kredi {Ft(loan.Remaining)} · not {loan.Trust}/{loan.maxTrust}",
                           () => { financePage = 0; SekmeyeGit(Tab.Finans); });
@@ -397,7 +398,7 @@ namespace KuryeTycoon
             if (om != null && (om.IsBusy || om.yogunKacanToday >= 15))
             {
                 int toplam = om.yogunKacanToday + EconomyManager.I.Today.deliveries;
-                DurumEkle("yogun", Icons.Kind.Warning, om.IsBusy ? UITheme.Bad : Turuncu, "Yoğunluk: kuryeler yetişmiyor",
+                DurumEkle("yogun", Icons.Kind.Warning, om.IsBusy ? U.Kotu : Turuncu, "Yoğunluk: kuryeler yetişmiyor",
                           $"Bugün {om.yogunKacanToday} müşteri vazgeçti (%{(toplam > 0 ? om.yogunKacanToday * 100f / toplam : 0f):0}) · itibar düşüyor · " +
                           "teslimat alanı daraldı · çare: kurye, boost ya da biraz daha yüksek ücret",
                           () => SekmeyeGit(Tab.Siparisler));
@@ -438,7 +439,7 @@ namespace KuryeTycoon
         {
             int sev = rv.TehditSeviyesi;
             if (sev >= 1)
-                DurumEkle("tehdit", Icons.Kind.Flag, sev >= 2 ? UITheme.Bad : Turuncu,
+                DurumEkle("tehdit", Icons.Kind.Flag, sev >= 2 ? U.Kotu : Turuncu,
                           sev >= 2 ? "Rakipler saldırıda" : "Rakipler tetikte",
                           $"Pazar payın %{rv.MarketShare * 100f:0} (eşik %{(sev >= 2 ? rv.TehditEsigi2 : rv.TehditEsigi1) * 100f:0}) · " +
                           (sev >= 2 ? "sık hamle, yatırım, kurye ve münhasır dükkan teklifleri" : "hamleler sıklaşır, yatırım ararlar"),
@@ -468,7 +469,7 @@ namespace KuryeTycoon
                                   $"{ne} · {adlar} · morali yüksek olan kalır", () => SekmeyeGit(Tab.Kuryeler));
                         break;
                     case TehditTur.FiyatSavasi:
-                        DurumEkle("th" + i, Icons.Kind.Flag, UITheme.Bad, $"{r.kisa}: fiyat savaşı hazırlığı",
+                        DurumEkle("th" + i, Icons.Kind.Flag, U.Kotu, $"{r.kisa}: fiyat savaşı hazırlığı",
                                   $"{CityMap.DistrictNames[Mathf.Clamp(t.bolge, 0, CityMap.DistrictNames.Length - 1)]} · {ne} başlıyor",
                                   () => SekmeyeGit(Tab.Dukkanlar));
                         break;

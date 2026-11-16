@@ -63,26 +63,26 @@ namespace KuryeTycoon
                 y.Kutu($"Net kâr · son {satirlar.Count} {birim}", Ft(net), $"günde {Ft(gunler > 0 ? net / gunler : 0)}", MoneyColor(net),
                        $"Gelir {Ft(gelir)} · gider {Ft(gider)} ({gunler} gün)");
                 y.Kutu("Teslimat", teslimat.ToString(), $"günde ~{(gunler > 0 ? teslimat / (float)gunler : 0f):0.#}");
-                y.Kutu("İptal + kaçan", $"%{kayipOrani * 100f:0.#}", $"{kayip} sipariş", kayipOrani > 0.1f ? UITheme.Bad : kayipOrani > 0.05f ? UITheme.Warn : (Color?)null);
+                y.Kutu("İptal + kaçan", $"%{kayipOrani * 100f:0.#}", $"{kayip} sipariş", kayipOrani > 0.1f ? U.Kotu : kayipOrani > 0.05f ? U.Uyari : (Color?)null);
                 if (enIyi != null) y.Kutu($"En iyi {birim}", Ft(enIyi.net), enIyi.label, MoneyColor(enIyi.net));
                 y.KutularBitir();
 
                 var etiket = satirlar.ConvertAll(r => r.label);
                 System.Func<float, string> para = v => Ft((long)v);
                 System.Func<float, string> sayi = v => v.ToString("0");
-                Cubuk("net", "Net kâr", satirlar.ConvertAll(r => (float)r.net), etiket, UITheme.Good, para);
-                Cubuk("gelir", "Gelir", satirlar.ConvertAll(r => (float)r.income), etiket, new Color(0.45f, 0.75f, 1f), para);
-                Cubuk("gider", "Gider", satirlar.ConvertAll(r => (float)r.expenses), etiket, new Color(1f, 0.6f, 0.35f), para);
-                Cubuk("teslimat", "Teslimat", satirlar.ConvertAll(r => (float)r.deliveries), etiket, new Color(0.4f, 0.75f, 1f), sayi);
-                Cubuk("kayip", "İptal + kaçan sipariş", satirlar.ConvertAll(r => (float)(r.cancelled + r.lost)), etiket, UITheme.Bad, sayi);
-                Cizgi("itibar", "İtibar (dönem sonu)", satirlar.ConvertAll(r => r.reputation), etiket, new Color(1f, 0.8f, 0.3f), v => v.ToString("0.00"), 1f, 5f);
-                Cizgi("kurye", "Kurye sayısı", satirlar.ConvertAll(r => (float)r.couriers), etiket, new Color(0.7f, 0.6f, 1f), sayi);
-                Cizgi("kasa", "Kasa (dönem sonu)", satirlar.ConvertAll(r => (float)r.cash), etiket, new Color(0.35f, 0.85f, 0.75f), para);
+                Cubuk("net", "Net kâr", satirlar.ConvertAll(r => (float)r.net), etiket, U.Iyi, para);
+                Cubuk("gelir", "Gelir", satirlar.ConvertAll(r => (float)r.income), etiket, new Color(0.29f, 0.53f, 0.74f), para);   // kâğıt tema: suluboya tonları
+                Cubuk("gider", "Gider", satirlar.ConvertAll(r => (float)r.expenses), etiket, new Color(0.80f, 0.42f, 0.24f), para);
+                Cubuk("teslimat", "Teslimat", satirlar.ConvertAll(r => (float)r.deliveries), etiket, new Color(0.29f, 0.53f, 0.74f), sayi);
+                Cubuk("kayip", "İptal + kaçan sipariş", satirlar.ConvertAll(r => (float)(r.cancelled + r.lost)), etiket, U.Kotu, sayi);
+                Cizgi("itibar", "İtibar (dönem sonu)", satirlar.ConvertAll(r => r.reputation), etiket, new Color(0.80f, 0.60f, 0.12f), v => v.ToString("0.00"), 1f, 5f);
+                Cizgi("kurye", "Kurye sayısı", satirlar.ConvertAll(r => (float)r.couriers), etiket, new Color(0.50f, 0.40f, 0.75f), sayi);
+                Cizgi("kasa", "Kasa (dönem sonu)", satirlar.ConvertAll(r => (float)r.cash), etiket, new Color(0.24f, 0.58f, 0.50f), para);
                 y.Bitir();
             }
 
             void Cubuk(string anahtar, string ad, List<float> degerler, List<string> etiketler, Color renk, System.Func<float, string> bicim) =>
-                y.Ozel(anahtar, () => new GrafikKutu()).Ayarla(ad, degerler, etiketler, true, renk, UITheme.Bad, bicim);
+                y.Ozel(anahtar, () => new GrafikKutu()).Ayarla(ad, degerler, etiketler, true, renk, U.Kotu, bicim);
 
             void Cizgi(string anahtar, string ad, List<float> degerler, List<string> etiketler, Color renk, System.Func<float, string> bicim,
                        float min = 0f, float max = -1f) =>

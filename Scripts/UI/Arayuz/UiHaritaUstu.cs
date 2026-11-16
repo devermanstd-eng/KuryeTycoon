@@ -155,7 +155,7 @@ namespace KuryeTycoon
         {
             olayKok = U.El(katHud, "olaylar");
             var bas = U.Tikla(U.El(olayKok, "olaylar-baslik"), () => OlaylarKucuk = !OlaylarKucuk);
-            olayBaslikSimge = U.Simge(bas, Icons.Kind.Warning, UITheme.Warn, 14f);
+            olayBaslikSimge = U.Simge(bas, Icons.Kind.Warning, U.Uyari, 14f);
             olayBaslik = U.Kalin(bas, "", "kucuk");
             olayBaslik.style.marginLeft = 8;
             U.Gecirgen(bas, "bosluk");
@@ -200,7 +200,7 @@ namespace KuryeTycoon
             bool kucuk = OlaylarKucuk;
             int nUyari = uyarilar.Count;
             U.Metin(olayOk, kucuk ? "▲" : "▼");
-            U.SimgeAyarla(olayBaslikSimge, nUyari > 0 ? Icons.Kind.Warning : Icons.Kind.Clock, nUyari > 0 ? UITheme.Warn : UITheme.TextDim);
+            U.SimgeAyarla(olayBaslikSimge, nUyari > 0 ? Icons.Kind.Warning : Icons.Kind.Clock, nUyari > 0 ? U.Uyari : U.Soluk);
             U.Metin(olayBaslik, nUyari > 0 ? $"Dikkat ({nUyari})" : "Son olaylar");
 
             U.Goster(olayDikkat, !kucuk && nUyari > 0);
@@ -224,8 +224,8 @@ namespace KuryeTycoon
                 bool vr = i < feed.Count;
                 U.Goster(kok, vr);
                 if (!vr) continue;
-                U.Zemin(nokta, i == 0 ? UITheme.Accent : U.A(UITheme.TextDim, 0.5f));
-                U.Renk(yazi, i == 0 ? UITheme.Text : UITheme.TextDim);
+                U.Zemin(nokta, i == 0 ? UITheme.Accent : U.A(U.Soluk, 0.5f));
+                U.Renk(yazi, i == 0 ? U.Murekkep : U.Soluk);
                 U.Metin(yazi, feed[i]);
             }
         }
@@ -280,7 +280,7 @@ namespace KuryeTycoon
             if (senaryo)
             {
                 U.Metin(hedefSenaryo, Senaryo.IlerlemeYazisi);
-                U.Renk(hedefSenaryo, Senaryo.Durum == 1 ? UITheme.Good : Senaryo.Durum == 2 ? UITheme.Bad : ItibarRengi);
+                U.Renk(hedefSenaryo, Senaryo.Durum == 1 ? U.Iyi : Senaryo.Durum == 2 ? U.Kotu : U.Okunur(ItibarRengi));
             }
             U.Metin(hedefKalan, $"{gm.DaysLeft} gün kaldı");
             var hedefler = TrackerGoals();
@@ -291,14 +291,14 @@ namespace KuryeTycoon
                 U.Goster(kok, vr);
                 if (!vr) continue;
                 var g = hedefler[i];
-                if (g.done) U.Zemin(daire, UITheme.Good); else ZeminSil(daire);
-                var kenar = g.done ? UITheme.Good : U.A(Color.white, 0.45f);
+                if (g.done) U.Zemin(daire, U.Iyi); else ZeminSil(daire);
+                var kenar = g.done ? U.Iyi : U.A(U.Cerceve, 0.6f);
                 daire.style.borderTopColor = daire.style.borderBottomColor = daire.style.borderLeftColor = daire.style.borderRightColor = kenar;
                 U.Metin(ad, g.Title);
-                U.Renk(ad, g.done ? UITheme.TextDim : UITheme.Text);
+                U.Renk(ad, g.done ? U.Soluk : U.Murekkep);
                 U.Metin(sayi, g.done ? "✓" : g.ProgressText);
-                U.Renk(sayi, g.done ? UITheme.Good : UITheme.TextDim);
-                cb.Ayarla(g.Progress01, g.done ? UITheme.Good : UITheme.Accent);
+                U.Renk(sayi, g.done ? U.Iyi : U.Soluk);
+                cb.Ayarla(g.Progress01, g.done ? U.Iyi : UITheme.Accent);
             }
             int ek = TrackerExtra;
             U.Goster(hedefEk, ek > 0);

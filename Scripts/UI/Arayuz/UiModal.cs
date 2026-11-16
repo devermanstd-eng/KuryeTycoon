@@ -101,12 +101,12 @@ namespace KuryeTycoon
                 for (int i = 0; i < ev.ozet.Count; i++)
                 {
                     var o = ev.ozet[i];
-                    Color ton = o.ton == 1 ? UITheme.Good : o.ton == 2 ? UITheme.Bad : o.ton == 3 ? UITheme.Warn : UITheme.Text;
+                    Color ton = o.ton == 1 ? U.Iyi : o.ton == 2 ? U.Kotu : o.ton == 3 ? U.Uyari : U.Murekkep;
                     var kutu = U.Gecirgen(satir, "ozet-kutu");
                     if (i == 0) kutu.AddToClassList("ilk");
-                    U.Zemin(kutu, o.ton == 0 ? new Color(1f, 1f, 1f, 0.05f) : U.A(ton, 0.13f));
+                    U.Zemin(kutu, o.ton == 0 ? U.Ton(0.05f) : U.A(ton, 0.13f));
                     U.Kalin(kutu, (o.baslik ?? "").ToUpperInvariant(), "ozet-baslik");
-                    U.Renk(U.Kalin(kutu, o.deger, "ozet-deger"), ton);
+                    U.Renk(U.Kalin(kutu, o.deger, "ozet-deger"), U.Okunur(ton));
                 }
             }
 

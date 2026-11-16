@@ -104,7 +104,9 @@ namespace KuryeTycoon
                 target = (DockW + 10f + panelWidth + 10f) * uiScale / Screen.width;
             target = Mathf.Clamp(target, 0f, 0.6f);   // çok dar ekranda harita fazla küçülmesin
             mapLeft01 = mapLeft01 < 0f ? target : Mathf.MoveTowards(mapLeft01, target, Time.unscaledDeltaTime * 2.2f);
-            float top = Mathf.Clamp01(TopBar * uiScale / Screen.height);
+            // Kâğıt tema (16.11 akşam): harita üst çubuğun altına da çizilir; üst çubuk ayrı ayrı yüzen kapsüller, araları harita.
+            // Eski arayüzde (F8) üst çubuk yine bütün şeridi kaplar.
+            float top = UiAktif ? 0f : Mathf.Clamp01(TopBar * uiScale / Screen.height);
             MapCamera.I.SetViewport(new Rect(mapLeft01, 0f, 1f - mapLeft01, 1f - top));
         }
 

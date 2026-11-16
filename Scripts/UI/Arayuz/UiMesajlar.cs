@@ -54,11 +54,11 @@ namespace KuryeTycoon
                         if (m.kind == PhoneKind.Yorum && m.stars >= 1 && m.stars <= 5) { dagilim[m.stars - 1]++; listede++; }
                     float ort = cmsg.AverageStars;
                     y.KutularBasla();
-                    y.Kutu("Ortalama", $"{ort:0.0}★", $"{cmsg.reviewsTotal} yorum", ort >= 4.5f ? UITheme.Good : ort >= 3.8f ? (Color?)null : UITheme.Warn);
-                    y.Kutu("5★ ve 4★", listede > 0 ? $"%{(dagilim[4] + dagilim[3]) * 100f / listede:0}" : "–", "son yorumlarda", null, null, UITheme.Good);
+                    y.Kutu("Ortalama", $"{ort:0.0}★", $"{cmsg.reviewsTotal} yorum", ort >= 4.5f ? U.Iyi : ort >= 3.8f ? (Color?)null : U.Uyari);
+                    y.Kutu("5★ ve 4★", listede > 0 ? $"%{(dagilim[4] + dagilim[3]) * 100f / listede:0}" : "–", "son yorumlarda", null, null, U.Iyi);
                     y.Kutu("1★ ve 2★", listede > 0 ? $"%{(dagilim[0] + dagilim[1]) * 100f / listede:0}" : "–", "son yorumlarda",
-                           dagilim[0] + dagilim[1] > 0 ? UITheme.Bad : (Color?)null);
-                    if (cmsg.PendingCount > 0) y.Kutu("Cevap bekleyen", cmsg.PendingCount.ToString(), "kurye kararı", UITheme.Warn);
+                           dagilim[0] + dagilim[1] > 0 ? U.Kotu : (Color?)null);
+                    if (cmsg.PendingCount > 0) y.Kutu("Cevap bekleyen", cmsg.PendingCount.ToString(), "kurye kararı", U.Uyari);
                     y.KutularBitir();
                 }
 

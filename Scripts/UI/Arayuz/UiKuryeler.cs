@@ -83,11 +83,11 @@ namespace KuryeTycoon
                 var ilk = U.Gecirgen(ana, "satir");
                 k.ad = U.Kalin(ilk, "", "buyuk", "tek-satir");
                 k.ad.style.flexShrink = 1;
-                k.sorun = U.Simge(ilk, Icons.Kind.Warning, UITheme.Warn, 15f);
+                k.sorun = U.Simge(ilk, Icons.Kind.Warning, U.Uyari, 15f);
                 k.sorun.style.marginLeft = 6;
                 ui.Ipucu(k.sorun, () => string.Join("\n", Sorunlar(k.c)));
                 U.Gecirgen(ilk, "bosluk");
-                k.aracSimge = U.Simge(ilk, Icons.Kind.Bike, UITheme.TextDim, 14f);
+                k.aracSimge = U.Simge(ilk, Icons.Kind.Bike, U.Soluk, 14f);
                 k.aracAd = U.Yazi(ilk, "", "minik", "soluk");
                 k.aracAd.style.marginLeft = 4;
 
@@ -102,13 +102,13 @@ namespace KuryeTycoon
                 foreach (int t in c.ozellikler)
                 {
                     int tt = t;
-                    var cip = U.Cip(k.ozellikSatir, KuryeOzellik.Ad(t), KuryeOzellik.OlumluMu(t) ? UITheme.Good : UITheme.Warn);
+                    var cip = U.Cip(k.ozellikSatir, KuryeOzellik.Ad(t), KuryeOzellik.OlumluMu(t) ? U.Iyi : U.Uyari);
                     ui.Ipucu(cip, () => $"{KuryeOzellik.Ad(tt)}: {KuryeOzellik.Aciklama(tt)}");
                 }
 
                 var m = U.Gecirgen(ana, "olcu");
                 U.Yazi(m, "Moral", "olcu-ad");
-                k.moral = U.CubukEkle(m, 0f, UITheme.Good);
+                k.moral = U.CubukEkle(m, 0f, U.Iyi);
                 k.moralDeger = U.Yazi(m, "", "olcu-deger");
                 var y = U.Gecirgen(ana, "olcu");
                 U.Yazi(y, "Yorgunluk", "olcu-ad");
@@ -146,7 +146,7 @@ namespace KuryeTycoon
                 foreach (KuryeEgitim.Tur t in System.Enum.GetValues(typeof(KuryeEgitim.Tur)))
                 {
                     var tt = t;
-                    var durum = U.Cip(egitim, "✓ " + KuryeEgitim.Adlar[(int)t], UITheme.Good);
+                    var durum = U.Cip(egitim, "✓ " + KuryeEgitim.Adlar[(int)t], U.Iyi);
                     ui.Ipucu(durum, () => KuryeEgitim.Aciklamalar[(int)tt]);
                     var b = U.Dugme(egitim, "", () => KuryeEgitim.Ver(k.c, tt), "kucuk-dg", "ilk");
                     b.style.marginRight = 4;
@@ -244,8 +244,8 @@ namespace KuryeTycoon
                 U.Metin(k.ad, c.courierName);
                 var sorunlar = Sorunlar(c);
                 U.Goster(k.sorun, sorunlar.Count > 0);
-                U.SimgeAyarla(k.sorun, Icons.Kind.Warning, c.cashBlocked || c.morale < Denge.BirakmaMoralSiniri ? UITheme.Bad : UITheme.Warn);
-                U.SimgeAyarla(k.aracSimge, Icons.Of(c.vehicle), UITheme.TextDim);
+                U.SimgeAyarla(k.sorun, Icons.Kind.Warning, c.cashBlocked || c.morale < Denge.BirakmaMoralSiniri ? U.Kotu : U.Uyari);
+                U.SimgeAyarla(k.aracSimge, Icons.Of(c.vehicle), U.Soluk);
                 U.Metin(k.aracAd, c.V.name);
                 U.Metin(k.durum, ShortState(c));
                 U.CipRengi(k.durum, CourierStateColor(c));
@@ -272,12 +272,12 @@ namespace KuryeTycoon
                 var ks = KayitSistemi.I;
                 bool askida = ks != null && ks.Askida(c);
                 U.Metin(k.puan, c.puanAdet >= 5 ? $"{c.puanOrt:0.0}★" : "—");
-                U.Renk(k.puan, c.puanAdet < 5 ? UITheme.Text : c.puanOrt >= 4.5f ? UITheme.Good : c.puanOrt >= 3.8f ? UITheme.Text : UITheme.Warn);
+                U.Renk(k.puan, c.puanAdet < 5 ? U.Murekkep : c.puanOrt >= 4.5f ? U.Iyi : c.puanOrt >= 3.8f ? U.Murekkep : U.Uyari);
                 string puanAlt = askida ? $"askıda · {c.askiBitis - GameClock.I.Day} gün"
                                : c.aktifGun > 0 && !c.ilkHaftaTamam ? "ilk haftası"
                                : c.puanAdet >= 5 ? "son ~30 teslimat" : "az teslimat";
                 U.Metin(k.puanAlt, puanAlt);
-                U.Renk(k.puanAlt, askida ? UITheme.Bad : U.Soluk);
+                U.Renk(k.puanAlt, askida ? U.Kotu : U.Soluk);
                 k.puanIpucu = "Müşterilerin bu kuryeye verdiği puanların ortalaması (son ~30 teslimat)." +
                               (c.askiSayisi > 0 && GameClock.I.Day - c.sonAskiGun <= 60 ? $" Son 60 günde {c.askiSayisi} kez askıya alındı." : "");
 
@@ -295,7 +295,7 @@ namespace KuryeTycoon
                 int fark = c.EffectiveCapacity - c.V.capacity;
                 U.Metin(k.kapasite, $"{c.EffectiveCapacity} paket");
                 U.Metin(k.kapasiteAlt, fark == 0 ? $"araç {c.V.capacity}" : $"araç {c.V.capacity} ({(fark > 0 ? "+" : "−")}{Mathf.Abs(fark)})");
-                U.Renk(k.kapasiteAlt, fark > 0 ? UITheme.Good : fark < 0 ? UITheme.Warn : U.Soluk);
+                U.Renk(k.kapasiteAlt, fark > 0 ? U.Iyi : fark < 0 ? U.Uyari : U.Soluk);
                 k.kapasiteIpucu = $"Aynı anda {c.EffectiveCapacity} paket (araç {c.V.capacity}{capNote}). Taşır: {GameData.CarryText(c.V)}." +
                                   $"\nTeklif seçiciliği: {c.PickinessText}";
 
@@ -308,7 +308,7 @@ namespace KuryeTycoon
                 k.meslekIpucu = c.occupation == Occupation.Ogrenci ? $"Ders programı: {Courier.ScheduleText(c.scheduleSeed, GameClock.I)}" : null;
                 U.Metin(k.sigorta, c.insured ? $"var · {(c.insuredViaCompany ? EconomyManager.I.Plan.name : "dışarıdan")} · {Ft(c.CurrentPremium)}/hafta"
                                              : "yok (kazada masrafını kendi öder, daha uzun süre çalışamaz)");
-                U.Renk(k.sigorta, c.insured ? UITheme.Text : UITheme.Warn);
+                U.Renk(k.sigorta, c.insured ? U.Murekkep : U.Uyari);
                 U.Metin(k.ekipman, $"{EquipmentText(c)} · çanta {c.bagUses}/{Courier.BagWornUses}" + (c.BagWorn ? " (yıprandı)" : ""));
                 var camp = CampaignManager.I;
                 var hedefler = new List<string>();
@@ -373,12 +373,12 @@ namespace KuryeTycoon
                 {
                     ozetImza = imza;
                     ozet.Clear();
-                    U.Cip(ozet, $"{cm.Couriers.Count}/{up.CourierCap} hesap", up.CourierCapFull ? UITheme.Warn : U.Notr);
-                    U.Cip(ozet, $"{cm.OnlineCount} çevrimiçi", cm.OnlineCount > 0 ? UITheme.Good : U.Notr);
+                    U.Cip(ozet, $"{cm.Couriers.Count}/{up.CourierCap} hesap", up.CourierCapFull ? U.Uyari : U.Notr);
+                    U.Cip(ozet, $"{cm.OnlineCount} çevrimiçi", cm.OnlineCount > 0 ? U.Iyi : U.Notr);
                     if (cm.Couriers.Count > 0)
-                        U.Cip(ozet, $"ort. moral %{om * 100f:0}", om >= 0.6f ? UITheme.Good : om >= 0.4f ? UITheme.Warn : UITheme.Bad);
-                    if (yorgun > 0) U.Cip(ozet, $"{yorgun} kurye yorgun", UITheme.Warn);
-                    if (birakacak > 0) U.Cip(ozet, $"{birakacak} kurye bırakabilir", UITheme.Bad);
+                        U.Cip(ozet, $"ort. moral %{om * 100f:0}", om >= 0.6f ? U.Iyi : om >= 0.4f ? U.Uyari : U.Kotu);
+                    if (yorgun > 0) U.Cip(ozet, $"{yorgun} kurye yorgun", U.Uyari);
+                    if (birakacak > 0) U.Cip(ozet, $"{birakacak} kurye bırakabilir", U.Kotu);
                 }
 
                 // Filtre adlarında sayılar
