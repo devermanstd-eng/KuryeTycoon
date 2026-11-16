@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-15 a4 (itibar: destek artıları tek müşteri puanı, olay etkisi +0,4'e kilitlenmiyor; bot darboğazda taksiti 4 gün kala ayırır; test: itibar ayrıştırması)";
+        public const string CodeVersion = "2026-11-15 u1 (arayüz: kurye kartı, Dükkanlar ve Finans sade; Destek, Kampanyalar, Market, Yorumlar, Grafik ve Ayarlar UI Toolkit'te)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 

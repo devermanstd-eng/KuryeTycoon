@@ -101,19 +101,5 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>Ayarlar > Arayüz: sesler ve uçan yazılar.</summary>
-        void DrawFeedbackSettings()
-        {
-            bool pops = GUILayout.Toggle(ShowPopsSetting, " Haritada teslimat kârını göster (uçan \"+350 Ft\" yazıları)", toggle);
-            if (pops != ShowPopsSetting) ShowPopsSetting = pops;
-            bool snd = GUILayout.Toggle(GameSounds.Enabled, " Sesler (teslimat, bildirim, kilometre taşı)", toggle);
-            if (snd != GameSounds.Enabled) GameSounds.Enabled = snd;
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"Ses seviyesi: %{GameSounds.Volume * 100f:0}", small, GUILayout.Width(130));
-            float v = GUILayout.HorizontalSlider(GameSounds.Volume, 0f, 1f, GUILayout.Width(180));
-            if (Mathf.Abs(v - GameSounds.Volume) > 0.001f) GameSounds.Volume = v;
-            if (GUILayout.Button("Dene", smallButton, GUILayout.Width(60))) GameSounds.Play(Sfx.Iyi);
-            GUILayout.EndHorizontal();
-        }
     }
 }

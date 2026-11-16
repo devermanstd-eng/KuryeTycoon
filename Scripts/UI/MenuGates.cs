@@ -142,64 +142,6 @@ namespace KuryeTycoon
 
         static float UiSizeFactor => UiSizeFactors[UiSizeSetting];
 
-        // ---------------------------------------------------------------- Ayarlar > Harita > Grafik
-
-        void DrawGraphicsSettings()
-        {
-            Section("Grafik", "Oyun kasıyorsa kaliteyi düşür. Otomatik: oyun kare hızına bakıp kendisi ayarlar. " +
-                              "Yüksek: yumuşak gölgeler, ortam gölgesi, ışıma. Düşük: sert gölgeler, daha düşük çözünürlük, gece daha az lamba ışığı.");
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Kalite", body, GUILayout.Width(70));
-            if (SelectButton(GrafikKalitesi.Ayar == GrafikKalitesi.Otomatik, "Otomatik", smallButton))
-                deferred = () => GrafikKalitesi.Ayar = GrafikKalitesi.Otomatik;
-            for (int i = 0; i < GrafikKalitesi.Adlar.Length; i++)
-            {
-                int k = i;
-                if (SelectButton(GrafikKalitesi.Ayar == i, GrafikKalitesi.Adlar[i], smallButton)) deferred = () => GrafikKalitesi.Ayar = k;
-            }
-            GUILayout.EndHorizontal();
-            string fps = GrafikOlcer.I != null && GrafikOlcer.I.Fps > 0f ? $" · şu an ~{GrafikOlcer.I.Fps:0} FPS" : "";
-            string oto = GrafikKalitesi.Ayar == GrafikKalitesi.Otomatik ? $"Otomatik → {GrafikKalitesi.Adlar[GrafikKalitesi.Seviye]}" : GrafikKalitesi.Adlar[GrafikKalitesi.Seviye];
-            GUILayout.Label(Gorsel3D.Active ? $"Geçerli: {oto}{fps}" : $"3D ışık kapalı (eski düz görünüm){fps}", small);
-            bool isik = GUILayout.Toggle(Gorsel3D.Enabled, " Gerçek ışık ve gölge (3D). Kapatınca eski düz görünüm; oyunu yeniden başlatınca uygulanır", toggle);
-            if (isik != Gorsel3D.Enabled) Gorsel3D.Enabled = isik;
-            GUILayout.Space(8);
-        }
-
-        // ---------------------------------------------------------------- Ayarlar > Arayüz
-
-        void DrawInterfaceSettings()
-        {
-            Section("Arayüz",
-                $"Kilitli menüler: Gelişim {Guide.GelisimDay}. günde, Kampanya {Guide.KampanyaDay}., Grafik {Guide.GrafikDay}., Destek {Guide.DestekDay}., " +
-                $"Market {Guide.MarketDay}. günde (ya da şartı gelince), Yorumlar ilk müşteri yorumuyla açılır. \"Bütün menüleri baştan aç\" hepsini hemen açar.");
-            GUILayout.BeginHorizontal();
-            GUILayout.Label("Arayüz boyutu", body, GUILayout.Width(130));
-            for (int i = 0; i < UiSizeNames.Length; i++)
-            {
-                int k = i;
-                if (SelectButton(UiSizeSetting == i, UiSizeNames[i], smallButton)) deferred = () => UiSizeSetting = k;
-            }
-            GUILayout.EndHorizontal();
-            GUILayout.Space(4);
-            bool push = GUILayout.Toggle(PushMapSetting, " Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", toggle);
-            if (push != PushMapSetting) PushMapSetting = push;
-            DrawFeedbackSettings();
-            bool det = GUILayout.Toggle(ShowAllDetails, " Açıklamaları \"?\" balonu yerine hep açık göster", toggle);
-            if (det != ShowAllDetails) ShowAllDetails = det;
-            bool all = GUILayout.Toggle(Guide.AllMenusSetting, " Bütün menüleri baştan aç (deneyimli oyuncular için)", toggle);
-            if (all != Guide.AllMenusSetting) deferred = () => Guide.AllMenusSetting = all;
-            var g = Guide.I;
-            if (g != null)
-            {
-                string txt = g.TutorialDone ? "Başlangıç rehberini yeniden göster" : "Başlangıç rehberini kapat";
-                if (GUILayout.Button(txt, smallButton, GUILayout.ExpandWidth(false)))
-                    deferred = () => { if (g.TutorialDone) g.RestartTutorial(); else g.FinishTutorial(); };
-            }
-            GUILayout.Label($"Zorluk: {Difficulty.Name(Difficulty.Level)} (yeni oyun kurarken seçilir)", small);
-            GUILayout.Space(4);
-            DrawAnlaticiAyari();   // SenaryoSecimi.cs
-            GUILayout.Space(8);
-        }
+        // Ayarlar penceresi (arayüz boyutu, grafik kalitesi…) UI Toolkit'te: Arayuz/UiAyarlar.cs
     }
 }
