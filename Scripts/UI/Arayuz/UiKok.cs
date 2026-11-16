@@ -128,19 +128,28 @@ namespace KuryeTycoon
                 UiHedefYenile(agir);
                 UiBildirimYenile();
                 UiRehberYenile();
-                UiTelefonYenile(agir);      // kayma ve harita her karede
-                UiBinaKartiYenile(agir);
-                UiBuyukKartYenile(agir);
-                UiModalYenile(agir);
             }
-            catch (Exception ex)
-            {
-                // Arayüzde bir hata oyunu durdurmasın; bir kez yazılır
-                if (!uiHataYazildi) { Debug.LogException(ex); uiHataYazildi = true; }
-            }
+            catch (Exception ex) { UiHata("çubuklar ve pencere", ex); }
+            // Haritaya bağlı kartlar ayrı ayrı: birinde hata olursa o kart kapanır, olay kartı ve Esc menüsü çalışmaya devam eder
+            try { UiTelefonYenile(agir); }   // kayma ve harita her karede
+            catch (Exception ex) { UiHata("kurye telefonu", ex); popupCourier = null; if (telKok != null) U.Goster(telKok, false); }
+            try { UiBinaKartiYenile(agir); }
+            catch (Exception ex) { UiHata("bina kartı", ex); CloseInfo(); if (binaKok != null) U.Goster(binaKok, false); }
+            try { UiBuyukKartYenile(agir); }
+            catch (Exception ex) { UiHata("büyük kurye kartı", ex); CloseBigCard(); if (bkPerde != null) U.Goster(bkPerde, false); }
+            try { UiModalYenile(agir); }
+            catch (Exception ex) { UiHata("olay kartı / menü / onay", ex); }
         }
 
-        bool uiHataYazildi, uiKurulamadi;
+        bool uiKurulamadi;
+        readonly HashSet<string> uiHatalari = new HashSet<string>();
+
+        /// <summary>Arayüzde bir hata oyunu durdurmasın: her yer için bir kez, yeriyle birlikte yazılır (test raporuna düşer).</summary>
+        void UiHata(string yer, Exception ex)
+        {
+            if (!uiHatalari.Add(yer)) return;
+            Debug.LogError($"Arayüz hatası ({yer}): {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+        }
 
         void UiKur()
         {

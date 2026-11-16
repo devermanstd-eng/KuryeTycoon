@@ -143,18 +143,26 @@ namespace KuryeTycoon
             popupCourier = eskiTelefon;
         }
 
+        /// <summary>Telefonun bütün ekranları (ana ekran ve menü dahil).</summary>
         static readonly PhoneScreen[] TestTelefonEkranlari =
-            { PhoneScreen.Home, PhoneScreen.Stats, PhoneScreen.Earn, PhoneScreen.Finance, PhoneScreen.Profile, PhoneScreen.Inbox, PhoneScreen.Support };
+        {
+            PhoneScreen.Home, PhoneScreen.Menu, PhoneScreen.Stats, PhoneScreen.Earn, PhoneScreen.Insights, PhoneScreen.Finance,
+            PhoneScreen.Insurance, PhoneScreen.Profile, PhoneScreen.Inbox, PhoneScreen.Support, PhoneScreen.PrevTask
+        };
 
         /// <summary>
-        /// Test sonunda: ana ekran, açık olan her pencere (uzunsa aşağı kaydırarak birkaç parça; Finans ve Ayarlar'ın her sayfası)
-        /// ve ilk kuryenin telefonu. Açılmamış menüler kilitli listesine yazılır.
+        /// Test sonunda: ana ekran, açık olan her pencere (uzunsa aşağı kaydırarak birkaç parça; Finans ve Ayarlar'ın her sayfası),
+        /// kurye telefonunun bütün ekranları (mümkünse görevdeki bir kuryenin; teslim alma ve teslimat ekranları ayrıca),
+        /// büyük kurye kartı ve bina kartı (dükkan ve müşteri binası). Açılmamış menüler kilitli listesine yazılır.
         /// </summary>
         public IEnumerator TestPencereGoruntuleri(string klasor, List<string> kilitli)
         {
             Directory.CreateDirectory(klasor);
             fotoModu = false;
             popupCourier = null;
+            CloseInfo();        // arayüz turundan açık kalmış olabilir
+            CloseBigCard();
+            turKapat = 0f;
             panelOpen = false;
             int no = 0;
             yield return null;
@@ -198,10 +206,18 @@ namespace KuryeTycoon
             financePage = 0;
             settingsPage = 0;
 
-            // Kurye telefonu (sağdan kayarak açılır, önce yerine otursun)
+            // Kurye telefonu (sağdan kayarak açılır, önce yerine otursun). Mümkünse görevdeki bir kurye: görev ekranı da görünsün.
             if (cm.Couriers.Count > 0)
             {
-                TelefonAc(cm.Couriers[0]);
+                Courier alan = null, getiren = null;
+                foreach (var k in cm.Couriers)
+                {
+                    if (k.CurrentOrder == null) continue;
+                    if (InPickupPhase(k)) { if (alan == null) alan = k; }
+                    else if (getiren == null) getiren = k;
+                }
+                var tel = getiren ?? alan ?? cm.Couriers[0];
+                TelefonAc(tel);
                 yield return new WaitForSecondsRealtime(0.8f);
                 foreach (var ps in TestTelefonEkranlari)
                 {
@@ -209,6 +225,22 @@ namespace KuryeTycoon
                     yield return null;
                     yield return null;   // UI Toolkit düzeni otursun
                     yield return StartCoroutine(TestCek(Path.Combine(klasor, $"telefon_{++no:000}_{ps}.jpg")));
+                }
+                // Teslimat ekranının Ürünler sekmesi ve teslim alma ekranı
+                if (getiren != null)
+                {
+                    TelefonSayfa(PhoneScreen.Home);
+                    phoneTaskTab = 1;
+                    yield return null;
+                    yield return null;
+                    yield return StartCoroutine(TestCek(Path.Combine(klasor, $"telefon_{++no:000}_teslimat_urunler.jpg")));
+                    phoneTaskTab = 0;
+                }
+                if (alan != null && alan != tel)
+                {
+                    TelefonAc(alan);
+                    yield return new WaitForSecondsRealtime(0.4f);
+                    yield return StartCoroutine(TestCek(Path.Combine(klasor, $"telefon_{++no:000}_teslim_alma.jpg")));
                 }
                 phoneScreen = PhoneScreen.Home;
                 popupCourier = null;
@@ -220,7 +252,7 @@ namespace KuryeTycoon
                 CloseBigCard();
             }
 
-            // Bina kartı: sözleşmeli ilk dükkan
+            // Bina kartı: sözleşmeli ilk dükkan ve siparişi olan bir müşteri binası
             Shop dukkan = null;
             if (CityMap.I != null)
                 foreach (var s in CityMap.I.Shops)
@@ -229,9 +261,95 @@ namespace KuryeTycoon
             {
                 DukkanKartiAc(dukkan);
                 yield return new WaitForSecondsRealtime(0.3f);
-                yield return StartCoroutine(TestCek(Path.Combine(klasor, $"pencere_{++no:000}_bina_karti.jpg")));
+                yield return StartCoroutine(TestCek(Path.Combine(klasor, $"pencere_{++no:000}_bina_karti_dukkan.jpg")));
                 CloseInfo();
             }
+            var musteri = MusteriBinasi(0);
+            if (musteri.HasValue)
+            {
+                BinaKartiAc(musteri.Value);
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return StartCoroutine(TestCek(Path.Combine(klasor, $"pencere_{++no:000}_bina_karti_musteri.jpg")));
+                CloseInfo();
+            }
+        }
+
+        /// <summary>Siparişi olan bir müşteri binası (sıra: önce yoldaki siparişler, sonra geçmiş). Rastgele sayı kullanmaz.</summary>
+        static Vector2Int? MusteriBinasi(int sira)
+        {
+            var om = OrderManager.I;
+            if (om == null) return null;
+            int n = om.Active.Count;
+            if (n > 0) return om.Active[sira % n].customerTile;
+            foreach (var o in om.History) return o.customerTile;
+            return null;
+        }
+
+        // ------------------------------------------------------------------ arayüz turu (test oynarken)
+
+        float turSonrakiDakika = -1f, turKapat;
+        int turSira, turTelefon, turBina;
+        readonly HashSet<CourierState> turDurumlar = new HashSet<CourierState>();
+
+        /// <summary>Test özetine: oynarken kurye telefonu ve bina kartı kaç kez, hangi kurye durumlarında açıldı.</summary>
+        public string TestTurOzeti => $"Arayüz turu: telefon {turTelefon} kez ({turDurumlar.Count} farklı kurye durumunda: " +
+                                       $"{string.Join(", ", turDurumlar)}), bina kartı {turBina} kez";
+
+        /// <summary>
+        /// Otomatik test oynarken (her karede çağrılır): oyun saatiyle 3 saatte bir kurye telefonunu ya da bina kartını 1,5 sn açar.
+        /// Telefon önce henüz görülmemiş bir durumdaki kuryeye açılır (dükkana gidiyor, bekliyor, kata çıkıyor, adres sorunu…),
+        /// teslimattaysa Bilgi ve Ürünler sekmeleri sırayla. Yeni arayüzün kodu kuryenin farklı hallerinde de çalışsın; hata olursa
+        /// "Arayüz hatası (…)" diye test raporuna düşer. Oyunun gidişine etkisi yok: yalnızca gösterim, rastgele sayı kullanmaz.
+        /// </summary>
+        public void TestArayuzTuru()
+        {
+            var clk = GameClock.I;
+            var cm = CourierManager.I;
+            if (clk == null || cm == null || !UiAktif) return;
+            if (turKapat > 0f)
+            {
+                if (Time.unscaledTime < turKapat) return;
+                turKapat = 0f;
+                popupCourier = null;
+                CloseInfo();
+                phoneTaskTab = 0;
+                return;
+            }
+            if (turSonrakiDakika < 0f) turSonrakiDakika = clk.TotalMinutes + 180f;
+            if (clk.TotalMinutes < turSonrakiDakika || pauseMenuOpen || ConfirmOpen || BigCardOpen) return;
+            turSonrakiDakika = clk.TotalMinutes + 180f;
+            turSira++;
+
+            if (turSira % 3 == 0)
+            {
+                // Bina kartı: sırayla bir dükkan, bir müşteri binası
+                if ((turSira / 3) % 2 == 1 && CityMap.I != null)
+                {
+                    int sayi = 0;
+                    foreach (var s in CityMap.I.Shops) if (s.contracted) sayi++;
+                    int hedef = sayi > 0 ? turSira % sayi : -1;
+                    foreach (var s in CityMap.I.Shops)
+                        if (s.contracted && hedef-- == 0) { DukkanKartiAc(s); turBina++; break; }
+                }
+                else
+                {
+                    var t = MusteriBinasi(turSira);
+                    if (t.HasValue) { BinaKartiAc(t.Value); turBina++; }
+                }
+            }
+            else if (cm.Couriers.Count > 0)
+            {
+                // Telefon: önce henüz görülmemiş durumdaki kurye, yoksa sıradaki
+                Courier sec = null;
+                foreach (var k in cm.Couriers)
+                    if (!turDurumlar.Contains(k.State)) { sec = k; break; }
+                if (sec == null) sec = cm.Couriers[turSira % cm.Couriers.Count];
+                turDurumlar.Add(sec.State);
+                TelefonAc(sec);
+                phoneTaskTab = turSira % 2;
+                turTelefon++;
+            }
+            turKapat = Time.unscaledTime + 1.5f;
         }
     }
 }
