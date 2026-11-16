@@ -56,9 +56,6 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>Büyük kurye kartı (IMGUI) şu an çiziliyor mu: olay kartı ve Esc menüsü açıkken çizilmez (GameUI.OnGUI).</summary>
-        bool BuyukKartCiziliyor => BigCardOpen && (EventManager.I == null || EventManager.I.Current == null) && !pauseMenuOpen;
-
         /// <summary>Şirket renginde düğme (ilk seçenek, "Evet"). Satır içi zemin USS'teki :hover'ı ezdiği için üstüne gelme koddan.</summary>
         static void VurguDugme(Button b)
         {

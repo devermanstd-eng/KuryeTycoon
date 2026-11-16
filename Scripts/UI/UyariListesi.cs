@@ -182,18 +182,9 @@ namespace KuryeTycoon
             if (MapCamera.I != null) MapCamera.I.FocusOn(u.yer, 0.7f);
             if (u.kurye != null && CourierManager.I.Couriers.Contains(u.kurye))
             {
-                CloseInfo();
-                popupCourier = u.kurye;
-                popupScroll = Vector2.zero;
+                TelefonAc(u.kurye);
             }
-            else if (u.dukkan != null)
-            {
-                popupCourier = null;
-                infoShop = u.dukkan;
-                infoTile = u.dukkan.tile;
-                infoBuilding = false;
-                infoScroll = Vector2.zero;
-            }
+            else if (u.dukkan != null) DukkanKartiAc(u.dukkan);
         }
     }
 }

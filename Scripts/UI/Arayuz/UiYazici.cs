@@ -244,6 +244,15 @@ namespace KuryeTycoon
                 }
             }
 
+            /// <summary>Renkli düğme (kurye telefonu): zemin ve yazı rengi satır içi verilir. sinif "vurgu" içermemeli.</summary>
+            public void Dugme(string metin, Action tik, bool etkin, string sinif, Color zemin, Color yazi)
+            {
+                Dugme(metin, tik, etkin, sinif);
+                var b = son.d;
+                if (b.style.backgroundColor.keyword != StyleKeyword.Undefined || b.style.backgroundColor.value != zemin) U.Zemin(b, zemin);
+                if (b.style.color.keyword != StyleKeyword.Undefined || b.style.color.value != yazi) U.Renk(b, yazi);
+            }
+
             /// <summary>Seçenek şeridi (sayfa sekmeleri, plan seçimi). Çoksa alt satıra kayar.</summary>
             public void Secim(IList<string> adlar, int secili, Action<int> yaz, bool sarar = false)
             {
@@ -311,6 +320,29 @@ namespace KuryeTycoon
                     U.Metin(l, (sec ? "✓ " : "") + adlar[i]);
                     if (sec) { U.Zemin(l, U.A(UITheme.Accent, 0.85f)); U.Renk(l, UITheme.AccentText); }
                     else { U.Zemin(l, new Color(1f, 1f, 1f, 0.08f)); U.Renk(l, U.Soluk); }
+                }
+            }
+
+            /// <summary>Renkli durum çipleri (tıklanmaz): kayıt aşaması, tür, meslek… Sığmazsa alt satıra geçer.</summary>
+            public void Cipler(IList<string> adlar, IList<Color> renkler)
+            {
+                var o = Al("cipler", () =>
+                {
+                    var x = new Oge { e = U.Gecirgen(null, "cipler") };
+                    x.e.style.marginTop = 2;
+                    x.e.style.marginBottom = 2;
+                    return x;
+                });
+                while (o.secenekler.Count < adlar.Count) o.secenekler.Add(U.Cip(o.e, "", Color.white));
+                while (o.secenekler.Count > adlar.Count)
+                {
+                    o.secenekler[o.secenekler.Count - 1].RemoveFromHierarchy();
+                    o.secenekler.RemoveAt(o.secenekler.Count - 1);
+                }
+                for (int i = 0; i < adlar.Count; i++)
+                {
+                    U.Metin(o.secenekler[i], adlar[i]);
+                    U.CipRengi(o.secenekler[i], i < renkler.Count ? renkler[i] : U.Soluk);
                 }
             }
 
@@ -438,7 +470,8 @@ namespace KuryeTycoon
 
             // ------------------------------------------------------------------ çubuk, boşluk
 
-            public void Cubuk(string ad, float v, Color renk, string deger)
+            /// <summary>Ad · çubuk · değer. adGenislik verilirse adın sütunu o kadar (uzun adlar alt satıra kaymasın).</summary>
+            public void Cubuk(string ad, float v, Color renk, string deger, float adGenislik = 0f)
             {
                 var o = Al("cubuk", () =>
                 {
@@ -450,6 +483,8 @@ namespace KuryeTycoon
                 });
                 U.Metin(o.a, ad);
                 U.Goster(o.a, !string.IsNullOrEmpty(ad));
+                if (adGenislik > 0f) { if (o.a.style.width != adGenislik) o.a.style.width = adGenislik; }
+                else if (o.a.style.width.keyword != StyleKeyword.Null) o.a.style.width = StyleKeyword.Null;
                 o.cubuk.Ayarla(v, renk);
                 U.Metin(o.b, deger);
             }

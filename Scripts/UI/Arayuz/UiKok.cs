@@ -6,10 +6,12 @@ using UnityEngine.UIElements;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// UI Toolkit kökü. Arayüz IMGUI'den (OnGUI) UI Toolkit'e taşınıyor; geçiş bitene kadar ikisi birlikte çalışır.
+    /// UI Toolkit kökü. Oyun içindeki bütün ekranlar UI Toolkit'te; IMGUI (OnGUI) yalnızca haritanın üstüne çizilenler
+    /// (etiketler, katman, uçan yazılar, seçili bina işareti), kurulum ekranı ve eski arayüz (F8) için kaldı.
     ///  • UIDocument ve PanelSettings çalışma anında kurulur (sahneye bir şey eklemek gerekmez).
     ///  • Ölçek IMGUI ile aynı (GameUI.uiScale): iki sistemin koordinatları birebir aynı, dikdörtgenler karşılaştırılabilir.
-    ///  • Katmanlar: hud (üst çubuk, sol menü, harita araçları, olaylar) · pencere · üst (açılır menüler) · ipucu.
+    ///  • Katmanlar: hud (üst çubuk, sol menü, harita araçları, olaylar, durum kartları) · pencere (pencere, kurye telefonu,
+    ///    bina kartı) · üst (bildirimler, rehber, büyük kurye kartı, en üstte olay kartı / Esc menüsü / onay) · ipucu.
     ///  • Harita farenin UI Toolkit elemanının üstünde olup olmadığını <see cref="UiUzerinde"/> ile sorar.
     ///  • Değerler 8 Hz'de yenilenir (hız düğmeleri her karede); ağaç bir kez kurulur.
     /// Kural: yeni arayüz UI Toolkit ile yazılır; OnGUI'ye yeni çizim eklenmez (bkz. KURULUM.md).
@@ -111,7 +113,7 @@ namespace KuryeTycoon
             // Ortadaki kutu açıkken alttaki çubuklar ve pencere tıklanmaz; üst katman (kutular, bildirimler, rehber) açık kalır
             bool serbest = UiSerbest;
             if (katHud.enabledSelf != serbest) { katHud.SetEnabled(serbest); katPencere.SetEnabled(serbest); }
-            if (!serbest) U.Goster(uiIpucu, false);
+            if (!serbest && !(BigCardOpen && UiAcikModal == UiModalTur.Yok)) U.Goster(uiIpucu, false);
 
             float t = Time.unscaledTime;
             bool agir = t >= uiTikZamani;
@@ -126,13 +128,10 @@ namespace KuryeTycoon
                 UiHedefYenile(agir);
                 UiBildirimYenile();
                 UiRehberYenile();
+                UiTelefonYenile(agir);      // kayma ve harita her karede
+                UiBinaKartiYenile(agir);
+                UiBuyukKartYenile(agir);
                 UiModalYenile(agir);
-                // Büyük kurye kartı (CourierBigCard.cs) hâlâ IMGUI: ekranın ortasında, UI Toolkit'in altında kalır.
-                // Açıkken pencere ve haritanın üstündeki kutular gizlenir.
-                bool buyukKart = BuyukKartCiziliyor;
-                U.Goster(katPencere, !buyukKart);
-                U.Goster(aracKok, !buyukKart);
-                if (buyukKart) { U.Goster(olayKok, false); U.Goster(hedefKok, false); }
             }
             catch (Exception ex)
             {
@@ -202,8 +201,11 @@ namespace KuryeTycoon
             UiOlaylarKur();
             UiHedefKur();
             UiPencereKur();
+            UiTelefonKur();      // pencere katmanında, pencerenin üstünde
+            UiBinaKartiKur();
             UiBildirimKur();
             UiRehberKur();
+            UiBuyukKartKur();    // üst katmanda, bildirim ve rehberin üstünde
             UiModalKur();   // en son: perde her şeyin üstünde
             uiHazir = true;
         }
@@ -223,7 +225,9 @@ namespace KuryeTycoon
 
         void IpucuGoster(string m, Vector2 p)
         {
-            if (string.IsNullOrEmpty(m) || !UiSerbest) { U.Goster(uiIpucu, false); return; }
+            // Ortada bir kutu açıkken arkadakilerin ipucu çıkmaz; büyük kurye kartının kendi ipuçları (yıldızlar, rozet) çıkar
+            bool serbest = UiSerbest || (BigCardOpen && UiAcikModal == UiModalTur.Yok);
+            if (string.IsNullOrEmpty(m) || !serbest) { U.Goster(uiIpucu, false); return; }
             U.Metin(uiIpucu, m);
             U.Goster(uiIpucu, true);
             IpucuKonum(p);

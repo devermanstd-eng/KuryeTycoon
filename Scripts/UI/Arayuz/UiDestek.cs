@@ -17,12 +17,48 @@ namespace KuryeTycoon
             return $"<color=#FFC94D>{new string('★', n)}</color><color=#FFFFFF33>{new string('★', 5 - n)}</color>";
         }
 
+        static readonly string[] VardiyaAdlari = { SupportManager.ShiftLabel((SupportShift)0), SupportManager.ShiftLabel((SupportShift)1), SupportManager.ShiftLabel((SupportShift)2) };
+        static readonly string[] GunAdlari = { "Pazartesi–Cuma", "Çarşamba–Pazar" };
+
+        /// <summary>Destek başvuruları (Destek ve Kayıtlar pencereleri ortak).</summary>
+        void UiDestekAdaylari(Yazici y)
+        {
+            var sm = SupportManager.I;
+            var eco = EconomyManager.I;
+            if (sm == null || eco == null) return;
+            y.Bolum($"Destek başvuruları ({sm.Candidates.Count})",
+                    $"Destek personeli maaşlıdır ve sabit vardiyada çalışır. Her başvuru {SupportManager.CandidateValidDays} gün geçerli; " +
+                    "reddedilen ya da süresi dolanın yerine ertesi gün yenisi gelir.");
+            if (sm.Candidates.Count == 0) y.Kucuk("Şu an destek başvurusu yok; ertesi gün yenisi gelir.");
+            foreach (var cand in sm.Candidates)
+            {
+                var c = cand;
+                long sonra = TotalPayroll + c.monthlySalary;
+                y.KartBasla();
+                y.Tablo(new[] { $"<b>{c.name}</b>", $"{Ft(c.monthlySalary)}/ay" });
+                if (!string.IsNullOrEmpty(c.note)) y.Not($"\"{c.note}\"");
+                y.Yazi($"Yetenek {YildizYazi(Stars(c.skill, 0.5f, 1f))} · işe alırsan aylık maaşlar {Ft(sonra)}",
+                       sonra > eco.FreeCash ? "kucuk uyari-renk" : "kucuk");
+                y.Secim(VardiyaAdlari, (int)c.chosenShift, v => c.chosenShift = (SupportShift)v);
+                y.Secim(GunAdlari, c.chosenDays == WorkDays.PztCum ? 0 : 1, v => c.chosenDays = v == 0 ? WorkDays.PztCum : WorkDays.CarPaz);
+                y.Kucuk(ExpiryText(c.expiresAt));
+                y.SatirBasla();
+                y.Dugme($"İşe al ({SupportManager.ShiftLabel(c.chosenShift)}, {(c.chosenDays == WorkDays.PztCum ? "Pzt–Cum" : "Çar–Paz")})", () => AskConfirm(
+                    "Destek personelini işe al",
+                    $"{c.name} {Ft(c.monthlySalary)}/ay maaşla, {SupportManager.ShiftLabel(c.chosenShift)} vardiyasında " +
+                    $"{(c.chosenDays == WorkDays.PztCum ? "Pazartesi–Cuma" : "Çarşamba–Pazar")} çalışmak üzere işe alınsın mı? " +
+                    $"Aylık toplam maaşın {Ft(TotalPayroll + c.monthlySalary)} olur.",
+                    "Evet, işe al", () => sm.Hire(c)), true, "vurgu");
+                y.Dugme("Reddet", () => sm.Reject(c), true, "kucuk-dg");
+                y.SatirBitir();
+                y.KartBitir();
+            }
+        }
+
         class UiDestek : UiSekme
         {
             Yazici y;
             readonly List<string> ekipmanAdlari = new List<string>();
-            static readonly string[] VardiyaAdlari = { SupportManager.ShiftLabel((SupportShift)0), SupportManager.ShiftLabel((SupportShift)1), SupportManager.ShiftLabel((SupportShift)2) };
-            static readonly string[] GunAdlari = { "Pazartesi–Cuma", "Çarşamba–Pazar" };
             static readonly string[] SormaAdlari = { "Hemen", "10 teslimattan sonra", "30 teslimattan sonra", "60 teslimattan sonra" };
             static readonly int[] SormaDegerleri = { 0, 10, 30, 60 };
 
@@ -72,40 +108,9 @@ namespace KuryeTycoon
                     y.KartBitir();
                 }
 
-                Basvurular(sm, eco);
+                ui.UiDestekAdaylari(y);
                 Operasyon(eco);
                 y.Bitir();
-            }
-
-            void Basvurular(SupportManager sm, EconomyManager eco)
-            {
-                y.Bolum($"Destek başvuruları ({sm.Candidates.Count})",
-                        $"Destek personeli maaşlıdır ve sabit vardiyada çalışır. Her başvuru {SupportManager.CandidateValidDays} gün geçerli; " +
-                        "reddedilen ya da süresi dolanın yerine ertesi gün yenisi gelir.");
-                if (sm.Candidates.Count == 0) y.Kucuk("Şu an destek başvurusu yok; ertesi gün yenisi gelir.");
-                foreach (var cand in sm.Candidates)
-                {
-                    var c = cand;
-                    long sonra = ui.TotalPayroll + c.monthlySalary;
-                    y.KartBasla();
-                    y.Tablo(new[] { $"<b>{c.name}</b>", $"{Ft(c.monthlySalary)}/ay" });
-                    if (!string.IsNullOrEmpty(c.note)) y.Not($"\"{c.note}\"");
-                    y.Yazi($"Yetenek {YildizYazi(Stars(c.skill, 0.5f, 1f))} · işe alırsan aylık maaşlar {Ft(sonra)}",
-                           sonra > eco.FreeCash ? "kucuk uyari-renk" : "kucuk");
-                    y.Secim(VardiyaAdlari, (int)c.chosenShift, v => c.chosenShift = (SupportShift)v);
-                    y.Secim(GunAdlari, c.chosenDays == WorkDays.PztCum ? 0 : 1, v => c.chosenDays = v == 0 ? WorkDays.PztCum : WorkDays.CarPaz);
-                    y.Kucuk(ExpiryText(c.expiresAt));
-                    y.SatirBasla();
-                    y.Dugme($"İşe al ({SupportManager.ShiftLabel(c.chosenShift)}, {(c.chosenDays == WorkDays.PztCum ? "Pzt–Cum" : "Çar–Paz")})", () => ui.AskConfirm(
-                        "Destek personelini işe al",
-                        $"{c.name} {Ft(c.monthlySalary)}/ay maaşla, {SupportManager.ShiftLabel(c.chosenShift)} vardiyasında " +
-                        $"{(c.chosenDays == WorkDays.PztCum ? "Pazartesi–Cuma" : "Çarşamba–Pazar")} çalışmak üzere işe alınsın mı? " +
-                        $"Aylık toplam maaşın {Ft(ui.TotalPayroll + c.monthlySalary)} olur.",
-                        "Evet, işe al", () => sm.Hire(c)), true, "vurgu");
-                    y.Dugme("Reddet", () => sm.Reject(c), true, "kucuk-dg");
-                    y.SatirBitir();
-                    y.KartBitir();
-                }
             }
 
             void Operasyon(EconomyManager eco)

@@ -5,8 +5,8 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Yorumlar, Kendi Marketin ve İstatistikler pencerelerinin ortak durumu (filtre, dönem) ve İstatistik gruplaması (BuildStats);
-    /// pencerelerin kendisi UI Toolkit'te (Arayuz/UiMesajlar, UiMarket, UiIstatistik). Burada ayrıca haritadaki kendi market
-    /// özeti (bina kartı, IMGUI) ve haritada şehir etkinliği işareti var.
+    /// pencerelerin kendisi UI Toolkit'te (Arayuz/UiMesajlar, UiMarket, UiIstatistik). Burada ayrıca eski arayüzün (F8)
+    /// Dükkanlar listesindeki kendi market özeti ve haritada şehir etkinliği işareti var (bina kartı: Arayuz/UiBinaKarti.cs).
     /// </summary>
     public partial class GameUI
     {
@@ -16,7 +16,7 @@ namespace KuryeTycoon
 
         // ================================================================ Kendi marketin
 
-        /// <summary>Haritada kendi marketine tıklayınca (ve dükkan kartı yerine) kısa özet.</summary>
+        /// <summary>Eski arayüzde (F8) Dükkanlar listesinde kendi marketinin kısa özeti (dükkan kartı yerine).</summary>
         void DrawOwnStoreSummary(bool withTitle)
         {
             var ds = DarkStore.I;

@@ -50,11 +50,5 @@ namespace KuryeTycoon
             return n;
         }
 
-        int ApplicationCountByVehicle(VehicleKind v)
-        {
-            int n = 0;
-            foreach (var a in CourierManager.I.Applications) if (a.vehicle == v) n++;
-            return n;
-        }
     }
 }

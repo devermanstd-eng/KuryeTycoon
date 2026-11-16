@@ -906,3 +906,415 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .kurye-bilgi { flex-direction: row; min-height: 20px; align-items: flex-start; }
 .kurye-bilgi-ad { width: 72px; flex-shrink: 0; font-size: 12px; color: var(--soluk); }
 .kurye-bilgi-deger { flex-grow: 1; flex-shrink: 1; font-size: 12px; white-space: normal; }
+
+/* ---------------------------------------------------------------- kurye telefonu (Arayuz/UiTelefon.cs)
+   Telefonun kendi koyu teması: ekran lacivert, alt panel biraz açık, şirket rengi koddan satır içi. */
+
+.tel { position: absolute; }
+.tel-golge {
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 8px;
+    bottom: -8px;
+    border-radius: 48px;
+    background-color: rgba(0, 0, 0, 0.35);
+}
+.tel-tus { position: absolute; width: 4px; border-radius: 2px; background-color: rgb(92, 97, 107); }
+.tel-govde {
+    flex-grow: 1;
+    border-radius: 46px;
+    background-color: rgb(8, 8, 10);
+    border-width: 2px;
+    border-color: rgb(92, 97, 107);
+    padding: 8px;
+}
+.tel-ekran { flex-grow: 1; border-radius: 37px; background-color: rgb(11, 13, 19); overflow: hidden; }
+.tel-sayfa { position: absolute; left: 0; top: 0; right: 0; bottom: 0; }
+.tel-liste-sayfa { padding: 48px 16px 22px 16px; }
+.tel-alt-sayfa { padding-left: 18px; padding-right: 18px; }
+.tel-ust-satir { flex-shrink: 0; margin-bottom: 4px; }
+.tel-sayfa-baslik { font-size: 26px; color: rgb(237, 235, 230); margin: 4px 0 6px 0; white-space: normal; flex-shrink: 0; }
+.tel-yuvarlak {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    background-color: rgba(15, 17, 23, 0.95);
+    align-items: center;
+    justify-content: center;
+}
+.tel-yuvarlak:hover { background-color: rgba(40, 44, 56, 0.95); }
+.tel-yuvarlak.kucuk { width: 36px; height: 36px; border-radius: 18px; }
+.tel-harita-dg { position: absolute; top: 44px; }
+.tel-zil-nokta {
+    position: absolute;
+    top: 46px;
+    right: 65px;
+    width: 9px;
+    height: 9px;
+    border-radius: 4.5px;
+    background-color: rgb(250, 115, 102);
+}
+
+/* Harita */
+.tel-harita { position: absolute; left: 0; top: 0; right: 0; overflow: hidden; }
+.tel-poi { position: absolute; font-size: 9px; color: rgb(250, 217, 115); white-space: nowrap; }
+.tel-balon {
+    position: absolute;
+    flex-direction: row;
+    align-items: center;
+    height: 30px;
+    border-radius: 15px;
+    background-color: rgba(13, 14, 20, 0.96);
+    padding: 0 14px 0 3px;
+}
+.tel-balon-nokta { width: 24px; height: 24px; border-radius: 12px; }
+.tel-balon-yazi { font-size: 12px; color: rgb(255, 255, 255); margin-left: 7px; white-space: nowrap; }
+.tel-kurye {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    background-color: rgb(255, 255, 255);
+    align-items: center;
+    justify-content: center;
+}
+.tel-kurye-harf { font-size: 11px; color: rgb(0, 0, 0); -unity-text-align: middle-center; }
+
+/* Alt panel (ana ekran) */
+.tel-sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(22, 23, 34);
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding-top: 20px;
+}
+.tel-tutamak {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    width: 48px;
+    height: 4px;
+    margin-left: -24px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.22);
+}
+.tel-kaydir { flex-grow: 1; }
+.tel-sheet > .tel-kaydir { margin-bottom: 10px; }
+.tel .tel-kaydir .unity-scroll-view__content-container { padding-right: 0; }
+.tel-sheet .tel-kaydir .unity-scroll-view__content-container { padding: 0 18px 0 18px; }
+
+/* Durum çubuğu ve alt çizgi */
+.tel-durum-cubugu { position: absolute; left: 0; top: 0; right: 0; height: 40px; }
+.tel-saat { position: absolute; left: 28px; top: 10px; height: 22px; font-size: 13px; color: rgb(255, 255, 255); -unity-text-align: middle-left; }
+.tel-ada {
+    position: absolute;
+    left: 50%;
+    margin-left: -48px;
+    top: 9px;
+    width: 96px;
+    height: 26px;
+    border-radius: 13px;
+    background-color: rgb(0, 0, 0);
+}
+.tel-sinyal { position: absolute; right: 56px; top: 13px; height: 12px; flex-direction: row; align-items: flex-end; }
+.tel-sinyal-cubuk { width: 3px; margin-right: 2px; border-radius: 1px; background-color: rgb(255, 255, 255); }
+.tel-pil {
+    position: absolute;
+    right: 24px;
+    top: 15px;
+    width: 24px;
+    height: 12px;
+    border-radius: 3.5px;
+    background-color: rgba(255, 255, 255, 0.3);
+    overflow: hidden;
+}
+.tel-pil-dolu { height: 100%; border-radius: 3.5px; }
+.tel-pil-uc { position: absolute; right: 21px; top: 19px; width: 2px; height: 4px; border-radius: 1px; background-color: rgba(255, 255, 255, 0.5); }
+.tel-ev-cizgi {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    margin-left: -60px;
+    width: 120px;
+    height: 5px;
+    border-radius: 2.5px;
+    background-color: rgba(255, 255, 255, 0.6);
+}
+
+/* Yazıcı ile yazılan içerik: telefonun yazı boyları */
+.tel .yz-satir { margin-bottom: 2px; }
+.tel .yz-metin { font-size: 13px; color: rgb(235, 237, 245); }
+.tel .yz-metin.tel-dev { font-size: 26px; -unity-font-style: bold; color: rgb(237, 235, 230); }
+.tel .yz-metin.tel-dev24 { font-size: 24px; -unity-font-style: bold; color: rgb(237, 235, 230); }
+.tel .yz-metin.tel-buyuk { font-size: 22px; -unity-font-style: bold; }
+.tel .yz-metin.tel-baslik { font-size: 18px; -unity-font-style: bold; color: rgb(255, 255, 255); margin-top: 2px; }
+.tel .yz-metin.tel-soluk { font-size: 12px; color: rgb(148, 156, 184); }
+.tel .yz-metin.tel-kucuk { font-size: 10px; -unity-font-style: bold; color: rgb(148, 156, 184); letter-spacing: 0.5px; }
+.tel .yz-metin.tel-vurgu { font-size: 14px; -unity-font-style: bold; }
+.tel .yz-metin.tel-satir { font-size: 15px; }
+.tel .yz-metin.tel-deger { font-size: 16px; }
+.tel .yz-metin.tel-kalin14 { font-size: 14px; -unity-font-style: bold; }
+.tel .yz-metin.tel-italik { -unity-font-style: italic; }
+.tel-orta { -unity-text-align: upper-center; }
+.tel-soluk-yazi { font-size: 12px; color: rgb(148, 156, 184); }
+.tel-govde-yazi { font-size: 13px; color: rgb(235, 237, 245); }
+.tel-satir-yazi { font-size: 15px; color: rgb(237, 240, 247); }
+.tel .yz-kv { min-height: 36px; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.08); margin-bottom: 0; }
+.tel .yz-kv-ad { font-size: 15px; color: rgb(237, 240, 247); }
+.tel .yz-kv-deger { font-size: 15px; color: rgb(148, 156, 184); }
+.tel .yz-kutular { margin: 4px -6px 2px 0; }
+.tel .yz-kutu { background-color: rgba(255, 255, 255, 0.04); min-width: 90px; }
+.tel .yz-kutu-deger { font-size: 16px; color: rgb(235, 237, 245); }
+.tel .kart.tel-kart {
+    background-color: rgba(0, 0, 0, 0);
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 8px 10px 8px 10px;
+    margin: 0 0 8px 0;
+}
+.tel-cizgi { height: 1px; background-color: rgba(255, 255, 255, 0.08); margin: 6px 0 6px 0; flex-shrink: 0; }
+.tel-sheet .tel-cizgi { margin-left: -18px; margin-right: -18px; }
+.tel .kart.tel-kart .tel-cizgi { margin-left: 0; margin-right: 0; }
+
+/* Telefon düğmeleri (renkleri koddan) */
+.tel Button.dg.tel-dg { height: 44px; border-radius: 22px; font-size: 15px; margin: 2px 0 6px 0; }
+.tel Button.dg.tel-dg.tel-dg-buyuk { height: 48px; border-radius: 24px; }
+.tel Button.dg.tel-dg.tel-dg-orta { height: 40px; border-radius: 20px; font-size: 14px; }
+.tel Button.dg.tel-dg.tel-dg-kucuk { height: 38px; border-radius: 19px; font-size: 13px; }
+.tel .yz-dugmeler > Button.dg.tel-dg { margin: 0 6px 6px 0; }
+.tel Button.dg.genis { flex-basis: 0; }
+.tel Button.dg.tel-baglanti { height: 36px; font-size: 15px; margin: 0; }
+.tel Button.dg.tel-baglanti.tel-baglanti-sol { -unity-text-align: middle-left; padding-left: 0; align-self: flex-start; font-size: 14px; }
+.tel .yz-dugmeler > Button.dg.tel-baglanti.tel-baglanti-satir { height: 40px; font-size: 14px; margin: 0 0 6px 4px; }
+
+/* Parçalar (Arayuz/UiTelefonParcalar.cs) */
+.tel-hap { flex-direction: row; align-items: center; height: 56px; border-radius: 28px; margin: 2px 0 4px 0; flex-shrink: 0; }
+.tel-durum-hap { height: 54px; border-radius: 27px; margin: 0 14px 22px 14px; }
+.tel-hap-daire {
+    position: absolute;
+    left: 5px;
+    top: 5px;
+    width: 46px;
+    height: 46px;
+    border-radius: 23px;
+    background-color: rgb(8, 9, 13);
+    align-items: center;
+    justify-content: center;
+}
+.tel-durum-hap .tel-hap-daire { width: 44px; height: 44px; border-radius: 22px; }
+.tel-hap-yazi {
+    flex-grow: 1;
+    font-size: 15px;
+    color: rgb(10, 13, 20);
+    -unity-text-align: middle-center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tel-boost {
+    flex-direction: row;
+    align-items: center;
+    height: 44px;
+    border-radius: 12px;
+    background-color: rgb(20, 61, 77);
+    overflow: hidden;
+    padding-right: 10px;
+}
+.tel-boost:hover { background-color: rgb(26, 72, 90); }
+.tel-boost-sol { width: 52px; height: 100%; align-items: center; justify-content: center; border-radius: 12px; }
+.tel-boost-yuzde { font-size: 14px; color: rgb(255, 255, 255); }
+.tel-boost-yazi {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-left: 12px;
+    font-size: 13px;
+    color: rgb(235, 237, 245);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tel-boost-buyuk { flex-direction: row; height: 76px; border-radius: 12px; overflow: hidden; margin: 4px 0 4px 0; }
+.tel-boost-buyuk-sol { width: 70px; height: 100%; border-radius: 12px; align-items: center; justify-content: center; }
+.tel-boost-buyuk-yuzde { font-size: 22px; color: rgb(255, 255, 255); }
+.tel-boost-buyuk-ic { margin-left: 14px; justify-content: center; }
+.tel-boost-buyuk-deger { font-size: 20px; color: rgb(255, 255, 255); }
+.tel-segment { flex-direction: row; height: 36px; border-radius: 10px; background-color: rgb(31, 33, 47); padding: 3px; }
+.tel-segment-oge {
+    flex-grow: 1;
+    flex-basis: 0;
+    border-radius: 8px;
+    font-size: 12px;
+    color: rgb(255, 255, 255);
+    -unity-text-align: middle-center;
+    margin: 0 1px 0 1px;
+}
+.tel-segment-oge:hover { background-color: rgba(255, 255, 255, 0.06); }
+.tel-segment-oge.secili { background-color: rgb(92, 97, 120); }
+.tel-yogunluk { flex-direction: row; align-items: center; margin: 2px 0 2px 0; }
+.tel-yogunluk-cubuklar { flex-direction: row; align-items: flex-end; height: 14px; margin: 0 6px 0 8px; }
+.tel-yogunluk-cubuk { width: 4px; margin-right: 2px; border-radius: 1px; }
+.tel-gosterge { align-items: center; margin: 4px 0 4px 0; }
+.tel-gosterge-halka { width: 110px; height: 110px; align-items: center; justify-content: center; }
+.tel-gosterge-yuzde { font-size: 26px; color: rgb(255, 255, 255); }
+.tel-zaman { flex-direction: row; align-items: center; min-height: 26px; margin-bottom: 4px; }
+.tel-zaman-saat { width: 46px; font-size: 14px; color: rgb(235, 237, 245); flex-shrink: 0; white-space: nowrap; }
+.tel-zaman-nokta {
+    width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    border-width: 2px;
+    margin: 0 9px 0 3px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.tel-zaman-isaret { font-size: 9px; color: rgb(0, 0, 0); -unity-text-align: middle-center; }
+.tel-zaman-yazi { flex-grow: 1; flex-shrink: 1; font-size: 14px; color: rgb(235, 237, 245); }
+.tel-uyari {
+    flex-direction: row;
+    align-items: flex-start;
+    border-radius: 10px;
+    background-color: rgb(56, 26, 8);
+    padding: 10px 10px 12px 12px;
+    margin: 2px 0 6px 0;
+}
+.tel-uyari-simge { margin: 1px 10px 0 0; }
+.tel-uyari-bas { font-size: 11px; color: rgb(255, 255, 255); letter-spacing: 0.4px; }
+.tel-uyari-metin { font-size: 12px; color: rgb(235, 237, 245); margin-top: 3px; }
+.tel-iki { flex-direction: row; align-items: center; min-height: 22px; }
+.tel-etiket {
+    height: 20px;
+    border-radius: 10px;
+    padding: 0 7px 0 7px;
+    font-size: 10px;
+    -unity-text-align: middle-center;
+    margin-left: 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.tel-menu-satir {
+    flex-direction: row;
+    align-items: center;
+    height: 54px;
+    border-bottom-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+    padding-right: 4px;
+}
+.tel-menu-satir:hover { background-color: rgba(255, 255, 255, 0.03); }
+.tel-menu-harf-kutu {
+    width: 28px;
+    height: 28px;
+    margin: 0 22px 0 4px;
+    border-radius: 8px;
+    border-width: 1.5px;
+    border-color: rgba(255, 255, 255, 0.75);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.tel-menu-satir.simgeli .tel-menu-harf-kutu { border-width: 0; }
+.tel-menu-harf { font-size: 12px; color: rgb(255, 255, 255); -unity-text-align: middle-center; }
+.tel-profil { flex-direction: row; align-items: center; height: 62px; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.tel-profil:hover { background-color: rgba(255, 255, 255, 0.03); }
+.tel-avatar { width: 42px; height: 42px; border-radius: 21px; font-size: 18px; -unity-text-align: middle-center; margin-right: 12px; flex-shrink: 0; }
+.tel-konu { flex-direction: row; align-items: center; height: 50px; border-bottom-width: 1px; border-color: rgba(255, 255, 255, 0.08); }
+.tel-konu:hover { background-color: rgba(255, 255, 255, 0.03); }
+.tel-hedef { margin-bottom: 8px; }
+.tel-hedef-iz { height: 8px; border-radius: 4px; background-color: rgb(31, 33, 47); margin-top: 3px; overflow: hidden; }
+.tel-hedef-dolu { height: 100%; border-radius: 4px; min-width: 8px; }
+.tel-buyuk-sayi { height: 90px; border-radius: 14px; flex-direction: row; margin: 4px 0 2px 0; }
+.tel-buyuk-sayi-ic { width: 62%; align-items: center; justify-content: center; }
+.tel-buyuk-sayi-deger { font-size: 34px; color: rgb(8, 10, 15); }
+.tel-buyuk-sayi-yazi { font-size: 13px; color: rgb(8, 10, 15); margin-top: 2px; }
+.tel-canta { position: absolute; right: 22px; top: 14px; width: 70px; height: 64px; border-radius: 10px; background-color: rgba(255, 255, 255, 0.55); }
+.tel-canta-sap { position: absolute; left: 12px; top: -8px; width: 46px; height: 14px; border-radius: 7px; background-color: rgba(255, 255, 255, 0.35); }
+.tel-sigorta {
+    height: 130px;
+    border-radius: 10px;
+    background-color: rgb(5, 6, 9);
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-end;
+    padding-bottom: 16px;
+}
+.tel-pano { width: 76px; height: 96px; border-radius: 8px; background-color: rgb(242, 128, 51); padding: 6px; margin-right: -14px; }
+.tel-pano-kagit { flex-grow: 1; border-radius: 5px; background-color: rgb(255, 255, 255); padding: 10px 8px 0 8px; }
+.tel-pano-yuvarlak { width: 20px; height: 20px; border-radius: 10px; background-color: rgb(77, 179, 242); margin-bottom: 8px; }
+.tel-pano-satir { height: 4px; border-radius: 2px; background-color: rgb(217, 219, 230); margin-bottom: 6px; }
+.tel-kalkan {
+    width: 54px;
+    height: 62px;
+    border-radius: 22px;
+    background-color: rgb(255, 209, 77);
+    align-items: center;
+    justify-content: center;
+    margin-bottom: -4px;
+}
+.tel-kalkan-daire {
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    background-color: rgb(255, 255, 255);
+    align-items: center;
+    justify-content: center;
+}
+.tel-kalkan-isaret { font-size: 13px; color: rgb(77, 179, 242); -unity-text-align: middle-center; }
+.tel-topla-alt { margin-top: 2px; }
+.tel-topla-hap { height: 44px; border-radius: 22px; font-size: 15px; color: rgb(10, 13, 20); -unity-text-align: middle-center; margin-right: 6px; }
+.tel-topla-ok {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    background-color: rgb(10, 43, 54);
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.tel-topla-ok:hover { background-color: rgb(16, 58, 72); }
+
+/* ---------------------------------------------------------------- bina kartı (Arayuz/UiBinaKarti.cs) */
+
+.bina-kart {
+    position: absolute;
+    background-color: var(--zemin);
+    border-radius: 14px;
+    border-width: 1px;
+    border-color: var(--cizgi);
+    overflow: hidden;
+}
+.bina-ust { flex-direction: row; align-items: center; padding: 12px 10px 10px 14px; flex-shrink: 0; }
+.bina-simge-kutu { width: 40px; height: 40px; border-radius: 12px; align-items: center; justify-content: center; flex-shrink: 0; }
+.bina-ad { font-size: 16px; }
+.bina-kart > .pencere-cizgi { margin: 0 12px 0 12px; flex-shrink: 0; }
+.bina-govde { flex-grow: 0; flex-shrink: 1; min-height: 40px; padding: 8px 4px 10px 12px; }
+.bina-kart .yz-kutu { min-width: 120px; }   /* dört kutu 2×2 dizilir */
+
+/* ---------------------------------------------------------------- büyük kurye kartı (Arayuz/UiBuyukKart.cs) */
+
+.bk-kart { padding: 16px 20px 16px 20px; }
+.bk-govde { flex-grow: 0; flex-shrink: 1; min-height: 60px; }
+.bk-bas { align-items: flex-start; margin-bottom: 12px; }
+.portre.bk-portre { width: 96px; height: 96px; border-radius: 16px; }
+.yildiz.bk-seviye { font-size: 12px; height: 20px; border-radius: 10px; padding: 0 7px 0 7px; }
+.bk-kimlik { margin-left: 14px; }
+.bk-ad { font-size: 20px; }
+.bk-arac {
+    flex-direction: row;
+    align-items: center;
+    height: 24px;
+    border-radius: 12px;
+    padding: 0 10px 0 8px;
+    background-color: rgba(255, 255, 255, 0.07);
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+.bk-satir { flex-direction: row; margin: 0 -6px 6px -6px; }
+.kart.bk-kutu { flex-grow: 1; flex-basis: 0; margin: 0 6px 6px 6px; }
+.yz-metin.bk-baslik { font-size: 11px; color: var(--soluk); letter-spacing: 0.6px; margin-bottom: 4px; }
+.bk-beceri { flex-direction: row; align-items: center; min-height: 22px; }
+.bk-dugmeler { margin-top: 12px; flex-shrink: 0; }
