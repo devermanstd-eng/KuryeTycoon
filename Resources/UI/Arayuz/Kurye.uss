@@ -1412,7 +1412,8 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .bina-ad { font-size: 17px; }
 .bina-kart > .pencere-cizgi { margin: 0 12px 0 12px; flex-shrink: 0; }
 .bina-govde { flex-grow: 0; flex-shrink: 0; min-height: 40px; padding: 8px 4px 10px 12px; }   /* yüksekliği koddan (KaydirmaYuksekligi) */
-.bina-kart .yz-kutu { min-width: 120px; }   /* dört kutu 2×2 dizilir */
+.bina-kart .yz-kutular { flex-wrap: nowrap; }   /* satırlar koddan 2'şerli (Yazici.KutuSutun): sarılan satır üst üste biniyordu */
+.bina-kart .yz-kutu { min-width: 120px; }
 
 /* ---------------------------------------------------------------- büyük kurye kartı (Arayuz/UiBuyukKart.cs) */
 

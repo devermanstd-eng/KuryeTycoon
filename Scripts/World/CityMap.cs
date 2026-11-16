@@ -33,7 +33,7 @@ namespace KuryeTycoon
         public const int Height = 33;
         public const int Block = 4;
 
-        public static readonly long[] UnlockCost = { 0, 0, 150000, 400000, 750000, 1200000 };
+        public static readonly long[] UnlockCost = { 0, 0, 150000, 400000, 750000, 900000 };   // Yeşil Tepe 1,2 M → 0,9 M (16.11 akşam)
         public static readonly string[] DistrictNames = { "", "Merkez Mahalle", "Doğu İlçesi", "Sanayi & Kampüs", "Batı Liman", "Yeşil Tepe" };
 
         /// <summary>Karenin bölgesi (1–5). Bölge sınırındaki yol, açılış sırası önce gelen bölgeye aittir.</summary>
@@ -1118,7 +1118,8 @@ namespace KuryeTycoon
         /// <summary>
         /// Bölgenin açılış bedeli: şirket büyüdükçe artar (Denge.Olcekle), ama platform paketi gibi çarpanın yarısıyla: bölge,
         /// sıradaki kurye paketinin ön koşulu. 16.11 testinde tam çarpanla Batı Liman 4 220 €, Yeşil Tepe 8 620 € tuttu; paketle
-        /// birlikte 32 ve 45 kuryede 17–18 gün beklendi (hedef 10–13).
+        /// birlikte 32 ve 45 kuryede 17–18 gün beklendi (hedef 10–13). Yarım çarpanla 32'de 11 güne indi, 45'te 18'de kaldı:
+        /// Yeşil Tepe 0,9 M'ye indi (16.11 akşam).
         /// </summary>
         public static long BolgeBedeli(int seviye) => Denge.Olcekle(UnlockCost[Mathf.Clamp(seviye, 0, UnlockCost.Length - 1)], 0.5f);
 
