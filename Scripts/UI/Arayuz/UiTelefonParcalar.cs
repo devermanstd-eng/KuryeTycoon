@@ -139,6 +139,7 @@ namespace KuryeTycoon
             Courier sonKurye;
             Vector2 merkez, hedefMerkez;
             float olcek, hedefOlcek;
+            float ekranY = -1f, hedefEkranY;   // haritanın ekrandaki odak yüksekliği (üstte düğmeler, altta panel)
             Vector2 sonKonum, yon = Vector2.up;
             float nabiz, durgun = 99f;
             readonly VisualElement balon, balonNokta, kurye;
@@ -176,7 +177,10 @@ namespace KuryeTycoon
                 kuryeHarf = U.Kalin(kurye, "", "tel-kurye-harf");
             }
 
-            Vector2 P(Vector2 t, float w, float h) => new Vector2((t.x - merkez.x) * olcek + w / 2f, (merkez.y - t.y) * olcek + h / 2f - 10f);
+            Vector2 P(Vector2 t, float w, float h) => new Vector2((t.x - merkez.x) * olcek + w / 2f, (merkez.y - t.y) * olcek + (ekranY > 0f ? ekranY : h / 2f - 10f));
+
+            // Görünen alan: üstte düğmeler + iğne + balon, altta panelin kenarı (harita panelin 30 px altına uzanır)
+            const float UstPay = 104f, AltPay = 44f, YanPay = 34f;
 
             static bool Dukkana(Courier c) => c.State == CourierState.DukkanaGidiyor || c.State == CourierState.Bekliyor;
 
@@ -201,11 +205,13 @@ namespace KuryeTycoon
                 bool dukkana = cur != null && Dukkana(c);
                 Vector2 hedef = cur != null ? (dukkana ? (Vector2)cur.shop.tile : (Vector2)cur.customerTile) : me;
 
-                // Hedef kamera: kurye ile hedef ekrana sığsın; yakınken daha yakın
+                // Hedef kamera: kurye ile hedef (iğnesi ve balonuyla) düğmelerin ve panelin arasında kalsın; yakınken daha yakın
                 hedefMerkez = cur != null ? (me + hedef) / 2f : me;
-                float yariX = Mathf.Abs(hedef.x - me.x) / 2f + 1.6f, yariY = Mathf.Abs(hedef.y - me.y) / 2f + 1.8f;
-                float gorunurH = Mathf.Max(60f, h - 70f);   // üstteki düğmeler ve alttaki panelin payı
-                hedefOlcek = Mathf.Clamp(Mathf.Min(w / (yariX * 2f), gorunurH / (yariY * 2f)), 10f, cur != null ? 40f : 30f);
+                float alanW = Mathf.Max(80f, w - 2f * YanPay);
+                float alanH = Mathf.Max(60f, h - 30f - UstPay - AltPay);
+                float dx = Mathf.Abs(hedef.x - me.x) + 1f, dy = Mathf.Abs(hedef.y - me.y) + 1f;
+                hedefOlcek = Mathf.Clamp(Mathf.Min(alanW / dx, alanH / dy), 9f, cur != null ? 40f : 30f);
+                hedefEkranY = cur != null ? UstPay + alanH / 2f : (h - 30f) / 2f + 12f;
 
                 float dt = Mathf.Min(Time.unscaledDeltaTime, 0.1f);
                 bool ani = sonKurye != c || olcek <= 0f;
@@ -214,6 +220,7 @@ namespace KuryeTycoon
                     sonKurye = c;
                     merkez = hedefMerkez;
                     olcek = hedefOlcek;
+                    ekranY = hedefEkranY;
                     sonKonum = me;
                 }
                 else
@@ -221,6 +228,7 @@ namespace KuryeTycoon
                     float k = 1f - Mathf.Exp(-dt * 5f);
                     merkez = Vector2.Lerp(merkez, hedefMerkez, k);
                     olcek = Mathf.Lerp(olcek, hedefOlcek, k);
+                    ekranY = Mathf.Lerp(ekranY, hedefEkranY, k);
                 }
                 // Gidiş yönü (ışık konisi): kuryenin hareketinden, yumuşatılmış
                 Vector2 d = me - sonKonum;
@@ -274,7 +282,10 @@ namespace KuryeTycoon
                     float bw = balon.resolvedStyle.width;
                     if (!(bw > 1f)) bw = 140f;
                     balon.style.left = Mathf.Clamp(tp.x - bw / 2f, 6f, Mathf.Max(6f, w - bw - 6f));
-                    balon.style.top = Mathf.Clamp(tp.y - 66f, 48f, Mathf.Max(48f, h - 110f));   // iğnenin üstünde
+                    // iğnenin üstünde; üstteki düğmelere çarpacaksa iğnenin altında
+                    float ust = tp.y - 66f;
+                    if (ust < 86f) ust = tp.y + 10f;
+                    balon.style.top = Mathf.Clamp(ust, 86f, Mathf.Max(86f, h - 30f - AltPay - 30f));
                 }
 
                 var mp = P(me, w, h);
