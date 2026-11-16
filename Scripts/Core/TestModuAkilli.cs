@@ -113,18 +113,39 @@ namespace KuryeTycoon
                     }
         }
 
-        /// <summary>Kurumsal teklifler: catering eğitimli kurye varsa kabul, yoksa geç.</summary>
+        /// <summary>
+        /// Kurumsal teklifler: teslim saatinde çalışacak catering eğitimli kurye varsa kabul, yoksa geç.
+        /// Eskiden yalnızca teklifin geldiği an (08:00–10:00) çevrimiçi olanlara bakılıyordu: 16.11 testinde eğitimli iki kurye
+        /// (biri 09:00'da başlayan ebeveyn) varken 33 teklifin hepsi reddedildi.
+        /// </summary>
         void AkilliKurumsal()
         {
             var ks = KurumsalSiparisler.I;
-            if (ks == null) return;
-            int egitimli = 0;
-            foreach (var c in CourierManager.I.Couriers) if (KuryeEgitim.Var(c, KuryeEgitim.Tur.Catering) && c.IsOnline) egitimli++;
+            var clk = GameClock.I;
+            if (ks == null || clk == null) return;
             foreach (var t in ks.Teklifler)
             {
                 if (t.kabul || t.bitti) continue;
-                if (egitimli > 0) { ks.KabulEt(t); Eylem("Kurumsal", $"{t.ofisAdi}, {t.kisi} kişi, teslim {KurumsalSiparisler.SaatYazi(t.teslimAt)}: kabul ({egitimli} eğitimli kurye çevrimiçi)"); }
-                else { ks.Reddet(t); Eylem("Kurumsal", $"{t.ofisAdi}: reddedildi (catering eğitimli kurye yok)"); }
+                int saat = Mathf.FloorToInt(t.teslimAt % 1440f / 60f);
+                int egitimli = 0, calisacak = 0;
+                foreach (var c in CourierManager.I.Couriers)
+                {
+                    if (!KuryeEgitim.Var(c, KuryeEgitim.Tur.Catering)) continue;
+                    egitimli++;
+                    if (c.dayOff || c.State == CourierState.Izinli) continue;
+                    // Teslimden bir saat önce ya da teslim saatinde çalışmak istiyorsa (çevrimiçi olma kararı da buna bakar)
+                    float p = Mathf.Max(Courier.PreferenceAt(c.occupation, c.scheduleSeed, clk, clk.DayOfWeek, Mathf.Max(0, saat - 1)),
+                                        Courier.PreferenceAt(c.occupation, c.scheduleSeed, clk, clk.DayOfWeek, saat));
+                    if (c.IsOnline || p >= 0.5f) calisacak++;
+                }
+                string ne = $"{t.ofisAdi}, {t.kisi} kişi, teslim {KurumsalSiparisler.SaatYazi(t.teslimAt)}";
+                if (calisacak > 0) { ks.KabulEt(t); Eylem("Kurumsal", $"{ne}: kabul ({calisacak} eğitimli kurye o saatte çalışıyor)"); }
+                else
+                {
+                    ks.Reddet(t);
+                    Eylem("Kurumsal", egitimli == 0 ? $"{ne}: reddedildi (catering eğitimli kurye yok)"
+                                                    : $"{ne}: reddedildi ({egitimli} eğitimli kurye var ama o saatte çalışmıyor)");
+                }
             }
         }
 

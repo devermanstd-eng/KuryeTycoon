@@ -71,8 +71,8 @@ namespace KuryeTycoon
                 a();
             }
             UiGuncelle();   // UI Toolkit arayüzü (Arayuz/UiKok.cs)
-            // Büyük kurye kartı da ortada, perdeli bir kutu (UI Toolkit)
-            OrtaKutuAcik = UiAktif && (UiAcikModal != UiModalTur.Yok || BigCardOpen);
+            // Büyük kurye kartı da ortada, perdeli bir kutu (UI Toolkit). Test modunda telefon ve bina kartı çekilirken de IMGUI çizmez.
+            OrtaKutuAcik = UiAktif && (UiAcikModal != UiModalTur.Yok || BigCardOpen || testKartCekimi);
         }
 
         void LateUpdate()

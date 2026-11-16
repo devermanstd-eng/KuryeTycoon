@@ -1291,13 +1291,13 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .bina-simge-kutu { width: 40px; height: 40px; border-radius: 12px; align-items: center; justify-content: center; flex-shrink: 0; }
 .bina-ad { font-size: 16px; }
 .bina-kart > .pencere-cizgi { margin: 0 12px 0 12px; flex-shrink: 0; }
-.bina-govde { flex-grow: 0; flex-shrink: 1; min-height: 40px; padding: 8px 4px 10px 12px; }
+.bina-govde { flex-grow: 0; flex-shrink: 0; min-height: 40px; padding: 8px 4px 10px 12px; }   /* yüksekliği koddan (KaydirmaYuksekligi) */
 .bina-kart .yz-kutu { min-width: 120px; }   /* dört kutu 2×2 dizilir */
 
 /* ---------------------------------------------------------------- büyük kurye kartı (Arayuz/UiBuyukKart.cs) */
 
 .bk-kart { padding: 16px 20px 16px 20px; }
-.bk-govde { flex-grow: 0; flex-shrink: 1; min-height: 60px; }
+.bk-govde { flex-grow: 0; flex-shrink: 0; min-height: 60px; }   /* yüksekliği koddan (KaydirmaYuksekligi) */
 .bk-bas { align-items: flex-start; margin-bottom: 12px; }
 .portre.bk-portre { width: 96px; height: 96px; border-radius: 16px; }
 .yildiz.bk-seviye { font-size: 12px; height: 20px; border-radius: 10px; padding: 0 7px 0 7px; }
