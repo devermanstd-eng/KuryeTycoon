@@ -368,12 +368,13 @@ namespace KuryeTycoon
             durumGoster.Clear();
             for (int i = 0; i < durumKullanilan; i++) durumGoster.Add(durumListe[i]);
 
-            // Konum: sağ üst. Kurye telefonu ya da bina kartı (IMGUI, sağda) açıksa onların soluna kayar; yer yoksa gizlenir.
+            // Konum: sağ üst. Kurye telefonu ya da bina kartı (sağda) açıksa onların soluna kayar (genişlikleri farklı:
+            // telefon 340, bina kartı 370); yer yoksa gizlenir. Büyük kurye kartı açıksa perdesinin altında kalır.
             float sw = UiEkranGenisligi, sh = UiEkranYuksekligi;
-            bool sagDolu = popupCourier != null || InfoOpen;
-            float sag = sagDolu ? 376f : 12f;
+            float sagKart = SagKartGenisligi;
+            float sag = sagKart > 0f ? sagKart : 12f;
             bool sigar = sw - sag - DurumGenislik > MapLeftGui + 12f;
-            bool gor = durumGoster.Count > 0 && sigar && !BuyukKartCiziliyor;
+            bool gor = durumGoster.Count > 0 && sigar;
             U.Goster(durumKok, gor);
             if (!gor) { durumlar.Esitle(durumGoster); return; }
             durumKok.style.right = sag;

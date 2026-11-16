@@ -13,9 +13,7 @@ namespace KuryeTycoon
         // Oyunun tek teması koyu tema (iki temayı birden bakımlı tutmak yerine biri seçildi). Kâğıt temasının kodu duruyor:
         // burayı true yapınca krem paneller ve elle çizilmiş simgeler geri gelir.
         public static bool Kagit => false;
-        /// <summary>Bu kapsamda çizilenler eski koyu renklerinde kalır (kurye telefonu ekranı).</summary>
-        public static bool Klasik;
-        static bool KagitAcik => Kagit && !Klasik;
+        static bool KagitAcik => Kagit;
 
         public static readonly Color Ink = new Color(0.227f, 0.173f, 0.145f);            // mürekkep (çerçeve, yazı)
         public static readonly Color Paper = new Color(0.984f, 0.953f, 0.886f);          // krem panel

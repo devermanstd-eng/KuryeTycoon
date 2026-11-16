@@ -4,10 +4,8 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// İşe Alım: adayın çalışma saatleri ve saate göre filtre.
-    ///  • Kartta "Çalışma saatleri": Hafta içi 17:00–23:00 · Hafta sonu 11:00–20:00 gibi düz yazı.
-    ///  • Başvuruların üstünde saat filtresi: Sabah / Öğlen / Akşam / Gece. Birden fazla seçilebilir; seçilenlerin hepsinde
-    ///    çalışan adaylar listelenir (ör. Sabah + Akşam). "Her saat" seçimi temizler.
+    /// Kurye ve adayların çalışma saatleri (Kayıtlar, Kuryeler ve büyük kart kullanır).
+    ///  • "Çalışma saatleri": Hafta içi 17:00–23:00 · Hafta sonu 11:00–20:00 gibi düz yazı (lines); gün bölümleri (parts).
     /// Saatler elle yazılmaz; kuryenin oyunda çevrimiçi olma kararını verdiği Courier.PreferenceAt'ten hesaplanır.
     /// Aynı saatleri olan günler tek satırda birleşir (Her gün / Hafta içi / Hafta sonu / Pzt–Çar ...);
     /// vardiyalı işçide bu hafta ve gelecek hafta ayrı yazılır.
@@ -19,7 +17,6 @@ namespace KuryeTycoon
         const int WorkPartMinHours = 2;  // filtre: o bölümde en az bu kadar saat kesin çalışan aday
 
         static readonly string[] WorkDayNames = { "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz" };
-        static readonly string[] WorkPartNames = { "Sabah", "Öğlen", "Akşam", "Gece" };
         static readonly int[] WorkPartFrom = { 6, 12, 17, 22 };
         static readonly int[] WorkPartTo = { 12, 17, 22, 30 };   // 30 = ertesi gün 06:00
 
@@ -31,59 +28,7 @@ namespace KuryeTycoon
 
         readonly Dictionary<string, WorkInfo> workCache = new Dictionary<string, WorkInfo>();
         int workCacheDay = -1;
-        readonly bool[] workParts = new bool[4];   // seçili gün bölümleri; hiçbiri seçili değilse filtre yok
 
-        bool AnyWorkPart => workParts[0] || workParts[1] || workParts[2] || workParts[3];
-
-        // ---------------------------------------------------------------- kart
-
-        void WorkHoursSection(Occupation occ, int seed)
-        {
-            var clock = GameClock.I;
-            if (clock == null) return;
-            var info = WorkInfoFor(occ, seed, clock);
-            GUILayout.Space(2);
-            GUILayout.Label("Çalışma saatleri: " + string.Join("  ·  ", info.lines), small);
-        }
-
-        // ---------------------------------------------------------------- filtre
-
-        void WorkPartFilterBar(List<CourierCandidate> apps)
-        {
-            var clock = GameClock.I;
-            if (clock == null || apps.Count < 2) { System.Array.Clear(workParts, 0, 4); return; }
-            GUILayout.BeginHorizontal();
-            if (SelectButton(!AnyWorkPart, $"Her saat ({apps.Count})", smallButton, GUILayout.Width(100)))
-                deferred = () => System.Array.Clear(workParts, 0, 4);
-            for (int i = 0; i < 4; i++)
-            {
-                int k = i, n = 0;
-                foreach (var a in apps) if (WorkInfoFor(a.occupation, a.scheduleSeed, clock).parts[i]) n++;
-                string range = $"{WorkPartFrom[i]:00}:00–{WorkPartTo[i] % 24:00}:00";
-                if (SelectButton(workParts[i], $"{WorkPartNames[i]} ({n})", smallButton)) deferred = () => workParts[k] = !workParts[k];
-                if (Event.current.type == EventType.Repaint)
-                    HoverTip(GUILayoutUtility.GetLastRect(), $"{WorkPartNames[i]} {range}: bu saatlerde çalışan {n} aday. Birden fazla bölüm seçebilirsin.");
-            }
-            GUILayout.EndHorizontal();
-            if (AnyWorkPart)
-            {
-                int n = 0;
-                foreach (var a in apps) if (PassesWorkFilter(a)) n++;
-                var sel = new List<string>();
-                for (int i = 0; i < 4; i++) if (workParts[i]) sel.Add(WorkPartNames[i]);
-                string what = string.Join(" + ", sel);
-                GUILayout.Label(n == 0 ? $"{what} saatlerinin hepsinde çalışan başvuru yok."
-                                       : $"{what}: bu bölümlerin hepsinde çalışan {n} aday gösteriliyor.", small);
-            }
-        }
-
-        bool PassesWorkFilter(CourierCandidate c)
-        {
-            if (!AnyWorkPart || GameClock.I == null) return true;
-            var parts = WorkInfoFor(c.occupation, c.scheduleSeed, GameClock.I).parts;
-            for (int i = 0; i < 4; i++) if (workParts[i] && !parts[i]) return false;   // seçilenlerin hepsinde çalışmalı
-            return true;
-        }
 
         // ---------------------------------------------------------------- hesap
 

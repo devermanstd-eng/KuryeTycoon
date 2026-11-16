@@ -70,15 +70,6 @@ namespace KuryeTycoon
             HoverTip(Rect.MinMaxRect(nameR.xMin, r.yMin, r.xMax, r.yMax), $"<b>{name}</b> {stars}/5: {help}");
         }
 
-        /// <summary>Destek personelinin tek becerisi (0,5–1 arası) yıldızla.</summary>
-        void SupportSkillRow(float skill)
-        {
-            GUILayout.BeginHorizontal();
-            SkillCell("Yetenek", Stars(skill, 0.5f, 1f), "şikayetleri daha ucuza kapatır (iade değerinin %30'u ile %60'ı arası).", 80f);
-            GUILayout.FlexibleSpace();
-            GUILayout.EndHorizontal();
-        }
-
         /// <summary>Dört beceri, ikişerli iki satırda yıldızla.</summary>
         void SkillGrid(float speed, float care, float politeness, float stamina)
         {
@@ -235,7 +226,6 @@ namespace KuryeTycoon
             GUILayout.BeginHorizontal();
             var courier = c;
             if (!forceOpen) DetailButton(c);
-            if (GUILayout.Button("Büyüt", smallButton, GUILayout.Width(80))) deferred = () => OpenBigCard(courier);   // CourierBigCard.cs
             if (GUILayout.Button("Ekipman", smallButton, GUILayout.Width(96)))
                 deferred = () => { selectedCourier = courier; tab = Tab.Ekipman; panelOpen = true; scroll = Vector2.zero; };
             GUILayout.FlexibleSpace();
@@ -244,63 +234,6 @@ namespace KuryeTycoon
         }
 
         // ---------------------------------------------------------------- başvuru kartı
-
-        void DrawCandidateCard(CourierCandidate cand, float now)
-        {
-            var cm = CourierManager.I;
-            var up = UpgradeManager.I;
-            var v = GameData.Vehicle(cand.vehicle);
-            bool open = CardOpen(cand);
-            float hoursLeft = Mathf.Max(0f, (cand.expiresAt - now) / 60f);
-
-            GUILayout.BeginVertical(box);
-            BeginIdCardHead(cand.name, 2, null, cand.vehicle, cand.level);
-            if (!string.IsNullOrEmpty(cand.note)) GUILayout.Label($"\"{cand.note}\"", note);
-            Chip(ShortLabel(Courier.OccupationLabel(cand.occupation)), NeutralTone);
-            Chip(cand.pickiness >= 0.75f ? "Çok seçici" : cand.pickiness >= 0.45f ? "Normal seçici" : "Pek seçici değil",
-                 cand.pickiness >= 0.75f ? UITheme.Warn : cand.pickiness >= 0.45f ? NeutralTone : UITheme.Good);
-            Chip(cand.insured ? "Sigortalı" : "Sigortasız", cand.insured ? UITheme.Good : NeutralTone);
-            Chip($"{hoursLeft:0} saat geçerli", hoursLeft <= 3f ? UITheme.Warn : NeutralTone);
-            if (cand.ozellikler != null)
-                foreach (var t in cand.ozellikler) Chip(KuryeOzellik.Ad(t), KuryeOzellik.OlumluMu(t) ? UITheme.Good : UITheme.Warn);   // kalıcı özellikler
-            ChipRow(CardColumnWidth);
-            EndIdCardHead();
-
-            GUILayout.Space(2);
-            SkillGrid(cand.speedSkill, cand.care, cand.politeness, cand.stamina);
-            WorkHoursSection(cand.occupation, cand.scheduleSeed);   // Çalışma saatleri (WorkHoursView.cs)
-
-            if (open)
-            {
-                GUILayout.Space(4);
-                GUILayout.Label($"Meslek: {Courier.OccupationLabel(cand.occupation)}", small);
-                if (cand.ozellikler != null)
-                    foreach (var t in cand.ozellikler) GUILayout.Label($"{KuryeOzellik.Ad(t)}: {KuryeOzellik.Aciklama(t)}", small);
-                if (cand.occupation == Occupation.Ogrenci)
-                    GUILayout.Label($"Bu dönem ders programı: {Courier.ScheduleText(cand.scheduleSeed, GameClock.I)}", small);
-                if (cand.alsoOwnsBike) GUILayout.Label("Yedekte bisikleti de var.", small);
-                KV("Hız", $"{v.tilesPerMinute * 60f * GameData.KmPerTile:0} km/saat");
-                KV("Aynı anda", $"{v.capacity} paket");
-                KV("Kazancı", $"{Ft(v.basePay)}/paket + {Ft(v.payPerKm)}/km");
-                KV("Taşır", GameData.CarryText(v));
-            }
-
-            GUILayout.BeginHorizontal();
-            var c = cand;
-            GUI.enabled = modalFree && !up.CourierCapFull;
-            if (GUILayout.Button(up.CourierCapFull ? "İşe al (hesaplar dolu)" : "İşe al", accentButton, GUILayout.MinWidth(120)))
-                deferred = () => AskConfirm("Kuryeyi işe al",
-                    $"{c.name} ({GameData.Vehicle(c.vehicle).name}, {Courier.OccupationLabel(c.occupation)}) işe alınsın mı? " +
-                    $"Kurye hesapları {cm.Couriers.Count}/{up.CourierCap} → {cm.Couriers.Count + 1}/{up.CourierCap}. " +
-                    $"Başlangıç kiti şirkete {Ft(GameData.StarterKitCost)}.",
-                    "Evet, işe al", () => cm.Hire(c));
-            GUI.enabled = modalFree;
-            if (GUILayout.Button("Reddet", button, GUILayout.Width(96))) deferred = () => cm.Reject(c);
-            GUILayout.FlexibleSpace();
-            DetailButton(c);
-            GUILayout.EndHorizontal();
-            GUILayout.EndVertical();
-        }
 
         // ---------------------------------------------------------------- kartlar / tablo
 

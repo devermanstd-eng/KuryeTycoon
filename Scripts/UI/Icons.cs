@@ -55,7 +55,7 @@ namespace KuryeTycoon
         /// <summary>Kâğıt temada elle çizilmiş renkli simge (yoksa null: eski tek renkli simge kullanılır).</summary>
         public static Texture2D Renkli(Kind k)
         {
-            if (!UITheme.Kagit || UITheme.Klasik) return null;
+            if (!UITheme.Kagit) return null;
             if (renkli.TryGetValue(k, out var t) && t != null) return t;
             if (renkliYok.Contains(k)) return null;
             t = Resources.Load<Texture2D>("UI/Ikonlar/" + k);

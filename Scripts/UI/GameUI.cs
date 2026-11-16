@@ -45,7 +45,6 @@ namespace KuryeTycoon
         Courier selectedCourier;
         Courier popupCourier;   // haritada tıklanan kurye: sağda detay paneli
         Courier hoverCourier;   // fare üstündeki kurye (ismi sarı yanar)
-        Vector2 popupScroll;
 
         GUIStyle title, header, label, small, warn, note, box, button, smallButton, bigButton, toggle, textField,
                  worldLabel, barTitle, barText, logoLetter;
@@ -72,7 +71,8 @@ namespace KuryeTycoon
                 a();
             }
             UiGuncelle();   // UI Toolkit arayüzü (Arayuz/UiKok.cs)
-            OrtaKutuAcik = UiAktif && UiAcikModal != UiModalTur.Yok;
+            // Büyük kurye kartı da ortada, perdeli bir kutu (UI Toolkit)
+            OrtaKutuAcik = UiAktif && (UiAcikModal != UiModalTur.Yok || BigCardOpen);
         }
 
         void LateUpdate()
@@ -105,13 +105,13 @@ namespace KuryeTycoon
             if (HandlePhotoMode(sw, sh)) return;   // F10: arayüz gizli, yalnızca şehir
 
             if (ConfirmOpen) HandleConfirmKey();
-            else if (BigCardOpen) HandleBigCardKey();   // büyük kurye kartı: Esc kapatır (CourierBigCard.cs)
+            else if (BigCardOpen) HandleBigCardKey();   // büyük kurye kartı: Esc kapatır (Arayuz/UiBuyukKart.cs)
             else if (EventManager.I.Current == null) HandleMenuKey();
             modalFree = EventManager.I.Current == null && !pauseMenuOpen && !ConfirmOpen && !BigCardOpen;
             if (modalFree) HandleKeys();
             if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
 
-            // Yeni arayüzde ortada bir kutu (olay kartı, Esc menüsü, onay) açıksa IMGUI hiçbir şey çizmez. Otomatik testin ekran
+            // Yeni arayüzde ortada bir kutu (olay kartı, Esc menüsü, onay, büyük kurye kartı) açıksa IMGUI hiçbir şey çizmez. Otomatik testin ekran
             // görüntülerinde IMGUI, UI Toolkit'in üstünde çıktı (uçan "+€" yazıları ve gece ışıkları olay kartına biniyordu).
             // Oyun ekranında sıra ters olsa bile arkası perdeyle karartıldığı için çizmemek bir şey kaybettirmez.
             if (OrtaKutuAcik) return;
@@ -125,6 +125,7 @@ namespace KuryeTycoon
             DrawHeat();          // harita katmanı (etiketlerin altında)
             DrawWorldLabels();
             DrawMapPops();       // uçan "+350 Ft" yazıları
+            DrawInfoMarker();    // seçili binanın üstündeki işaret (bina kartı UI Toolkit'te: Arayuz/UiBinaKarti.cs)
             if (!eskiArayuz) GUI.EndClip();
             if (eskiArayuz) DrawTopBar(sw);
             DrawPanel(sh);
@@ -135,18 +136,13 @@ namespace KuryeTycoon
             if (eskiArayuz) DrawGoalTracker();
             if (eskiArayuz) DrawUyarilar(sw);    // "Dikkat" listesi (UyariListesi.cs)
             DrawCityEventMarker(sw);
-            UITheme.Klasik = true;      // kurye telefonu: koyu ekran olarak kalır
-            DrawCourierPopup(sw, sh);
-            UITheme.Klasik = false;
-            DrawInfoMarker();
-            DrawInfoPopup(sw, sh);
-            // Yeni arayüzde bildirimler, rehber kartı, olay kartı, Esc menüsü ve onay UI Toolkit'te (Arayuz/UiBildirim.cs, UiModal.cs):
-            // UI Toolkit IMGUI'nin üstüne çizildiği için bunlar IMGUI'de kalsa açık pencerenin altında kalırdı.
+            // Kurye telefonu, bina kartı ve büyük kurye kartı UI Toolkit'te (Arayuz/UiTelefon.cs, UiBinaKarti.cs, UiBuyukKart.cs);
+            // eski arayüzde (F8) yoklar. Bildirimler, rehber kartı, olay kartı, Esc menüsü ve onay da UI Toolkit'te
+            // (Arayuz/UiBildirim.cs, UiModal.cs): UI Toolkit IMGUI'nin üstüne çizildiği için IMGUI'de kalsalar pencerenin altında kalırdı.
             if (eskiArayuz) DrawToasts(sw, sh);
             DrawGuideOverlays(sw, sh);
             GUI.enabled = true;
             if (eskiArayuz) DrawEvent(sw, sh);
-            if (BigCardOpen && EventManager.I.Current == null && !pauseMenuOpen && !(UiAktif && ConfirmOpen)) DrawBigCard(sw, sh);
             if (pauseMenuOpen && eskiArayuz) DrawPauseMenu(sw, sh);
             if (ConfirmOpen && eskiArayuz) DrawConfirm(sw, sh);
         }
@@ -162,8 +158,9 @@ namespace KuryeTycoon
             var e = Event.current;
             if (e.type != EventType.KeyDown || e.keyCode != KeyCode.Escape) return;
             e.Use();
-            // Önce açık pencere kapanır, sonra Esc menüsü açılır
+            // Önce bina kartı, kurye telefonu ve açık pencere kapanır, sonra Esc menüsü açılır
             if (InfoOpen && !pauseMenuOpen) { CloseInfo(); return; }
+            if (popupCourier != null && !pauseMenuOpen) { popupCourier = null; return; }
             if (panelOpen && !pauseMenuOpen) { panelOpen = false; return; }
             SetPauseMenu(!pauseMenuOpen);
         }
@@ -744,8 +741,6 @@ namespace KuryeTycoon
             return new Vector2(sp.x / uiScale, (Screen.height - sp.y) / uiScale);
         }
 
-        Rect PopupRect(float sw, float sh) => PhoneRect(sw, sh);
-
         /// <summary>Fare konumundaki kurye (simgesi ya da isim etiketi).</summary>
         Courier CourierAt(Vector2 m)
         {
@@ -779,14 +774,12 @@ namespace KuryeTycoon
                            !(panelOpen && WindowRect(sh).Contains(m)) &&
                            !(TutorialVisible && TutorialRect(sw, sh).Contains(m)) &&
                            !(legendOpen && LegendRect(sh).Contains(m)) &&
-                           !(popupCourier != null && PopupRect(sw, sh).Contains(m)) &&
-                           !(InfoOpen && InfoRect(sw, sh).Contains(m)) &&
                            !(TrackerVisible && GoalTrackerRect().Contains(m)) &&
                            !ToastAt(m, sw) &&
                            !(heatMenuOpen && HeatMenuRect(sh).Contains(m)) &&
                            !(!UiAktif && UyariGorunur && UyariRect(sw).Contains(m)) &&
                            !new Rect(DockW + 10f, sh - 44f, 560f, 30f).Contains(m) &&
-                           !UiUzerinde(m);   // UI Toolkit elemanı (üst çubuk, menü, pencere, olaylar...)
+                           !UiUzerinde(m);   // UI Toolkit elemanı (üst çubuk, menü, pencere, olaylar, telefon, bina kartı...)
             // Haritaya tıklayınca açık katman menüsü kapanır (UI Toolkit menüsü dışarı tıklamayı göremez)
             if (UiAktif && heatMenuOpen && e.type == EventType.MouseDown && overMap) heatMenuOpen = false;
             if (e.type == EventType.Repaint || e.type == EventType.MouseMove || e.type == EventType.MouseDown)
@@ -831,9 +824,7 @@ namespace KuryeTycoon
                     var c = CourierAt(m);
                     if (c != null)
                     {
-                        popupCourier = c;
-                        popupScroll = Vector2.zero;
-                        CloseInfo();
+                        TelefonAc(c);
                         e.Use();
                     }
                     else if (HandleInfoClick(m)) e.Use();
@@ -1232,13 +1223,12 @@ namespace KuryeTycoon
             {
                 case Tab.Siparisler: DrawOrders(); break;
                 case Tab.Kuryeler: DrawCouriers(); break;
-                case Tab.IseAlim: DrawKayit(); break;   // KayitView.cs
                 case Tab.Dukkanlar: DrawShops(); break;
                 case Tab.Ekipman: DrawEquipment(); break;
                 case Tab.Gelistirmeler: DrawUpgrades(); break;
                 case Tab.Finans: DrawFinance(); break;
                 case Tab.Hedefler: DrawGoals(); break;
-                // Destek, Kampanyalar, Market, Yorumlar, Grafik ve Ayarlar yalnızca UI Toolkit'te (Arayuz/). Eski arayüzde (F8) not:
+                // Kayıtlar, Destek, Kampanyalar, Market, Yorumlar, Grafik ve Ayarlar yalnızca UI Toolkit'te (Arayuz/). Eski arayüzde (F8) not:
                 default:
                     GUILayout.Label("Bu pencere yalnızca yeni arayüzde var. F8 ile yeni arayüze dön.", body);
                     break;
@@ -1557,7 +1547,7 @@ namespace KuryeTycoon
             }
             GUILayout.BeginHorizontal();
             var courier = c;
-            if (GUILayout.Button("Nakit / ödeme", smallButton)) deferred = () => { popupCourier = courier; popupScroll = Vector2.zero; CloseInfo(); };
+            if (GUILayout.Button("Nakit / ödeme", smallButton)) deferred = () => TelefonAc(courier);
             GUI.enabled = modalFree && c.OrderCount == 0 && ks != null && !ks.Askida(c);
             if (GUILayout.Button(ks != null && ks.Askida(c) ? "Askıda" : $"Askıya al ({KayitSistemi.AskiGun} gün)", smallButton))
                 deferred = () => AskConfirm("Hesabı askıya al",
@@ -1580,40 +1570,6 @@ namespace KuryeTycoon
             string s = "";
             foreach (var k in c.equipment) s += (s.Length > 0 ? ", " : "") + GameData.Equip(k).name;
             return s;
-        }
-
-        void DrawHiring()
-        {
-            var cm = CourierManager.I;
-            float now = GameClock.I.TotalMinutes;
-            var up = UpgradeManager.I;
-            if (up.CourierCapFull)
-                GUILayout.Label($"Kurye hesapları dolu ({cm.Couriers.Count}/{up.CourierCap}). {up.CourierCapHint}", warn);
-            else
-                KV("Kurye hesapları", $"{cm.Couriers.Count}/{up.CourierCap}");
-            Section($"Gelen başvurular ({cm.Applications.Count}/{cm.maxApplications})");
-            Intro("isealim", "Başvurular zamanla gelir ve 1 gün geçerlidir. İşe almak ve çıkarmak ücretsizdir.",
-                  "İtibarın ve bonus çarpanın yüksekse başvuru daha sık gelir. Kuryeler paket ve km başı kazandığı için maaş yoktur; " +
-                  "her yeni kuryeye başlangıç kiti verilir. Ama çok kurye = kişi başı az paket = düşük moral.");
-
-            if (cm.Applications.Count == 0)
-                GUILayout.Label("Şu an bekleyen başvuru yok. Yeni başvurular haber akışında duyurulur.", body);
-            else
-            {
-                if (cm.Applications.Count >= 5) VehicleFilterBar(applicationFilter, ApplicationCountByVehicle, cm.Applications.Count, f => applicationFilter = f);
-                else applicationFilter = -1;
-                if (applicationFilter >= 0 && ApplicationCountByVehicle((VehicleKind)applicationFilter) == 0)
-                    GUILayout.Label($"{GameData.Vehicle((VehicleKind)applicationFilter).name} ile başvuran yok.", small);
-                WorkPartFilterBar(cm.Applications);   // saat filtresi (WorkHoursView.cs)
-            }
-
-            foreach (var cand in cm.Applications)
-                if (PassesFilter(applicationFilter, cand.vehicle) && PassesWorkFilter(cand)) DrawCandidateCard(cand, now);
-
-            // Destek personeli de buradan işe alınabilir (Destek menüsü açıldıktan sonra)
-            if (!TabOpen(Tab.Destek)) return;
-            GUILayout.Space(10);
-            DrawSupportCandidates();
         }
 
         void DrawShops()
@@ -1927,53 +1883,6 @@ namespace KuryeTycoon
                     }
                     GUI.enabled = modalFree;
                 }
-                GUILayout.EndHorizontal();
-                GUILayout.EndVertical();
-            }
-        }
-
-        void DrawSupportCandidates()
-        {
-            var sm = SupportManager.I;
-            GUILayout.Space(6);
-            Section($"Destek personeli başvuruları ({SupportManager.I.Candidates.Count})",
-                $"Destek personeli maaşlıdır ve sabit vardiyada çalışır. Her başvuru {SupportManager.CandidateValidDays} gün geçerli; " +
-                "reddedilen ya da süresi dolanın yerine ertesi gün yenisi gelir. Yetenekli personel şikayetleri daha ucuza kapatır " +
-                "(iade değerinin %30'u ile %60'ı arası).");
-            if (SupportManager.I.Candidates.Count == 0) GUILayout.Label("Şu an destek başvurusu yok; ertesi gün yenisi gelir.", bodyDim);
-            foreach (var cand in sm.Candidates)
-            {
-                GUILayout.BeginVertical(box);
-                BeginIdCardHead(cand.name, 2, null, Icons.Kind.Wallet, $"{Ft(cand.monthlySalary)}/ay", null, 0);
-                if (!string.IsNullOrEmpty(cand.note)) GUILayout.Label($"\"{cand.note}\"", note);
-                SupportSkillRow(cand.skill);
-                EndIdCardHead();
-                long payrollAfter = TotalPayroll + cand.monthlySalary;
-                GUILayout.Label($"İşe alırsan aylık toplam maaş: {Ft(payrollAfter)} · serbest kasan: {Ft(EconomyManager.I.FreeCash)}",
-                                payrollAfter > EconomyManager.I.FreeCash ? warn : small);
-
-                GUILayout.Label("Vardiya:", small);
-                GUILayout.BeginHorizontal();
-                var c = cand;
-                for (int s = 0; s < 3; s++)
-                {
-                    var shift = (SupportShift)s;
-                    if (SelectButton(c.chosenShift == shift, SupportManager.ShiftLabel(shift), smallButton)) deferred = () => c.chosenShift = shift;
-                }
-                GUILayout.EndHorizontal();
-                GUILayout.BeginHorizontal();
-                if (SelectButton(c.chosenDays == WorkDays.PztCum, "Pazartesi–Cuma", smallButton)) deferred = () => c.chosenDays = WorkDays.PztCum;
-                if (SelectButton(c.chosenDays == WorkDays.CarPaz, "Çarşamba–Pazar", smallButton)) deferred = () => c.chosenDays = WorkDays.CarPaz;
-                GUILayout.EndHorizontal();
-                GUILayout.Label(ExpiryText(cand.expiresAt), small);
-                GUILayout.BeginHorizontal();
-                if (GUILayout.Button($"İşe al ({SupportManager.ShiftLabel(c.chosenShift)}, {(c.chosenDays == WorkDays.PztCum ? "Pzt–Cum" : "Çar–Paz")})", accentButton))
-                    deferred = () => AskConfirm("Destek personelini işe al",
-                        $"{c.name} {Ft(c.monthlySalary)}/ay maaşla, {SupportManager.ShiftLabel(c.chosenShift)} vardiyasında " +
-                        $"{(c.chosenDays == WorkDays.PztCum ? "Pazartesi–Cuma" : "Çarşamba–Pazar")} çalışmak üzere işe alınsın mı? " +
-                        $"Aylık toplam maaşın {Ft(TotalPayroll + c.monthlySalary)} olur.",
-                        "Evet, işe al", () => sm.Hire(c));
-                if (GUILayout.Button("Reddet", button, GUILayout.Width(90))) deferred = () => sm.Reject(c);
                 GUILayout.EndHorizontal();
                 GUILayout.EndVertical();
             }

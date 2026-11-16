@@ -201,17 +201,36 @@ namespace KuryeTycoon
             // Kurye telefonu (sağdan kayarak açılır, önce yerine otursun)
             if (cm.Couriers.Count > 0)
             {
-                popupCourier = cm.Couriers[0];
+                TelefonAc(cm.Couriers[0]);
                 yield return new WaitForSecondsRealtime(0.8f);
                 foreach (var ps in TestTelefonEkranlari)
                 {
-                    phoneScreen = ps;
-                    popupScroll = Vector2.zero;
+                    TelefonSayfa(ps);
                     yield return null;
+                    yield return null;   // UI Toolkit düzeni otursun
                     yield return StartCoroutine(TestCek(Path.Combine(klasor, $"telefon_{++no:000}_{ps}.jpg")));
                 }
                 phoneScreen = PhoneScreen.Home;
                 popupCourier = null;
+
+                // Büyük kurye kartı (ortada, perdeli)
+                OpenBigCard(cm.Couriers[0]);
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return StartCoroutine(TestCek(Path.Combine(klasor, $"pencere_{++no:000}_buyuk_kurye_karti.jpg")));
+                CloseBigCard();
+            }
+
+            // Bina kartı: sözleşmeli ilk dükkan
+            Shop dukkan = null;
+            if (CityMap.I != null)
+                foreach (var s in CityMap.I.Shops)
+                    if (s.contracted && !s.own) { dukkan = s; break; }
+            if (dukkan != null)
+            {
+                DukkanKartiAc(dukkan);
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return StartCoroutine(TestCek(Path.Combine(klasor, $"pencere_{++no:000}_bina_karti.jpg")));
+                CloseInfo();
             }
         }
     }

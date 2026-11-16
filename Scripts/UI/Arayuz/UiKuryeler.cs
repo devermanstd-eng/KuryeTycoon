@@ -159,7 +159,7 @@ namespace KuryeTycoon
                 dugmeler.style.marginTop = 8;
                 dugmeler.style.flexWrap = Wrap.Wrap;
                 U.Dugme(dugmeler, "Büyük kart", () => ui.OpenBigCard(k.c), "kucuk-dg", "ilk");
-                U.Dugme(dugmeler, "Telefon", () => { ui.popupCourier = k.c; ui.popupScroll = Vector2.zero; ui.CloseInfo(); }, "kucuk-dg");
+                U.Dugme(dugmeler, "Telefon", () => ui.TelefonAc(k.c), "kucuk-dg");
                 U.Dugme(dugmeler, "Ekipman", () => { ui.selectedCourier = k.c; ui.tab = Tab.Ekipman; ui.panelOpen = true; ui.scroll = Vector2.zero; }, "kucuk-dg");
                 k.cantaDugme = U.Dugme(dugmeler, "Yeni çanta", () => CourierManager.I.ReplaceBag(k.c), "kucuk-dg");
                 U.Gecirgen(dugmeler, "bosluk");

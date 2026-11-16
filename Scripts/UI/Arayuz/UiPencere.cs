@@ -112,9 +112,10 @@ namespace KuryeTycoon
             pencereKaydir.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             pencereGovde.Add(pencereKaydir);
 
-            // UI Toolkit'e taşınan sekmeler (taşınmayan tek pencere Kayıtlar: IMGUI ile çizilmeye devam eder)
+            // Bütün sekmeler UI Toolkit'te (IMGUI DrawPanel yalnızca eski arayüzde, F8)
             UiSekmeEkle(Tab.Siparisler, new UiSiparisler());
             UiSekmeEkle(Tab.Kuryeler, new UiKuryeler());
+            UiSekmeEkle(Tab.IseAlim, new UiKayitlar());
             UiSekmeEkle(Tab.Gelistirmeler, new UiGelisim());
             UiSekmeEkle(Tab.Hedefler, new UiHedefler());
             UiSekmeEkle(Tab.Ekipman, new UiEkipman());
