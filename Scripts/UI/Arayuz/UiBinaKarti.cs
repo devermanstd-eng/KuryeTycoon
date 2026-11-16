@@ -71,6 +71,7 @@ namespace KuryeTycoon
             binaKaydir.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             binaKok.Add(binaKaydir);
             binaY = new Yazici(this, binaKaydir.contentContainer);
+            binaY.KutuSutun = 2;   // dar kart: kutular 2'şerli satırlar (sarılan satır üst üste biniyordu)
             U.Goster(binaKok, false);
         }
 

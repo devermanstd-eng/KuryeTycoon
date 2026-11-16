@@ -91,7 +91,7 @@ namespace KuryeTycoon
         void BuildDefs()
         {
             Defs.Clear();
-            // Ödüller: erken taşlar küçük bir itme, büyükler bir sonraki büyüme adımına katkı (bölge açmak 150 000 – 1 200 000 Ft)
+            // Ödüller: erken taşlar küçük bir itme, büyükler bir sonraki büyüme adımına katkı (bölge açmak 150 000 – 900 000 Ft)
             Deliveries("teslimat_1", 1, false, 2000);
             Deliveries("teslimat_100", 100, true, 10000);
             Deliveries("teslimat_1000", 1000, true, 50000, 0.05f);

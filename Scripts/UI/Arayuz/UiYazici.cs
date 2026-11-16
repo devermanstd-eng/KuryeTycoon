@@ -54,6 +54,14 @@ namespace KuryeTycoon
             readonly Kap kok;
             readonly List<Kap> yigin = new List<Kap>();
             Oge son;
+            int kutuSayac = -1;   // açık Kutular grubundaki kutu sayısı (-1: grup açık değil)
+
+            /// <summary>
+            /// Bir satırdaki en fazla kutu (0 = sınırsız). Dar kartlarda (bina kartı) kutular alt satıra flex-wrap ile değil, ayrı
+            /// satır kaplarıyla geçer: UI Toolkit sarılan satırın yüksekliğini yanlış hesaplıyor, ikinci satır alttaki içeriğin
+            /// üstüne biniyordu (16.11).
+            /// </summary>
+            public int KutuSutun;
 
             public Yazici(GameUI ui, VisualElement ust)
             {
@@ -68,6 +76,7 @@ namespace KuryeTycoon
                 yigin.Clear();
                 kok.i = 0;
                 son = null;
+                kutuSayac = -1;
             }
 
             public void Bitir()
@@ -349,12 +358,32 @@ namespace KuryeTycoon
             // ------------------------------------------------------------------ sayılar: kutu, tablo
 
             /// <summary>Yan yana sayı kutuları: KutularBasla(); Kutu(...); Kutu(...); KutularBitir(). Sığmazsa alt satıra geçer.</summary>
-            public void KutularBasla() => KapAc("kutular", "yz-kutular", null);
-            public void KutularBitir() => KapKapat();
+            public void KutularBasla()
+            {
+                KapAc("kutular", "yz-kutular", null);
+                kutuSayac = 0;
+            }
+
+            public void KutularBitir()
+            {
+                KapKapat();
+                kutuSayac = -1;
+            }
 
             /// <summary>Sayı kutusu: küçük başlık, büyük değer, altında kısa fark/açıklama. İpucu verilirse üstüne gelince açılır.</summary>
             public void Kutu(string baslik, string deger, string alt = null, Color? renk = null, string ipucu = null, Color? altRenk = null)
             {
+                if (kutuSayac >= 0)
+                {
+                    if (KutuSutun > 0 && kutuSayac >= KutuSutun)
+                    {
+                        // Satır doldu: yeni satır kabı (aynı grubun devamı; KutularBitir bunu kapatır)
+                        KapKapat();
+                        KapAc("kutular", "yz-kutular", null);
+                        kutuSayac = 0;
+                    }
+                    kutuSayac++;
+                }
                 var o = Al("kutu", () =>
                 {
                     var x = new Oge { e = U.Gecirgen(null, "yz-kutu") };
