@@ -7701,12 +7701,13 @@ def _duz(g, pts, disari, mat):
     g.yuz(idx, mat, kabuk=False)
 
 
-def kabin_yan(g, s, pts_yz, mat, o=0.006):
-    """Kabinin cam bandına (içe eğik yan düzlem) yapışık düz çokgen; s = +1 sol (x+), −1 sağ."""
+def kabin_yan(g, s, pts_yz, mat, o=0.006, ters=False):
+    """Kabinin cam bandına (içe eğik yan düzlem) yapışık düz çokgen; s = +1 sol (x+), −1 sağ.
+    ters: yüz içeri bakar (kapının iç yüzü: kapı açılınca içeriden görünen cam ve çerçeve)."""
     k = (POLO_EN[0][1] - POLO_EN[1][1]) / (POLO_EN[1][0] - POLO_EN[0][0])
     n = norm((s * 1.0, 0.0, k))
     pts = [add((s * _kabin_x(min(z, POLO_CAM_UST)), y, z), mul(n, o)) for y, z in pts_yz]
-    _duz(g, pts, n, mat)
+    _duz(g, pts, mul(n, -1.0) if ters else n, mat)
 
 
 def govde_yan(g, s, pts_yz, mat, o=0.006):
@@ -7873,6 +7874,8 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     gv = M("Araba", govde_hex)
     alt = M("AracAlt", "#2a2b2e")
     ic_renk = M("AracIc", "#3b3d42")
+    kapi_ic = M("AracKapiIc", "#6a6e75")       # kapı döşemesi (açılınca görünür)
+    koltuk = M("AracKoltuk", "#4a4f5a")        # koltuk kumaşı (kapı boşluğundan görünür)
     siyah = M("AracSiyah", "#1c1d20")
     plastik = M("AracPlastik", "#2e3034")
     esik = M("AracEsik", "#aeb2b6")
@@ -7980,9 +7983,24 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         kapi_paneli(g, s, arka_kapi, 0.004, ic_renk)
         kabin_yan(g, s, cer, ic_renk, 0.003)
         kabin_yan(g, s, q, ic_renk, 0.003)
+        # kapı boşluğundan görünen koltuklar (kapı kapalıyken camın ve kapı sacının altında kalır)
+        for y_a, y_b in ((-0.30, 0.10), (0.52, 0.98)):
+            kabin_yan(g, s, [(y_a, zalt(y_a) + 0.01), (y_b, zalt(y_b) + 0.01), (y_b + 0.02, 1.17), (y_b - 0.04, 1.235),
+                             (y_a + 0.05, 1.235), (y_a, 1.18)], koltuk, 0.006)
+            kabin_yan(g, s, [(y_a + 0.09, 1.25), (y_b - 0.09, 1.25), (y_b - 0.10, 1.32), (y_a + 0.10, 1.32)], koltuk, 0.006)
+            govde_yan(g, s, [(y_a, 0.62), (y_b + 0.02, 0.62), (y_b + 0.02, POLO_KUSAK - 0.01), (y_a, POLO_KUSAK - 0.01)], koltuk, 0.007)
+            govde_yan(g, s, [(y_a - 0.16, 0.48), (y_b + 0.02, 0.48), (y_b + 0.02, 0.615), (y_a - 0.16, 0.615)], koltuk, 0.007)
         for ad, hat, y0, y1, menteşe_y in (("Kapi_On" + taraf, on_kapi, -2.0, YB, -0.80), ("Kapi_Arka" + taraf, arka_kapi, YB, 3.0, YB + 0.01)):
             kp = parca(ad, (s * 0.80, menteşe_y, 0.60))
-            kapi_paneli(kp, s, hat, 0.011, gv, ic_renk)
+            kapi_paneli(kp, s, hat, 0.011, gv, kapi_ic)
+            # kapı içi: kolçak, iç kol, cep
+            ya_, yb_ = (max(y0, -0.80) + 0.08, YB - 0.10) if y0 < 0 else (YB + 0.08, 0.95)
+            for z_a, z_b, mat_, d_ in ((0.66, 0.71, plastik, 0.045), (0.36, 0.48, ic_renk, 0.040)):
+                _duz(kp, [(s * (_govde_x(y_, z_) - d_), y_, z_) for y_, z_ in ((ya_, z_a), (yb_, z_a), (yb_, z_b), (ya_, z_b))],
+                     (-s, 0.0, 0.0), mat_)
+            yk = ya_ + 0.05
+            _duz(kp, [(s * (_govde_x(y_, z_) - 0.046), y_, z_) for y_, z_ in ((yk, 0.75), (yk + 0.12, 0.75), (yk + 0.12, 0.78), (yk, 0.78))],
+                 (-s, 0.0, 0.0), krom)
             # kapının üst kenarı (pencere eşiği): gövdenin omzundan cama kadar. Bu olmadan kapı açılınca cam
             # kapının sacından ~6 cm içeride havada kalıyordu.
             ya, yb2 = (max(y0, -0.80), YB - 0.004) if y0 < 0 else (YB + 0.004, 1.33)
@@ -7998,15 +8016,19 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
             fr = kirp_y(cer, y0 + (0.0 if y0 < 0 else 0.004), min(y1, 1.07) - 0.004)
             if len(fr) >= 3:
                 kabin_yan(kp, s, fr, siyah, 0.007)
+                kabin_yan(kp, s, fr, siyah, -0.014, ters=True)          # içeriden çerçeve
             for c0, c1 in (((-2.0, 0.305) if y0 < 0 else (0.405, 0.855)), ((9, 9) if y0 < 0 else (0.885, 3.0))):
                 if c0 > c1:
                     continue
                 p = kirp_y(ic, c0, c1)
                 if len(p) >= 3:
                     kabin_yan(kp, s, p, cam, 0.011)
+                    kabin_yan(kp, s, p, cam, -0.010, ters=True)       # içeriden cam
             if y0 > 0:
                 kabin_yan(kp, s, q, siyah, 0.007)
+                kabin_yan(kp, s, q, siyah, -0.014, ters=True)
                 kabin_yan(kp, s, q2, cam, 0.011)
+                kabin_yan(kp, s, q2, cam, -0.010, ters=True)
             # koruma bandı, kol, derzler
             bant = kirp_y([(-0.82, 0.508), (1.04, 0.508), (1.04, 0.558), (-0.82, 0.558)], max(y0, -0.82) + 0.006, min(y1, 1.04) - 0.006)
             if len(bant) >= 3:
