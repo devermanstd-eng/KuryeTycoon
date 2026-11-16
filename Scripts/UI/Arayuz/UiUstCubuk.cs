@@ -39,7 +39,7 @@ namespace KuryeTycoon
         void UiUstKur()
         {
             ustKok = U.El(katHud, "ust");
-            var marka = U.Gecirgen(ustKok, "marka");   // logo + şirket adı tek kapsülde (kâğıt tema)
+            var marka = U.Gecirgen(ustKok, "marka");   // logo + şirket adı tek kapsülde
             ustLogo = U.El(marka, "logo");
             ustLogoHarf = U.Kalin(ustLogo, "", "logo-harf");
             ustAd = U.Kalin(marka, "", "sirket-adi");
@@ -115,7 +115,7 @@ namespace KuryeTycoon
         {
             U.Metin(g.deger, deger);
             U.Metin(g.alt, alt);
-            U.Renk(g.deger, U.Okunur(degerRengi ?? U.Murekkep));   // kâğıt üstünde okunur
+            U.Renk(g.deger, U.Okunur(degerRengi ?? U.YaziRengi));   // koyu panelde okunur
             U.Renk(g.alt, U.Okunur(altRengi ?? U.Soluk));
             U.SimgeAyarla(g.simge, simge ?? (Icons.Kind)g.simge.userData, simgeRengi);
             U.Zemin(g.simgeKutu, U.A(simgeRengi, 0.18f));
@@ -157,7 +157,7 @@ namespace KuryeTycoon
             // Hız düğmeleri her karede (tıklama hemen görünsün)
             bool paused = clock.Paused;
             if (paused) U.Zemin(ustOynat, U.Uyari); else ZeminSil(ustOynat);
-            U.SimgeAyarla(ustOynatSimge, paused ? Icons.Kind.Play : Icons.Kind.Pause, paused ? new Color(0.12f, 0.08f, 0.02f) : U.Murekkep);
+            U.SimgeAyarla(ustOynatSimge, paused ? Icons.Kind.Play : Icons.Kind.Pause, paused ? new Color(0.12f, 0.08f, 0.02f) : U.YaziRengi);
             foreach (var (l, sp) in hizDilimleri)
             {
                 bool on = IsSpeed(clock, sp);

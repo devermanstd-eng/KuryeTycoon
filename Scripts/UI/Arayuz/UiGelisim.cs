@@ -131,7 +131,7 @@ namespace KuryeTycoon
                         U.Metin(k.yukselt, $"Yükselt — {Ft(cost)}");
                         k.yukselt.SetEnabled(e.FreeCash >= cost);
                         U.Zemin(k.yukselt, e.FreeCash >= cost ? UITheme.Accent : U.Ton(0.08f));
-                        U.Renk(k.yukselt, e.FreeCash >= cost ? UITheme.AccentText : U.Murekkep);
+                        U.Renk(k.yukselt, e.FreeCash >= cost ? UITheme.AccentText : U.YaziRengi);
                     }
                     bool kucultur = lv > 0 && d.canDowngrade && d.DailyAt(lv) > d.DailyAt(lv - 1);
                     U.Goster(k.kucult, kucultur);
@@ -188,7 +188,7 @@ namespace KuryeTycoon
                     if (!vr) continue;
                     var g = gm.Goals[i];
                     U.Metin(ad, (g.done ? "✓ " : "") + g.Title);
-                    U.Renk(ad, g.done ? U.Iyi : U.Murekkep);
+                    U.Renk(ad, g.done ? U.Iyi : U.YaziRengi);
                     U.Metin(sayi, g.ProgressText);
                     cb.Ayarla(g.Progress01, g.done ? U.Iyi : UITheme.Accent);
                     U.Metin(odul, $"Ödül: {Ft(g.reward)}" + (g.reputation > 0f ? " + itibar" : "") + (g.done ? " · alındı" : ""));

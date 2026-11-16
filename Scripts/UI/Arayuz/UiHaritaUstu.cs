@@ -225,7 +225,7 @@ namespace KuryeTycoon
                 U.Goster(kok, vr);
                 if (!vr) continue;
                 U.Zemin(nokta, i == 0 ? UITheme.Accent : U.A(U.Soluk, 0.5f));
-                U.Renk(yazi, i == 0 ? U.Murekkep : U.Soluk);
+                U.Renk(yazi, i == 0 ? U.YaziRengi : U.Soluk);
                 U.Metin(yazi, feed[i]);
             }
         }
@@ -292,10 +292,10 @@ namespace KuryeTycoon
                 if (!vr) continue;
                 var g = hedefler[i];
                 if (g.done) U.Zemin(daire, U.Iyi); else ZeminSil(daire);
-                var kenar = g.done ? U.Iyi : U.A(U.Cerceve, 0.6f);
+                var kenar = g.done ? U.Iyi : U.Ton(0.45f);
                 daire.style.borderTopColor = daire.style.borderBottomColor = daire.style.borderLeftColor = daire.style.borderRightColor = kenar;
                 U.Metin(ad, g.Title);
-                U.Renk(ad, g.done ? U.Soluk : U.Murekkep);
+                U.Renk(ad, g.done ? U.Soluk : U.YaziRengi);
                 U.Metin(sayi, g.done ? "✓" : g.ProgressText);
                 U.Renk(sayi, g.done ? U.Iyi : U.Soluk);
                 cb.Ayarla(g.Progress01, g.done ? U.Iyi : UITheme.Accent);

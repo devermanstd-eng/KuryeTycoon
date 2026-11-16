@@ -191,7 +191,7 @@ namespace KuryeTycoon
                 var k = new KuryeSecim { c = c };
                 k.kok = U.Gecirgen(null, "satir");
                 k.kok.style.minHeight = 28;
-                k.simge = U.Simge(k.kok, Icons.Of(c.vehicle), U.Murekkep, 14f, "mini-simge");
+                k.simge = U.Simge(k.kok, Icons.Of(c.vehicle), U.YaziRengi, 14f, "mini-simge");
                 k.yazi = U.Yazi(k.kok, "", "kucuk", "tek-satir", "esnek");
                 k.ata = U.Dugme(k.kok, "Ata", () => { OrderManager.I.Assign(s.o, k.c, true); ui.UiSekmeyiYenile(); }, "kucuk-dg");
                 return k;
@@ -213,7 +213,7 @@ namespace KuryeTycoon
                            : p >= 0 ? $"{c.ShortName} · kâr az ({Ft(p)})"
                            : $"{c.ShortName} · zarar {Ft(p)}";
                 U.Metin(k.yazi, txt);
-                U.Renk(k.yazi, p >= need && !rejected ? U.Murekkep : U.Soluk);
+                U.Renk(k.yazi, p >= need && !rejected ? U.YaziRengi : U.Soluk);
                 k.ata.SetEnabled(p >= need && !rejected);
             }
 

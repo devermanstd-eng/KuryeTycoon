@@ -22,7 +22,7 @@ namespace KuryeTycoon
         class TelSimge : VisualElement
         {
             TelSimgeTur tur;
-            Color renk = PKoyu;   // kâğıt tema: mürekkep çizgi
+            Color renk = Color.white;
 
             public TelSimge(TelSimgeTur t, float boy)
             {
@@ -238,7 +238,7 @@ namespace KuryeTycoon
                     v += 4;
                 }
 
-                Dortgen(0f, 0f, w, h, new Color(0.93f, 0.90f, 0.84f));   // kâğıt harita
+                Dortgen(0f, 0f, w, h, new Color(0.12f, 0.11f, 0.10f));   // koyu harita (sıcak kömür)
                 for (int x = x0; x <= x1; x++)
                     for (int y = y0; y <= y1; y++)
                     {
@@ -246,13 +246,13 @@ namespace KuryeTycoon
                         float ax = p.x - s / 2f, ay = p.y - s / 2f, bx = ax + s + 0.5f, by = ay + s + 0.5f;
                         bool yol = cm.IsRoad(x, y), su = CityMap.WaterAt(x, y);
                         Color col;
-                        if (yol) col = CityMap.BridgeAt(x, y) ? new Color(0.72f, 0.67f, 0.60f) : new Color(0.83f, 0.79f, 0.72f);
-                        else if (su) col = new Color(0.66f, 0.80f, 0.88f);
-                        else col = Color.Lerp(cm.MiniColor(x, y), new Color(0.96f, 0.93f, 0.87f), 0.55f);   // kâğıt harita (soluk suluboya)
-                        if (!cm.IsUnlocked(x, y)) col = Color.Lerp(col, new Color(0.78f, 0.74f, 0.68f), 0.55f);
+                        if (yol) col = CityMap.BridgeAt(x, y) ? new Color(0.40f, 0.37f, 0.34f) : new Color(0.31f, 0.29f, 0.27f);
+                        else if (su) col = new Color(0.12f, 0.25f, 0.36f);
+                        else col = Color.Lerp(cm.MiniColor(x, y), new Color(0.12f, 0.11f, 0.10f), 0.62f);   // uygulamadaki koyu harita
+                        if (!cm.IsUnlocked(x, y)) col = Color.Lerp(col, Color.black, 0.5f);
                         Dortgen(ax, ay, bx, by, col);
                         // Binalar biraz açık: kareler ayrı görünür (yol ve suda aynı renk)
-                        Dortgen(ax + 1.5f, ay + 1.5f, bx - 1.5f, by - 1.5f, yol || su ? col : Color.Lerp(col, Color.white, 0.15f));
+                        Dortgen(ax + 1.5f, ay + 1.5f, bx - 1.5f, by - 1.5f, yol || su ? col : Color.Lerp(col, Color.white, 0.03f));
                     }
 
                 var pz = mgc.painter2D;
@@ -270,7 +270,7 @@ namespace KuryeTycoon
                 var path = c.PathList;
                 if (cur != null && path != null && path.Count > 0)
                 {
-                    pz.strokeColor = PKoyu;   // mürekkep rota
+                    pz.strokeColor = Color.white;
                     pz.lineWidth = 4.5f;
                     pz.lineCap = LineCap.Round;
                     pz.lineJoin = LineJoin.Round;
@@ -375,8 +375,8 @@ namespace KuryeTycoon
 
             public void Ayarla(bool aktif, string a, string b, string c)
             {
-                U.Zemin(this, aktif ? new Color(0.84f, 0.92f, 0.93f) : PCard);
-                U.Zemin(sol, aktif ? Color.Lerp(CompanyProfile.Primary, Color.white, 0.1f) : new Color(0.84f, 0.80f, 0.73f));
+                U.Zemin(this, aktif ? new Color(0.07f, 0.26f, 0.33f) : PCard);
+                U.Zemin(sol, aktif ? Color.Lerp(CompanyProfile.Primary, Color.white, 0.1f) : new Color(0.24f, 0.22f, 0.20f));
                 U.Goster(ic, aktif);
                 U.Goster(bos, !aktif);
                 if (!aktif) return;
@@ -474,7 +474,7 @@ namespace KuryeTycoon
                 var m = r.center;
                 float rad = Mathf.Min(r.width, r.height) / 2f - 4f;
                 p.lineWidth = 6f;
-                p.strokeColor = new Color(0.17f, 0.15f, 0.14f, 0.15f);
+                p.strokeColor = new Color(0.26f, 0.24f, 0.22f);
                 p.BeginPath();
                 p.Arc(m, rad, 0f, 360f);
                 p.Stroke();

@@ -92,9 +92,9 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Kâğıt temada simgeler elle çizilmiş renkli PNG'lerdir (Resources/UI/Ikonlar/&lt;Ad&gt;.png, Icons.ElCizimi): kendi
+        /// Simgeler elle çizilmiş renkli PNG'lerdir (Resources/UI/Ikonlar/&lt;Ad&gt;.png, Icons.ElCizimi): kendi
         /// renkleriyle çizilir, verilen rengin yalnızca saydamlığı kullanılır. PNG'si olmayan simge ve Kapat (×) eskisi gibi tek
-        /// renk (mürekkep) çizilir: küçük kapat düğmesinde renkli daire okunmuyor.
+        /// renk (soluk) çizilir: küçük kapat düğmesinde renkli daire okunmuyor.
         /// </summary>
         public static bool ElCizimiSimge = true;
 
@@ -120,11 +120,11 @@ namespace KuryeTycoon
             return l;
         }
 
-        /// <summary>Çip: rengin açık tonu zemin, rengin koyusu yazı (kâğıt üstünde okunur).</summary>
+        /// <summary>Çip: rengin saydam tonu zemin, rengin açığı yazı (koyu panel üstünde okunur).</summary>
         public static void CipRengi(VisualElement l, Color renk)
         {
             Zemin(l, A(renk, 0.18f));
-            Renk(l, Okunur(Color.Lerp(renk, Murekkep, 0.3f)));
+            Renk(l, Okunur(Color.Lerp(renk, Color.white, 0.35f)));
         }
 
         public static Label Bolum(VisualElement ust, string metin)
@@ -185,7 +185,7 @@ namespace KuryeTycoon
                 Goster(isaret, v);
                 Zemin(kutu, v ? UITheme.Accent : new Color(0, 0, 0, 0));
                 kutu.style.borderTopColor = kutu.style.borderBottomColor = kutu.style.borderLeftColor = kutu.style.borderRightColor =
-                    v ? UITheme.Accent : A(Cerceve, 0.7f);
+                    v ? UITheme.Accent : Ton(0.4f);
             }
         }
 
@@ -301,53 +301,49 @@ namespace KuryeTycoon
 
         public static Color A(Color c, float a) { c.a = a; return c; }
 
-        // ------------------------------------------------------------------ kâğıt teması (16.11 akşam, CityRT tarzı)
-        // Kurye.uss'in :root değişkenleriyle aynı renkler. Koddan satır içi verilen renkler buradan gelir: krem kâğıt üstünde
-        // okunur koyu tonlar. U.Murekkep/Good/Bad/Warn IMGUI için (harita etiketleri, kurulum ekranı, F8) koyu temada kaldı;
-        // UI Toolkit kodu onların yerine bunları kullanır.
+        // ------------------------------------------------------------------ koyu mürekkep teması (16.11 akşam)
+        // Kurye.uss'in :root değişkenleriyle aynı renkler. Koddan satır içi verilen renkler buradan gelir: koyu kömür panel
+        // üstünde okunur açık tonlar. UITheme.Text/Good/Bad/Warn IMGUI için (harita etiketleri, kurulum ekranı, F8) kaldı;
+        // UI Toolkit kodu onların yerine bunları kullanır. (Önce krem kâğıt denendi; açık haritada eridiği için koyu seçildi.)
 
-        /// <summary>Kâğıt (pencere, kart zemini) #F6F1E7.</summary>
-        public static readonly Color Kagit = new Color32(246, 241, 231, 255);
-        /// <summary>Koyu kâğıt (iç kart, çukur) #ECE4D4.</summary>
-        public static readonly Color KagitKoyu = new Color32(236, 228, 212, 255);
-        /// <summary>Mürekkep: yazı #26221E.</summary>
-        public static readonly Color Murekkep = new Color32(38, 34, 30, 255);
-        /// <summary>Çerçeve mürekkebi #2B2623.</summary>
-        public static readonly Color Cerceve = new Color32(43, 38, 35, 255);
-        /// <summary>Soluk yazı (kahve-gri).</summary>
-        public static readonly Color Soluk = new Color32(118, 104, 90, 255);
+        /// <summary>Panel zemini (pencere, yüzen kutular): kömür.</summary>
+        public static readonly Color PanelRengi = new Color32(30, 27, 25, 255);
+        /// <summary>Şerit (sol menü, pencerenin arkası): en koyu.</summary>
+        public static readonly Color SeritRengi = new Color32(20, 18, 16, 255);
+        /// <summary>Yazı: açık krem.</summary>
+        public static readonly Color YaziRengi = new Color32(245, 238, 226, 255);
+        /// <summary>Çerçeve: siyah mürekkep.</summary>
+        public static readonly Color Cerceve = new Color32(8, 7, 6, 255);
+        /// <summary>Soluk yazı (sıcak gri).</summary>
+        public static readonly Color Soluk = new Color32(178, 166, 152, 255);
         public static readonly Color Notr = Soluk;
         /// <summary>Adaçayı yeşili: kâr, artış, tamam.</summary>
-        public static readonly Color Iyi = new Color32(66, 116, 62, 255);
+        public static readonly Color Iyi = new Color32(132, 204, 118, 255);
         /// <summary>Kiremit kırmızısı: zarar, hata.</summary>
-        public static readonly Color Kotu = new Color32(178, 70, 46, 255);
+        public static readonly Color Kotu = new Color32(238, 110, 88, 255);
         /// <summary>Terracotta turuncu: uyarı, fiyat savaşı.</summary>
-        public static readonly Color Uyari = new Color32(176, 92, 26, 255);
-        /// <summary>Hardal sarısı (dolgu, nokta; yazıda Okunur ile koyulaşır).</summary>
-        public static readonly Color Hardal = new Color32(212, 163, 46, 255);
+        public static readonly Color Uyari = new Color32(245, 165, 80, 255);
+        /// <summary>Hardal sarısı.</summary>
+        public static readonly Color Hardal = new Color32(242, 196, 84, 255);
 
-        /// <summary>Mürekkep katmanı: kâğıt üstünde üstüne gelme, boş seviye noktası, ince zemin (eski beyaz katmanların yerine).</summary>
-        public static Color Ton(float a) => new Color(Cerceve.r, Cerceve.g, Cerceve.b, a);
+        /// <summary>Açık katman: koyu panel üstünde üstüne gelme, boş seviye noktası, ince zemin ve çizgi.</summary>
+        public static Color Ton(float a) => new Color(1f, 0.94f, 0.87f, a);
 
         static float Parlaklik(Color c) => 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
 
         /// <summary>
-        /// Krem kâğıt üstünde okunur yazı rengi: koyu renkler aynen kalır; açık renkler tonu korunarak koyulaşır, açık gri/beyaz
-        /// mürekkebe ya da soluğa döner. Koyu temadan kalan ya da oyun verisinden gelen (dükkan, olay, etkinlik) açık renkler için.
-        /// Renkli zemin üstündeki yazıya (şirket rengi düğme) uygulanmaz.
+        /// Koyu panel üstünde okunur yazı rengi: açık renkler aynen kalır; koyu renkler tonu korunarak açılır, koyu gri/siyah
+        /// yazı rengine ya da soluğa döner. Oyun verisinden gelen (dükkan, olay, etkinlik) koyu renkler için.
+        /// Renkli zemin üstündeki yazıya (şirket rengi düğme, açık hap) uygulanmaz.
         /// </summary>
         public static Color Okunur(Color c)
         {
             float l = Parlaklik(c);
-            if (l <= 0.3f) return c;
+            if (l >= 0.42f) return c;
             float doy = Mathf.Max(c.r, Mathf.Max(c.g, c.b)) - Mathf.Min(c.r, Mathf.Min(c.g, c.b));
             Color r;
-            if (doy < 0.15f) r = l > 0.75f ? Murekkep : Soluk;
-            else
-            {
-                float k = 0.22f / l;
-                r = new Color(c.r * k, c.g * k, c.b * k);
-            }
+            if (doy < 0.15f) r = l < 0.2f ? YaziRengi : Soluk;
+            else r = Color.Lerp(c, Color.white, (0.5f - l) / (1f - l));
             r.a = c.a;
             return r;
         }
