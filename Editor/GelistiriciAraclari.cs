@@ -24,5 +24,12 @@ namespace KuryeTycoon.EditorTools
             }
             Debug.Log($"Kurye Tycoon: {n} kurye arabaya bindirildi (araç modeli: {(CharacterVisuals.CarAvailable ? "var" : "YOK")}).");
         }
+
+        [MenuItem("Kurye Tycoon/Deneme: Araç kapılarını açık tut (aç-kapa)")]
+        static void KapilariAcikTut()
+        {
+            AracAnimasyon.AcikTut = !AracAnimasyon.AcikTut;
+            Debug.Log("Kurye Tycoon: araç kapıları " + (AracAnimasyon.AcikTut ? "açık tutuluyor" : "normal"));
+        }
     }
 }

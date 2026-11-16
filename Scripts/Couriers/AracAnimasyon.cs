@@ -13,6 +13,8 @@ namespace KuryeTycoon
     public class AracAnimasyon : MonoBehaviour
     {
         public Courier kurye;
+        /// <summary>Editör denemesi (Kurye Tycoon > Deneme: Araç kapılarını açık tut): bütün kapılar ve bagaj açık kalır.</summary>
+        public static bool AcikTut;
 
         class Parca
         {
@@ -188,12 +190,20 @@ namespace KuryeTycoon
                 kargoBagajda = o != null && (o.IsHeavy || (o.shop != null && o.shop.def != null && o.shop.def.isMarket));
             }
             parkta = park;
-            if (sira >= 0f)
+            if (AcikTut)
+            {
+                sira = -1f;
+                Dondur(kapiOnSol, 68f); Dondur(kapiArkaSol, 66f); Dondur(kapiOnSag, 68f); Dondur(kapiArkaSag, 66f); Dondur(bagaj, 72f);
+            }
+            else if (sira == -2f) { Dondur(kapiOnSol, 0f); Dondur(kapiArkaSol, 0f); Dondur(kapiOnSag, 0f); Dondur(kapiArkaSag, 0f); Dondur(bagaj, 0f); sira = -1f; }
+            if (AcikTut) sira = -2f;
+            else if (sira >= 0f)
             {
                 sira += dt * animHiz;
                 Dondur(kapiOnSol, 68f * Darbe(sira, 0f, 0.35f, 1.4f, 1.75f));
-                if (kargoBagajda) Dondur(bagaj, 72f * Darbe(sira, 0.6f, 1.15f, 2.8f, 3.35f));
-                else Dondur(kapiArkaSol, 66f * Darbe(sira, 0.5f, 0.85f, 1.9f, 2.25f));
+                // kurye iner, bagajı açar (paketi koyar / alır); ağır ya da market siparişinde arka kapıyı da açar
+                Dondur(bagaj, 72f * Darbe(sira, 0.6f, 1.15f, 2.8f, 3.35f));
+                if (kargoBagajda) Dondur(kapiArkaSol, 66f * Darbe(sira, 0.5f, 0.85f, 1.9f, 2.25f));
                 if (sira > 3.5f)
                 {
                     sira = -1f;

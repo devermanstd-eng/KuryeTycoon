@@ -8121,12 +8121,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
         kutu(g, -0.025, 0.025, 1.24, 1.32, 1.425, 1.455, siyah)
         cubuk(g, (0.0, 1.29, 1.45), (0.0, 1.54, 1.78), 0.011, siyah, kabuk=False)
 
-    # ---- kurye sürümü: tavanda termal kutu (kapı tabelaları kapılarda)
-    if kurye:
-        sr, sr2 = M("SirketRengi", "#2e9be6"), M("SirketRengi2", "#ffffff")
-        kutu(g, -0.22, 0.22, 0.25, 0.75, 1.445, 1.47, siyah)
-        kutu(g, -0.20, 0.20, 0.31, 0.69, 1.47, 1.69, sr)
-        kutu(g, -0.205, 0.205, 0.305, 0.695, 1.57, 1.60, sr2)
+    # kurye sürümü: araçlar kuryelerin kendi arabası, tavanda şirket kutusu yok (sadece ön kapılarda mıknatıslı tabela)
 
     if CIZGI:
         kabuk(g, CIZGI_KALINLIK * 0.6)
