@@ -117,7 +117,7 @@ namespace KuryeTycoon
                 while (j < n && liste[j].doku == doku && j - i < 8000) j++;   // bir ağda en fazla 32 000 köşe
                 int adet = j - i;
                 var md = mgc.Allocate(adet * 4, adet * 6, doku);
-                Rect uv = doku != null ? md.uvRegion : new Rect(0f, 0f, 1f, 1f);
+                var uv = new Rect(0f, 0f, 1f, 1f);   // Unity 6: doku koordinatlarını atlasa çizici kendisi çevirir (uvRegion eskidi)
                 for (int k = 0; k < adet; k++)
                 {
                     var q = liste[i + k];

@@ -231,7 +231,7 @@ namespace KuryeTycoon
         /// </summary>
         void LateUpdate()
         {
-            var k = Ciz2D.Hava;
+            var ciz = Ciz2D.Hava;
             // Efektler yalnızca haritanın çizildiği alana (kameranın görüntü alanı): üst çubuk, sol menü ve pencere kararmasın
             var cam = Camera.main;
             var alan = new Rect(0f, 0f, Screen.width, Screen.height);
@@ -240,9 +240,9 @@ namespace KuryeTycoon
                 var pr = cam.pixelRect;
                 alan = new Rect(pr.x, Screen.height - pr.yMax, pr.width, pr.height);
             }
-            k.Basla(alan);
+            ciz.Basla(alan);
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
-            Ciz(k);
+            Ciz(ciz);
         }
 
         /// <summary>UI Toolkit kurulamadıysa: kayıt eskisi gibi OnGUI'de, arayüzün (GameUI) altında çizilir.</summary>
@@ -263,21 +263,21 @@ namespace KuryeTycoon
         /// yarısını kaplayan %60 saydam bulutlar ve gri ton, güneşte ekran boyu %55 parlama vardı. Şimdi bulutlar küçük ve
         /// yarı yarıya saydam, tonlar yarıya indi, parlama sağ üst köşede küçük; harita renkleri canlı kalır.
         /// </summary>
-        void Ciz(Ciz2D k)
+        void Ciz(Ciz2D ciz)
         {
             float sw = Screen.width, sh = Screen.height;
             var full = new Rect(0, 0, sw, sh);
 
             // Gece ve gündüz: akşam turuncu, gece karanlık; pencere ışıkları ve sokak lambaları (hava efektleri kapalıyken de)
-            DayNight.Draw(k, sw, sh);
+            DayNight.Draw(ciz, sw, sh);
             if (!Enabled) return;
             float sunV = sunAmt * DayNight.Daylight01;
 
             // Işık tonu: güneşte sıcak, bulutluda gri, yağmurda koyu mavi-gri, soğukta mavi (hepsi hafif: harita canlı kalsın)
-            k.Doldur(full, new Color(1f, 0.82f, 0.50f), sunV * (0.035f + heatAmt * 0.05f));
-            k.Doldur(full, new Color(0.42f, 0.45f, 0.52f), cloudAmt * 0.06f);
-            k.Doldur(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.13f + stormAmt * 0.10f);
-            k.Doldur(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.05f);
+            ciz.Doldur(full, new Color(1f, 0.82f, 0.50f), sunV * (0.035f + heatAmt * 0.05f));
+            ciz.Doldur(full, new Color(0.42f, 0.45f, 0.52f), cloudAmt * 0.06f);
+            ciz.Doldur(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.13f + stormAmt * 0.10f);
+            ciz.Doldur(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.05f);
 
             // 3D hava açıkken (yakın görünüm) bulut, yağmur, kar ve yapraklar 3D modellerle çizilir: ekrandakiler atlanır
             bool hava3D = Hava3D.Showing;
@@ -286,8 +286,8 @@ namespace KuryeTycoon
             if (!hava3D)
                 foreach (var c in clouds)
                 {
-                    k.Renk = new Color(0.05f, 0.06f, 0.09f, 0.10f * Mathf.Clamp01(cloudAmt + rainAmt + sunV * 0.5f));
-                    k.Doku(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f + c.size * 0.25f, c.size * 2f, c.size * 0.8f), puff);
+                    ciz.Renk = new Color(0.05f, 0.06f, 0.09f, 0.10f * Mathf.Clamp01(cloudAmt + rainAmt + sunV * 0.5f));
+                    ciz.Doku(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f + c.size * 0.25f, c.size * 2f, c.size * 0.8f), puff);
                 }
 
             // Güneş: sağ üst köşede küçük parlama ve hafif ışık hüzmeleri
@@ -296,19 +296,19 @@ namespace KuryeTycoon
                 float a = sunV * (0.22f + heatAmt * 0.12f);
                 float size = sh * 0.55f * (1f + heatAmt * 0.3f);
                 var sunC = new Vector2(sw * 0.90f, sh * 0.10f);
-                k.Renk = new Color(1f, 0.90f, 0.60f, a);
-                k.Doku(new Rect(sunC.x - size / 2f, sunC.y - size / 2f, size, size), glare);
-                k.Renk = new Color(1f, 0.98f, 0.85f, sunV * 0.5f);
-                k.Doku(new Rect(sunC.x - sh * 0.03f, sunC.y - sh * 0.03f, sh * 0.06f, sh * 0.06f), dot);
+                ciz.Renk = new Color(1f, 0.90f, 0.60f, a);
+                ciz.Doku(new Rect(sunC.x - size / 2f, sunC.y - size / 2f, size, size), glare);
+                ciz.Renk = new Color(1f, 0.98f, 0.85f, sunV * 0.5f);
+                ciz.Doku(new Rect(sunC.x - sh * 0.03f, sunC.y - sh * 0.03f, sh * 0.06f, sh * 0.06f), dot);
                 // Hüzmeler: köşeden çapraza doğru, yavaşça nefes alır
                 float t = Time.unscaledTime;
                 for (int i = 0; i < 4; i++)
                 {
                     float breathe = 0.5f + 0.5f * Mathf.Sin(t * 0.3f + i * 1.7f);
-                    k.Renk = new Color(1f, 0.95f, 0.75f, sunV * 0.05f * breathe);
-                    k.Dondur(35f + i * 12f, sunC);
-                    k.Doku(new Rect(sunC.x - sh * 0.08f, sunC.y, sh * (0.16f + i * 0.03f), sh * 1.6f), beam);
-                    k.Duz();
+                    ciz.Renk = new Color(1f, 0.95f, 0.75f, sunV * 0.05f * breathe);
+                    ciz.Dondur(35f + i * 12f, sunC);
+                    ciz.Doku(new Rect(sunC.x - sh * 0.08f, sunC.y, sh * (0.16f + i * 0.03f), sh * 1.6f), beam);
+                    ciz.Duz();
                 }
             }
 
@@ -316,38 +316,38 @@ namespace KuryeTycoon
             foreach (var g in gusts)
             {
                 float fade = Mathf.Sin(Mathf.Clamp01(g.phase) * Mathf.PI);
-                k.Renk = new Color(1f, 1f, 1f, 0.10f * fade);
-                k.Doku(new Rect(g.p.x, g.p.y, g.len, 1.5f), null);
+                ciz.Renk = new Color(1f, 1f, 1f, 0.10f * fade);
+                ciz.Doku(new Rect(g.p.x, g.p.y, g.len, 1.5f), null);
             }
 
             // Yağmur: rüzgâr yönüne eğik ince çizgiler
             if (rain.Count > 0 && !hava3D)
             {
                 float angle = Mathf.Atan2(windAmt * 420f * 1.2f, 1100f) * Mathf.Rad2Deg;
-                k.Renk = new Color(0.80f, 0.86f, 0.98f, 0.55f + stormAmt * 0.15f);
+                ciz.Renk = new Color(0.80f, 0.86f, 0.98f, 0.55f + stormAmt * 0.15f);
                 foreach (var d in rain)
                 {
-                    k.Dondur(-angle, d.p);
-                    k.Doku(new Rect(d.p.x, d.p.y, 2f, d.len), null);
+                    ciz.Dondur(-angle, d.p);
+                    ciz.Doku(new Rect(d.p.x, d.p.y, 2f, d.len), null);
                 }
-                k.Duz();
+                ciz.Duz();
                 // Yerde sıçrayan damlalar: büyüyüp sönen halkalar
                 foreach (var sp in splashes)
                 {
                     float r = sp.size * (0.4f + sp.phase);
-                    k.Renk = new Color(0.85f, 0.9f, 1f, 0.35f * (1f - sp.phase));
-                    k.Doku(new Rect(sp.p.x - r, sp.p.y - r * 0.4f, r * 2f, r * 0.8f), dot);
+                    ciz.Renk = new Color(0.85f, 0.9f, 1f, 0.35f * (1f - sp.phase));
+                    ciz.Doku(new Rect(sp.p.x - r, sp.p.y - r * 0.4f, r * 2f, r * 0.8f), dot);
                 }
             }
 
             // Kar taneleri
             if (!hava3D)
             {
-                k.Renk = new Color(1f, 1f, 1f, 0.95f);
+                ciz.Renk = new Color(1f, 1f, 1f, 0.95f);
                 foreach (var d in snow)
                 {
                     float sz = d.size * 1.3f;
-                    k.Doku(new Rect(d.p.x - sz / 2f, d.p.y - sz / 2f, sz, sz), dot);
+                    ciz.Doku(new Rect(d.p.x - sz / 2f, d.p.y - sz / 2f, sz, sz), dot);
                 }
             }
 
@@ -355,10 +355,10 @@ namespace KuryeTycoon
             if (!hava3D)
                 foreach (var d in leaves)
                 {
-                    k.Renk = LeafCols[d.kind];
-                    k.Dondur(d.phase * 60f, d.p);
-                    k.Doku(new Rect(d.p.x - d.size, d.p.y - d.size * 0.5f, d.size * 2f, d.size), dot);
-                    k.Duz();
+                    ciz.Renk = LeafCols[d.kind];
+                    ciz.Dondur(d.phase * 60f, d.p);
+                    ciz.Doku(new Rect(d.p.x - d.size, d.p.y - d.size * 0.5f, d.size * 2f, d.size), dot);
+                    ciz.Duz();
                 }
 
             // Bulutlar (gölgeleri yukarıda yere düştü): yağmurda koyulaşır; hafif saydam, harita altından seçilsin
@@ -369,12 +369,12 @@ namespace KuryeTycoon
                 foreach (var c in clouds)
                 {
                     float w2 = c.size * 2f, h2 = c.size;
-                    k.Renk = new Color(cloudCol.r, cloudCol.g, cloudCol.b, cloudAlpha);
-                    k.Doku(new Rect(c.p.x - w2 / 2f, c.p.y - h2 / 2f - c.size * 0.35f, w2, h2), puff);
+                    ciz.Renk = new Color(cloudCol.r, cloudCol.g, cloudCol.b, cloudAlpha);
+                    ciz.Doku(new Rect(c.p.x - w2 / 2f, c.p.y - h2 / 2f - c.size * 0.35f, w2, h2), puff);
                 }
 
             // Şimşek
-            if (flash > 0f) k.Doldur(full, new Color(0.9f, 0.93f, 1f), flash * 0.5f);
+            if (flash > 0f) ciz.Doldur(full, new Color(0.9f, 0.93f, 1f), flash * 0.5f);
         }
 
         static readonly Color[] LeafCols = { new Color(0.45f, 0.55f, 0.20f, 0.9f), new Color(0.75f, 0.50f, 0.15f, 0.9f), new Color(0.55f, 0.30f, 0.15f, 0.9f) };

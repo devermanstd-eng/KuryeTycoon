@@ -162,7 +162,7 @@ namespace KuryeTycoon
         static float Rand01(int x, int y, int salt) => (Hash(x, y, salt) & 0xFFFF) / 65535f;
 
         /// <summary>Ekran pikseli cinsinden kaydeder (Ciz2D). WeatherFx.LateUpdate çağırır.</summary>
-        public static void Draw(Ciz2D k, float sw, float sh)
+        public static void Draw(Ciz2D ciz, float sw, float sh)
         {
             if (!Enabled || GameClock.I == null) return;
             var full = new Rect(0, 0, sw, sh);
@@ -171,10 +171,10 @@ namespace KuryeTycoon
             // Işık tonu. Gerçek güneş ışığı açıksa (Gorsel3D) binalar zaten renklenip kararıyor: ekran tonu hafif kalır,
             // sadece ışıktan etkilenmeyen 2D zemini akşama ve geceye uydurur.
             bool lit3D = Gorsel3D.Active;
-            k.Doldur(full, new Color(1f, 0.48f, 0.18f), dusk * (lit3D ? 0.08f : 0.20f));
-            k.Doldur(full, new Color(1f, 0.62f, 0.72f), dawn * (lit3D ? 0.05f : 0.13f));
+            ciz.Doldur(full, new Color(1f, 0.48f, 0.18f), dusk * (lit3D ? 0.08f : 0.20f));
+            ciz.Doldur(full, new Color(1f, 0.62f, 0.72f), dawn * (lit3D ? 0.05f : 0.13f));
             // 3D ışıkta zemin ve kır kendisi kararır (CityMap.SetNight): ekran tonu sadece hafif bir gece havası katar
-            k.Doldur(full, new Color(0.02f, 0.035f, 0.11f), night * (lit3D ? 0.16f : 0.56f));
+            ciz.Doldur(full, new Color(0.02f, 0.035f, 0.11f), night * (lit3D ? 0.16f : 0.56f));
 
             if (night < 0.15f) return;
             var cam = Camera.main;
@@ -189,8 +189,8 @@ namespace KuryeTycoon
 
             // 3D görünümde lambalar ve pencereler modellerin kendisinde yanar (GeceIsiklari): ekrana ayrıca çizilmez
             if (GeceIsiklari.Showing) return;
-            DrawStreetLamps(k, cam, vp, tilePx, lights);
-            DrawWindows(k, cam, vp, tilePx, lights);
+            DrawStreetLamps(ciz, cam, vp, tilePx, lights);
+            DrawWindows(ciz, cam, vp, tilePx, lights);
         }
 
         static bool OnScreen(Rect vp, Vector3 sp, float margin) =>
@@ -202,7 +202,7 @@ namespace KuryeTycoon
         ///  • Hale ~0,8 kare (en fazla 22 piksel) ve daha soluk; uzaklaştıkça daha da sönükleşir.
         ///  • Ara yol lambaları sadece yakından (kare ≥ 18 piksel) görünür; uzaktan kavşakların ~yarısı yanar.
         /// </summary>
-        static void DrawStreetLamps(Ciz2D k, Camera cam, Rect vp, float tilePx, float lights)
+        static void DrawStreetLamps(Ciz2D ciz, Camera cam, Rect vp, float tilePx, float lights)
         {
             var g = Glow();
             float yakin = Mathf.InverseLerp(6f, 22f, tilePx);              // 0 uzak, 1 yakın
@@ -226,15 +226,15 @@ namespace KuryeTycoon
                     // Yer yer yanıp sönen, sıcak sarı lambalar
                     float flicker = Rand01(x, y, 7) < 0.04f ? (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 9f + x)) : 1f;
                     float s = size * (cross ? 1f : 0.75f);
-                    k.Renk = new Color(1f, 0.80f, 0.45f, haleA * lights * flicker);
-                    k.Doku(new Rect(sp.x - s / 2f, sh - sp.y - s / 2f, s, s), g);
+                    ciz.Renk = new Color(1f, 0.80f, 0.45f, haleA * lights * flicker);
+                    ciz.Doku(new Rect(sp.x - s / 2f, sh - sp.y - s / 2f, s, s), g);
                     float c = Mathf.Clamp(tilePx * 0.09f, 1.5f, 4f);
-                    k.Renk = new Color(1f, 0.95f, 0.80f, 0.75f * lights * flicker);
-                    k.Doku(new Rect(sp.x - c / 2f, sh - sp.y - c / 2f, c, c), g);
+                    ciz.Renk = new Color(1f, 0.95f, 0.80f, 0.75f * lights * flicker);
+                    ciz.Doku(new Rect(sp.x - c / 2f, sh - sp.y - c / 2f, c, c), g);
                 }
         }
 
-        static void DrawWindows(Ciz2D k, Camera cam, Rect vp, float tilePx, float lights)
+        static void DrawWindows(Ciz2D ciz, Camera cam, Rect vp, float tilePx, float lights)
         {
             var heights = City3D.I.BuildingHeights;
             if (heights == null || heights.Count == 0) return;
@@ -263,8 +263,8 @@ namespace KuryeTycoon
 
                 // Hafif hale (uzaktan bakınca bina ışıl ışıl görünsün). Küçük ve soluk: lekeler etiketleri kapatmasın.
                 float hs = Mathf.Min(tilePx * 0.55f, 18f);
-                k.Renk = new Color(col.r, col.g, col.b, 0.10f * lights);
-                k.Doku(new Rect(top.x - hs / 2f, sh - top.y - hs / 2f, hs, hs), g);
+                ciz.Renk = new Color(col.r, col.g, col.b, 0.10f * lights);
+                ciz.Doku(new Rect(top.x - hs / 2f, sh - top.y - hs / 2f, hs, hs), g);
                 if (!detail) continue;
 
                 // Pencereler: zeminden çatıya kat kat, cephe boyunca birkaç sütun
@@ -280,8 +280,8 @@ namespace KuryeTycoon
                     {
                         if (Rand01(t.x * 7 + c, t.y * 13 + f, daySalt + 5) > 0.55f) continue;
                         float off = (c - (cols - 1) / 2f) * tilePx * 0.2f;
-                        k.Renk = new Color(col.r, col.g, col.b, 0.9f * lights);
-                        k.Doku(new Rect(wx + off - win / 2f, sh - wy - win * 0.6f, win, win * 1.2f), d);
+                        ciz.Renk = new Color(col.r, col.g, col.b, 0.9f * lights);
+                        ciz.Doku(new Rect(wx + off - win / 2f, sh - wy - win * 0.6f, win, win * 1.2f), d);
                     }
                 }
             }
