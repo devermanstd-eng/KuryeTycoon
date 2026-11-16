@@ -7874,7 +7874,7 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
     gv = M("Araba", govde_hex)
     alt = M("AracAlt", "#2a2b2e")
     ic_renk = M("AracIc", "#3b3d42")
-    kapi_ic = M("AracKapiIc", "#6a6e75")       # kapı döşemesi (açılınca görünür)
+    kapi_ic = M("AracKapiIc", "#8a8e95")       # kapı döşemesi (açılınca görünür)
     koltuk = M("AracKoltuk", "#4a4f5a")        # koltuk kumaşı (kapı boşluğundan görünür)
     siyah = M("AracSiyah", "#1c1d20")
     plastik = M("AracPlastik", "#2e3034")
@@ -8016,19 +8016,19 @@ def polo_6n2(govde_hex="#c3c7cb", kurye=False):
             fr = kirp_y(cer, y0 + (0.0 if y0 < 0 else 0.004), min(y1, 1.07) - 0.004)
             if len(fr) >= 3:
                 kabin_yan(kp, s, fr, siyah, 0.007)
-                kabin_yan(kp, s, fr, siyah, -0.014, ters=True)          # içeriden çerçeve
+                kabin_yan(kp, s, fr, siyah, -0.008, ters=True)          # içeriden çerçeve
             for c0, c1 in (((-2.0, 0.305) if y0 < 0 else (0.405, 0.855)), ((9, 9) if y0 < 0 else (0.885, 3.0))):
                 if c0 > c1:
                     continue
                 p = kirp_y(ic, c0, c1)
                 if len(p) >= 3:
                     kabin_yan(kp, s, p, cam, 0.011)
-                    kabin_yan(kp, s, p, cam, -0.010, ters=True)       # içeriden cam
+                    kabin_yan(kp, s, p, cam, -0.014, ters=True)       # içeriden cam
             if y0 > 0:
                 kabin_yan(kp, s, q, siyah, 0.007)
-                kabin_yan(kp, s, q, siyah, -0.014, ters=True)
+                kabin_yan(kp, s, q, siyah, -0.008, ters=True)
                 kabin_yan(kp, s, q2, cam, 0.011)
-                kabin_yan(kp, s, q2, cam, -0.010, ters=True)
+                kabin_yan(kp, s, q2, cam, -0.014, ters=True)
             # koruma bandı, kol, derzler
             bant = kirp_y([(-0.82, 0.508), (1.04, 0.508), (1.04, 0.558), (-0.82, 0.558)], max(y0, -0.82) + 0.006, min(y1, 1.04) - 0.006)
             if len(bant) >= 3:
