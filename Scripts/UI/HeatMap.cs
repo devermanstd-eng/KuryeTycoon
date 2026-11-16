@@ -187,8 +187,8 @@ namespace KuryeTycoon
         /// </summary>
         void IsiKaydet(Rect haritaAlani)
         {
-            var k = Ciz2D.Isi;
-            k.Basla(haritaAlani);
+            var ciz = Ciz2D.Isi;
+            ciz.Basla(haritaAlani);
             if (heatMode == HeatMode.Kapali) return;
             var cam = Camera.main;
             if (cam == null || CityMap.I == null) return;
@@ -213,8 +213,8 @@ namespace KuryeTycoon
                         col.a = 0.3f + 0.4f * t;
                         if (!HeatScreen(cam, s.tile, 1.6f, left, out float x, out float y, out float rad)) continue;
                         float sz = rad * (0.6f + 0.8f * t);
-                        k.Renk = col;
-                        k.Doku(new Rect(x - sz, y - sz, sz * 2f, sz * 2f), HeatBlob);
+                        ciz.Renk = col;
+                        ciz.Doku(new Rect(x - sz, y - sz, sz * 2f, sz * 2f), HeatBlob);
                     }
                 return;
             }
@@ -250,8 +250,8 @@ namespace KuryeTycoon
                 }
                 if (!HeatScreen(cam, OrderHeat.CellCenter(i), 1.5f, left, out float x, out float y, out float rad)) continue;
                 float s = rad * (0.75f + 0.5f * t);
-                k.Renk = col;
-                k.Doku(new Rect(x - s, y - s, s * 2f, s * 2f), HeatBlob);
+                ciz.Renk = col;
+                ciz.Doku(new Rect(x - s, y - s, s * 2f, s * 2f), HeatBlob);
             }
         }
 
