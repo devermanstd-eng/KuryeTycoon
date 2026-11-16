@@ -10,7 +10,7 @@ namespace KuryeTycoon
     ///  • Rüzgâr: rüzgârlı havalarda savrulan yapraklar ve rüzgâr çizgileri; şiddeti ani esintilerle değişir.
     ///  • Güneş: sıcak ışık, köşede güneş parlaması ve hafif ışık hüzmeleri; sıcak havada daha güçlü. Bulutluda gri, soğukta mavi ton.
     /// Geçişler yumuşaktır. Oyun duraklayınca yağış da durur. Ayarlar > Harita > Hava efektleri ile kapatılabilir.
-    /// Ekran üstünde çizilir ama arayüzün altında kalır.
+    /// Çizim Ciz2D.Hava'ya kaydedilir ve UI Toolkit'te haritanın üstünde, bütün arayüzün altında çizilir (Arayuz/UiHaritaKatmani.cs).
     /// </summary>
     public class WeatherFx : MonoBehaviour
     {
@@ -161,11 +161,12 @@ namespace KuryeTycoon
             Ensure(rain, Mathf.RoundToInt(rainAmt * 700f), () => new Drop { p = RandomScreen(), speed = Random.Range(900f, 1400f), len = Random.Range(18f, 34f) });
             Ensure(splashes, Mathf.RoundToInt(rainAmt * 60f), () => new Drop { p = RandomScreen(), phase = Random.value, size = Random.Range(6f, 14f) });
             // Bulutlar: güneşte birkaç küçük beyaz bulut, bulutluda çok ve büyük, yağmurda/fırtınada koyu ve kalabalık
-            int cloudCount = Mathf.RoundToInt(sunAmt * 3f + cloudAmt * 8f + rainAmt * 3f + stormAmt * 3f + snowAmt * 2f);
+            // (16.11: daha az ve küçük; eskiden bulutluda 8 bulut ekranın yarısını kaplıyordu)
+            int cloudCount = Mathf.RoundToInt(sunAmt * 2f + cloudAmt * 5f + rainAmt * 2f + stormAmt * 2f + snowAmt * 1f);
             Ensure(clouds, cloudCount, () => new Drop
             {
                 p = new Vector2(Random.Range(-Screen.width * 0.2f, Screen.width), Random.Range(Screen.height * 0.08f, Screen.height * 0.9f)),
-                size = Random.Range(0.28f, 0.55f) * Screen.height * (sunAmt > 0.5f ? 0.7f : 1f),
+                size = Random.Range(0.18f, 0.34f) * Screen.height * (sunAmt > 0.5f ? 0.7f : 1f),
                 speed = Random.Range(14f, 30f),
                 phase = Random.value
             });
@@ -223,16 +224,15 @@ namespace KuryeTycoon
 
         // ---------------------------------------------------------------- çizim
 
-        void OnGUI()
+        /// <summary>
+        /// Her karenin sonunda efektler kaydedilir (Ciz2D.Hava); UI Toolkit'te haritanın üstündeki, arayüzün altındaki katmanda
+        /// çizilir (Arayuz/UiHaritaKatmani.cs). Böylece güneş parlaması, bulutlar ve gece tonu hiçbir kartın üstüne binmez ve
+        /// ortada bir kutu (hoş geldin, olay kartı) açıkken de çizilir: kutu kapanınca harita birden değişmez.
+        /// </summary>
+        void LateUpdate()
         {
-            GUI.depth = 10;
-            if (Event.current.type != EventType.Repaint) return;
-            if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
-            if (GameUI.OrtaKutuAcik) return;   // yeni arayüzde ortada kutu açık: gece ışıkları kartın üstüne binmesin
-            // GUI.depth her olayda (Start'ta da) ayarlanır: arayüzün (GameUI) altında kalsın
-            GUI.matrix = Matrix4x4.identity;
-            // Efektler yalnızca haritanın çizildiği alana (kameranın görüntü alanı) çizilir: üst çubuk, sol menü ve
-            // UI Toolkit arayüzü (IMGUI'nin altında kalabilir) gece/hava tonuyla kararmasın
+            var k = Ciz2D.Hava;
+            // Efektler yalnızca haritanın çizildiği alana (kameranın görüntü alanı): üst çubuk, sol menü ve pencere kararmasın
             var cam = Camera.main;
             var alan = new Rect(0f, 0f, Screen.width, Screen.height);
             if (cam != null)
@@ -240,61 +240,75 @@ namespace KuryeTycoon
                 var pr = cam.pixelRect;
                 alan = new Rect(pr.x, Screen.height - pr.yMax, pr.width, pr.height);
             }
+            k.Basla(alan);
+            if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
+            Ciz(k);
+        }
+
+        /// <summary>UI Toolkit kurulamadıysa: kayıt eskisi gibi OnGUI'de, arayüzün (GameUI) altında çizilir.</summary>
+        void OnGUI()
+        {
+            GUI.depth = 10;   // GameUI'nin altında kalsın
+            if (Ciz2D.UitkCiziyor || Event.current.type != EventType.Repaint) return;
+            if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
+            GUI.matrix = Matrix4x4.identity;
+            var alan = Ciz2D.Hava.Alan;
             GUI.BeginClip(alan, -alan.position, Vector2.zero, false);
-            try { Ciz(); }
+            try { Ciz2D.Hava.Oynat(); }
             finally { GUI.EndClip(); }
         }
 
-        void Ciz()
+        /// <summary>
+        /// Efektler. 16.11'de hafifletildi: hoş geldin kutusu kapanınca harita "soluk, grimsi" görünüyordu. Bulutluda ekranın
+        /// yarısını kaplayan %60 saydam bulutlar ve gri ton, güneşte ekran boyu %55 parlama vardı. Şimdi bulutlar küçük ve
+        /// yarı yarıya saydam, tonlar yarıya indi, parlama sağ üst köşede küçük; harita renkleri canlı kalır.
+        /// </summary>
+        void Ciz(Ciz2D k)
         {
             float sw = Screen.width, sh = Screen.height;
             var full = new Rect(0, 0, sw, sh);
-            var old = GUI.color;
 
             // Gece ve gündüz: akşam turuncu, gece karanlık; pencere ışıkları ve sokak lambaları (hava efektleri kapalıyken de)
-            DayNight.Draw(sw, sh);
-            if (!Enabled) { GUI.color = old; return; }
+            DayNight.Draw(k, sw, sh);
+            if (!Enabled) return;
             float sunV = sunAmt * DayNight.Daylight01;
 
-            // Işık tonu: güneşte sıcak, bulutluda gri, yağmurda koyu mavi-gri, soğukta mavi
-            Tint(full, new Color(1f, 0.82f, 0.50f), sunV * (0.08f + heatAmt * 0.08f));
-            Tint(full, new Color(0.42f, 0.45f, 0.52f), cloudAmt * 0.16f);
-            Tint(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.22f + stormAmt * 0.16f);
-            Tint(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.10f);
+            // Işık tonu: güneşte sıcak, bulutluda gri, yağmurda koyu mavi-gri, soğukta mavi (hepsi hafif: harita canlı kalsın)
+            k.Doldur(full, new Color(1f, 0.82f, 0.50f), sunV * (0.035f + heatAmt * 0.05f));
+            k.Doldur(full, new Color(0.42f, 0.45f, 0.52f), cloudAmt * 0.06f);
+            k.Doldur(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.13f + stormAmt * 0.10f);
+            k.Doldur(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.05f);
 
             // 3D hava açıkken (yakın görünüm) bulut, yağmur, kar ve yapraklar 3D modellerle çizilir: ekrandakiler atlanır
             bool hava3D = Hava3D.Showing;
 
             // Bulut gölgeleri: haritanın üstünden rüzgârla kayan koyu lekeler
             if (!hava3D)
-            foreach (var c in clouds)
-            {
-                GUI.color = new Color(0.05f, 0.06f, 0.09f, 0.18f * Mathf.Clamp01(cloudAmt + rainAmt + sunV * 0.5f));
-                GUI.DrawTexture(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f + c.size * 0.25f, c.size * 2f, c.size * 0.8f), puff);
-            }
+                foreach (var c in clouds)
+                {
+                    k.Renk = new Color(0.05f, 0.06f, 0.09f, 0.10f * Mathf.Clamp01(cloudAmt + rainAmt + sunV * 0.5f));
+                    k.Doku(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f + c.size * 0.25f, c.size * 2f, c.size * 0.8f), puff);
+                }
 
-            // Güneş: sağ üst köşede parlama ve hafif ışık hüzmeleri
+            // Güneş: sağ üst köşede küçük parlama ve hafif ışık hüzmeleri
             if (sunV > 0.02f)
             {
-                float a = sunV * (0.55f + heatAmt * 0.25f);
-                float size = sh * (1.0f + heatAmt * 0.3f);
-                // Güneş üst barın hemen altında, sağ üstte
-                var sunC = new Vector2(sw * 0.88f, sh * 0.12f);
-                GUI.color = new Color(1f, 0.90f, 0.60f, a);
-                GUI.DrawTexture(new Rect(sunC.x - size / 2f, sunC.y - size / 2f, size, size), glare);
-                GUI.color = new Color(1f, 0.98f, 0.85f, sunV * 0.8f);
-                GUI.DrawTexture(new Rect(sunC.x - sh * 0.04f, sunC.y - sh * 0.04f, sh * 0.08f, sh * 0.08f), dot);
+                float a = sunV * (0.22f + heatAmt * 0.12f);
+                float size = sh * 0.55f * (1f + heatAmt * 0.3f);
+                var sunC = new Vector2(sw * 0.90f, sh * 0.10f);
+                k.Renk = new Color(1f, 0.90f, 0.60f, a);
+                k.Doku(new Rect(sunC.x - size / 2f, sunC.y - size / 2f, size, size), glare);
+                k.Renk = new Color(1f, 0.98f, 0.85f, sunV * 0.5f);
+                k.Doku(new Rect(sunC.x - sh * 0.03f, sunC.y - sh * 0.03f, sh * 0.06f, sh * 0.06f), dot);
                 // Hüzmeler: köşeden çapraza doğru, yavaşça nefes alır
                 float t = Time.unscaledTime;
                 for (int i = 0; i < 4; i++)
                 {
                     float breathe = 0.5f + 0.5f * Mathf.Sin(t * 0.3f + i * 1.7f);
-                    GUI.color = new Color(1f, 0.95f, 0.75f, sunV * 0.10f * breathe);
-                    var pivot = new Vector2(sw * 0.88f, sh * 0.12f);
-                    var m = GUI.matrix;
-                    GUIUtility.RotateAroundPivot(35f + i * 12f, pivot);
-                    GUI.DrawTexture(new Rect(pivot.x - sh * 0.08f, pivot.y, sh * (0.16f + i * 0.03f), sh * 1.6f), beam);
-                    GUI.matrix = m;
+                    k.Renk = new Color(1f, 0.95f, 0.75f, sunV * 0.05f * breathe);
+                    k.Dondur(35f + i * 12f, sunC);
+                    k.Doku(new Rect(sunC.x - sh * 0.08f, sunC.y, sh * (0.16f + i * 0.03f), sh * 1.6f), beam);
+                    k.Duz();
                 }
             }
 
@@ -302,77 +316,68 @@ namespace KuryeTycoon
             foreach (var g in gusts)
             {
                 float fade = Mathf.Sin(Mathf.Clamp01(g.phase) * Mathf.PI);
-                GUI.color = new Color(1f, 1f, 1f, 0.10f * fade);
-                GUI.DrawTexture(new Rect(g.p.x, g.p.y, g.len, 1.5f), Texture2D.whiteTexture);
+                k.Renk = new Color(1f, 1f, 1f, 0.10f * fade);
+                k.Doku(new Rect(g.p.x, g.p.y, g.len, 1.5f), null);
             }
 
             // Yağmur: rüzgâr yönüne eğik ince çizgiler
             if (rain.Count > 0 && !hava3D)
             {
                 float angle = Mathf.Atan2(windAmt * 420f * 1.2f, 1100f) * Mathf.Rad2Deg;
-                GUI.color = new Color(0.80f, 0.86f, 0.98f, 0.55f + stormAmt * 0.15f);
-                var m = GUI.matrix;
+                k.Renk = new Color(0.80f, 0.86f, 0.98f, 0.55f + stormAmt * 0.15f);
                 foreach (var d in rain)
                 {
-                    GUI.matrix = m;
-                    GUIUtility.RotateAroundPivot(-angle, d.p);
-                    GUI.DrawTexture(new Rect(d.p.x, d.p.y, 2f, d.len), Texture2D.whiteTexture);
+                    k.Dondur(-angle, d.p);
+                    k.Doku(new Rect(d.p.x, d.p.y, 2f, d.len), null);
                 }
-                GUI.matrix = m;
+                k.Duz();
                 // Yerde sıçrayan damlalar: büyüyüp sönen halkalar
                 foreach (var sp in splashes)
                 {
                     float r = sp.size * (0.4f + sp.phase);
-                    GUI.color = new Color(0.85f, 0.9f, 1f, 0.35f * (1f - sp.phase));
-                    GUI.DrawTexture(new Rect(sp.p.x - r, sp.p.y - r * 0.4f, r * 2f, r * 0.8f), dot);
+                    k.Renk = new Color(0.85f, 0.9f, 1f, 0.35f * (1f - sp.phase));
+                    k.Doku(new Rect(sp.p.x - r, sp.p.y - r * 0.4f, r * 2f, r * 0.8f), dot);
                 }
             }
 
             // Kar taneleri
             if (!hava3D)
-            foreach (var d in snow)
             {
-                GUI.color = new Color(1f, 1f, 1f, 0.95f);
-                float sz = d.size * 1.3f;
-                GUI.DrawTexture(new Rect(d.p.x - sz / 2f, d.p.y - sz / 2f, sz, sz), dot);
+                k.Renk = new Color(1f, 1f, 1f, 0.95f);
+                foreach (var d in snow)
+                {
+                    float sz = d.size * 1.3f;
+                    k.Doku(new Rect(d.p.x - sz / 2f, d.p.y - sz / 2f, sz, sz), dot);
+                }
             }
 
             // Savrulan yapraklar
-            var leafCols = new[] { new Color(0.45f, 0.55f, 0.20f, 0.9f), new Color(0.75f, 0.50f, 0.15f, 0.9f), new Color(0.55f, 0.30f, 0.15f, 0.9f) };
             if (!hava3D)
-            foreach (var d in leaves)
-            {
-                GUI.color = leafCols[d.kind];
-                var m = GUI.matrix;
-                GUIUtility.RotateAroundPivot(d.phase * 60f, d.p);
-                GUI.DrawTexture(new Rect(d.p.x - d.size, d.p.y - d.size * 0.5f, d.size * 2f, d.size), dot);
-                GUI.matrix = m;
-            }
+                foreach (var d in leaves)
+                {
+                    k.Renk = LeafCols[d.kind];
+                    k.Dondur(d.phase * 60f, d.p);
+                    k.Doku(new Rect(d.p.x - d.size, d.p.y - d.size * 0.5f, d.size * 2f, d.size), dot);
+                    k.Duz();
+                }
 
-            // Bulutlar (gölgeleri yukarıda yere düştü): yağmurda koyulaşır
+            // Bulutlar (gölgeleri yukarıda yere düştü): yağmurda koyulaşır; hafif saydam, harita altından seçilsin
             float darkness = Mathf.Clamp01(rainAmt * 0.55f + stormAmt * 0.35f + snowAmt * 0.15f);
             var cloudCol = Color.Lerp(new Color(1f, 1f, 1f), new Color(0.38f, 0.40f, 0.45f), darkness);
-            float cloudAlpha = Mathf.Clamp01(0.35f + cloudAmt * 0.25f + rainAmt * 0.15f) * (sunAmt > 0.5f ? 0.75f : 1f);
+            float cloudAlpha = Mathf.Clamp01(0.16f + cloudAmt * 0.12f + rainAmt * 0.10f) * (sunAmt > 0.5f ? 0.7f : 1f);
             if (!hava3D)
-            foreach (var c in clouds)
-            {
-                float w2 = c.size * 2f, h2 = c.size;
-                GUI.color = new Color(cloudCol.r, cloudCol.g, cloudCol.b, cloudAlpha);
-                GUI.DrawTexture(new Rect(c.p.x - w2 / 2f, c.p.y - h2 / 2f - c.size * 0.35f, w2, h2), puff);
-            }
+                foreach (var c in clouds)
+                {
+                    float w2 = c.size * 2f, h2 = c.size;
+                    k.Renk = new Color(cloudCol.r, cloudCol.g, cloudCol.b, cloudAlpha);
+                    k.Doku(new Rect(c.p.x - w2 / 2f, c.p.y - h2 / 2f - c.size * 0.35f, w2, h2), puff);
+                }
 
             // Şimşek
-            if (flash > 0f) Tint(full, new Color(0.9f, 0.93f, 1f), flash * 0.55f);
-
-            GUI.color = old;
+            if (flash > 0f) k.Doldur(full, new Color(0.9f, 0.93f, 1f), flash * 0.5f);
         }
 
-        static void Tint(Rect r, Color c, float a)
-        {
-            if (a <= 0.001f) return;
-            GUI.color = new Color(c.r, c.g, c.b, a);
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-        }
+        static readonly Color[] LeafCols = { new Color(0.45f, 0.55f, 0.20f, 0.9f), new Color(0.75f, 0.50f, 0.15f, 0.9f), new Color(0.55f, 0.30f, 0.15f, 0.9f) };
 
         // ---------------------------------------------------------------- dokular
 

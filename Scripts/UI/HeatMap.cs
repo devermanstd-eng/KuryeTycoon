@@ -181,10 +181,15 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>Dünya etiketlerinin altında çizilir.</summary>
-        void DrawHeat()
+        /// <summary>
+        /// Katmanı kaydeder (Ciz2D.Isi; LateUpdate'ten). UI Toolkit'te haritanın üstünde, bütün arayüzün altında çizilir
+        /// (Arayuz/UiHaritaKatmani.cs): lekeler kurye telefonunun ve kartların üstüne binmez. UI Toolkit yoksa OnGUI'de Oynat.
+        /// </summary>
+        void IsiKaydet(Rect haritaAlani)
         {
-            if (heatMode == HeatMode.Kapali || Event.current.type != EventType.Repaint) return;
+            var k = Ciz2D.Isi;
+            k.Basla(haritaAlani);
+            if (heatMode == HeatMode.Kapali) return;
             var cam = Camera.main;
             if (cam == null || CityMap.I == null) return;
             if (Time.unscaledTime >= heatRefreshAt)
@@ -194,7 +199,6 @@ namespace KuryeTycoon
             }
 
             float left = MapLeftGui;
-            var old = GUI.color;
             if (heatMode == HeatMode.DukkanKari)
             {
                 // Dükkanın yerinde, teslimat sayısıyla büyüyen yeşil (kâr) ya da kırmızı (zarar) leke
@@ -209,10 +213,9 @@ namespace KuryeTycoon
                         col.a = 0.3f + 0.4f * t;
                         if (!HeatScreen(cam, s.tile, 1.6f, left, out float x, out float y, out float rad)) continue;
                         float sz = rad * (0.6f + 0.8f * t);
-                        GUI.color = col;
-                        GUI.DrawTexture(new Rect(x - sz, y - sz, sz * 2f, sz * 2f), HeatBlob);
+                        k.Renk = col;
+                        k.Doku(new Rect(x - sz, y - sz, sz * 2f, sz * 2f), HeatBlob);
                     }
-                GUI.color = old;
                 return;
             }
 
@@ -247,10 +250,9 @@ namespace KuryeTycoon
                 }
                 if (!HeatScreen(cam, OrderHeat.CellCenter(i), 1.5f, left, out float x, out float y, out float rad)) continue;
                 float s = rad * (0.75f + 0.5f * t);
-                GUI.color = col;
-                GUI.DrawTexture(new Rect(x - s, y - s, s * 2f, s * 2f), HeatBlob);
+                k.Renk = col;
+                k.Doku(new Rect(x - s, y - s, s * 2f, s * 2f), HeatBlob);
             }
-            GUI.color = old;
         }
 
         /// <summary>Karenin ekrandaki yeri ve bir hücrelik yarıçap. Ekran dışındaysa false.</summary>

@@ -10,7 +10,8 @@ namespace KuryeTycoon
     /// (etiketler, katman, uçan yazılar, seçili bina işareti), kurulum ekranı ve eski arayüz (F8) için kaldı.
     ///  • UIDocument ve PanelSettings çalışma anında kurulur (sahneye bir şey eklemek gerekmez).
     ///  • Ölçek IMGUI ile aynı (GameUI.uiScale): iki sistemin koordinatları birebir aynı, dikdörtgenler karşılaştırılabilir.
-    ///  • Katmanlar: hud (üst çubuk, sol menü, harita araçları, olaylar, durum kartları) · pencere (pencere, kurye telefonu,
+    ///  • Katmanlar: (uiKok'un altında) harita efektleri: hava, gece/gündüz, harita katmanı (UiHaritaKatmani.cs) ·
+    ///    hud (üst çubuk, sol menü, harita araçları, olaylar, durum kartları) · pencere (pencere, kurye telefonu,
     ///    bina kartı) · üst (bildirimler, rehber, büyük kurye kartı, en üstte olay kartı / Esc menüsü / onay) · ipucu.
     ///  • Harita farenin UI Toolkit elemanının üstünde olup olmadığını <see cref="UiUzerinde"/> ile sorar.
     ///  • Değerler 8 Hz'de yenilenir (hız düğmeleri her karede); ağaç bir kez kurulur.
@@ -185,6 +186,7 @@ namespace KuryeTycoon
             if (font != null) root.style.unityFontDefinition = new StyleFontDefinition(FontDefinition.FromFont(font));
 
             uiKok = U.Gecirgen(root, "kok");
+            UiHaritaKatmaniKur(root);   // hava, gece/gündüz, harita katmanı: uiKok'un altında (Arayuz/UiHaritaKatmani.cs)
             katHud = U.Gecirgen(uiKok, "katman");
             katPencere = U.Gecirgen(uiKok, "katman");
             katUst = U.Gecirgen(uiKok, "katman");
