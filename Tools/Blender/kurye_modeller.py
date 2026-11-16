@@ -8324,139 +8324,157 @@ POLO_RENKLERI = [
 
 KESE_TURLERI = [
     # (ad, en, derinlik, gövde boyu, kıvrım sayısı, açık mı)  — metre
-    ("ufak", 0.150, 0.095, 0.205, 2, False),        # öğle yemeği kesesi: iki kez katlanmış, alçak
-    ("orta", 0.180, 0.110, 0.270, 1, False),
-    ("uzun", 0.170, 0.115, 0.350, 1, False),        # şişe / ekmek
-    ("genis", 0.250, 0.150, 0.300, 1, False),       # market kesesi
-    ("kare", 0.160, 0.130, 0.235, 1, False),
-    ("acik", 0.200, 0.120, 0.290, 0, True),         # ağzı açık: dükkan çalışanı ürünleri koyarken
+    ("ufak", 0.160, 0.110, 0.220, 2, False),        # öğle yemeği kesesi: iki kez kıvrık, alçak (öndeki küçük)
+    ("orta", 0.170, 0.120, 0.300, 1, False),        # soldaki
+    ("uzun", 0.200, 0.140, 0.420, 1, False),        # arkadaki uzun
+    ("genis", 0.220, 0.130, 0.340, 1, False),       # ikinci soldaki geniş
+    ("ince", 0.150, 0.120, 0.270, 1, False),        # öndeki ikinci
+    ("buyuk", 0.200, 0.150, 0.400, 1, False),       # sağdaki büyük
+    ("acik", 0.200, 0.120, 0.300, 0, True),         # ağzı açık: dükkan çalışanı ürünleri koyarken
 ]
 
 
 def kese(rnd, en, der, boy, kivrim, acik):
-    """Kraft kâğıt kese: alt köşeli taban, iki yanda içe kıvrık körük (dikey kat izi), üstte ağız ya kapalı ve öne
-    kıvrılmış (kivrim kez) ya da açık. Kâğıt hafif buruşuk: köşeler küçük rastgele sapmalarla, yüzler iki tonda."""
+    """Kraft kâğıt kese (fotoğraftaki gibi). Ön ve arka yüz düz levha; alt yarı dikdörtgen kutu, üst yarıda ön ve arka yüz
+    birbirine doğru eğilip ağızda birleşir. Yanlardaki körük üst yarıda içe katlanır: yandan bakınca tepesi aşağıda büyük
+    bir üçgen. Kapanan ağız öne bir (ufak kesede iki) kez kıvrılır: ön yüzün üstünde kalınca bir şerit. Ağzı açık kesede
+    gövde düz yükselir, körüklerin tepesinde V çentiği, içi koyu kâğıt."""
     g = Govde()
-    kraft = [M("Kese", "#c4a272"), M("Kese2", "#bb9866"), M("Kese3", "#caa97c")]
-    koyu = M("KeseKoyu", "#9a7a4e")
-    ic = M("KeseIc", "#8c6d45")
-    kat_m = M("KeseKat", "#d2b487")
+    kraft = M("Kese", "#c8a575")
+    kraft_yan = M("Kese2", "#bc9867")
+    kraft_acik = M("KeseAcik", "#d6b98b")
+    koyu = M("KeseKoyu", "#977649")
+    ic = M("KeseIc", "#8a6b45")
 
     hx, hy = en / 2, der / 2
-    ust_kapali = boy                                  # ağzın kapandığı yükseklik
-    kap = 0.0 if acik else min(0.032, boy * 0.12)      # ağız bu kadar yükseklikte daralıp kapanır
-    boylar = [0.0, 0.012, 0.035, boy * 0.25, boy * 0.45, boy * 0.65, boy * 0.82, boy - kap - 0.002]
-    if not acik:
-        boylar += [boy - kap * 0.5, boy]
-    else:
-        boylar += [boy]
-    boylar = sorted(set(round(z, 4) for z in boylar))
-    nx = 5                                            # ön / arka yüzde en boyunca nokta
-    sarsinti = 0.0025 * (en / 0.18)
+    e = 0.0035                                     # ağızda ön ve arka yüz arasındaki kâğıt kalınlığı payı
+    zs = boy if acik else boy * rnd.uniform(0.32, 0.40)   # omuz: buradan yukarısı daralır
+    ym = -hy * 0.42                                # ağız öne yakın kapanır: ön yüz neredeyse dik, arka yüz eğik
+    sars = 0.0012 * (en / 0.18)                    # kâğıdın hafif dalgası
 
-    def cevre(z):
-        """z'deki kesit çevresi (ön, sağ körük, arka, sol körük; saat yönünün tersi), her nokta (x, y)."""
-        t = 0.0 if z < boy - kap - 0.002 else (z - (boy - kap)) / max(kap, 1e-6)
-        t = max(0.0, min(1.0, t))
-        yy = hy * (1.0 - 0.80 * t)                    # ağız kapanırken ön ve arka yüz birbirine yaklaşır
-        kor = (0.30 + 0.70 * t) * hy                  # körüğün içe kıvrım derinliği (ağızda tamamen içe katlı)
-        if z < 0.012:
-            kor = 0.0                                 # taban düz
-        elif z < 0.035:
-            kor *= 0.35
-        pts = []
-        for i in range(nx):                           # ön (y = -yy), soldan sağa
-            pts.append((-hx + en * i / (nx - 1), -yy))
-        pts.append((hx - kor, 0.0))                   # sağ körüğün kat izi
-        for i in range(nx):                           # arka (y = +yy), sağdan sola
-            pts.append((hx - en * i / (nx - 1), yy))
-        pts.append((-hx + kor, 0.0))                  # sol körük
-        return pts
+    def oran(z):
+        return 0.0 if z <= zs else (z - zs) / max(boy - zs, 1e-6)
 
-    halkalar = []
-    for zi, z in enumerate(boylar):
-        halka = []
-        for j, (x, y) in enumerate(cevre(z)):
-            if 0 < zi < len(boylar) - 1:              # buruşukluk (tabanın ve ağzın kenarı düz kalsın)
-                x += rnd.uniform(-sarsinti, sarsinti)
-                y += rnd.uniform(-sarsinti, sarsinti) * 0.6
-                zz = z + rnd.uniform(-sarsinti, sarsinti) * 0.5
-            else:
-                zz = z
-            halka.append(len(g.v))
-            g.v.append((x, y, zz))
-        halkalar.append(halka)
-    n = len(halkalar[0])
-    kor_idx = (nx, 2 * nx + 1)
-    for zi in range(len(halkalar) - 1):
-        a, b = halkalar[zi], halkalar[zi + 1]
-        for j in range(n):
-            k = (j + 1) % n
-            mat = kraft[rnd.randrange(3)]
-            if j in kor_idx or k in kor_idx:
-                mat = kraft[1] if rnd.random() < 0.6 else kraft[0]
-            g.yuz([a[j], a[k], b[k], b[j]], mat)
+    def yuz_y(z, s):                               # ön (s=-1) / arka (s=+1) yüzün z'deki y'si
+        return s * hy + (ym + s * e - s * hy) * oran(z)
+
+    def kat(z):                                    # körüğün içe kıvrım derinliği
+        if z < 0.015:
+            return 0.0
+        if acik or z <= zs:
+            return hy * 0.14
+        return hy * (0.14 + 0.80 * oran(z))
+
+    zler = sorted({0.0, 0.015, round(zs * 0.5, 4), round(zs, 4), round(zs + (boy - zs) * 0.5, 4), round(boy, 4)})
+    nx = 4
+    nokta = {}
+
+    def v(anahtar, p_):
+        if anahtar not in nokta:
+            nokta[anahtar] = len(g.v)
+            g.v.append(p_)
+        return nokta[anahtar]
+
+    # ön ve arka levha (köşeler körükle ortak)
+    for s_ in (-1, 1):
+        for zi, z in enumerate(zler):
+            for i in range(nx + 1):
+                x = -hx + en * i / nx
+                y = yuz_y(z, s_)
+                ic_nokta = 0 < i < nx and 0 < zi < len(zler) - 1
+                if ic_nokta:
+                    y += s_ * rnd.uniform(-sars, sars)
+                v(("y", s_, zi, i), (x, y, z))
+        for zi in range(len(zler) - 1):
+            for i in range(nx):
+                q = [v(("y", s_, zi, i), None), v(("y", s_, zi, i + 1), None), v(("y", s_, zi + 1, i + 1), None), v(("y", s_, zi + 1, i), None)]
+                g.yuz(q[::-1] if s_ > 0 else q, kraft)
+    # körükler: ön kenar – kat izi – arka kenar
+    for sx in (-1, 1):
+        i_kenar = nx if sx > 0 else 0
+        for zi, z in enumerate(zler):
+            zz = z
+            if acik and zi == len(zler) - 1:
+                zz = z - 0.022                         # açık kesede körüğün tepesinde V çentiği
+            v(("k", sx, zi), (sx * (hx - kat(z)), ym * oran(z), zz))
+        for zi in range(len(zler) - 1):
+            for s_ in (-1, 1):
+                a0, a1 = v(("y", s_, zi, i_kenar), None), v(("y", s_, zi + 1, i_kenar), None)
+                k0, k1 = v(("k", sx, zi), None), v(("k", sx, zi + 1), None)
+                q = [a0, k0, k1, a1]
+                if (sx > 0) == (s_ > 0):
+                    q = q[::-1]
+                g.yuz(q, kraft_yan)
     # taban
-    g.yuz(list(reversed(halkalar[0])), koyu)
-    # ağız
-    son = halkalar[-1]
+    taban = [v(("y", -1, 0, i), None) for i in range(nx + 1)] + [v(("k", 1, 0), None)] + \
+            [v(("y", 1, 0, i), None) for i in range(nx, -1, -1)] + [v(("k", -1, 0), None)]
+    g.yuz(taban[::-1], koyu)
+    son = len(zler) - 1
     if acik:
-        # iç yüzler (içeriden görünen kâğıt, koyu) ve ağız kenarı
-        ic_halkalar = []
-        for zi in (0, len(boylar) - 1):
-            z = boylar[zi] + (0.004 if zi == 0 else 0.0)
-            halka = []
-            for (x, y) in cevre(boy * 0.5):           # iç duvar: körük her yükseklikte aynı derinlikte içe kıvrık
-                halka.append(len(g.v))
-                g.v.append((x * 0.93, y * 0.90, z))
-            ic_halkalar.append(halka)
-        a, b = ic_halkalar
+        # ağız kenarı ve içi: içe bakan, biraz küçük kopya (koyu kâğıt)
+        cevre = [v(("y", -1, son, i), None) for i in range(nx + 1)] + [v(("k", 1, son), None)] + \
+                [v(("y", 1, son, i), None) for i in range(nx, -1, -1)] + [v(("k", -1, son), None)]
+        ic_ust, ic_alt = [], []
+        for idx in cevre:
+            x, y, z = g.v[idx]
+            ic_ust.append(len(g.v)); g.v.append((x * 0.96, y * 0.92, z - 0.001))
+            ic_alt.append(len(g.v)); g.v.append((x * 0.96, y * 0.92, 0.006))
+        n = len(cevre)
         for j in range(n):
             k = (j + 1) % n
-            g.yuz([a[k], a[j], b[j], b[k]], ic, kabuk=False)
-        g.yuz(list(a), ic, kabuk=False)              # iç taban
-        for j in range(n):
-            k = (j + 1) % n
-            g.yuz([son[j], son[k], b[k], b[j]], kat_m)     # ağız kenarı (kâğıt kalınlığı)
+            g.yuz([ic_alt[j], ic_alt[k], ic_ust[k], ic_ust[j]][::-1], ic, kabuk=False)
+            g.yuz([cevre[j], cevre[k], ic_ust[k], ic_ust[j]], kraft_acik)       # kâğıdın kenarı
+        g.yuz(ic_alt, ic, kabuk=False)
     else:
-        # ağız tamamen kapanmış dar şerit: üstü
-        on = son[:nx]
-        ar = son[nx + 1:2 * nx + 1][::-1]
-        for i in range(nx - 1):
-            g.yuz([on[i], on[i + 1], ar[i + 1], ar[i]], kraft[0])
-        g.yuz([on[-1], son[nx], ar[-1]], kraft[0])
-        g.yuz([ar[0], son[2 * nx + 1], on[0]], kraft[0])
-        # öne kıvrılmış ağız: kapanan üst kısım öne katlanır; her kıvrım bir öncekinin üstünde, ön yüzün eğimine yatık
-        # kalın bir şerit (üstte yuvarlatılmış kat kenarı, altta gölgeli kenar)
-        def on_y(z):                                  # ön yüzün z'deki y'si (ağızda daralır)
-            t = max(0.0, min(1.0, (z - (boy - kap)) / max(kap, 1e-6)))
-            return -hy * (1.0 - 0.80 * t)
-        kalin = 0.0035
-        bant = kap * 1.25
+        # ağzın üstü: ön ve arka levhanın birleştiği ince şerit, yanlarda körüğün kapandığı üçgen
+        on = [v(("y", -1, son, i), None) for i in range(nx + 1)]
+        ar = [v(("y", 1, son, i), None) for i in range(nx + 1)]
+        for i in range(nx):
+            g.yuz([on[i], on[i + 1], ar[i + 1], ar[i]], kraft_acik)
+        g.yuz([on[nx], ar[nx], v(("k", 1, son), None)], kraft_yan)
+        g.yuz([ar[0], on[0], v(("k", -1, son), None)], kraft_yan)
+        # öne kıvrılmış ağız: ön yüzün eğik üst kısmına yatan kalın şerit, üstü yuvarlatılmış kat kenarı
+        f = min(0.042, boy * 0.12)
+        t = 0.0028
+        egim = (hy + ym - e) / max(boy - zs, 1e-6)  # ön yüzün eğimi (y / z)
+        nn = norm((0.0, -1.0, -egim))              # ön üst yüzün dış normali
         for kk in range(kivrim):
-            o_ic, o_dis = kalin * kk + 0.0012, kalin * (kk + 1) + 0.0012
-            z_alt, z_ust = boy - bant * (1.0 + 0.35 * kk), boy + kalin * (kk + 1)
-            bas = len(g.v)
+            o_ic, o_dis = 0.0008 + t * kk, 0.0008 + t * (kk + 1)
+            z_alt = boy - f * (1.0 + 0.55 * kk)
+            z_ust = boy - f * 0.55 * kk
+            pts = []
             for o in (o_dis, o_ic):
-                for (x, z) in ((-hx * 1.01, z_alt), (hx * 1.01, z_alt), (hx * 1.01, z_ust), (-hx * 1.01, z_ust)):
-                    g.v.append((x + rnd.uniform(-0.0008, 0.0008), on_y(min(z, boy)) - o, z))
-            d_, i_ = list(range(bas, bas + 4)), list(range(bas + 4, bas + 8))
-            g.yuz(d_, kraft[(kk + 1) % 3])                                       # dış yüz
-            g.yuz([d_[1], d_[0], i_[0], i_[1]], koyu)                             # alt kenar (gölgeli)
-            g.yuz([d_[0], d_[3], i_[3], i_[0]], kat_m)
-            g.yuz([d_[2], d_[1], i_[1], i_[2]], kat_m)
-            # kat kenarı: kıvrımın üstünden kesenin arka üst kenarına
-            g.v += [(-hx * 1.01, -hy * 0.20 - o_dis, z_ust), (hx * 1.01, -hy * 0.20 - o_dis, z_ust),
-                    (hx * 1.01, hy * 0.20 + 0.001, z_ust), (-hx * 1.01, hy * 0.20 + 0.001, z_ust)]
-            u_ = list(range(bas + 8, bas + 12))
-            g.yuz([d_[3], d_[2], u_[1], u_[0]], kat_m)
-            g.yuz([u_[0], u_[1], u_[2], u_[3]], kraft[0])
-            g.yuz([u_[3], u_[2], halkalar[-1][nx + 1], halkalar[-1][2 * nx]], kraft[2])
-    # yatay kat izleri (taban katlaması, kesenin üretimden gelen düz katları)
-    for zz in (0.035, boy * 0.25):
-        for yy, yon in ((-hy - 0.0008, -1.0), (hy + 0.0008, 1.0)):
-            _duz(g, [(-hx * 0.98, yy, zz - 0.0012), (hx * 0.98, yy, zz - 0.0012), (hx * 0.98, yy, zz + 0.0012), (-hx * 0.98, yy, zz + 0.0012)],
-                 (0.0, yon, 0.0), koyu)
+                for x, z in ((-hx * 1.015, z_alt), (hx * 1.015, z_alt), (hx * 1.015, z_ust), (-hx * 1.015, z_ust)):
+                    yy = yuz_y(z, -1)
+                    pts.append((x + rnd.uniform(-0.0006, 0.0006), yy + nn[1] * o, z + nn[2] * o))
+            b0 = len(g.v)
+            g.v += pts
+            d_ = [b0, b0 + 1, b0 + 2, b0 + 3]
+            i_ = [b0 + 4, b0 + 5, b0 + 6, b0 + 7]
+            g.yuz(d_, kraft if kk == kivrim - 1 else kraft_yan)        # dış yüz
+            g.yuz([d_[0], d_[1], i_[1], i_[0]], koyu)                   # alt kenar: gölge çizgisi
+            g.yuz([d_[0], d_[3], i_[3], i_[0]], kraft_yan)
+            g.yuz([d_[2], d_[1], i_[1], i_[2]], kraft_yan)
+            if kk == 0:
+                # kat kenarı: şeridin üstünden kesenin arka üst kenarına, ortası hafif kabarık
+                ust = []
+                for (y_, z_) in ((yuz_y(boy, -1) + nn[1] * o_dis, boy + nn[2] * o_dis + t),
+                                 (ym, boy + t * 1.6), (ym + e + t, boy + t * 0.6)):
+                    ust.append((len(g.v), len(g.v) + 1))
+                    g.v += [(-hx * 1.015, y_, z_), (hx * 1.015, y_, z_)]
+                g.yuz([d_[3], d_[2], ust[0][1], ust[0][0]], kraft_acik)
+                for (a_, b_), (c_, d2) in zip(ust, ust[1:]):
+                    g.yuz([a_, b_, d2, c_], kraft_acik)
+                # yanları (kat kenarının iki ucu)
+                for xi in (0, 1):
+                    yan = [ust[0][xi], ust[1][xi], ust[2][xi]]
+                    g.yuz(yan[::-1] if xi == 1 else yan, kraft_yan)
+    # kat izleri: tabana yakın ve gövdenin ortasında hafif yatay çizgiler (fotoğraftaki gibi)
+    for zz in (boy * 0.06, zs * 0.62):
+        for s_ in (-1, 1):
+            yy = s_ * (hy + 0.0007)
+            _duz(g, [(-hx * 0.99, yy, zz - 0.0009), (hx * 0.99, yy, zz - 0.0009), (hx * 0.99, yy, zz + 0.0009), (-hx * 0.99, yy, zz + 0.0009)],
+                 (0.0, float(s_), 0.0), koyu)
     if CIZGI:
         kabuk(g, CIZGI_KALINLIK * olcek(g))
     return g
