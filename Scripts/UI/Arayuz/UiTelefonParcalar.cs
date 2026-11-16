@@ -140,7 +140,7 @@ namespace KuryeTycoon
             Vector2 merkez, hedefMerkez;
             float olcek, hedefOlcek;
             Vector2 sonKonum, yon = Vector2.up;
-            float nabiz;
+            float nabiz, durgun = 99f;
             readonly VisualElement balon, balonNokta, kurye;
             readonly Label balonYazi, kuryeHarf;
             readonly List<Label> poi = new List<Label>();
@@ -154,8 +154,8 @@ namespace KuryeTycoon
 
             static readonly Color CZemin = new Color(0.135f, 0.125f, 0.115f);
             static readonly Color CAvlu = new Color(0.165f, 0.155f, 0.145f);
-            static readonly Color CBina = new Color(0.225f, 0.212f, 0.198f);
-            static readonly Color CBinaKenar = new Color(0.195f, 0.183f, 0.170f);
+            static readonly Color CBina = new Color(0.250f, 0.236f, 0.220f);
+            static readonly Color CBinaKenar = new Color(0.205f, 0.192f, 0.178f);
             static readonly Color CPark = new Color(0.145f, 0.215f, 0.150f);
             static readonly Color CMeydan = new Color(0.205f, 0.195f, 0.180f);
             static readonly Color CSu = new Color(0.095f, 0.190f, 0.275f);
@@ -224,7 +224,8 @@ namespace KuryeTycoon
                 }
                 // Gidiş yönü (ışık konisi): kuryenin hareketinden, yumuşatılmış
                 Vector2 d = me - sonKonum;
-                if (d.sqrMagnitude > 1e-6f) yon = Vector2.Lerp(yon, d.normalized, 1f - Mathf.Exp(-dt * 10f)).normalized;
+                if (d.sqrMagnitude > 1e-6f) { yon = Vector2.Lerp(yon, d.normalized, 1f - Mathf.Exp(-dt * 10f)).normalized; durgun = 0f; }
+                else durgun += dt;
                 sonKonum = me;
                 nabiz = (nabiz + dt * 0.7f) % 1f;
 
@@ -328,6 +329,17 @@ namespace KuryeTycoon
 
             void Etiket(int i, string ad, Vector2 p, bool dikey)
             {
+                // kurye işaretinin ve hedef iğnesinin üstüne binmesin: yol boyunca kaydır
+                float w = contentRect.width, h = contentRect.height;
+                var mp = P(c.Position, w, h);
+                var cur = c.CurrentOrder;
+                Vector2 hp = cur != null ? P(Dukkana(c) ? (Vector2)cur.shop.tile : (Vector2)cur.customerTile, w, h) : mp;
+                for (int k = 0; k < 4; k++)
+                {
+                    bool carpar = (p - mp).sqrMagnitude < 40f * 40f || (p - hp - new Vector2(0f, -14f)).sqrMagnitude < 36f * 36f;
+                    if (!carpar) break;
+                    p += dikey ? new Vector2(0f, olcek * 2f) : new Vector2(olcek * 2f, 0f);
+                }
                 var l = Havuz(sokak, i, "tel-sokak");
                 U.Goster(l, true);
                 U.Metin(l, ad);
@@ -502,7 +514,7 @@ namespace KuryeTycoon
                 float nr = 13f + nabiz * 16f;
                 Daire(pz, mp, nr, U.A(PAccent, 0.28f * (1f - nabiz)));
                 Daire(pz, mp, 16f, U.A(PAccent, 0.16f));
-                if (c.State != CourierState.Bekliyor && c.State != CourierState.KataCikiyor)
+                if (durgun < 0.6f && c.State != CourierState.Bekliyor && c.State != CourierState.KataCikiyor)
                 {
                     var ekranYon = new Vector2(yon.x, -yon.y);
                     var dik = new Vector2(-ekranYon.y, ekranYon.x);
