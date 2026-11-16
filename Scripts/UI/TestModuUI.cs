@@ -206,6 +206,10 @@ namespace KuryeTycoon
             financePage = 0;
             settingsPage = 0;
 
+            // Telefon ve bina kartı haritanın üstünde durur. Ekran görüntüsünde IMGUI (harita etiketleri, güneş parlaması, gece tonu)
+            // UI Toolkit'in üstüne çıkıyor ve kartı soluk gösteriyordu (16.11 testi); bu çekimlerde IMGUI çizilmez.
+            testKartCekimi = true;
+
             // Kurye telefonu (sağdan kayarak açılır, önce yerine otursun). Mümkünse görevdeki bir kurye: görev ekranı da görünsün.
             if (cm.Couriers.Count > 0)
             {
@@ -272,7 +276,11 @@ namespace KuryeTycoon
                 yield return StartCoroutine(TestCek(Path.Combine(klasor, $"pencere_{++no:000}_bina_karti_musteri.jpg")));
                 CloseInfo();
             }
+            testKartCekimi = false;
         }
+
+        /// <summary>Test sonunda telefon ve bina kartı çekilirken IMGUI çizilmez (GameUI.OrtaKutuAcik).</summary>
+        bool testKartCekimi;
 
         /// <summary>Siparişi olan bir müşteri binası (sıra: önce yoldaki siparişler, sonra geçmiş). Rastgele sayı kullanmaz.</summary>
         static Vector2Int? MusteriBinasi(int sira)

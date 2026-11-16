@@ -293,6 +293,22 @@ namespace KuryeTycoon
             if (e.style.color.keyword != StyleKeyword.Null) e.style.color = StyleKeyword.Null;
         }
 
+        /// <summary>
+        /// İçerik kadar uzayan kartlar (bina kartı, büyük kurye kartı): kaydırma alanına açık yükseklik verir, en fazla enFazla.
+        /// Yükseklik verilmeyip kart en fazla yükseklikle sınırlanınca UI Toolkit içeriği sıkıştırıyor, satırlar üst üste biniyordu
+        /// (16.11 testi, bina kartı). İçeriğin boyu son çocuğun alt kenarından okunur (içerik kabı görünür alan kadar uzayabilir).
+        /// </summary>
+        static void KaydirmaYuksekligi(ScrollView k, float dolgu, float enFazla)
+        {
+            var cc = k.contentContainer;
+            if (cc.childCount == 0) return;
+            var son = cc[cc.childCount - 1];
+            float icerik = son.layout.yMax + son.resolvedStyle.marginBottom;
+            if (!(icerik > 1f) || !(enFazla > 1f)) return;   // ilk karede düzen henüz yok (NaN)
+            float h = Mathf.Clamp(icerik + dolgu, 40f, Mathf.Max(40f, enFazla));
+            if (Mathf.Abs(k.resolvedStyle.height - h) > 0.5f) k.style.height = h;
+        }
+
         float UiEkranGenisligi => uiKok != null && uiKok.layout.width > 1f ? uiKok.layout.width : Screen.width / Mathf.Max(0.01f, uiScale);
 
         float UiEkranYuksekligi => uiKok != null && uiKok.layout.height > 1f ? uiKok.layout.height : Screen.height / Mathf.Max(0.01f, uiScale);

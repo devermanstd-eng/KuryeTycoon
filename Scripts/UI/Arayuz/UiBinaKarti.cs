@@ -16,7 +16,7 @@ namespace KuryeTycoon
     /// </summary>
     public partial class GameUI
     {
-        VisualElement binaKok, binaRenk, binaSimge;
+        VisualElement binaKok, binaUst, binaRenk, binaSimge;
         Label binaAd, binaAlt;
         ScrollView binaKaydir;
         Yazici binaY;
@@ -53,7 +53,7 @@ namespace KuryeTycoon
             binaKok.style.top = TopBar + 14f;
             binaKok.RegisterCallback<PointerUpEvent>(_ => binaKirli = true, TrickleDown.TrickleDown);
 
-            var ust = U.Gecirgen(binaKok, "bina-ust");
+            var ust = binaUst = U.Gecirgen(binaKok, "bina-ust");
             binaRenk = U.Gecirgen(ust, "bina-simge-kutu");
             binaSimge = U.Simge(binaRenk, Icons.Kind.Shops, Color.white, 20f);
             var yazi = U.Gecirgen(ust, "esnek");
@@ -79,7 +79,9 @@ namespace KuryeTycoon
             bool gor = InfoOpen && CityMap.I != null && OrderManager.I != null && GameClock.I != null;
             U.Goster(binaKok, gor);
             if (!gor) { binaKirli = true; return; }
-            binaKok.style.maxHeight = Mathf.Max(240f, Mathf.Min(600f, UiEkranYuksekligi - TopBar - 150f));
+            // Kart içeriği kadar uzar, en fazla 600 (ekran küçükse daha az); fazlası kayar
+            float maxH = Mathf.Max(240f, Mathf.Min(600f, UiEkranYuksekligi - TopBar - 150f));
+            KaydirmaYuksekligi(binaKaydir, 18f, maxH - binaUst.layout.height - 1f);
             if (!agir && !binaKirli) return;
             binaKirli = false;
             if (binaKaydirSifirla)

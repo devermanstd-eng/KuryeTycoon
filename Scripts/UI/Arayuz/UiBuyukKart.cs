@@ -35,7 +35,7 @@ namespace KuryeTycoon
             }
         }
 
-        VisualElement bkPerde, bkKart, bkPortre, bkAracSimge, bkCipler;
+        VisualElement bkPerde, bkKart, bkPortre, bkAracSimge, bkCipler, bkDugmeler;
         Label bkSeviye, bkAd, bkArac, bkMeslek, bkSaatler, bkMoralDeger, bkYorgDeger;
         U.Cubuk bkMoral, bkYorgunluk;
         ScrollView bkKaydir;
@@ -95,7 +95,7 @@ namespace KuryeTycoon
             bkEkipman = new Yazici(this, U.El(s2, "kart", "bk-kutu"));
 
             // Düğmeler: kaymaz, hep altta
-            var dg = U.El(bkKart, "satir", "bk-dugmeler");
+            var dg = bkDugmeler = U.El(bkKart, "satir", "bk-dugmeler");
             U.Dugme(dg, "Telefonunu aç", () =>
             {
                 var c = bigCardCourier;
@@ -126,7 +126,8 @@ namespace KuryeTycoon
             if (!gor) { bkKirli = true; return; }
             float sw = UiEkranGenisligi, sh = UiEkranYuksekligi;
             bkKart.style.width = Mathf.Min(760f, sw - 40f);
-            bkKart.style.maxHeight = Mathf.Min(680f, sh - 40f);
+            // İçerik kadar uzar, en fazla 680 (ekran küçükse daha az); düğmeler hep altta, fazlası kayar
+            KaydirmaYuksekligi(bkKaydir, 0f, Mathf.Min(680f, sh - 40f) - 32f - bkDugmeler.layout.height - 12f);
             if (!agir && !bkKirli) return;
             bkKirli = false;
             if (bkKaydirSifirla)

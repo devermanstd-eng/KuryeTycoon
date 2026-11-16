@@ -1115,8 +1115,12 @@ namespace KuryeTycoon
             RefreshColors();
         }
 
-        /// <summary>Bölgenin açılış bedeli: şirket büyüdükçe artar (Denge.Olcekle).</summary>
-        public static long BolgeBedeli(int seviye) => Denge.Olcekle(UnlockCost[Mathf.Clamp(seviye, 0, UnlockCost.Length - 1)]);
+        /// <summary>
+        /// Bölgenin açılış bedeli: şirket büyüdükçe artar (Denge.Olcekle), ama platform paketi gibi çarpanın yarısıyla: bölge,
+        /// sıradaki kurye paketinin ön koşulu. 16.11 testinde tam çarpanla Batı Liman 4 220 €, Yeşil Tepe 8 620 € tuttu; paketle
+        /// birlikte 32 ve 45 kuryede 17–18 gün beklendi (hedef 10–13).
+        /// </summary>
+        public static long BolgeBedeli(int seviye) => Denge.Olcekle(UnlockCost[Mathf.Clamp(seviye, 0, UnlockCost.Length - 1)], 0.5f);
 
         public bool TryUnlockNext()
         {
