@@ -817,3 +817,92 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .durum-yazi { flex-grow: 1; flex-shrink: 1; margin-left: 10px; padding: 6px 0 6px 0; }
 .durum-baslik { font-size: 13px; white-space: normal; }
 .durum-alt { font-size: 11px; color: var(--soluk); white-space: normal; margin-top: 1px; }
+
+/* ---------------------------------------------------------------- yazıcı: sayı kutuları, tablo, ayar kontrolleri */
+
+.yz-kutular { flex-direction: row; flex-wrap: wrap; margin: 2px -6px 4px 0; }
+.yz-kutu {
+    flex-grow: 1;
+    flex-basis: 0;
+    min-width: 100px;
+    margin: 0 6px 6px 0;
+    padding: 6px 9px 6px 9px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+.yz-kart .yz-kutu { background-color: rgba(255, 255, 255, 0.06); }
+.yz-kutu:hover { background-color: rgba(255, 255, 255, 0.08); }
+.yz-kutu-baslik { font-size: 10px; color: var(--soluk); letter-spacing: 0.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yz-kutu-deger { font-size: 16px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yz-kutu-alt { font-size: 11px; color: var(--soluk); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.yz-tablo-satir {
+    flex-direction: row;
+    align-items: center;
+    min-height: 23px;
+    border-bottom-width: 1px;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+.yz-tablo-satir:hover { background-color: rgba(255, 255, 255, 0.03); }
+.yz-tablo-satir.baslik { min-height: 20px; border-color: rgba(255, 255, 255, 0.1); }
+.yz-tablo-satir.baslik:hover { background-color: rgba(0, 0, 0, 0); }
+.yz-tablo-satir .yz-nokta { margin: 0 8px 0 0; }
+.yz-tablo-ilk { flex-grow: 1; flex-shrink: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yz-tablo-hucre { width: 66px; flex-shrink: 0; margin-left: 4px; font-size: 13px; -unity-text-align: middle-right; white-space: nowrap; }
+.yz-tablo-satir.baslik .yz-tablo-ilk,
+.yz-tablo-satir.baslik .yz-tablo-hucre { font-size: 10px; color: var(--soluk); letter-spacing: 0.4px; }
+
+.yz-kaydir { flex-direction: row; align-items: center; min-height: 28px; margin-bottom: 1px; }
+.yz-kaydir-ad { width: 132px; flex-shrink: 0; font-size: 13px; color: var(--soluk); white-space: normal; }
+.yz-kaydir-deger { min-width: 66px; margin-left: 8px; font-size: 13px; -unity-text-align: middle-right; white-space: nowrap; }
+.yz-slider { flex-grow: 1; flex-shrink: 1; min-width: 60px; margin: 0; height: 22px; }
+.yz-slider .unity-base-field__label { display: none; }
+.yz-slider .unity-base-slider__input { min-width: 0; }
+.yz-slider .unity-base-slider__drag-container { height: 22px; }
+/* Temanın yatay kaydırıcı kurallarından güçlü olsun diye üç sınıflı seçici */
+.yz-slider.unity-base-slider--horizontal .unity-base-slider__tracker {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 6px;
+    margin-top: -3px;
+    border-width: 0;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.13);
+}
+.yz-slider.unity-base-slider--horizontal .unity-base-slider__dragger {
+    position: absolute;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border-width: 0;
+    border-radius: 8px;
+    background-color: rgb(237, 240, 245);
+}
+.yz-slider.unity-base-slider--horizontal:hover .unity-base-slider__dragger { background-color: rgb(255, 255, 255); }
+.yz .onay { margin-top: 2px; margin-bottom: 5px; }
+
+/* ---------------------------------------------------------------- grafikler */
+
+.grafik-kutu { margin-bottom: 10px; }
+.grafik {
+    height: 70px;
+    margin: 3px 0 2px 0;
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.25);
+}
+.grafik.cizgi { height: 56px; }
+.saat-cizelgesi { margin: 8px 0 6px 0; }
+.saat-serit { height: 22px; }
+.saat-etiketler { flex-direction: row; justify-content: space-between; margin-top: 2px; }
+
+/* ---------------------------------------------------------------- kurye ayrıntısı (sade) */
+
+.beceri-izgara { flex-direction: row; flex-wrap: wrap; margin: 2px 0 4px 0; }
+.beceri { flex-direction: row; align-items: center; width: 50%; min-height: 20px; }
+.beceri-ad { width: 86px; font-size: 12px; color: var(--soluk); }
+.kurye-bilgi { flex-direction: row; min-height: 20px; align-items: flex-start; }
+.kurye-bilgi-ad { width: 72px; flex-shrink: 0; font-size: 12px; color: var(--soluk); }
+.kurye-bilgi-deger { flex-grow: 1; flex-shrink: 1; font-size: 12px; white-space: normal; }

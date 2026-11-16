@@ -112,7 +112,7 @@ namespace KuryeTycoon
             pencereKaydir.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
             pencereGovde.Add(pencereKaydir);
 
-            // UI Toolkit'e taşınan sekmeler (taşınmayanlar IMGUI ile çizilmeye devam eder)
+            // UI Toolkit'e taşınan sekmeler (taşınmayan tek pencere Kayıtlar: IMGUI ile çizilmeye devam eder)
             UiSekmeEkle(Tab.Siparisler, new UiSiparisler());
             UiSekmeEkle(Tab.Kuryeler, new UiKuryeler());
             UiSekmeEkle(Tab.Gelistirmeler, new UiGelisim());
@@ -120,6 +120,12 @@ namespace KuryeTycoon
             UiSekmeEkle(Tab.Ekipman, new UiEkipman());
             UiSekmeEkle(Tab.Dukkanlar, new UiDukkanlar());
             UiSekmeEkle(Tab.Finans, new UiFinans());
+            UiSekmeEkle(Tab.Destek, new UiDestek());
+            UiSekmeEkle(Tab.Kampanyalar, new UiKampanyalar());
+            UiSekmeEkle(Tab.Market, new UiMarket());
+            UiSekmeEkle(Tab.Mesajlar, new UiMesajlar());
+            UiSekmeEkle(Tab.Istatistik, new UiIstatistik());
+            UiSekmeEkle(Tab.Ayarlar, new UiAyarlar());
         }
 
         void SekmeSeridiKur(int g)

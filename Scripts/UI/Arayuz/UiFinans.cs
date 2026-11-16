@@ -4,7 +4,8 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Finans penceresi (UI Toolkit, Yazıcı ile). Üstte (kaymaz) sayfalar: Özet · Ödemeler · Vergi · Hareketler · Diğer.
-    /// İçerik IMGUI'deki DrawFinance, DrawFamilyLoan, Stats, DrawInsurancePartner ve DrawMilestones ile aynı.
+    /// Sade: Özet sayı kutularıyla başlar (harcanabilir, bugün ve dün net, sabit gider), gelir-gider "bugün | dün" tablosunda
+    /// yan yana; kredide sadece sıradaki taksit ve ilerleme görünür, taksit planı açılır. Açıklamalar "?" ipuçlarında.
     /// </summary>
     public partial class GameUI
     {
@@ -13,6 +14,7 @@ namespace KuryeTycoon
             Yazici y;
             U.Secenekler sayfalar;
             int gosterilenSayfa = -1;
+            bool taksitPlani;
 
             protected override void Kur()
             {
@@ -56,10 +58,23 @@ namespace KuryeTycoon
 
             void Ozet(EconomyManager e)
             {
-                y.Bolum("Kasa", "Serbest kasa = ana kasa − kuryelerin hesaplarında bekleyen ve yatacak paralar + kuryelerdeki nakit (şirkete borçları). " +
-                                "Geliştirme, ekipman, sözleşme gibi harcamalar serbest kasadan yapılır.");
-                y.KV("Ana kasa", Ft(e.money));
-                y.KV("Serbest kasa (harcanabilir)", Ft(e.FreeCash), e.FreeCash < 0 ? UITheme.Bad : (Color?)null);
+                var dun = e.Yesterday;
+                IsletmeGiderleri.Hesapla((dun ?? e.Today).courierPay, (dun ?? e.Today).DeliveryProfit, out _, out long isletme, out _, out _, out _);
+                long sabit = isletme + (UpgradeManager.I != null ? UpgradeManager.I.TotalDailyCost : 0);
+                long bugunNet = e.Today.Profit - e.Today.penalties;
+                y.KutularBasla();
+                y.Kutu("Harcanabilir", Ft(e.FreeCash), $"kasa {Ft(e.money)}", e.FreeCash < 0 ? UITheme.Bad : (Color?)null,
+                       "Serbest kasa = ana kasa − kuryelerin hesaplarında bekleyen ve yatacak paralar + kuryelerdeki nakit (şirkete borçları). " +
+                       "Geliştirme, ekipman, sözleşme gibi harcamalar serbest kasadan yapılır.");
+                y.Kutu("Bugün net", Ft(bugunNet), $"{e.Today.deliveries} teslimat", MoneyColor(bugunNet));
+                if (dun != null)
+                {
+                    long dunNet = dun.Profit - dun.penalties;
+                    y.Kutu("Dün net", Ft(dunNet), dun.deliveries > 0 ? $"paket başı {Ft(dun.DeliveryProfit / dun.deliveries)}" : "", MoneyColor(dunNet));
+                }
+                y.Kutu("Sabit gider", Ft(sabit) + "/gün", "işletme + geliştirme", null,
+                       "Her gece kesilen işletme giderleri (aşağıda kalem kalem) ve geliştirmelerin günlük işletme bedeli.");
+                y.KutularBitir();
                 if (e.bankLoanRemaining > 0)
                     y.Uyari($"Acil banka kredisi: kalan {Ft(e.bankLoanRemaining)} · her gün {Ft(e.bankLoanDaily)} kesilir");
                 if (e.taxDebt > 0)
@@ -73,10 +88,10 @@ namespace KuryeTycoon
                 if (!string.IsNullOrEmpty(e.LastWeeklyReport))
                     y.Dugme("Geçen haftanın raporu", () => EventManager.I.Push(new GameEvent(e.LastWeeklyReportTitle, e.LastWeeklyReport)), true, "kucuk-dg");
                 y.SatirBitir();
+                y.Bolum("Bugün ve dün", "Teslimat kârı = komisyon + teslimat ücreti − kurye ödemeleri − boost. Net kâr = teslimat kârı − diğer giderler + diğer gelirler.");
+                DonemTablosu(e.Today, "Bugün", dun, "Dün");
                 Kredi(e);
                 IsletmeGiderleriBolumu(e);
-                y.Bolum("Bugün");
-                Donem(e.Today);
             }
 
             void Kredi(EconomyManager e)
@@ -93,16 +108,28 @@ namespace KuryeTycoon
                     return;
                 }
                 if (loan.Failed) y.Uyari("Kredi ödenemedi, banka geri çağırdı ve şirket kapandı (test modunda devam ediyorsun).");
-                y.Yazi($"Kalan: {Ft(loan.Remaining)} / {Ft(loan.Toplam)} (çekilen {Ft(loan.principal)} + faiz {Ft(loan.Faiz)}) · Kredi notu: {loan.Trust}/{loan.maxTrust}");
+                var sonraki = loan.NextDue;
+                y.KutularBasla();
+                y.Kutu("Kalan", Ft(loan.Remaining), $"toplam {Ft(loan.Toplam)}", null,
+                       $"Çekilen {Ft(loan.principal)} + faiz {Ft(loan.Faiz)}. Bugüne kadar ödenen {Ft(loan.TotalPaid)}.");
+                if (sonraki != null)
+                {
+                    int gun = loan.DaysUntil(sonraki);
+                    y.Kutu("Sıradaki taksit", Ft(sonraki.Remaining), $"{sonraki.DueText} · {gun} gün", null, null, gun <= 7 ? UITheme.Warn : (Color?)null);
+                }
+                y.Kutu("Kredi notu", $"{loan.Trust}/{loan.maxTrust}", null, loan.Trust < loan.maxTrust / 2 ? UITheme.Warn : (Color?)null,
+                       "Taksitleri vadesinde ödedikçe yükselir, kaçırınca düşer.");
+                y.KutularBitir();
                 y.Cubuk("Ödenen", loan.TotalPaid / (float)Mathf.Max(1L, loan.Toplam), new Color(0.35f, 0.8f, 0.5f),
                         $"%{loan.TotalPaid * 100f / Mathf.Max(1L, loan.Toplam):0}");
-                foreach (var t in loan.Schedule)
-                {
-                    string durum = t.closed ? (t.Remaining == 0 ? "ödendi" : "kaçırıldı") : $"{loan.DaysUntil(t)} gün kaldı";
-                    y.Yazi($"• {t.DueText}: {Ft(t.amount)} — ödenen {Ft(t.paid)} ({durum})",
-                           !t.closed && loan.DaysUntil(t) <= 7 ? "kucuk uyari-renk" : "kucuk soluk");
-                }
-                var sonraki = loan.NextDue;
+                y.AcilirBaslik("Taksit planı", $"{loan.Schedule.Count} taksit", null, taksitPlani, () => taksitPlani = !taksitPlani);
+                if (taksitPlani)
+                    foreach (var t in loan.Schedule)
+                    {
+                        string durum = t.closed ? (t.Remaining == 0 ? "ödendi" : "kaçırıldı") : $"{loan.DaysUntil(t)} gün";
+                        y.Tablo(new[] { t.DueText, Ft(t.amount), durum }, false, null,
+                                new Color?[] { null, null, t.closed ? (t.Remaining == 0 ? UITheme.Good : UITheme.Bad) : loan.DaysUntil(t) <= 7 ? UITheme.Warn : (Color?)null });
+                    }
                 if (sonraki != null && !loan.Failed)
                 {
                     y.SatirBasla();
@@ -154,35 +181,36 @@ namespace KuryeTycoon
                              ? $"Nakit siparişlerde kurye parayı şirkete borçlanır: üzerindeki nakit {Ft(Courier.CashLimit)}'ı geçemez, " +
                                "ay sonuna kadar keep cash (hesabın en fazla %80'iyle mahsup) ya da offload (kartla ödeme) ile kapatılır."
                              : "Nakit siparişlerin parası doğrudan kasana girer."));
-                y.KV("Kuryelerin hesaplarında", Ft(e.TotalCourierBalances));
-                y.KV("Sıradaki kesim", e.NextCutText);
-                y.KV("Yatmayı bekleyen ödemeler", Ft(e.TotalPendingPayouts));
-                foreach (var p in e.Payouts)
-                    y.Kucuk($"{p.courierName}: {Ft(p.amount)}{(p.early ? " (erken)" : "")} → {GameClock.I.DateOf(p.payDay)}");
-                if (Sade.NakitBorcu || e.TotalCashHeld > 0) y.KV("Kuryelerdeki nakit (şirkete borçları)", Ft(e.TotalCashHeld));
-                if (e.depositsHeld > 0)
+                y.KutularBasla();
+                y.Kutu("Hesaplarda", Ft(e.TotalCourierBalances), $"kesim {e.NextCutText}");
+                y.Kutu("Yatacak", Ft(e.TotalPendingPayouts), $"{e.Payouts.Count} ödeme");
+                if (Sade.NakitBorcu || e.TotalCashHeld > 0) y.Kutu("Kuryelerdeki nakit", Ft(e.TotalCashHeld), "şirkete borçları");
+                if (e.depositsHeld > 0) y.Kutu("Depozitolar", Ft(e.depositsHeld), "iade borcu", null, "Gelir değil: ekipmanı iade eden kuryeye geri ödenir.");
+                y.KutularBitir();
+                if (e.Payouts.Count > 0)
                 {
-                    y.KV("Tutulan ekipman depozitoları", Ft(e.depositsHeld));
-                    y.Yardim("Gelir değil: ekipmanı iade eden kuryeye geri ödenir.");
+                    y.Tablo(new[] { "Kurye", "Tutar", "Yatacağı gün" }, true);
+                    foreach (var p in e.Payouts)
+                        y.Tablo(new[] { p.courierName + (p.early ? " (erken)" : ""), Ft(p.amount), GameClock.I.DateOf(p.payDay).Split(',')[0] });
                 }
             }
 
             void Vergi(EconomyManager e, GameClock clock)
             {
-                y.Bolum($"Bu vergi yılı · {clock.Year}", $"1 Ocak – 31 Aralık. Şirketin {clock.CompanyDay}. günü. Yıl sonunda kâr üzerinden vergi ödenir.");
-                Donem(e.Year);
                 long vergilenen = System.Math.Max(0L, e.Year.Profit);
                 long tahmin = EconomyManager.ProgressiveTax(vergilenen);
-                y.KV($"Tahmini yıllık vergi (kademeli, ortalama %{EconomyManager.EffectiveTaxRate(vergilenen) * 100f:0.0})", Ft(tahmin));
-                y.KV("Bu yıl ödenen geçici vergi", Ft(e.GeciciVergiOdenen));
-                y.KV($"Sıradaki geçici vergi ({EconomyManager.SiradakiVergiTarihi(clock.Month)}), şu anki kârla", Ft(e.TahminiGeciciVergi), UITheme.Warn);
-                y.Yardim("Kademeli vergi 3 ayda bir peşin istenir (31 Mart, 30 Haziran, 30 Eylül): yılbaşından bu yana kârın vergisi − bu yıl ödenen. " +
-                         "Yıl sonunda kesin hesap yapılır: kalan fark ödenir, fazlası iade edilir. Ertelemek %10 ceza ve günlük %2 faiz getirir."); 
-                if (e.Yesterday != null)
-                {
-                    y.Bolum("Dün");
-                    Donem(e.Yesterday);
-                }
+                y.KutularBasla();
+                y.Kutu($"{clock.Year} kârı", Ft(e.Year.Profit), $"{clock.CompanyDay}. gün", MoneyColor(e.Year.Profit),
+                       "1 Ocak – 31 Aralık. Yıl sonunda kâr üzerinden kademeli vergi ödenir.");
+                y.Kutu("Tahmini vergi", Ft(tahmin), $"ortalama %{EconomyManager.EffectiveTaxRate(vergilenen) * 100f:0.0}", null,
+                       EconomyManager.TaxBracketText);
+                y.Kutu("Ödenen geçici", Ft(e.GeciciVergiOdenen), "bu yıl");
+                y.Kutu("Sıradaki geçici", Ft(e.TahminiGeciciVergi), EconomyManager.SiradakiVergiTarihi(clock.Month), UITheme.Warn,
+                       "Kademeli vergi 3 ayda bir peşin istenir (31 Mart, 30 Haziran, 30 Eylül): yılbaşından bu yana kârın vergisi − bu yıl ödenen. " +
+                       "Yıl sonunda kesin hesap yapılır: kalan fark ödenir, fazlası iade edilir. Ertelemek %10 ceza ve günlük %2 faiz getirir.");
+                y.KutularBitir();
+                y.Bolum($"Bu vergi yılı · {clock.Year}");
+                DonemTablosu(e.Year, "Bu yıl", null, null);
                 if (!string.IsNullOrEmpty(e.LastTaxSummary))
                 {
                     y.Bolum("Son vergi dönemi");
@@ -190,27 +218,40 @@ namespace KuryeTycoon
                 }
             }
 
-            /// <summary>Bir dönemin gelir-gider dökümü (IMGUI'deki Stats).</summary>
-            void Donem(PeriodStats s)
+            /// <summary>
+            /// Gelir-gider tablosu: bir ya da iki dönem yan yana (bugün | dün). Satırlar: teslimat, gelir, kurye ödemesi, teslimat kârı,
+            /// paket başı kâr, diğer giderler, diğer gelir, net kâr. Diğer giderlerin kalemleri satırın ipucunda.
+            /// </summary>
+            void DonemTablosu(PeriodStats a, string aAd, PeriodStats b, string bAd)
             {
-                y.Kucuk($"Teslimat: {s.deliveries} paket");
-                y.Kucuk($"  + Komisyon {Ft(s.commission)}  + Teslimat ücreti {Ft(s.fees)}");
-                y.Kucuk($"  − Kurye ödemeleri {Ft(s.courierPay)}" + (s.boosts > 0 ? $"  − Boost {Ft(s.boosts)}" : ""));
-                y.KV("Teslimat kârı" + (s.deliveries > 0 ? $" (paket başı {Ft(s.DeliveryProfit / s.deliveries)})" : ""), Ft(s.DeliveryProfit));
+                bool iki = b != null;
+                string[] Satir(string ad, System.Func<PeriodStats, string> f) => iki ? new[] { ad, f(a), f(b) } : new[] { ad, f(a) };
+                y.Tablo(iki ? new[] { "", aAd, bAd } : new[] { "", aAd }, true);
+                y.Tablo(Satir("Teslimat", s => s.deliveries.ToString()));
+                y.Tablo(Satir("Gelir (komisyon + ücret)", s => Ft(s.commission + s.fees)));
+                y.Tablo(Satir("Kurye ödemesi ve boost", s => "−" + Ft(s.courierPay + s.boosts)));
+                y.Tablo(Satir("Teslimat kârı", s => Ft(s.DeliveryProfit)), false, null, Renkler(iki, s => s.DeliveryProfit, a, b));
+                y.Tablo(Satir("Paket başı kâr", s => s.deliveries > 0 ? Ft(s.DeliveryProfit / s.deliveries) : "–"));
+                y.Tablo(Satir("Diğer giderler", s => s.OtherExpenses + s.rewards > 0 ? "−" + Ft(s.OtherExpenses + s.rewards) : "–"), false, null, null,
+                        "Geliştirme, işletme, ekipman, maaş, bölge, sözleşme, iade… · " + aAd + ": " + Kalemler(a) + (iki ? " · " + bAd + ": " + Kalemler(b) : ""));
+                if (a.otherIncome > 0 || (iki && b.otherIncome > 0))
+                    y.Tablo(Satir("Diğer gelir", s => s.otherIncome > 0 ? "+" + Ft(s.otherIncome) : "–"), false, null, null,
+                            "Kilometre taşı ödülleri, sigorta komisyonu, kurye kesintileri.");
+                if (a.penalties > 0 || (iki && b.penalties > 0))
+                    y.Tablo(Satir("Cezalar", s => s.penalties > 0 ? "−" + Ft(s.penalties) : "–"), false, null, null, "Vergi cezası ve faizi (vergiden düşülmez).");
+                y.Tablo(Satir("Net kâr", s => Ft(s.Profit - s.penalties)), false, null, Renkler(iki, s => s.Profit - s.penalties, a, b));
+            }
 
-                long digerleri = s.OtherExpenses + s.rewards;
-                if (digerleri > 0 || s.otherIncome > 0)
-                {
-                    string liste = "";
-                    for (int i = 0; i < s.byCategory.Length; i++)
-                        if (s.byCategory[i] > 0) liste += (liste.Length > 0 ? ", " : "") + $"{PeriodStats.CategoryNames[i]} {Ft(s.byCategory[i])}";
-                    if (s.rewards > 0) liste += (liste.Length > 0 ? ", " : "") + $"Hedef ödülleri {Ft(s.rewards)}";
-                    y.KV("Yatırım ve diğer giderler", "−" + Ft(digerleri));
-                    if (liste.Length > 0) y.Kucuk("  " + liste);
-                    if (s.otherIncome > 0) y.Kucuk($"  + Diğer gelir (ödüller, sigorta komisyonu, kesintiler) {Ft(s.otherIncome)}");
-                }
-                if (s.penalties > 0) y.Uyari($"Cezalar (vergiden düşülmez): −{Ft(s.penalties)}");
-                y.KV("Net kâr", Ft(s.Profit - s.penalties), MoneyColor(s.Profit - s.penalties));
+            static Color?[] Renkler(bool iki, System.Func<PeriodStats, long> f, PeriodStats a, PeriodStats b) =>
+                iki ? new Color?[] { null, MoneyColor(f(a)), MoneyColor(f(b)) } : new Color?[] { null, MoneyColor(f(a)) };
+
+            static string Kalemler(PeriodStats s)
+            {
+                string liste = "";
+                for (int i = 0; i < s.byCategory.Length; i++)
+                    if (s.byCategory[i] > 0) liste += (liste.Length > 0 ? ", " : "") + $"{PeriodStats.CategoryNames[i]} {Ft(s.byCategory[i])}";
+                if (s.rewards > 0) liste += (liste.Length > 0 ? ", " : "") + $"hedef ödülleri {Ft(s.rewards)}";
+                return liste.Length > 0 ? liste : "yok";
             }
 
             readonly System.Collections.Generic.List<string> planAdlari = new System.Collections.Generic.List<string>();
