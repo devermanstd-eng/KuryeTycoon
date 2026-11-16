@@ -1108,7 +1108,23 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 
 /* Harita */
 .tel-harita { position: absolute; left: 0; top: 0; right: 0; overflow: hidden; }
-.tel-poi { position: absolute; font-size: 9px; color: rgb(232, 196, 120); white-space: nowrap; }
+.tel-poi { position: absolute; font-size: 9px; color: rgb(240, 206, 130); white-space: nowrap; text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.9); }
+.tel-semt {
+    position: absolute;
+    font-size: 10px;
+    color: rgba(235, 222, 205, 0.42);
+    white-space: nowrap;
+    -unity-font-style: italic;
+    translate: -50% -50%;
+    letter-spacing: 1px;
+}
+.tel-sokak {
+    position: absolute;
+    font-size: 8px;
+    color: rgba(225, 215, 200, 0.75);
+    white-space: nowrap;
+    text-shadow: 0px 0px 2px rgba(20, 18, 16, 1);
+}
 .tel-balon {
     position: absolute;
     flex-direction: row;
@@ -1130,8 +1146,8 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     background-color: rgb(255, 255, 255);
     align-items: center;
     justify-content: center;
-    border-width: 2px;
-    border-color: var(--cerceve);
+    border-width: 3px;
+    border-color: rgb(30, 27, 25);
 }
 .tel-kurye-harf { font-size: 11px; color: rgb(0, 0, 0); -unity-text-align: middle-center; }
 
