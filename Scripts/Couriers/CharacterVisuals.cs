@@ -148,7 +148,7 @@ namespace KuryeTycoon
         public static bool Available => Mode != 2 && Count > 0;
 
         /// <summary>Kuryeye model takar; model yoksa null döner (daire gösterilmeye devam eder).</summary>
-        public static GameObject Spawn(Transform parent, string seedName)
+        public static GameObject Spawn(Transform parent, string seedName, bool sirketKiyafeti = true)
         {
             if (!Available) return null;
             int idx = Mathf.Abs(seedName.GetHashCode()) % prefabs.Length;
@@ -177,7 +177,7 @@ namespace KuryeTycoon
                 // 2D Renderer çizim sırasını sortingOrder'a göre yapar: haritanın ve dairelerin üstünde çizilsin
                 r.sortingOrder = 20;
                 if (r is SkinnedMeshRenderer smr) smr.updateWhenOffscreen = true;
-                TintCompanyColors(r);              // MakeUnlit rengi kopyaladığı için önce boya
+                if (sirketKiyafeti) TintCompanyColors(r);   // MakeUnlit rengi kopyaladığı için önce boya (dükkan çalışanı boyanmaz)
                 if (Mode == 1) MakeUnlit(r);
             }
 

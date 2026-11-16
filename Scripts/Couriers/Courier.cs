@@ -158,6 +158,10 @@ namespace KuryeTycoon
         Order current;
         /// <summary>Kuryenin şu an taşıdığı sipariş (araç animasyonu bagajı mı arka kapıyı mı açacağını buna göre seçer).</summary>
         public Order AktifSiparis => current;
+        /// <summary>Haritadaki 3D modeli (karakter ya da araba; yoksa null).</summary>
+        public GameObject Model => model;
+        /// <summary>Modeli araba mı (elde kese taşınmaz, kese bagajda).</summary>
+        public bool ArabaModeli => modelArac;
         List<Vector2Int> path;
         int pathIndex;
         float breakUntil;
@@ -289,6 +293,7 @@ namespace KuryeTycoon
             // Arabalı kurye: yürüyen karakter yerine aracı (VW Polo 6N2, kurye sürümü) görünür
             modelArac = vehicle == VehicleKind.Araba && CharacterVisuals.CarAvailable;
             model = modelArac ? CharacterVisuals.SpawnCar(transform, this) : CharacterVisuals.Spawn(transform, courierName);
+            if (GetComponent<KuryePaketi>() == null) gameObject.AddComponent<KuryePaketi>();     // elde kese, dükkanda hazırlık
             if (body != null) body.enabled = true;
             lastModelPos = Position;
         }
