@@ -74,7 +74,7 @@ namespace KuryeTycoon
                 Adaylar(ks, now);
 
                 // Destek personeli de buradan işe alınabilir (Destek menüsü açıldıktan sonra)
-                if (ui.TabOpen(Tab.Destek))
+                if (TabOpen(Tab.Destek))
                 {
                     y.Bosluk(6);
                     ui.UiDestekAdaylari(y);
