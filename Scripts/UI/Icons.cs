@@ -52,10 +52,15 @@ namespace KuryeTycoon
         static readonly Dictionary<Kind, Texture2D> renkli = new Dictionary<Kind, Texture2D>();
         static readonly HashSet<Kind> renkliYok = new HashSet<Kind>();
 
-        /// <summary>Kâğıt temada elle çizilmiş renkli simge (yoksa null: eski tek renkli simge kullanılır).</summary>
-        public static Texture2D Renkli(Kind k)
+        /// <summary>IMGUI kâğıt temasında elle çizilmiş renkli simge (yoksa null: eski tek renkli simge kullanılır).</summary>
+        public static Texture2D Renkli(Kind k) => UITheme.Kagit ? ElCizimi(k) : null;
+
+        /// <summary>
+        /// Elle çizilmiş renkli simge: Resources/UI/Ikonlar/&lt;Kind adı&gt;.png (128×128, saydam zemin). Yoksa null.
+        /// UI Toolkit arayüzü kâğıt temada bunları kullanır (U.SimgeAyarla); IMGUI yalnızca UITheme.Kagit açıkken.
+        /// </summary>
+        public static Texture2D ElCizimi(Kind k)
         {
-            if (!UITheme.Kagit) return null;
             if (renkli.TryGetValue(k, out var t) && t != null) return t;
             if (renkliYok.Contains(k)) return null;
             t = Resources.Load<Texture2D>("UI/Ikonlar/" + k);

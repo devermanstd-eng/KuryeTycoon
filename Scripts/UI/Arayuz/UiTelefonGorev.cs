@@ -23,9 +23,9 @@ namespace KuryeTycoon
         bool phoneOfflineEdit;
         int phoneConfirmCancel = -1;
 
-        static readonly Color PWarnBg = new Color(0.22f, 0.10f, 0.03f);
-        static readonly Color PWarnText = new Color(1f, 0.65f, 0.35f);
-        static readonly Color PCancelBg = new Color(0.32f, 0.04f, 0.04f);
+        static readonly Color PWarnBg = new Color(0.98f, 0.89f, 0.78f);
+        static readonly Color PWarnText = new Color(0.69f, 0.36f, 0.10f);
+        static readonly Color PCancelBg = new Color(0.97f, 0.85f, 0.81f);
         static readonly Color PLate = new Color(1f, 0.74f, 0.48f);
         static readonly Color PLateText = new Color(0.08f, 0.06f, 0.04f);
         static readonly string[] GorevSekmeleri = { "Bilgi", "Ürünler" };

@@ -22,7 +22,7 @@ namespace KuryeTycoon
         class TelSimge : VisualElement
         {
             TelSimgeTur tur;
-            Color renk = Color.white;
+            Color renk = PKoyu;   // kâğıt tema: mürekkep çizgi
 
             public TelSimge(TelSimgeTur t, float boy)
             {
@@ -238,7 +238,7 @@ namespace KuryeTycoon
                     v += 4;
                 }
 
-                Dortgen(0f, 0f, w, h, new Color(0.13f, 0.15f, 0.20f));
+                Dortgen(0f, 0f, w, h, new Color(0.93f, 0.90f, 0.84f));   // kâğıt harita
                 for (int x = x0; x <= x1; x++)
                     for (int y = y0; y <= y1; y++)
                     {
@@ -246,13 +246,13 @@ namespace KuryeTycoon
                         float ax = p.x - s / 2f, ay = p.y - s / 2f, bx = ax + s + 0.5f, by = ay + s + 0.5f;
                         bool yol = cm.IsRoad(x, y), su = CityMap.WaterAt(x, y);
                         Color col;
-                        if (yol) col = CityMap.BridgeAt(x, y) ? new Color(0.36f, 0.36f, 0.42f) : new Color(0.27f, 0.29f, 0.38f);
-                        else if (su) col = new Color(0.12f, 0.28f, 0.45f);
-                        else col = Color.Lerp(cm.MiniColor(x, y), new Color(0.10f, 0.12f, 0.17f), 0.62f);   // uygulamadaki koyu harita teması
-                        if (!cm.IsUnlocked(x, y)) col = Color.Lerp(col, Color.black, 0.5f);
+                        if (yol) col = CityMap.BridgeAt(x, y) ? new Color(0.72f, 0.67f, 0.60f) : new Color(0.83f, 0.79f, 0.72f);
+                        else if (su) col = new Color(0.66f, 0.80f, 0.88f);
+                        else col = Color.Lerp(cm.MiniColor(x, y), new Color(0.96f, 0.93f, 0.87f), 0.55f);   // kâğıt harita (soluk suluboya)
+                        if (!cm.IsUnlocked(x, y)) col = Color.Lerp(col, new Color(0.78f, 0.74f, 0.68f), 0.55f);
                         Dortgen(ax, ay, bx, by, col);
                         // Binalar biraz açık: kareler ayrı görünür (yol ve suda aynı renk)
-                        Dortgen(ax + 1.5f, ay + 1.5f, bx - 1.5f, by - 1.5f, yol || su ? col : Color.Lerp(col, Color.white, 0.03f));
+                        Dortgen(ax + 1.5f, ay + 1.5f, bx - 1.5f, by - 1.5f, yol || su ? col : Color.Lerp(col, Color.white, 0.15f));
                     }
 
                 var pz = mgc.painter2D;
@@ -270,7 +270,7 @@ namespace KuryeTycoon
                 var path = c.PathList;
                 if (cur != null && path != null && path.Count > 0)
                 {
-                    pz.strokeColor = Color.white;
+                    pz.strokeColor = PKoyu;   // mürekkep rota
                     pz.lineWidth = 4.5f;
                     pz.lineCap = LineCap.Round;
                     pz.lineJoin = LineJoin.Round;
@@ -294,7 +294,7 @@ namespace KuryeTycoon
                     {
                         var p = P(t, w, h);
                         Daire(pz, p, 12f, renk);
-                        Daire(pz, p, 9f, new Color(0.06f, 0.07f, 0.10f));
+                        Daire(pz, p, 9f, PSheet);
                     }
                 }
             }
@@ -375,8 +375,8 @@ namespace KuryeTycoon
 
             public void Ayarla(bool aktif, string a, string b, string c)
             {
-                U.Zemin(this, aktif ? new Color(0.07f, 0.26f, 0.33f) : PCard);
-                U.Zemin(sol, aktif ? Color.Lerp(CompanyProfile.Primary, Color.white, 0.1f) : new Color(0.2f, 0.21f, 0.27f));
+                U.Zemin(this, aktif ? new Color(0.84f, 0.92f, 0.93f) : PCard);
+                U.Zemin(sol, aktif ? Color.Lerp(CompanyProfile.Primary, Color.white, 0.1f) : new Color(0.84f, 0.80f, 0.73f));
                 U.Goster(ic, aktif);
                 U.Goster(bos, !aktif);
                 if (!aktif) return;
@@ -474,7 +474,7 @@ namespace KuryeTycoon
                 var m = r.center;
                 float rad = Mathf.Min(r.width, r.height) / 2f - 4f;
                 p.lineWidth = 6f;
-                p.strokeColor = new Color(0.22f, 0.24f, 0.32f);
+                p.strokeColor = new Color(0.17f, 0.15f, 0.14f, 0.15f);
                 p.BeginPath();
                 p.Arc(m, rad, 0f, 360f);
                 p.Stroke();
@@ -551,7 +551,7 @@ namespace KuryeTycoon
                 U.Metin(ad, a);
                 U.Metin(etiket, e);
                 U.Zemin(etiket, U.A(c, 0.2f));
-                U.Renk(etiket, c);
+                U.Renk(etiket, U.Okunur(c));
             }
         }
 

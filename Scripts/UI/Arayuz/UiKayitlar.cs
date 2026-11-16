@@ -57,7 +57,7 @@ namespace KuryeTycoon
 
                 y.KutularBasla();
                 y.Kutu("Kurye hesapları", $"{cm.Couriers.Count}/{up.CourierCap}", up.CourierCapFull ? $"{ks.HesapBekleyen} kişi bekliyor" : "açık yer var",
-                       up.CourierCapFull ? UITheme.Warn : (Color?)null, up.CourierCapFull ? up.CourierCapHint : null);
+                       up.CourierCapFull ? U.Uyari : (Color?)null, up.CourierCapFull ? up.CourierCapHint : null);
                 y.Kutu("Süreçte", ks.Adaylar.Count.ToString(), ks.BeklemeListesi > 0 ? $"bekleme listesi {ks.BeklemeListesi}" : "aday");
                 y.Kutu("Bu hafta kayıt", ks.haftaKayit.ToString(), $"{ks.haftaAktif} hesap açıldı");
                 y.Kutu("Kayıt hızı", $"~{24f * 60f / 210f * ks.KayitCarpani:0.#}/gün", "itibar, bonus, kampanya", null,
@@ -222,7 +222,7 @@ namespace KuryeTycoon
                 cipAd.Add(KayitSistemi.AsamaAdi(a.asama)); cipRenk.Add(AsamaRenk[(int)a.asama]);
                 cipAd.Add(KayitSistemi.TurAdi(a.tur)); cipRenk.Add(NeutralTone);
                 cipAd.Add(ShortLabel(Courier.OccupationLabel(cand.occupation))); cipRenk.Add(NeutralTone);
-                if (a.hesapBekliyor) { cipAd.Add("Hesap sınırı dolu"); cipRenk.Add(UITheme.Warn); }
+                if (a.hesapBekliyor) { cipAd.Add("Hesap sınırı dolu"); cipRenk.Add(U.Uyari); }
                 else
                 {
                     float h = Mathf.Max(0f, (a.asamaBitis - now) / 60f);

@@ -64,7 +64,7 @@ namespace KuryeTycoon
                 if (aktif) U.Zemin(o.kok, UITheme.Accent); else ZeminSil(o.kok);
                 float isz = Mathf.Clamp(h - 30f, 18f, 30f);
                 if (o.simge.style.width != isz) { o.simge.style.width = isz; o.simge.style.height = isz; }
-                U.SimgeAyarla(o.simge, MenuGroups[o.g].icon, aktif ? UITheme.AccentText : UITheme.TextDim);
+                U.SimgeAyarla(o.simge, MenuGroups[o.g].icon, aktif ? UITheme.AccentText : U.Soluk);
                 if (aktif) U.Renk(o.yazi, UITheme.AccentText); else RenkSil(o.yazi);
                 if (!agir) continue;
                 int rozet = GroupBadge(o.g);
@@ -161,7 +161,7 @@ namespace KuryeTycoon
 
             int g = GroupIndexOf(tab);
             var def = MenuGroups[g];
-            U.Zemin(pencereSimgeKutu, UITheme.Accent);
+            U.Zemin(pencereSimgeKutu, U.A(UITheme.Accent, 0.22f));   // elle çizilmiş renkli simge açık zeminde
             U.SimgeAyarla(pencereSimge, def.icon, UITheme.AccentText);
             U.Metin(pencereBaslik, def.title);
 

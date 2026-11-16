@@ -127,7 +127,7 @@ namespace KuryeTycoon
 
             static void RenkAyarla(VisualElement e, Color? renk)
             {
-                if (renk.HasValue) U.Renk(e, renk.Value);
+                if (renk.HasValue) U.Renk(e, U.Okunur(renk.Value));   // kâğıt üstünde açık renkler koyulaşır
                 else if (e.style.color.keyword != StyleKeyword.Null) e.style.color = StyleKeyword.Null;
             }
 
@@ -292,7 +292,7 @@ namespace KuryeTycoon
                     bool sec = i == secili;
                     var l = o.secenekler[i];
                     if (sec) { U.Zemin(l, UITheme.Accent); U.Renk(l, UITheme.AccentText); }
-                    else if (sarar) { U.Zemin(l, new Color(1f, 1f, 1f, 0.08f)); U.Renk(l, UITheme.Text); }
+                    else if (sarar) { U.Zemin(l, U.Ton(0.08f)); U.Renk(l, U.Murekkep); }
                     else { U.Zemin(l, new Color(0, 0, 0, 0)); U.Renk(l, U.Soluk); }
                 }
             }
@@ -328,7 +328,7 @@ namespace KuryeTycoon
                     bool sec = secili(i);
                     U.Metin(l, (sec ? "✓ " : "") + adlar[i]);
                     if (sec) { U.Zemin(l, U.A(UITheme.Accent, 0.85f)); U.Renk(l, UITheme.AccentText); }
-                    else { U.Zemin(l, new Color(1f, 1f, 1f, 0.08f)); U.Renk(l, U.Soluk); }
+                    else { U.Zemin(l, U.Ton(0.08f)); U.Renk(l, U.Soluk); }
                 }
             }
 

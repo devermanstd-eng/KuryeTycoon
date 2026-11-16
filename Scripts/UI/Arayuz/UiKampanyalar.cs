@@ -34,7 +34,7 @@ namespace KuryeTycoon
                 var aktif = camp.ActiveWindow;
                 y.KutularBasla();
                 y.Kutu("Şu an", aktif != null ? Yuzde(aktif.percent) : camp.WeatherBoostPercent > 0f ? Yuzde(camp.WeatherBoostPercent) : "boost yok",
-                       aktif != null ? aktif.label : camp.WeatherBoostPercent > 0f ? "hava boostu" : null, aktif != null || camp.WeatherBoostPercent > 0f ? UITheme.Good : (Color?)null);
+                       aktif != null ? aktif.label : camp.WeatherBoostPercent > 0f ? "hava boostu" : null, aktif != null || camp.WeatherBoostPercent > 0f ? U.Iyi : (Color?)null);
                 y.Kutu("Bugünkü gider", Ft(eco.Today.boosts + eco.Today.rewards), "boost + ödül");
                 y.Kutu("Bu hafta boost", Ft(camp.boostPaidThisWeek), $"{clock.WeekOfMonth}. hafta");
                 y.Kutu("Hedef ödülleri", Ft(camp.rewardsPaidThisWeek + camp.rewardsPaidThisMonth),
@@ -52,8 +52,8 @@ namespace KuryeTycoon
                     bool su = aktif != null && w.startHour == aktif.startHour && w.percent == aktif.percent;
                     bool bitti = clock.Hour >= w.endHour;
                     y.Tablo(new[] { $"{w.TimeText} · {w.label}", Yuzde(w.percent), su ? "şu an" : bitti ? "bitti" : "" }, false,
-                            su ? UITheme.Good : bitti ? U.Soluk : UITheme.Accent,
-                            new Color?[] { bitti ? U.Soluk : (Color?)null, null, su ? UITheme.Good : U.Soluk });
+                            su ? U.Iyi : bitti ? U.Soluk : UITheme.Accent,
+                            new Color?[] { bitti ? U.Soluk : (Color?)null, null, su ? U.Iyi : U.Soluk });
                 }
 
                 // Kötü hava

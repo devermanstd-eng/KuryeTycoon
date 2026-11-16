@@ -131,7 +131,7 @@ namespace KuryeTycoon
             foreach (var o in om.Pending) if (o.shop == s) waiting++;
             foreach (var o in om.Active) if (o.shop == s) onWay++;
             y.KutularBasla();
-            y.Kutu("Bekleyen", waiting.ToString(), null, waiting > 0 ? UITheme.Warn : (Color?)null);
+            y.Kutu("Bekleyen", waiting.ToString(), null, waiting > 0 ? U.Uyari : (Color?)null);
             y.Kutu("Yolda", onWay.ToString());
             y.Kutu("Bu ay", s.monthOrders.ToString());
             y.Kutu("Toplam", s.ordersTotal.ToString());

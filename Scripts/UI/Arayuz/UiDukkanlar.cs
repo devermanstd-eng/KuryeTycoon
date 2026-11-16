@@ -89,9 +89,9 @@ namespace KuryeTycoon
                 Color? renk;
                 bool kilitli = !map.IsUnlocked(s.tile);
                 if (kilitli) { durum = "Kilitli"; renk = U.Soluk; }
-                else if (s.exclusive) { durum = $"Münhasır · {s.satisfaction:0}/100"; renk = UITheme.Good; }
-                else if (s.contracted) { durum = $"Sözleşmeli · {s.satisfaction:0}/100"; renk = s.satisfaction < 40f ? UITheme.Warn : UITheme.Good; }
-                else if (GameClock.I.Day < s.resignBlockedUntil) { durum = "Ayrıldı"; renk = UITheme.Bad; }
+                else if (s.exclusive) { durum = $"Münhasır · {s.satisfaction:0}/100"; renk = U.Iyi; }
+                else if (s.contracted) { durum = $"Sözleşmeli · {s.satisfaction:0}/100"; renk = s.satisfaction < 40f ? U.Uyari : U.Iyi; }
+                else if (GameClock.I.Day < s.resignBlockedUntil) { durum = "Ayrıldı"; renk = U.Kotu; }
                 else { durum = $"Sözleşme yok · {Ft(s.def.contractCost)}"; renk = null; }
                 y.AcilirBaslik(s.Name, durum, renk, ac, tik);
                 if (kilitli)
@@ -112,7 +112,7 @@ namespace KuryeTycoon
                 int sev = rv.TehditSeviyesi;
                 y.KartBasla();
                 y.Yazi($"Rakipler · {RivalCompany.SeviyeAdlari[sev]}", "yz-baslik",
-                       sev >= 2 ? UITheme.Bad : sev == 1 ? (Color?)new Color(1f, 0.62f, 0.2f) : null);
+                       sev >= 2 ? U.Kotu : sev == 1 ? (Color?)new Color(1f, 0.62f, 0.2f) : null);
                 y.Yardim("Bir dükkanla birden çok platform çalışabilir: siparişler itibar, kurye sayısı ve teslimat hızına göre paylaşılır. " +
                          "Münhasır dükkanlarda rakip yok. Sözleşmeler 6 ayda bir yenilenir; memnuniyet düşükse bir rakip araya girer. " +
                          "Moralsiz kuryelerini de ayartabilirler.\n\n" +
@@ -123,9 +123,9 @@ namespace KuryeTycoon
                 y.KutularBasla();
                 float trend = rv.ShareTrend * 100f;
                 y.Kutu("Pazar payın", $"%{rv.MarketShare * 100f:0}", $"{(trend >= 0f ? "+" : "−")}{Mathf.Abs(trend):0.0} puan (hafta)",
-                       sev >= 2 ? UITheme.Bad : (Color?)null,
+                       sev >= 2 ? U.Kotu : (Color?)null,
                        $"Eşikler: %{rv.TehditEsigi1 * 100f:0} tetikte, %{rv.TehditEsigi2 * 100f:0} saldırıda.",
-                       trend > 0.05f ? UITheme.Good : trend < -0.05f ? UITheme.Bad : (Color?)null);
+                       trend > 0.05f ? U.Iyi : trend < -0.05f ? U.Kotu : (Color?)null);
                 y.Kutu("Hizmetin", $"×{rv.MyService:0.00}", $"{rv.myAvgMinutes:0} dk · %{rv.myLateRate * 100f:0} geç", null,
                        "Müşteri gözündeki hızın: 40 dk ortalama nötr, her dakika hızlı ≈ +%2, geç kalanlar düşürür. " +
                        "Paylaşılan dükkanlarda müşteriler daha hızlı olana geçer.");
@@ -144,7 +144,7 @@ namespace KuryeTycoon
                     var r = rv.Rakipler[ri];
                     string itibar = r.marketingDays > 0 ? $"{r.EffectiveReputation:0.0}*" : $"{r.reputation:0.0}";
                     y.Tablo(new[] { r.ad, $"%{rv.PayiOf(r) * 100f:0}", itibar, r.couriers.ToString(), rv.ShopCountOf(ri).ToString() }, false, r.renk,
-                            new Color?[] { null, null, r.marketingDays > 0 ? UITheme.Warn : (Color?)null, null, null },
+                            new Color?[] { null, null, r.marketingDays > 0 ? U.Uyari : (Color?)null, null, null },
                             $"{r.ad} · {r.Tanim} · tavrı: {r.MoodText}{(r.fundingRounds > 0 ? $" · yatırım turu {r.fundingRounds}" : "")}\n" +
                             $"~{r.deliveriesLastWeek} teslimat/hafta · ~{r.avgMinutes:0} dk, %{r.lateRate * 100f:0} geç (×{r.Service:0.00})" +
                             (r.marketingDays > 0 ? $"\nReklam atağı: {r.marketingDays} gün daha müşterilere daha iyi görünüyor (*)." : ""));
@@ -208,13 +208,13 @@ namespace KuryeTycoon
             float bonus = s.commissionBonus * 100f;
             y.KutularBasla();
             y.Kutu("Bu ay", $"{s.monthOrders} sipariş", s.lastMonthOrders > 0 ? $"{(fark >= 0 ? "+" : "−")}{Mathf.Abs(fark)} (geçen ay {s.lastMonthOrders})" : $"toplam {s.ordersTotal}",
-                   null, null, s.lastMonthOrders > 0 ? (fark >= 0 ? UITheme.Good : UITheme.Bad) : (Color?)null);
+                   null, null, s.lastMonthOrders > 0 ? (fark >= 0 ? U.Iyi : U.Kotu) : (Color?)null);
             y.Kutu("Komisyon", $"%{s.Commission * 100f:0.#}", Mathf.Abs(bonus) > 0.01f ? $"temel %{s.def.commission * 100f:0.#} ({(bonus > 0 ? "+" : "−")}{Mathf.Abs(bonus):0.#})" : "temel oran",
-                   null, "Pazarlıkla +2 puan, münhasırlıkla −3 puan değişir.", bonus > 0.01f ? UITheme.Good : bonus < -0.01f ? UITheme.Warn : (Color?)null);
+                   null, "Pazarlıkla +2 puan, münhasırlıkla −3 puan değişir.", bonus > 0.01f ? U.Iyi : bonus < -0.01f ? U.Uyari : (Color?)null);
             y.Kutu("Senin payın", s.exclusive || !s.rivalContracted ? "%100" : $"%{rv.MyFraction(s) * 100f:0}",
                    s.exclusive ? "münhasır · +%15 sipariş" : s.rivalContracted ? rv.DukkanRakipleri(s) : "rakip yok", null,
                    s.rivalContracted && !s.exclusive ? "Dükkanın müşterilerinin ne kadarı seni seçiyor: itibar, kurye sayısı ve hıza göre paylaşılır. Münhasırlık bütün rakipleri çıkarır." : null);
-            y.Kutu("Sözleşme", $"{Mathf.Max(0, kalan)} gün", clock.DateOf(s.contractEndDay), null, null, kalan <= 14 ? UITheme.Warn : (Color?)null);
+            y.Kutu("Sözleşme", $"{Mathf.Max(0, kalan)} gün", clock.DateOf(s.contractEndDay), null, null, kalan <= 14 ? U.Uyari : (Color?)null);
             y.KutularBitir();
 
             Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);

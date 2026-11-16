@@ -31,7 +31,7 @@ namespace KuryeTycoon
                 // Bugün
                 y.KutularBasla();
                 y.Kutu("Bugün sipariş", ds.ordersToday.ToString(), ds.lostToday > 0 ? $"stoktan kaçan {ds.lostToday}" : null, null, null,
-                       ds.lostToday > 0 ? UITheme.Warn : (Color?)null);
+                       ds.lostToday > 0 ? U.Uyari : (Color?)null);
                 y.Kutu("Satış", Ft(ds.salesToday), "bugün");
                 y.Kutu("Brüt kâr", Ft(ds.profitToday), $"gider {Ft(ds.DailyCost)}/gün", MoneyColor(ds.profitToday - ds.DailyCost),
                        "Brüt kâr = satış − ürünün alış fiyatı. Kira, toplayıcı ve raf gideri her gece ayrıca kesilir.");
@@ -66,7 +66,7 @@ namespace KuryeTycoon
                     long eksik = System.Math.Max(0, ds.AisleCapacity(a) - ds.stock[a]);
                     hepsi += eksik;
                     y.KartBasla();
-                    y.Cubuk(DarkStore.AisleNames[a], dolu, dolu < 0.25f ? UITheme.Bad : dolu < 0.5f ? UITheme.Warn : UITheme.Good,
+                    y.Cubuk(DarkStore.AisleNames[a], dolu, dolu < 0.25f ? U.Kotu : dolu < 0.5f ? U.Uyari : U.Iyi,
                             $"{Ft(ds.stock[a])} / {Ft(ds.AisleCapacity(a))}");
                     y.Secim(cesitAdlari, ds.assortment[a] - 1, v => ds.SetAssortment(reyon, v + 1));
                     y.Dugme($"Doldur ({Ft(eksik / 100 * 100)})", () => ds.Restock(reyon, 1f, true), eksik > 1000, "kucuk-dg");

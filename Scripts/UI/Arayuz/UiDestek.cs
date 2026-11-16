@@ -79,9 +79,9 @@ namespace KuryeTycoon
                 int kapsama = sm.CoveredHours(clock.DayOfWeek);
                 var nobetci = sm.OnDutyAgent();
                 y.KutularBasla();
-                y.Kutu("Bugün kapsama", $"{kapsama}/24 saat", null, kapsama >= 16 ? UITheme.Good : kapsama >= 8 ? (Color?)null : UITheme.Warn);
+                y.Kutu("Bugün kapsama", $"{kapsama}/24 saat", null, kapsama >= 16 ? U.Iyi : kapsama >= 8 ? (Color?)null : U.Uyari);
                 y.Kutu("Şu an", nobetci != null ? nobetci.name.Split(' ')[0] : "kimse yok", nobetci != null ? "vardiyada" : "kararlar sana",
-                       nobetci != null ? UITheme.Good : UITheme.Warn);
+                       nobetci != null ? U.Iyi : U.Uyari);
                 y.Kutu("Aylık maaş", Ft(sm.MonthlyPayroll), $"bu ay birikmiş {Ft(sm.AccruedThisMonth)}", null, "Ay sonunda ödenir.");
                 y.Kutu("Bu ay çözülen", sm.handledThisMonth.ToString(), "şikayet");
                 y.KutularBitir();
@@ -96,8 +96,8 @@ namespace KuryeTycoon
                 {
                     bool nobette = a.IsOnDuty(clock);
                     y.KartBasla();
-                    y.Tablo(new[] { $"<b>{a.name}</b>", nobette ? "vardiyada" : "dışarıda" }, false, nobette ? UITheme.Good : U.Soluk,
-                            new Color?[] { null, nobette ? UITheme.Good : U.Soluk });
+                    y.Tablo(new[] { $"<b>{a.name}</b>", nobette ? "vardiyada" : "dışarıda" }, false, nobette ? U.Iyi : U.Soluk,
+                            new Color?[] { null, nobette ? U.Iyi : U.Soluk });
                     y.Kucuk($"{a.ShiftText} · {a.DaysText} · {Ft(a.monthlySalary)}/ay");
                     y.Yazi($"Yetenek {YildizYazi(Stars(a.skill, 0.5f, 1f))} · çözdüğü {a.handledTotal} · kazandırdığı {Ft(a.savedTotal)}", "kucuk");
                     y.Yardim("Yetenekli personel şikayetleri daha ucuza kapatır (iade değerinin %30'u ile %60'ı arası).");

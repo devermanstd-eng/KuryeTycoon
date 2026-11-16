@@ -63,7 +63,7 @@ namespace KuryeTycoon
                 long sabit = isletme + (UpgradeManager.I != null ? UpgradeManager.I.TotalDailyCost : 0);
                 long bugunNet = e.Today.Profit - e.Today.penalties;
                 y.KutularBasla();
-                y.Kutu("Harcanabilir", Ft(e.FreeCash), $"kasa {Ft(e.money)}", e.FreeCash < 0 ? UITheme.Bad : (Color?)null,
+                y.Kutu("Harcanabilir", Ft(e.FreeCash), $"kasa {Ft(e.money)}", e.FreeCash < 0 ? U.Kotu : (Color?)null,
                        "Serbest kasa = ana kasa − kuryelerin hesaplarında bekleyen ve yatacak paralar + kuryelerdeki nakit (şirkete borçları). " +
                        "Geliştirme, ekipman, sözleşme gibi harcamalar serbest kasadan yapılır.");
                 y.Kutu("Bugün net", Ft(bugunNet), $"{e.Today.deliveries} teslimat", MoneyColor(bugunNet));
@@ -115,9 +115,9 @@ namespace KuryeTycoon
                 if (sonraki != null)
                 {
                     int gun = loan.DaysUntil(sonraki);
-                    y.Kutu("Sıradaki taksit", Ft(sonraki.Remaining), $"{sonraki.DueText} · {gun} gün", null, null, gun <= 7 ? UITheme.Warn : (Color?)null);
+                    y.Kutu("Sıradaki taksit", Ft(sonraki.Remaining), $"{sonraki.DueText} · {gun} gün", null, null, gun <= 7 ? U.Uyari : (Color?)null);
                 }
-                y.Kutu("Kredi notu", $"{loan.Trust}/{loan.maxTrust}", null, loan.Trust < loan.maxTrust / 2 ? UITheme.Warn : (Color?)null,
+                y.Kutu("Kredi notu", $"{loan.Trust}/{loan.maxTrust}", null, loan.Trust < loan.maxTrust / 2 ? U.Uyari : (Color?)null,
                        "Taksitleri vadesinde ödedikçe yükselir, kaçırınca düşer.");
                 y.KutularBitir();
                 y.Cubuk("Ödenen", loan.TotalPaid / (float)Mathf.Max(1L, loan.Toplam), new Color(0.35f, 0.8f, 0.5f),
@@ -128,7 +128,7 @@ namespace KuryeTycoon
                     {
                         string durum = t.closed ? (t.Remaining == 0 ? "ödendi" : "kaçırıldı") : $"{loan.DaysUntil(t)} gün";
                         y.Tablo(new[] { t.DueText, Ft(t.amount), durum }, false, null,
-                                new Color?[] { null, null, t.closed ? (t.Remaining == 0 ? UITheme.Good : UITheme.Bad) : loan.DaysUntil(t) <= 7 ? UITheme.Warn : (Color?)null });
+                                new Color?[] { null, null, t.closed ? (t.Remaining == 0 ? U.Iyi : U.Kotu) : loan.DaysUntil(t) <= 7 ? U.Uyari : (Color?)null });
                     }
                 if (sonraki != null && !loan.Failed)
                 {
@@ -167,7 +167,7 @@ namespace KuryeTycoon
                     y.KV(k.ad, Ft(k.kesilen) + (k.kesilen < k.tam ? $" (tamamı {Ft(k.tam)})" : ""));
                     y.Yardim(k.aciklama);
                 }
-                y.KV("Toplam (bu gece kesilecek)", Ft(kesilen), UITheme.Warn);
+                y.KV("Toplam (bu gece kesilecek)", Ft(kesilen), U.Uyari);
                 if (kesilen < tam)
                     y.Not($"Tavan devrede: teslimat kârının %{oran * 100f:0}'i ({Ft(tavan)}){(neden.Length > 0 ? " · " + neden : "")}. Tamamı {Ft(tam)} olurdu.");
             }
@@ -205,7 +205,7 @@ namespace KuryeTycoon
                 y.Kutu("Tahmini vergi", Ft(tahmin), $"ortalama %{EconomyManager.EffectiveTaxRate(vergilenen) * 100f:0.0}", null,
                        EconomyManager.TaxBracketText);
                 y.Kutu("Ödenen geçici", Ft(e.GeciciVergiOdenen), "bu yıl");
-                y.Kutu("Sıradaki geçici", Ft(e.TahminiGeciciVergi), EconomyManager.SiradakiVergiTarihi(clock.Month), UITheme.Warn,
+                y.Kutu("Sıradaki geçici", Ft(e.TahminiGeciciVergi), EconomyManager.SiradakiVergiTarihi(clock.Month), U.Uyari,
                        "Kademeli vergi 3 ayda bir peşin istenir (31 Mart, 30 Haziran, 30 Eylül): yılbaşından bu yana kârın vergisi − bu yıl ödenen. " +
                        "Yıl sonunda kesin hesap yapılır: kalan fark ödenir, fazlası iade edilir. Ertelemek %10 ceza ve günlük %2 faiz getirir.");
                 y.KutularBitir();
@@ -301,7 +301,7 @@ namespace KuryeTycoon
                 {
                     string odul = m.RewardText;
                     if (ms.IsReached(m.id))
-                        y.Yazi($"✓ {m.title} — {ms.ReachedDate(m.id)}" + (odul.Length > 0 ? $" · ödül alındı: {odul}" : ""), null, UITheme.Good);
+                        y.Yazi($"✓ {m.title} — {ms.ReachedDate(m.id)}" + (odul.Length > 0 ? $" · ödül alındı: {odul}" : ""), null, U.Iyi);
                     else
                     {
                         string ilerleme = m.progress != null ? m.progress() : "";

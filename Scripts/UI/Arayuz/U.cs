@@ -91,13 +91,22 @@ namespace KuryeTycoon
             return e;
         }
 
+        /// <summary>
+        /// Kâğıt temada simgeler elle çizilmiş renkli PNG'lerdir (Resources/UI/Ikonlar/&lt;Ad&gt;.png, Icons.ElCizimi): kendi
+        /// renkleriyle çizilir, verilen rengin yalnızca saydamlığı kullanılır. PNG'si olmayan simge ve Kapat (×) eskisi gibi tek
+        /// renk (mürekkep) çizilir: küçük kapat düğmesinde renkli daire okunmuyor.
+        /// </summary>
+        public static bool ElCizimiSimge = true;
+
         public static void SimgeAyarla(VisualElement e, Icons.Kind k, Color renk)
         {
-            var tex = Icons.Get(k);
-            if (e.userData is Icons.Kind eski && eski == k && e.style.unityBackgroundImageTintColor.value == renk) return;
+            Texture2D tex = ElCizimiSimge && k != Icons.Kind.Close ? Icons.ElCizimi(k) : null;
+            Color ton = tex != null ? new Color(1f, 1f, 1f, renk.a) : renk;
+            if (tex == null) tex = Icons.Get(k);
+            if (e.userData is Icons.Kind eski && eski == k && e.style.unityBackgroundImageTintColor.value == ton) return;
             e.userData = k;
             e.style.backgroundImage = new StyleBackground(tex);
-            e.style.unityBackgroundImageTintColor = renk;
+            e.style.unityBackgroundImageTintColor = ton;
 #if UNITY_2022_2_OR_NEWER
             e.style.backgroundSize = new BackgroundSize(BackgroundSizeType.Contain);
 #endif
@@ -111,10 +120,11 @@ namespace KuryeTycoon
             return l;
         }
 
+        /// <summary>Çip: rengin açık tonu zemin, rengin koyusu yazı (kâğıt üstünde okunur).</summary>
         public static void CipRengi(VisualElement l, Color renk)
         {
-            Zemin(l, A(renk, 0.2f));
-            Renk(l, Color.Lerp(renk, Color.white, 0.35f));
+            Zemin(l, A(renk, 0.18f));
+            Renk(l, Okunur(Color.Lerp(renk, Murekkep, 0.3f)));
         }
 
         public static Label Bolum(VisualElement ust, string metin)
@@ -159,7 +169,7 @@ namespace KuryeTycoon
             while (k.childCount < toplam) El(k, "seviye");
             while (k.childCount > toplam) k.RemoveAt(k.childCount - 1);
             for (int i = 0; i < toplam; i++)
-                Zemin(k[i], i < dolu ? renk : new Color(1f, 1f, 1f, 0.12f));
+                Zemin(k[i], i < dolu ? renk : Ton(0.14f));
         }
 
         /// <summary>Kendi çizdiğimiz onay kutusu (varsayılan Toggle tema ile uyumsuz).</summary>
@@ -175,7 +185,7 @@ namespace KuryeTycoon
                 Goster(isaret, v);
                 Zemin(kutu, v ? UITheme.Accent : new Color(0, 0, 0, 0));
                 kutu.style.borderTopColor = kutu.style.borderBottomColor = kutu.style.borderLeftColor = kutu.style.borderRightColor =
-                    v ? UITheme.Accent : new Color(1f, 1f, 1f, 0.35f);
+                    v ? UITheme.Accent : A(Cerceve, 0.7f);
             }
         }
 
@@ -240,7 +250,7 @@ namespace KuryeTycoon
                     bool sec = i == s;
                     ogeler[i].EnableInClassList("secili", sec);
                     Zemin(ogeler[i], sec ? UITheme.Accent : new Color(0, 0, 0, 0));
-                    Renk(ogeler[i], sec ? UITheme.AccentText : new Color(0.62f, 0.65f, 0.71f));
+                    Renk(ogeler[i], sec ? UITheme.AccentText : Soluk);
                 }
             }
         }
@@ -291,8 +301,56 @@ namespace KuryeTycoon
 
         public static Color A(Color c, float a) { c.a = a; return c; }
 
-        public static readonly Color Soluk = new Color(0.62f, 0.65f, 0.71f);
-        public static readonly Color Notr = new Color(0.62f, 0.65f, 0.71f);
+        // ------------------------------------------------------------------ kâğıt teması (16.11 akşam, CityRT tarzı)
+        // Kurye.uss'in :root değişkenleriyle aynı renkler. Koddan satır içi verilen renkler buradan gelir: krem kâğıt üstünde
+        // okunur koyu tonlar. U.Murekkep/Good/Bad/Warn IMGUI için (harita etiketleri, kurulum ekranı, F8) koyu temada kaldı;
+        // UI Toolkit kodu onların yerine bunları kullanır.
+
+        /// <summary>Kâğıt (pencere, kart zemini) #F6F1E7.</summary>
+        public static readonly Color Kagit = new Color32(246, 241, 231, 255);
+        /// <summary>Koyu kâğıt (iç kart, çukur) #ECE4D4.</summary>
+        public static readonly Color KagitKoyu = new Color32(236, 228, 212, 255);
+        /// <summary>Mürekkep: yazı #26221E.</summary>
+        public static readonly Color Murekkep = new Color32(38, 34, 30, 255);
+        /// <summary>Çerçeve mürekkebi #2B2623.</summary>
+        public static readonly Color Cerceve = new Color32(43, 38, 35, 255);
+        /// <summary>Soluk yazı (kahve-gri).</summary>
+        public static readonly Color Soluk = new Color32(118, 104, 90, 255);
+        public static readonly Color Notr = Soluk;
+        /// <summary>Adaçayı yeşili: kâr, artış, tamam.</summary>
+        public static readonly Color Iyi = new Color32(66, 116, 62, 255);
+        /// <summary>Kiremit kırmızısı: zarar, hata.</summary>
+        public static readonly Color Kotu = new Color32(178, 70, 46, 255);
+        /// <summary>Terracotta turuncu: uyarı, fiyat savaşı.</summary>
+        public static readonly Color Uyari = new Color32(176, 92, 26, 255);
+        /// <summary>Hardal sarısı (dolgu, nokta; yazıda Okunur ile koyulaşır).</summary>
+        public static readonly Color Hardal = new Color32(212, 163, 46, 255);
+
+        /// <summary>Mürekkep katmanı: kâğıt üstünde üstüne gelme, boş seviye noktası, ince zemin (eski beyaz katmanların yerine).</summary>
+        public static Color Ton(float a) => new Color(Cerceve.r, Cerceve.g, Cerceve.b, a);
+
+        static float Parlaklik(Color c) => 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
+
+        /// <summary>
+        /// Krem kâğıt üstünde okunur yazı rengi: koyu renkler aynen kalır; açık renkler tonu korunarak koyulaşır, açık gri/beyaz
+        /// mürekkebe ya da soluğa döner. Koyu temadan kalan ya da oyun verisinden gelen (dükkan, olay, etkinlik) açık renkler için.
+        /// Renkli zemin üstündeki yazıya (şirket rengi düğme) uygulanmaz.
+        /// </summary>
+        public static Color Okunur(Color c)
+        {
+            float l = Parlaklik(c);
+            if (l <= 0.3f) return c;
+            float doy = Mathf.Max(c.r, Mathf.Max(c.g, c.b)) - Mathf.Min(c.r, Mathf.Min(c.g, c.b));
+            Color r;
+            if (doy < 0.15f) r = l > 0.75f ? Murekkep : Soluk;
+            else
+            {
+                float k = 0.22f / l;
+                r = new Color(c.r * k, c.g * k, c.b * k);
+            }
+            r.a = c.a;
+            return r;
+        }
 
         public static string Ft(long v) => GameData.Ft(v);
 
