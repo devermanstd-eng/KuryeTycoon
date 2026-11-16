@@ -37,7 +37,7 @@ except ImportError:          # Blender dışında (önizleme / test) sadece geom
     IN_BLENDER = False
 
 # ================================== AYARLAR ==================================
-MODEL = "mustakil_ev"      # "sira_ev" · "ofis_kulesi" · "mustakil_ev" · "market" · "fastfood" · "apartman" · "dukkan" (altı dükkanlı binalar) · "sehir" (yollar, zemin, ağaçlar, parklar) · "katalog" (konut, büro, sanayi, kamu, yeni parklar) · "hava" (bulut, yağmur, kar, yaprak, şimşek) · "kir" (kır parselleri: tarla, bağ, meyve bahçesi, çayır, gölet, sera, koru) · "arac" (VW Polo 6N2: sade ve kurye sürümü) · "blok" (bitişik blok ve köşe binaları) · "kurye" · "yaya"
+MODEL = "mustakil_ev"      # "sira_ev" · "ofis_kulesi" · "mustakil_ev" · "market" · "fastfood" · "apartman" · "dukkan" (altı dükkanlı binalar) · "sehir" (yollar, zemin, ağaçlar, parklar) · "katalog" (konut, büro, sanayi, kamu, yeni parklar) · "hava" (bulut, yağmur, kar, yaprak, şimşek) · "kir" (kır parselleri: tarla, bağ, meyve bahçesi, çayır, gölet, sera, koru) · "arac" (VW Polo 6N2: sade ve kurye sürümü) · "kese" (dükkanların kraft kâğıt keseleri) · "blok" (bitişik blok ve köşe binaları) · "kurye" · "yaya"
 STIL = "kirmizi_tugla"     # sıra ev için: "kirmizi_tugla" · "pembe_siva" · "kahve_siva" · "karisik"
 OFIS_STIL = "beton"        # ofis kulesi için: "beton" · "gri" · "beyaz" · "karisik"
 OFIS_KAT = (5, 7)          # ofis kulesinin kat sayısı (zemindeki lobi hariç)
@@ -8320,6 +8320,157 @@ POLO_RENKLERI = [
 ]
 
 
+# ------------------------------------------------------------------ kraft kâğıt kese (dükkanların paket poşeti)
+
+KESE_TURLERI = [
+    # (ad, en, derinlik, gövde boyu, kıvrım sayısı, açık mı)  — metre
+    ("ufak", 0.150, 0.095, 0.205, 2, False),        # öğle yemeği kesesi: iki kez katlanmış, alçak
+    ("orta", 0.180, 0.110, 0.270, 1, False),
+    ("uzun", 0.170, 0.115, 0.350, 1, False),        # şişe / ekmek
+    ("genis", 0.250, 0.150, 0.300, 1, False),       # market kesesi
+    ("kare", 0.160, 0.130, 0.235, 1, False),
+    ("acik", 0.200, 0.120, 0.290, 0, True),         # ağzı açık: dükkan çalışanı ürünleri koyarken
+]
+
+
+def kese(rnd, en, der, boy, kivrim, acik):
+    """Kraft kâğıt kese: alt köşeli taban, iki yanda içe kıvrık körük (dikey kat izi), üstte ağız ya kapalı ve öne
+    kıvrılmış (kivrim kez) ya da açık. Kâğıt hafif buruşuk: köşeler küçük rastgele sapmalarla, yüzler iki tonda."""
+    g = Govde()
+    kraft = [M("Kese", "#c4a272"), M("Kese2", "#bb9866"), M("Kese3", "#caa97c")]
+    koyu = M("KeseKoyu", "#9a7a4e")
+    ic = M("KeseIc", "#8c6d45")
+    kat_m = M("KeseKat", "#d2b487")
+
+    hx, hy = en / 2, der / 2
+    ust_kapali = boy                                  # ağzın kapandığı yükseklik
+    kap = 0.0 if acik else min(0.032, boy * 0.12)      # ağız bu kadar yükseklikte daralıp kapanır
+    boylar = [0.0, 0.012, 0.035, boy * 0.25, boy * 0.45, boy * 0.65, boy * 0.82, boy - kap - 0.002]
+    if not acik:
+        boylar += [boy - kap * 0.5, boy]
+    else:
+        boylar += [boy]
+    boylar = sorted(set(round(z, 4) for z in boylar))
+    nx = 5                                            # ön / arka yüzde en boyunca nokta
+    sarsinti = 0.0025 * (en / 0.18)
+
+    def cevre(z):
+        """z'deki kesit çevresi (ön, sağ körük, arka, sol körük; saat yönünün tersi), her nokta (x, y)."""
+        t = 0.0 if z < boy - kap - 0.002 else (z - (boy - kap)) / max(kap, 1e-6)
+        t = max(0.0, min(1.0, t))
+        yy = hy * (1.0 - 0.80 * t)                    # ağız kapanırken ön ve arka yüz birbirine yaklaşır
+        kor = (0.30 + 0.70 * t) * hy                  # körüğün içe kıvrım derinliği (ağızda tamamen içe katlı)
+        if z < 0.012:
+            kor = 0.0                                 # taban düz
+        elif z < 0.035:
+            kor *= 0.35
+        pts = []
+        for i in range(nx):                           # ön (y = -yy), soldan sağa
+            pts.append((-hx + en * i / (nx - 1), -yy))
+        pts.append((hx - kor, 0.0))                   # sağ körüğün kat izi
+        for i in range(nx):                           # arka (y = +yy), sağdan sola
+            pts.append((hx - en * i / (nx - 1), yy))
+        pts.append((-hx + kor, 0.0))                  # sol körük
+        return pts
+
+    halkalar = []
+    for zi, z in enumerate(boylar):
+        halka = []
+        for j, (x, y) in enumerate(cevre(z)):
+            if 0 < zi < len(boylar) - 1:              # buruşukluk (tabanın ve ağzın kenarı düz kalsın)
+                x += rnd.uniform(-sarsinti, sarsinti)
+                y += rnd.uniform(-sarsinti, sarsinti) * 0.6
+                zz = z + rnd.uniform(-sarsinti, sarsinti) * 0.5
+            else:
+                zz = z
+            halka.append(len(g.v))
+            g.v.append((x, y, zz))
+        halkalar.append(halka)
+    n = len(halkalar[0])
+    kor_idx = (nx, 2 * nx + 1)
+    for zi in range(len(halkalar) - 1):
+        a, b = halkalar[zi], halkalar[zi + 1]
+        for j in range(n):
+            k = (j + 1) % n
+            mat = kraft[rnd.randrange(3)]
+            if j in kor_idx or k in kor_idx:
+                mat = kraft[1] if rnd.random() < 0.6 else kraft[0]
+            g.yuz([a[j], a[k], b[k], b[j]], mat)
+    # taban
+    g.yuz(list(reversed(halkalar[0])), koyu)
+    # ağız
+    son = halkalar[-1]
+    if acik:
+        # iç yüzler (içeriden görünen kâğıt, koyu) ve ağız kenarı
+        ic_halkalar = []
+        for zi in (0, len(boylar) - 1):
+            z = boylar[zi] + (0.004 if zi == 0 else 0.0)
+            halka = []
+            for (x, y) in cevre(boy * 0.5):           # iç duvar: körük her yükseklikte aynı derinlikte içe kıvrık
+                halka.append(len(g.v))
+                g.v.append((x * 0.93, y * 0.90, z))
+            ic_halkalar.append(halka)
+        a, b = ic_halkalar
+        for j in range(n):
+            k = (j + 1) % n
+            g.yuz([a[k], a[j], b[j], b[k]], ic, kabuk=False)
+        g.yuz(list(a), ic, kabuk=False)              # iç taban
+        for j in range(n):
+            k = (j + 1) % n
+            g.yuz([son[j], son[k], b[k], b[j]], kat_m)     # ağız kenarı (kâğıt kalınlığı)
+    else:
+        # ağız tamamen kapanmış dar şerit: üstü
+        on = son[:nx]
+        ar = son[nx + 1:2 * nx + 1][::-1]
+        for i in range(nx - 1):
+            g.yuz([on[i], on[i + 1], ar[i + 1], ar[i]], kraft[0])
+        g.yuz([on[-1], son[nx], ar[-1]], kraft[0])
+        g.yuz([ar[0], son[2 * nx + 1], on[0]], kraft[0])
+        # öne kıvrılmış ağız: kapanan üst kısım öne katlanır; her kıvrım bir öncekinin üstünde, ön yüzün eğimine yatık
+        # kalın bir şerit (üstte yuvarlatılmış kat kenarı, altta gölgeli kenar)
+        def on_y(z):                                  # ön yüzün z'deki y'si (ağızda daralır)
+            t = max(0.0, min(1.0, (z - (boy - kap)) / max(kap, 1e-6)))
+            return -hy * (1.0 - 0.80 * t)
+        kalin = 0.0035
+        bant = kap * 1.25
+        for kk in range(kivrim):
+            o_ic, o_dis = kalin * kk + 0.0012, kalin * (kk + 1) + 0.0012
+            z_alt, z_ust = boy - bant * (1.0 + 0.35 * kk), boy + kalin * (kk + 1)
+            bas = len(g.v)
+            for o in (o_dis, o_ic):
+                for (x, z) in ((-hx * 1.01, z_alt), (hx * 1.01, z_alt), (hx * 1.01, z_ust), (-hx * 1.01, z_ust)):
+                    g.v.append((x + rnd.uniform(-0.0008, 0.0008), on_y(min(z, boy)) - o, z))
+            d_, i_ = list(range(bas, bas + 4)), list(range(bas + 4, bas + 8))
+            g.yuz(d_, kraft[(kk + 1) % 3])                                       # dış yüz
+            g.yuz([d_[1], d_[0], i_[0], i_[1]], koyu)                             # alt kenar (gölgeli)
+            g.yuz([d_[0], d_[3], i_[3], i_[0]], kat_m)
+            g.yuz([d_[2], d_[1], i_[1], i_[2]], kat_m)
+            # kat kenarı: kıvrımın üstünden kesenin arka üst kenarına
+            g.v += [(-hx * 1.01, -hy * 0.20 - o_dis, z_ust), (hx * 1.01, -hy * 0.20 - o_dis, z_ust),
+                    (hx * 1.01, hy * 0.20 + 0.001, z_ust), (-hx * 1.01, hy * 0.20 + 0.001, z_ust)]
+            u_ = list(range(bas + 8, bas + 12))
+            g.yuz([d_[3], d_[2], u_[1], u_[0]], kat_m)
+            g.yuz([u_[0], u_[1], u_[2], u_[3]], kraft[0])
+            g.yuz([u_[3], u_[2], halkalar[-1][nx + 1], halkalar[-1][2 * nx]], kraft[2])
+    # yatay kat izleri (taban katlaması, kesenin üretimden gelen düz katları)
+    for zz in (0.035, boy * 0.25):
+        for yy, yon in ((-hy - 0.0008, -1.0), (hy + 0.0008, 1.0)):
+            _duz(g, [(-hx * 0.98, yy, zz - 0.0012), (hx * 0.98, yy, zz - 0.0012), (hx * 0.98, yy, zz + 0.0012), (-hx * 0.98, yy, zz + 0.0012)],
+                 (0.0, yon, 0.0), koyu)
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK * olcek(g))
+    return g
+
+
+def keseler():
+    sonuc = []
+    for i, (ad, en, der, boy, kivrim, acik) in enumerate(KESE_TURLERI):
+        rnd = random.Random(TOHUM * 911 + i)
+        g = kese(rnd, en, der, boy, kivrim, acik)
+        sonuc.append((f"Kese_{ad}", g, en))
+    return sonuc
+
+
 def araclar():
     sonuc = [("Arac_polo_6n2", polo_6n2()), ("Arac_polo_6n2_kurye", polo_6n2(kurye=True))]
     out = []
@@ -8360,6 +8511,8 @@ def uret():
         return kir_alanlari()
     if MODEL == "arac":
         return araclar()
+    if MODEL == "kese":
+        return keseler()
     if MODEL == "blok":
         return bloklar()
     if MODEL == "referans":
