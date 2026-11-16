@@ -156,6 +156,8 @@ namespace KuryeTycoon
         readonly List<Order> toPick = new List<Order>();    // atanmış, henüz dükkandan alınmamış
         readonly List<Order> carrying = new List<Order>();  // çantada, teslim edilecek
         Order current;
+        /// <summary>Kuryenin şu an taşıdığı sipariş (araç animasyonu bagajı mı arka kapıyı mı açacağını buna göre seçer).</summary>
+        public Order AktifSiparis => current;
         List<Vector2Int> path;
         int pathIndex;
         float breakUntil;
@@ -279,10 +281,14 @@ namespace KuryeTycoon
         }
 
         /// <summary>3D karakter modelini (yeniden) oluşturur; model yoksa daire gösterilir.</summary>
+        bool modelArac;   // model şu an araç mı (arabalı kurye)
+
         public void RebuildModel()
         {
             if (model != null) Destroy(model);
-            model = CharacterVisuals.Spawn(transform, courierName);
+            // Arabalı kurye: yürüyen karakter yerine aracı (VW Polo 6N2, kurye sürümü) görünür
+            modelArac = vehicle == VehicleKind.Araba && CharacterVisuals.CarAvailable;
+            model = modelArac ? CharacterVisuals.SpawnCar(transform, this) : CharacterVisuals.Spawn(transform, courierName);
             if (body != null) body.enabled = true;
             lastModelPos = Position;
         }
@@ -1119,11 +1125,13 @@ namespace KuryeTycoon
                                   : new Color(p.r * 0.5f, p.g * 0.5f, p.b * 0.5f, 0.35f);
 
             // 3D karakter: çevrimiçiyken görünür ve yürüdüğü yöne döner; çevrimdışıyken soluk daire kalır
+            // Araç değişti (arabaya geçti ya da arabadan indi): modeli yenile
+            if ((model != null || modelArac) && modelArac != (vehicle == VehicleKind.Araba && CharacterVisuals.CarAvailable)) RebuildModel();
             if (model != null)
             {
                 // Uzaktayken daire (ikon), yakınlaşınca 3D karakter
                 // Binanın içindeyken (kata çıkıyor) karakter görünmez
-                bool show = IsOnline && MapCamera.I != null && MapCamera.I.ShowModels && State != CourierState.KataCikiyor;
+                bool show = IsOnline && MapCamera.I != null && MapCamera.I.ShowModels && (modelArac || State != CourierState.KataCikiyor);
                 bool walking = (State == CourierState.DukkanaGidiyor || State == CourierState.MusteriyeGidiyor)
                                && GameClock.I != null && GameClock.I.DeltaMinutes > 0f;
                 CharacterVisuals.UpdateModel(model, Position - lastModelPos, walking, show, ref modelFacing);

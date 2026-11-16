@@ -22,6 +22,7 @@ namespace KuryeTycoon
             static readonly string[] Acilar = { "0°", "90°", "180°", "270°" };
             static readonly string[] ParaBirimleri = { "Forint (Ft)", "Euro (€)" };
             static readonly string[] KarakterModlari = { "Işıklı", "Düz renk", "Kapalı (daire)" };
+            static readonly string[] AracRenkModlari = { "Karışık (her kurye kendi rengi)", "Şirket rengi", "Tek fabrika rengi" };
 
             protected override void Kur()
             {
@@ -230,6 +231,26 @@ namespace KuryeTycoon
                     else y.Uyari($"{adet} karakter modeli yüklü · yürüme animasyonu KURULU DEĞİL (Unity menüsü: Kurye Tycoon > Karakter Animasyonlarını Kur)");
                     y.Secim(KarakterModlari, CharacterVisuals.Mode, v => { CharacterVisuals.Mode = v; CharacterVisuals.Refresh(); });
                     y.Kucuk("Karakterler siyah/karanlık görünürse \"Düz renk\"i seç. Pembe görünürse malzemeler projenin render pipeline'ına çevrilmeli (KURULUM.md).");
+                }
+
+                y.Bolum("Kurye arabaları (VW Polo 6N2)");
+                if (!CharacterVisuals.CarAvailable)
+                    y.Kucuk("Araç modeli bulunamadı (Unity menüsü: Kurye Tycoon > Blender Binalarını Prefab Yap).");
+                else
+                {
+                    y.Kucuk("Arabalı kuryeler haritada Polo ile gezer: tekerler döner, durunca kapı ve bagaj açılır, yağışta silecekler çalışır, " +
+                            $"karanlıkta farlar yanar. Renk: Polo 6N2'nin {AracRenkleri.Polo6N2.Length} fabrika renginden.");
+                    y.Secim(AracRenkModlari, AracRenkleri.Mod, v => { AracRenkleri.Mod = v; CharacterVisuals.Refresh(); }, true);
+                    if (AracRenkleri.Mod == 2)
+                    {
+                        int i = AracRenkleri.Secili;
+                        var rk = AracRenkleri.Polo6N2[i];
+                        y.SatirBasla();
+                        y.Dugme("◀", () => { AracRenkleri.Secili--; CharacterVisuals.Refresh(); }, true, "kucuk-dg");
+                        y.Yazi($"<color=#{ColorUtility.ToHtmlStringRGB(AracRenkleri.Renk(i))}>■■■</color>  {rk.ad} ({rk.kod}) · {i + 1}/{AracRenkleri.Polo6N2.Length}", "kucuk");
+                        y.Dugme("▶", () => { AracRenkleri.Secili++; CharacterVisuals.Refresh(); }, true, "kucuk-dg");
+                        y.SatirBitir();
+                    }
                 }
 
                 y.Bolum("Hata ayıklama raporu",

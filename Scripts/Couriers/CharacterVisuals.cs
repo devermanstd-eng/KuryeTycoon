@@ -23,7 +23,15 @@ namespace KuryeTycoon
             set { PlayerPrefs.SetInt(PrefKey, value); PlayerPrefs.Save(); }
         }
 
-        public static float TargetHeight = 0.36f;  // karakterin boyu (1 = bir kare ≈ bina katı); binaların yanında insan ölçeğinde
+        public static float TargetHeight = 0.36f;
+        /// <summary>Arabalı kuryenin aracı (Blender: VW Polo 6N2) haritada bu boyda (1 = bir kare ≈ 10 m; insanlar gibi ~2 kat büyük).</summary>
+        public static float CarLength = 0.62f;
+        public const string CarFolder = "KuryeAraclari";
+        public const string CarName = "Arac";
+        /// <summary>Aracın burnu modelde ters yöne bakıyorsa düzeltme (derece). Polo'nun burnu Unity'de +Z'de
+        /// (karakterlerle aynı), bu yüzden 0: 180 iken araçlar geri geri gidiyordu.</summary>
+        public static float CarYawOffset = 0f;
+        static GameObject[] cars;  // karakterin boyu (1 = bir kare ≈ bina katı); binaların yanında insan ölçeğinde
         static RuntimeAnimatorController walkController;
 
         /// <summary>Unity'de "domain reload" kapalıysa statik önbellekler Play'ler arasında kalır; her Play'de sıfırla.</summary>
@@ -33,6 +41,61 @@ namespace KuryeTycoon
             prefabs = null;
             walkController = null;
             sun = null;
+            cars = null;
+        }
+
+        /// <summary>Kurye aracı modeli var mı (Kurye Tycoon > Blender Binalarını Prefab Yap ile Resources/KuryeAraclari).</summary>
+        public static bool CarAvailable
+        {
+            get
+            {
+                if (Mode == 2) return false;
+                if (cars == null) cars = Resources.LoadAll<GameObject>(CarFolder);
+                return cars.Length > 0;
+            }
+        }
+
+        /// <summary>Arabalı kurye için araç modeli (kurye sürümü: tavanda şirket renginde kutu, kapılarda tabela).</summary>
+        public static GameObject SpawnCar(Transform parent, Courier kurye = null)
+        {
+            if (!CarAvailable) return null;
+            GameObject secilen = cars[0];
+            foreach (var c in cars) if (c.name.EndsWith("_kurye")) { secilen = c; break; }
+            var go = Object.Instantiate(secilen, parent, false);
+            go.name = CarName;
+            go.transform.localScale = Vector3.one;
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Facing(180f + CarYawOffset);
+            foreach (var col in go.GetComponentsInChildren<Collider>()) Object.Destroy(col);
+            foreach (var lg in go.GetComponentsInChildren<LODGroup>()) Object.Destroy(lg);
+            var renderers = go.GetComponentsInChildren<Renderer>();
+            Color govdeRengi = AracRenkleri.Icin(kurye != null ? kurye.courierName : "");
+            foreach (var r in renderers)
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+                r.sortingOrder = 20;
+                TintCompanyColors(r);
+                // gövde rengi: Polo 6N2'nin fabrika renklerinden (Ayarlar > Gelişmiş > Kurye arabaları)
+                var mats = r.materials;
+                foreach (var m in mats)
+                    if (m != null && m.name.StartsWith("Araba_")) m.color = govdeRengi;
+                r.materials = mats;
+                if (Mode == 1) MakeUnlit(r);
+            }
+            var b = CombinedBounds(renderers);
+            float boy = Mathf.Max(b.size.x, b.size.y);
+            if (boy > 0.0001f)
+            {
+                go.transform.localScale = Vector3.one * (CarLength / boy);
+                b = CombinedBounds(renderers);
+                // tekerlekler yolun hemen üstünde ("yukarı" −Z: modelin en alt noktası bounds.max.z)
+                go.transform.position += new Vector3(parent.position.x - b.center.x, parent.position.y - b.center.y, -0.02f - b.max.z);
+            }
+            if (Mode == 0) EnsureLight();
+            var aracAnim = go.AddComponent<AracAnimasyon>();
+            aracAnim.kurye = kurye;
+            return go;
         }
 
         /// <summary>Yürüme animasyonu kurulu mu (Kurye Tycoon > Karakter Animasyonlarını Kur)?</summary>
@@ -197,7 +260,7 @@ namespace KuryeTycoon
                 if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y)) facingY = delta.x > 0 ? 270f : 90f; // doğu / batı
                 else facingY = delta.y > 0 ? 0f : 180f;                                       // kuzey (sırtı) / güney (yüzü)
             }
-            var target = Facing(facingY);
+            var target = Facing(model.name == CarName ? facingY + CarYawOffset : facingY);
             model.transform.localRotation = Quaternion.Slerp(model.transform.localRotation, target, 0.25f);
 
             var anim = model.GetComponentInChildren<Animator>();
@@ -228,6 +291,7 @@ namespace KuryeTycoon
         {
             prefabs = null;
             walkController = null;
+            cars = null;
             if (CourierManager.I == null) return;
             foreach (var c in CourierManager.I.Couriers) c.RebuildModel();
         }
