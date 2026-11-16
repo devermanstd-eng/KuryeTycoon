@@ -1,35 +1,36 @@
-/* Kurye Şirketi Tycoon — UI Toolkit arayüz stili: sıcak kâğıt ve mürekkep (16.11 akşam; CityRT'den esinlenildi).
-   Krem kâğıt zemin, koyu mürekkep yazı ve belirgin mürekkep çerçeve: çizim defteri / illüstrasyon hissi.
-   Renkler aşağıdaki değişkenlerde; koddan satır içi verilen renkler aynı paletten (U.cs: U.Kagit, U.Murekkep, U.Iyi...).
+/* Kurye Şirketi Tycoon — UI Toolkit arayüz stili: koyu mürekkep / çizim (16.11 akşam; CityRT'nin çizim dilinden esinlenildi).
+   Koyu kömür paneller, açık krem yazı, kalın siyah mürekkep çerçeve ve elle çizilmiş renkli simgeler: harita gündüz açık ve
+   renkli olduğu için krem paneller haritada eriyordu, koyu paneller net ayrılıyor (önce krem kâğıt denendi, bkz. KURULUM.md).
+   Renkler aşağıdaki değişkenlerde; koddan satır içi verilen renkler aynı paletten (U.cs: U.PanelRengi, U.YaziRengi, U.Iyi...).
    Şirket rengi (vurgu) koddan satır içi verilir; simgeler elle çizilmiş renkli PNG'ler (Resources/UI/Ikonlar, U.SimgeAyarla).
-   Çerçeve: yüzen kutular (pencere, kart, bildirim, durum, üst çubuk kapsülleri) 2 px mürekkep, altı 3 px (kâğıt gölgesi:
+   Çerçeve: yüzen kutular (pencere, kart, bildirim, durum, üst çubuk kapsülleri) 2 px siyah mürekkep, altı 3 px (gölge yerine:
    UI Toolkit'te gölge yok); iç kartlar ve düğmeler 1,5 px, altı 2,5 px. Köşeler: kutu 16, kart 12, düğme 10, çip tam yuvarlak.
-   Yazı hiyerarşisi: başlık 19–20 kalın · sayı 17–18 kalın · etiket 10–11 seyrek harfli kahve · gövde 13.
+   Yazı hiyerarşisi: başlık 19–20 kalın · sayı 17–18 kalın · etiket 10–11 seyrek harfli · gövde 13.
    Boyutlar GUI birimi: ekran yüksekliği 900 px'e göre ölçeklenir (PanelSettings.scale = GameUI.uiScale). */
 
 :root {
-    --zemin: rgb(246, 241, 231);
-    --zemin-koyu: rgb(236, 228, 212);
+    --zemin: rgb(30, 27, 25);
+    --zemin-koyu: rgb(20, 18, 16);
     --zemin-ust: rgba(0, 0, 0, 0);
-    --yuzen: rgba(246, 241, 231, 0.97);
-    --kart: rgb(236, 228, 212);
-    --kart-ust: rgb(228, 218, 199);
-    --kagit-acik: rgb(251, 248, 241);
-    --dugme: rgb(252, 249, 243);
-    --dugme-ust: rgb(255, 253, 248);
-    --cerceve: rgb(43, 38, 35);
-    --cizgi: rgba(43, 38, 35, 0.14);
-    --kenar: rgba(43, 38, 35, 0.55);
-    --kenar-ust: rgba(43, 38, 35, 0.55);
-    --taban: rgba(43, 38, 35, 0.8);
-    --cukur: rgba(43, 38, 35, 0.07);
-    --yazi: rgb(38, 34, 30);
-    --soluk: rgb(118, 104, 90);
-    --etiket: rgb(138, 110, 84);
-    --iyi: rgb(66, 116, 62);
-    --kotu: rgb(178, 70, 46);
-    --uyari: rgb(176, 92, 26);
-    --sari: rgb(212, 163, 46);
+    --yuzen: rgba(30, 27, 25, 0.96);
+    --kart: rgb(43, 39, 36);
+    --kart-ust: rgb(54, 49, 45);
+    --kagit-acik: rgb(37, 33, 31);
+    --dugme: rgb(50, 45, 41);
+    --dugme-ust: rgb(62, 56, 51);
+    --cerceve: rgb(8, 7, 6);
+    --cizgi: rgba(255, 240, 222, 0.1);
+    --kenar: rgba(8, 7, 6, 0.9);
+    --kenar-ust: rgba(8, 7, 6, 0.9);
+    --taban: rgb(8, 7, 6);
+    --cukur: rgba(0, 0, 0, 0.28);
+    --yazi: rgb(245, 238, 226);
+    --soluk: rgb(178, 166, 152);
+    --etiket: rgb(200, 180, 154);
+    --iyi: rgb(132, 204, 118);
+    --kotu: rgb(238, 110, 88);
+    --uyari: rgb(245, 165, 80);
+    --sari: rgb(242, 196, 84);
 }
 
 /* ---------------------------------------------------------------- temel */
@@ -131,7 +132,7 @@
 }
 
 .bilgi-kutusu {
-    background-color: rgba(43, 38, 35, 0.045);
+    background-color: rgba(255, 240, 222, 0.045);
     border-radius: 10px;
     border-width: 1.5px;
     border-color: var(--kenar);
@@ -157,14 +158,14 @@ Button.dg {
     transition-duration: 0.08s;
     border-bottom-width: 2.5px;
 }
-Button.dg:hover { background-color: rgb(241, 234, 221); }
+Button.dg:hover { background-color: var(--dugme-ust); }
 Button.dg:active { scale: 0.97 0.97; }
 Button.dg:disabled { opacity: 0.4; }
 Button.dg.ilk { margin-left: 0; }
 Button.dg.kucuk-dg { height: 26px; padding: 0 10px 0 10px; font-size: 11px; border-radius: 9px; }
 Button.dg.genis { flex-grow: 1; }
-Button.dg.tehlike { background-color: rgba(178, 70, 46, 0.12); color: var(--kotu); border-color: var(--kotu); }
-Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
+Button.dg.tehlike { background-color: rgba(238, 110, 88, 0.16); color: var(--kotu); border-color: var(--kotu); }
+Button.dg.tehlike:hover { background-color: rgba(238, 110, 88, 0.28); }
 
 .simge-dugme {
     width: 30px;
@@ -195,7 +196,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     color: var(--soluk);
     -unity-text-align: middle-center;
 }
-.secenek:hover { background-color: rgba(43, 38, 35, 0.07); color: var(--yazi); }
+.secenek:hover { background-color: rgba(255, 240, 222, 0.07); color: var(--yazi); }
 .secenek.secili { color: var(--yazi); -unity-font-style: bold; }
 
 /* Onay kutusu (toggle) */
@@ -209,7 +210,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     height: 20px;
     border-radius: 6px;
     border-width: 2px;
-    border-color: rgba(43, 38, 35, 0.7);
+    border-color: rgba(255, 240, 222, 0.45);
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
@@ -232,7 +233,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     -unity-text-align: middle-center;
     white-space: nowrap;
     border-width: 1.5px;
-    border-color: rgba(43, 38, 35, 0.45);
+    border-color: rgba(255, 240, 222, 0.45);
 }
 
 .cubuk {
@@ -240,7 +241,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     border-radius: 4px;
     background-color: var(--cukur);
     border-width: 1px;
-    border-color: rgba(43, 38, 35, 0.25);
+    border-color: rgba(255, 240, 222, 0.25);
     overflow: hidden;
     flex-grow: 1;
 }
@@ -252,7 +253,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     height: 6px;
     border-radius: 3px;
     margin-right: 3px;
-    background-color: rgba(43, 38, 35, 0.13);
+    background-color: rgba(255, 240, 222, 0.13);
 }
 
 .rozet {
@@ -350,7 +351,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     border-radius: 11px;
     flex-shrink: 0;
 }
-.gosterge:hover { background-color: rgba(43, 38, 35, 0.07); }
+.gosterge:hover { background-color: rgba(255, 240, 222, 0.07); }
 .gosterge-simge-kutu {
     width: 30px;
     height: 30px;
@@ -412,7 +413,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     color: var(--soluk);
     -unity-text-align: middle-center;
 }
-.hiz-dilim:hover { background-color: rgba(43, 38, 35, 0.08); }
+.hiz-dilim:hover { background-color: rgba(255, 240, 222, 0.08); }
 
 /* ---------------------------------------------------------------- sol menü */
 
@@ -490,7 +491,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     -unity-text-align: middle-center;
     margin-right: 2px;
 }
-.sekme:hover { background-color: rgba(43, 38, 35, 0.07); color: var(--yazi); }
+.sekme:hover { background-color: rgba(255, 240, 222, 0.07); color: var(--yazi); }
 .sekme .yeni-nokta { top: 5px; right: 6px; width: 7px; height: 7px; }
 .pencere-cizgi { height: 1px; background-color: var(--cizgi); }
 .pencere-govde {
@@ -516,11 +517,11 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     border-width: 0;
 }
 .kaydir .unity-scroller--vertical .unity-base-slider__dragger {
-    background-color: rgba(43, 38, 35, 0.18);
+    background-color: rgba(255, 240, 222, 0.18);
     border-width: 0;
     border-radius: 4px;
 }
-.kaydir .unity-scroller--vertical .unity-base-slider__dragger:hover { background-color: rgba(43, 38, 35, 0.32); }
+.kaydir .unity-scroller--vertical .unity-base-slider__dragger:hover { background-color: rgba(255, 240, 222, 0.32); }
 .kaydir .unity-scroller__low-button,
 .kaydir .unity-scroller__high-button { display: none; }
 .kaydir .unity-scroll-view__horizontal-scroller { display: none; }
@@ -553,7 +554,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     padding: 0 8px 0 8px;
     flex-direction: row;
 }
-.arac:hover { background-color: rgba(43, 38, 35, 0.1); }
+.arac:hover { background-color: rgba(255, 240, 222, 0.1); }
 .arac-simge { width: 16px; height: 16px; }
 .arac-yazi { font-size: 12px; color: var(--yazi); white-space: nowrap; }
 .arac-yazi.simgeli { margin-left: 6px; }
@@ -574,7 +575,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     padding: 4px 10px 4px 10px;
     justify-content: center;
 }
-.katman-oge:hover { background-color: rgba(43, 38, 35, 0.07); }
+.katman-oge:hover { background-color: rgba(255, 240, 222, 0.07); }
 .katman-ad { font-size: 13px; -unity-font-style: bold; }
 .katman-aciklama { font-size: 11px; color: var(--soluk); margin-top: 1px; }
 .katman-not {
@@ -605,7 +606,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     border-bottom-width: 3px;
 }
 .olaylar-baslik { flex-direction: row; align-items: center; height: 28px; padding: 0 4px 0 4px; }
-.olaylar-baslik:hover { background-color: rgba(43, 38, 35, 0.05); border-radius: 8px; }
+.olaylar-baslik:hover { background-color: rgba(255, 240, 222, 0.05); border-radius: 8px; }
 .olay-oge {
     flex-direction: row;
     align-items: center;
@@ -613,7 +614,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     border-radius: 8px;
     padding: 2px 6px 2px 6px;
 }
-.olay-oge.tiklanir:hover { background-color: rgba(43, 38, 35, 0.08); }
+.olay-oge.tiklanir:hover { background-color: rgba(255, 240, 222, 0.08); }
 .olay-nokta { width: 7px; height: 7px; border-radius: 4px; flex-shrink: 0; }
 .olay-yazi { margin-left: 8px; font-size: 12px; flex-shrink: 1; white-space: normal; }
 .olay-git { width: 12px; height: 12px; margin-left: 6px; opacity: 0.8; flex-shrink: 0; }
@@ -639,7 +640,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     height: 14px;
     border-radius: 7px;
     border-width: 2px;
-    border-color: rgba(43, 38, 35, 0.45);
+    border-color: rgba(255, 240, 222, 0.45);
     flex-shrink: 0;
 }
 .hedef-ad { margin-left: 8px; font-size: 12px; flex-grow: 1; flex-shrink: 1; }
@@ -654,7 +655,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     border-color: var(--cerceve);
     padding: 8px 11px 8px 11px;
     font-size: 12px;
-    color: var(--zemin);
+    color: var(--yazi);
     white-space: normal;
     border-bottom-width: 2px;
 }
@@ -670,7 +671,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     -unity-text-align: middle-center;
     flex-shrink: 0;
     border-width: 1.5px;
-    border-color: rgba(43, 38, 35, 0.45);
+    border-color: rgba(255, 240, 222, 0.45);
 }
 .siparis-ana { flex-grow: 1; flex-shrink: 1; margin-left: 10px; }
 .siparis-ad { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -686,7 +687,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     border-radius: 12px;
     border-width: 1.5px;
     border-color: var(--cerceve);
-    background-color: rgba(43, 38, 35, 0.06);
+    background-color: rgba(255, 240, 222, 0.06);
     flex-shrink: 0;
 }
 .yildiz {
@@ -698,8 +699,8 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     border-width: 1.5px;
     border-color: var(--cerceve);
     padding: 0 5px 0 5px;
-    background-color: rgb(252, 226, 150);
-    color: var(--yazi);
+    background-color: rgb(58, 50, 34);
+    color: var(--sari);
     font-size: 10px;
     -unity-text-align: middle-center;
 }
@@ -731,7 +732,7 @@ Button.dg.tehlike:hover { background-color: rgba(178, 70, 46, 0.22); }
     top: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(38, 34, 30, 0.45);
+    background-color: rgba(8, 7, 6, 0.6);
     align-items: center;
     justify-content: center;
 }
@@ -862,9 +863,9 @@ Button.dg.olay-secim {
 .yz-metin { flex-grow: 1; flex-shrink: 1; white-space: normal; font-size: 13px; }
 .yz-metin.kucuk { font-size: 12px; }
 .yz-baslik { font-size: 15px; -unity-font-style: bold; margin-bottom: 3px; }
-.not-renk { color: rgb(96, 84, 70); }
+.not-renk { color: rgb(214, 200, 176); }
 .yz-nokta { width: 9px; height: 9px; border-radius: 3px; margin: 4px 8px 0 0; flex-shrink: 0; }
-.yz-kv { flex-direction: row; align-items: center; min-height: 24px; margin-bottom: 1px; border-bottom-width: 1px; border-color: rgba(43, 38, 35, 0.1); }
+.yz-kv { flex-direction: row; align-items: center; min-height: 24px; margin-bottom: 1px; border-bottom-width: 1px; border-color: rgba(255, 240, 222, 0.1); }
 .yz-kv-ad { flex-grow: 1; flex-shrink: 1; font-size: 13px; color: var(--soluk); white-space: normal; }
 .yz-kv-deger { font-size: 13px; margin-left: 10px; -unity-text-align: middle-right; white-space: nowrap; }
 .yardim-rozet {
@@ -873,14 +874,14 @@ Button.dg.olay-secim {
     border-radius: 9px;
     margin-left: 6px;
     flex-shrink: 0;
-    background-color: rgba(43, 38, 35, 0.1);
+    background-color: rgba(255, 240, 222, 0.1);
     font-size: 11px;
     color: var(--soluk);
     -unity-text-align: middle-center;
     border-width: 1.5px;
-    border-color: rgba(43, 38, 35, 0.6);
+    border-color: rgba(255, 240, 222, 0.45);
 }
-.yardim-rozet:hover { background-color: rgba(43, 38, 35, 0.2); color: var(--yazi); }
+.yardim-rozet:hover { background-color: rgba(255, 240, 222, 0.2); color: var(--yazi); }
 .bolum .yardim-rozet { margin-left: 8px; }
 .yz-kart { margin-top: 4px; }
 .yz-dugmeler { flex-direction: row; flex-wrap: wrap; align-items: center; margin-top: 6px; }
@@ -914,7 +915,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     padding: 4px 6px 4px 6px;
     border-radius: 8px;
 }
-.yz-acilir:hover { background-color: rgba(43, 38, 35, 0.05); }
+.yz-acilir:hover { background-color: rgba(255, 240, 222, 0.05); }
 .yz-acilir-ad { font-size: 15px; -unity-font-style: bold; flex-grow: 1; flex-shrink: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .yz-acilir-sag { font-size: 12px; margin-left: 8px; white-space: nowrap; }
 .yz .olcu-deger { width: auto; min-width: 44px; margin-left: 8px; }
@@ -985,10 +986,10 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     align-items: center;
     min-height: 25px;
     border-bottom-width: 1px;
-    border-color: rgba(43, 38, 35, 0.08);
+    border-color: rgba(255, 240, 222, 0.08);
 }
-.yz-tablo-satir:hover { background-color: rgba(43, 38, 35, 0.04); }
-.yz-tablo-satir.baslik { min-height: 22px; border-color: rgba(43, 38, 35, 0.22); }
+.yz-tablo-satir:hover { background-color: rgba(255, 240, 222, 0.04); }
+.yz-tablo-satir.baslik { min-height: 22px; border-color: rgba(255, 240, 222, 0.22); }
 .yz-tablo-satir.baslik:hover { background-color: rgba(0, 0, 0, 0); }
 .yz-tablo-satir .yz-nokta { margin: 0 8px 0 0; }
 .yz-tablo-ilk { flex-grow: 1; flex-shrink: 1; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1013,7 +1014,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     margin-top: -3px;
     border-width: 0;
     border-radius: 3px;
-    background-color: rgba(43, 38, 35, 0.14);
+    background-color: rgba(255, 240, 222, 0.14);
 }
 .yz-slider.unity-base-slider--horizontal .unity-base-slider__dragger {
     position: absolute;
@@ -1053,7 +1054,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .kurye-bilgi-deger { flex-grow: 1; flex-shrink: 1; font-size: 12px; white-space: normal; }
 
 /* ---------------------------------------------------------------- kurye telefonu (Arayuz/UiTelefon.cs)
-   Kâğıt tema: mürekkep gövde, krem ekran, mürekkep yazı; şirket rengi koddan satır içi. */
+   Koyu mürekkep tema: siyah gövde, kömür ekran, açık yazı; şirket rengi koddan satır içi. */
 
 .tel { position: absolute; }
 .tel-golge {
@@ -1063,7 +1064,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     top: 8px;
     bottom: -8px;
     border-radius: 48px;
-    background-color: rgba(43, 38, 35, 0.22);
+    background-color: rgba(0, 0, 0, 0.45);
 }
 .tel-tus { position: absolute; width: 4px; border-radius: 2px; background-color: var(--cerceve); }
 .tel-govde {
@@ -1107,7 +1108,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 
 /* Harita */
 .tel-harita { position: absolute; left: 0; top: 0; right: 0; overflow: hidden; }
-.tel-poi { position: absolute; font-size: 9px; color: rgb(110, 84, 40); white-space: nowrap; }
+.tel-poi { position: absolute; font-size: 9px; color: rgb(232, 196, 120); white-space: nowrap; }
 .tel-balon {
     position: absolute;
     flex-direction: row;
@@ -1155,7 +1156,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     height: 4px;
     margin-left: -24px;
     border-radius: 2px;
-    background-color: rgba(43, 38, 35, 0.22);
+    background-color: rgba(255, 240, 222, 0.22);
 }
 .tel-kaydir { flex-grow: 1; }
 .tel-sheet > .tel-kaydir { margin-bottom: 10px; }
@@ -1184,11 +1185,11 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     width: 24px;
     height: 12px;
     border-radius: 3.5px;
-    background-color: rgba(43, 38, 35, 0.3);
+    background-color: rgba(255, 240, 222, 0.3);
     overflow: hidden;
 }
 .tel-pil-dolu { height: 100%; border-radius: 3.5px; }
-.tel-pil-uc { position: absolute; right: 21px; top: 19px; width: 2px; height: 4px; border-radius: 1px; background-color: rgba(43, 38, 35, 0.5); }
+.tel-pil-uc { position: absolute; right: 21px; top: 19px; width: 2px; height: 4px; border-radius: 1px; background-color: rgba(255, 240, 222, 0.45); }
 .tel-ev-cizgi {
     position: absolute;
     bottom: 6px;
@@ -1197,7 +1198,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     width: 120px;
     height: 5px;
     border-radius: 2.5px;
-    background-color: rgba(43, 38, 35, 0.5);
+    background-color: rgba(255, 240, 222, 0.45);
 }
 
 /* Yazıcı ile yazılan içerik: telefonun yazı boyları */
@@ -1218,7 +1219,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .tel-soluk-yazi { font-size: 12px; color: var(--soluk); }
 .tel-govde-yazi { font-size: 13px; color: var(--yazi); }
 .tel-satir-yazi { font-size: 15px; color: var(--yazi); }
-.tel .yz-kv { min-height: 36px; border-bottom-width: 1px; border-color: rgba(43, 38, 35, 0.08); margin-bottom: 0; }
+.tel .yz-kv { min-height: 36px; border-bottom-width: 1px; border-color: rgba(255, 240, 222, 0.08); margin-bottom: 0; }
 .tel .yz-kv-ad { font-size: 15px; color: var(--yazi); }
 .tel .yz-kv-deger { font-size: 15px; color: var(--soluk); }
 .tel .yz-kutular { margin: 4px -6px 2px 0; }
@@ -1232,7 +1233,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     padding: 8px 10px 8px 10px;
     margin: 0 0 8px 0;
 }
-.tel-cizgi { height: 1px; background-color: rgba(43, 38, 35, 0.08); margin: 6px 0 6px 0; flex-shrink: 0; }
+.tel-cizgi { height: 1px; background-color: rgba(255, 240, 222, 0.08); margin: 6px 0 6px 0; flex-shrink: 0; }
 .tel-sheet .tel-cizgi { margin-left: -18px; margin-right: -18px; }
 .tel .kart.tel-kart .tel-cizgi { margin-left: 0; margin-right: 0; }
 
@@ -1265,7 +1266,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .tel-hap-yazi {
     flex-grow: 1;
     font-size: 15px;
-    color: var(--yazi);
+    color: rgb(20, 18, 16);
     -unity-text-align: middle-center;
     white-space: nowrap;
     overflow: hidden;
@@ -1310,8 +1311,8 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     -unity-text-align: middle-center;
     margin: 0 1px 0 1px;
 }
-.tel-segment-oge:hover { background-color: rgba(43, 38, 35, 0.06); }
-.tel-segment-oge.secili { background-color: var(--cerceve); color: var(--zemin); }
+.tel-segment-oge:hover { background-color: rgba(255, 240, 222, 0.06); }
+.tel-segment-oge.secili { background-color: var(--yazi); color: var(--zemin); }
 .tel-yogunluk { flex-direction: row; align-items: center; margin: 2px 0 2px 0; }
 .tel-yogunluk-cubuklar { flex-direction: row; align-items: flex-end; height: 14px; margin: 0 6px 0 8px; }
 .tel-yogunluk-cubuk { width: 4px; margin-right: 2px; border-radius: 1px; }
@@ -1336,11 +1337,11 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     flex-direction: row;
     align-items: flex-start;
     border-radius: 10px;
-    background-color: rgb(250, 228, 204);
+    background-color: rgb(64, 40, 20);
     padding: 10px 10px 12px 12px;
     margin: 2px 0 6px 0;
     border-width: 1.5px;
-    border-color: rgb(176, 92, 26);
+    border-color: var(--uyari);
 }
 .tel-uyari-simge { margin: 1px 10px 0 0; }
 .tel-uyari-bas { font-size: 11px; color: var(--uyari); letter-spacing: 0.4px; }
@@ -1361,10 +1362,10 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     align-items: center;
     height: 54px;
     border-bottom-width: 1px;
-    border-color: rgba(43, 38, 35, 0.08);
+    border-color: rgba(255, 240, 222, 0.08);
     padding-right: 4px;
 }
-.tel-menu-satir:hover { background-color: rgba(43, 38, 35, 0.03); }
+.tel-menu-satir:hover { background-color: rgba(255, 240, 222, 0.03); }
 .tel-menu-harf-kutu {
     width: 28px;
     height: 28px;
@@ -1378,13 +1379,13 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 }
 .tel-menu-satir.simgeli .tel-menu-harf-kutu { border-width: 0; }
 .tel-menu-harf { font-size: 12px; color: var(--yazi); -unity-text-align: middle-center; }
-.tel-profil { flex-direction: row; align-items: center; height: 62px; border-bottom-width: 1px; border-color: rgba(43, 38, 35, 0.08); }
-.tel-profil:hover { background-color: rgba(43, 38, 35, 0.03); }
+.tel-profil { flex-direction: row; align-items: center; height: 62px; border-bottom-width: 1px; border-color: rgba(255, 240, 222, 0.08); }
+.tel-profil:hover { background-color: rgba(255, 240, 222, 0.03); }
 .tel-avatar { width: 42px; height: 42px; border-radius: 21px; font-size: 18px; -unity-text-align: middle-center; margin-right: 12px; flex-shrink: 0; }
-.tel-konu { flex-direction: row; align-items: center; height: 50px; border-bottom-width: 1px; border-color: rgba(43, 38, 35, 0.08); }
-.tel-konu:hover { background-color: rgba(43, 38, 35, 0.03); }
+.tel-konu { flex-direction: row; align-items: center; height: 50px; border-bottom-width: 1px; border-color: rgba(255, 240, 222, 0.08); }
+.tel-konu:hover { background-color: rgba(255, 240, 222, 0.03); }
 .tel-hedef { margin-bottom: 8px; }
-.tel-hedef-iz { height: 8px; border-radius: 4px; background-color: var(--cukur); margin-top: 3px; overflow: hidden; border-width: 1px; border-color: rgba(43, 38, 35, 0.25); }
+.tel-hedef-iz { height: 8px; border-radius: 4px; background-color: var(--cukur); margin-top: 3px; overflow: hidden; border-width: 1px; border-color: rgba(255, 240, 222, 0.25); }
 .tel-hedef-dolu { height: 100%; border-radius: 4px; min-width: 8px; }
 .tel-buyuk-sayi { height: 90px; border-radius: 14px; flex-direction: row; margin: 4px 0 2px 0; border-width: 2px; border-color: var(--cerceve); }
 .tel-buyuk-sayi-ic { width: 62%; align-items: center; justify-content: center; }
@@ -1433,12 +1434,12 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     width: 44px;
     height: 44px;
     border-radius: 22px;
-    background-color: var(--cerceve);
+    background-color: rgb(54, 49, 45);
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
 }
-.tel-topla-ok:hover { background-color: rgb(78, 70, 63); }
+.tel-topla-ok:hover { background-color: rgb(70, 63, 58); }
 
 /* ---------------------------------------------------------------- bina kartı (Arayuz/UiBinaKarti.cs) */
 
@@ -1476,7 +1477,7 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
     border-width: 1.5px;
     border-color: var(--kenar);
     padding: 0 10px 0 8px;
-    background-color: rgba(43, 38, 35, 0.07);
+    background-color: rgba(255, 240, 222, 0.07);
     margin-left: 8px;
     flex-shrink: 0;
 }

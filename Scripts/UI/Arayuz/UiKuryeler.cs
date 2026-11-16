@@ -272,7 +272,7 @@ namespace KuryeTycoon
                 var ks = KayitSistemi.I;
                 bool askida = ks != null && ks.Askida(c);
                 U.Metin(k.puan, c.puanAdet >= 5 ? $"{c.puanOrt:0.0}★" : "—");
-                U.Renk(k.puan, c.puanAdet < 5 ? U.Murekkep : c.puanOrt >= 4.5f ? U.Iyi : c.puanOrt >= 3.8f ? U.Murekkep : U.Uyari);
+                U.Renk(k.puan, c.puanAdet < 5 ? U.YaziRengi : c.puanOrt >= 4.5f ? U.Iyi : c.puanOrt >= 3.8f ? U.YaziRengi : U.Uyari);
                 string puanAlt = askida ? $"askıda · {c.askiBitis - GameClock.I.Day} gün"
                                : c.aktifGun > 0 && !c.ilkHaftaTamam ? "ilk haftası"
                                : c.puanAdet >= 5 ? "son ~30 teslimat" : "az teslimat";
@@ -308,7 +308,7 @@ namespace KuryeTycoon
                 k.meslekIpucu = c.occupation == Occupation.Ogrenci ? $"Ders programı: {Courier.ScheduleText(c.scheduleSeed, GameClock.I)}" : null;
                 U.Metin(k.sigorta, c.insured ? $"var · {(c.insuredViaCompany ? EconomyManager.I.Plan.name : "dışarıdan")} · {Ft(c.CurrentPremium)}/hafta"
                                              : "yok (kazada masrafını kendi öder, daha uzun süre çalışamaz)");
-                U.Renk(k.sigorta, c.insured ? U.Murekkep : U.Uyari);
+                U.Renk(k.sigorta, c.insured ? U.YaziRengi : U.Uyari);
                 U.Metin(k.ekipman, $"{EquipmentText(c)} · çanta {c.bagUses}/{Courier.BagWornUses}" + (c.BagWorn ? " (yıprandı)" : ""));
                 var camp = CampaignManager.I;
                 var hedefler = new List<string>();

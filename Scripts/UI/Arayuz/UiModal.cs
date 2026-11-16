@@ -101,7 +101,7 @@ namespace KuryeTycoon
                 for (int i = 0; i < ev.ozet.Count; i++)
                 {
                     var o = ev.ozet[i];
-                    Color ton = o.ton == 1 ? U.Iyi : o.ton == 2 ? U.Kotu : o.ton == 3 ? U.Uyari : U.Murekkep;
+                    Color ton = o.ton == 1 ? U.Iyi : o.ton == 2 ? U.Kotu : o.ton == 3 ? U.Uyari : U.YaziRengi;
                     var kutu = U.Gecirgen(satir, "ozet-kutu");
                     if (i == 0) kutu.AddToClassList("ilk");
                     U.Zemin(kutu, o.ton == 0 ? U.Ton(0.05f) : U.A(ton, 0.13f));

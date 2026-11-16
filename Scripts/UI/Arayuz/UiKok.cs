@@ -200,9 +200,9 @@ namespace KuryeTycoon
             uiHaritaBosluk = U.Gecirgen(katHud);
             uiHaritaBosluk.style.position = Position.Absolute;
             uiHaritaBosluk.style.left = DockW;
-            uiHaritaBosluk.style.top = 0;   // kâğıt tema: harita üst çubuğun altına da çizilir, şerit en üste kadar
+            uiHaritaBosluk.style.top = 0;   // harita üst çubuğun altına da çizilir (yüzen kapsüller): şerit en üste kadar
             uiHaritaBosluk.style.bottom = 0;
-            uiHaritaBosluk.style.backgroundColor = U.KagitKoyu;
+            uiHaritaBosluk.style.backgroundColor = U.SeritRengi;
             uiHaritaBosluk.style.borderRightWidth = 2;
             uiHaritaBosluk.style.borderRightColor = U.Cerceve;
 

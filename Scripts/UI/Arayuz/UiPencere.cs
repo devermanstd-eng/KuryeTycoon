@@ -161,7 +161,7 @@ namespace KuryeTycoon
 
             int g = GroupIndexOf(tab);
             var def = MenuGroups[g];
-            U.Zemin(pencereSimgeKutu, U.A(UITheme.Accent, 0.22f));   // elle çizilmiş renkli simge açık zeminde
+            U.Zemin(pencereSimgeKutu, U.A(UITheme.Accent, 0.25f));   // elle çizilmiş renkli simge: zemin şirket renginin saydam tonu
             U.SimgeAyarla(pencereSimge, def.icon, UITheme.AccentText);
             U.Metin(pencereBaslik, def.title);
 

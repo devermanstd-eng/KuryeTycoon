@@ -18,7 +18,7 @@ namespace KuryeTycoon
         {
             public readonly List<float> degerler = new List<float>();
             public bool cubuk = true;
-            public Color renk = U.Cerceve, negRenk = U.Kotu;
+            public Color renk = U.YaziRengi, negRenk = U.Kotu;
             public float min, max = -1f;   // max < min: ölçek veriden
             public int hover = -1;
             public Action<int> hoverDegisti;
@@ -70,7 +70,7 @@ namespace KuryeTycoon
                         if (hover >= 0 && hover != i) c.a *= 0.55f;
                         Kutu(p, x0, y0, x1, y1, c);
                     }
-                    if (neg) Kutu(p, 0f, sifir - 0.5f, r.width, sifir + 0.5f, U.Ton(0.35f));   // kâğıt tema: mürekkep sıfır çizgisi
+                    if (neg) Kutu(p, 0f, sifir - 0.5f, r.width, sifir + 0.5f, U.Ton(0.35f));   // sıfır çizgisi
                     return;
                 }
 
@@ -214,8 +214,8 @@ namespace KuryeTycoon
                 for (int h = 0; h < 24; h++)
                 {
                     float x0 = h * cw + 1f, x1 = (h + 1) * cw - 1f;
-                    Doldur(p, x0, 0f, x1, 16f, dolu[h] ? new Color(0.36f, 0.66f, 0.40f) : U.Ton(0.12f));
-                    if (h == saat) Doldur(p, x0, 18f, x1, 21f, U.Cerceve);
+                    Doldur(p, x0, 0f, x1, 16f, dolu[h] ? new Color(0.3f, 0.8f, 0.45f) : U.Ton(0.12f));
+                    if (h == saat) Doldur(p, x0, 18f, x1, 21f, U.YaziRengi);
                 }
                 for (int h = 0; h <= 24; h += 6)
                 {
