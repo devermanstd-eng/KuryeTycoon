@@ -16,8 +16,19 @@ namespace KuryeTycoon
 
         static Dictionary<string, GameObject> prefablar;
 
+        static Transform eldekiKlasoru;
+        /// <summary>Kuryelerin elindeki keseler sahnenin köküne dağılmasın diye tek bir boş nesnenin altında durur.</summary>
+        public static Transform EldekiKlasoru
+        {
+            get
+            {
+                if (eldekiKlasoru == null) eldekiKlasoru = new GameObject("Kuryelerin keseleri").transform;
+                return eldekiKlasoru;
+            }
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Sifirla() { prefablar = null; urunMalzemesi.Clear(); }
+        static void Sifirla() { prefablar = null; eldekiKlasoru = null; urunMalzemesi.Clear(); }
 
         static void Yukle()
         {
@@ -86,9 +97,10 @@ namespace KuryeTycoon
             Object.Destroy(go.GetComponent<Collider>());
             float o = Olcek;
             // metre cinsinden boy: kutu 7–10 cm, şişe 4×12 cm, kap 9×5 cm
-            go.transform.localScale = tip == 1 ? new Vector3(0.045f, 0.06f, 0.045f) * o
-                                    : tip == 2 ? new Vector3(0.09f, 0.05f, 0.09f) * o
-                                    : new Vector3(0.07f + (float)rnd.NextDouble() * 0.03f, 0.08f, 0.06f) * o;
+            // kesenin içine sığsın: derinliği ~10 cm olan keseye göre
+            go.transform.localScale = tip == 1 ? new Vector3(0.035f, 0.05f, 0.035f) * o
+                                    : tip == 2 ? new Vector3(0.065f, 0.04f, 0.055f) * o
+                                    : new Vector3(0.05f + (float)rnd.NextDouble() * 0.02f, 0.065f, 0.045f) * o;
             Color c = rnd.Next(4) == 0 ? dukkanRengi : UrunRenkleri[rnd.Next(UrunRenkleri.Length)];
             var r = go.GetComponent<Renderer>();
             r.sharedMaterial = Malzeme(c);

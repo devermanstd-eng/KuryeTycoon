@@ -79,10 +79,12 @@ namespace KuryeTycoon
                 u.SetActive(ilerleme >= a);
                 if (!u.activeSelf) continue;
                 Vector3 ic = keseYeri + Vector3.back * (KeseGorsel.Olcek * (0.12f + 0.035f * i))
-                             + new Vector3(Mathf.Sin(i * 2.1f), Mathf.Cos(i * 1.7f), 0f) * KeseGorsel.Olcek * 0.03f;
+                             + new Vector3(Mathf.Sin(i * 2.1f), Mathf.Cos(i * 1.7f), 0f) * KeseGorsel.Olcek * 0.015f;
                 float e = t * t * (3f - 2f * t);
                 u.transform.position = Vector3.Lerp(uruneBaslangic, ic, e) + Vector3.back * Mathf.Sin(e * Mathf.PI) * KeseGorsel.Olcek * 0.08f;
-                u.transform.rotation = Quaternion.Euler(0f, 0f, i * 37f) * Quaternion.Euler(-90f, 0f, 0f);
+                // ürün kesenin eksenleriyle hizalı, hafif yamuk (kesenin ağzından taşmasın)
+                Quaternion keseYonu = acikKese != null ? acikKese.transform.rotation : Quaternion.Euler(-90f, 0f, 0f);
+                u.transform.rotation = keseYonu * Quaternion.Euler(0f, ((i * 37) % 24) - 12f, 0f);
             }
             if (calisan != null)
             {
@@ -159,7 +161,7 @@ namespace KuryeTycoon
                 if (eldeki[i] == null || eldekiTur[i] != tur)
                 {
                     if (eldeki[i] != null) Destroy(eldeki[i]);
-                    eldeki[i] = KeseGorsel.Yap(tur);
+                    eldeki[i] = KeseGorsel.Yap(tur, KeseGorsel.EldekiKlasoru);
                     eldekiTur[i] = tur;
                     if (eldeki[i] == null) continue;
                 }
