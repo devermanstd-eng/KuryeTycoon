@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-16 u2 (arayüz: kurye telefonu, bina kartı, büyük kurye kartı ve Kayıtlar UI Toolkit'te; IMGUI gizleme yamaları kaldırıldı)";
+        public const string CodeVersion = "2026-11-16 u3 (test: arayüz turu, telefonun bütün ekranları; arayüz hataları ayrı yakalanır)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 

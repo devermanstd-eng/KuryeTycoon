@@ -195,6 +195,9 @@ namespace KuryeTycoon
                 Eylem("Uyarı", "Oyun saati 5 dakikadır ilerlemiyor (menü mü açık?).");
             }
 
+            // Arada bir kurye telefonu / bina kartı açılır (yeni arayüzün kodu farklı durumlarda da çalışsın)
+            if (ui != null) ui.TestArayuzTuru();
+
             // Öğlen haritanın görüntüsü (gün sonunda istendiyse)
             if (haritaBekliyor && clk.Hour >= 13 && ui != null)
             {
@@ -871,6 +874,7 @@ namespace KuryeTycoon
             foreach (var kv in EnCok(bildirimKalip, 40)) sb.AppendLine($"  {kv.Value,5}× {kv.Key}");
 
             Baslik(sb, $"HATALAR: {hataToplam} hata ({hataSayisi.Count} farklı) · {uyariToplam} uyarı ({uyariSayisi.Count} farklı)");
+            if (ui != null) sb.AppendLine(ui.TestTurOzeti);
             if (hataSayisi.Count == 0) sb.AppendLine("Hata yok.");
             foreach (var kv in EnCok(hataSayisi, 30)) sb.AppendLine($"  {kv.Value,5}× {kv.Key}");
 

@@ -34,6 +34,17 @@ namespace KuryeTycoon
             binaKirli = true;
         }
 
+        /// <summary>Müşteri binasının kartını açar (test modu).</summary>
+        void BinaKartiAc(Vector2Int t)
+        {
+            popupCourier = null;
+            infoShop = null;
+            infoTile = t;
+            infoBuilding = true;
+            binaKaydirSifirla = true;
+            binaKirli = true;
+        }
+
         void UiBinaKartiKur()
         {
             binaKok = U.El(katPencere, "bina-kart");
