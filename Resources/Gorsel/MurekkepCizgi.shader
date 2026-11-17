@@ -68,6 +68,34 @@ Shader "KuryeTycoon/MurekkepCizgi"
             float _AnimeGece;
             float _AnimeBulut;
 
+            float MC_Hash(float2 p)
+            {
+                p = frac(p * float2(123.34, 456.21));
+                p += dot(p, p + 45.32);
+                return frac(p.x * p.y);
+            }
+
+            float MC_Gurultu(float2 p)
+            {
+                float2 i = floor(p);
+                float2 f = frac(p);
+                f = f * f * (3.0 - 2.0 * f);
+                return lerp(lerp(MC_Hash(i), MC_Hash(i + float2(1, 0)), f.x),
+                            lerp(MC_Hash(i + float2(0, 1)), MC_Hash(i + float2(1, 1)), f.x), f.y);
+            }
+
+            float MC_Goz(float ham)
+            {
+                if (unity_OrthoParams.w > 0.5)
+                {
+                    #if UNITY_REVERSED_Z
+                        ham = 1.0 - ham;
+                    #endif
+                    return lerp(_ProjectionParams.y, _ProjectionParams.z, ham);
+                }
+                return LinearEyeDepth(ham, _ZBufferParams);
+            }
+
             float MC_Fbm(float2 p)
             {
                 float t = 0.0, a = 0.5;
@@ -100,34 +128,6 @@ Shader "KuryeTycoon/MurekkepCizgi"
                 // gece: koyu lacivert, bulutlar silik
                 gok = lerp(gok, half3(0.05, 0.07, 0.15) + bulut * 0.04, gece * 0.9);
                 return gok;
-            }
-
-            float MC_Hash(float2 p)
-            {
-                p = frac(p * float2(123.34, 456.21));
-                p += dot(p, p + 45.32);
-                return frac(p.x * p.y);
-            }
-
-            float MC_Gurultu(float2 p)
-            {
-                float2 i = floor(p);
-                float2 f = frac(p);
-                f = f * f * (3.0 - 2.0 * f);
-                return lerp(lerp(MC_Hash(i), MC_Hash(i + float2(1, 0)), f.x),
-                            lerp(MC_Hash(i + float2(0, 1)), MC_Hash(i + float2(1, 1)), f.x), f.y);
-            }
-
-            float MC_Goz(float ham)
-            {
-                if (unity_OrthoParams.w > 0.5)
-                {
-                    #if UNITY_REVERSED_Z
-                        ham = 1.0 - ham;
-                    #endif
-                    return lerp(_ProjectionParams.y, _ProjectionParams.z, ham);
-                }
-                return LinearEyeDepth(ham, _ZBufferParams);
             }
 
             half4 frag(Varyings input) : SV_Target
