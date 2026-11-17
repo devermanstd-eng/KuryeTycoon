@@ -18,7 +18,8 @@ Shader "KuryeTycoon/MurekkepCizgi"
         _Vinyet("Kenar karartması", Range(0, 1)) = 0.22
         _SisRengi("Uzak sis rengi", Color) = (0.62, 0.74, 0.9, 1)
         _SisGuc("Uzak sis gücü", Range(0, 1)) = 0.5
-        _SisYayilim("Sis yayılımı (odak uzaklığına oran)", Range(0.1, 3)) = 0.9
+        _SisBaslangic("Sis başlangıcı (odaktan öte, birim)", Float) = 8
+        _SisBitis("Tam sis (odaktan öte, birim)", Float) = 60
         _GokUst("Gökyüzü üst", Color) = (0.26, 0.5, 0.86, 1)
         _GokUfukRengi("Gökyüzü ufuk", Color) = (0.82, 0.88, 0.93, 1)
         _BulutMiktar("Bulut miktarı", Range(0, 1)) = 0.5
@@ -58,7 +59,8 @@ Shader "KuryeTycoon/MurekkepCizgi"
             float _Vinyet;
             half4 _SisRengi;
             float _SisGuc;
-            float _SisYayilim;
+            float _SisBaslangic;
+            float _SisBitis;
             half4 _GokUst;
             half4 _GokUfukRengi;
             float _BulutMiktar;
@@ -166,14 +168,14 @@ Shader "KuryeTycoon/MurekkepCizgi"
                 // Mürekkep koyuluğu da titrer: bazı yerlerde çizgi kesik kesik
                 kenar *= lerp(1.0, smoothstep(0.15, 0.55, MC_Gurultu(piksel * 0.08 + 7.0)), _Titreme * 0.6);
 
-                // ---- uzak mavi sis (hava perspektifi): ekran ortasındaki uzaklıktan ötesi maviye, açığa kayar
+                // ---- uzak mavi sis (hava perspektifi): ekranın ortasındaki noktadan GERÇEK uzaklık (birim) olarak ötesi maviye kayar.
+                //      Yakınlaşınca ekrandaki uzaklık farkları küçülür, sis kalkar; uzaklaşınca haritanın uzak ucu sise gömülür.
                 half3 c = renk.rgb;
                 if (!gokyuzu)
                 {
                     float hamM = SampleSceneDepth(float2(0.5, 0.5));
                     float zM = (hamM == 0.0 || hamM == 1.0) ? z0 : MC_Goz(hamM);
-                    float sis = saturate((z0 - zM * 0.85) / max(zM * _SisYayilim, 1e-3));
-                    sis = sis * sis * (3.0 - 2.0 * sis);
+                    float sis = smoothstep(_SisBaslangic, _SisBitis, z0 - zM);
                     half3 sisRenk = lerp(_SisRengi.rgb, half3(0.12, 0.14, 0.24), saturate(_AnimeGece));
                     c = lerp(c, sisRenk, sis * _SisGuc);
                     kenar *= 1.0 - sis * 0.7;                              // uzaktaki çizgiler de sise gömülür
