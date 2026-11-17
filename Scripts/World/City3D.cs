@@ -63,7 +63,7 @@ namespace KuryeTycoon
         };
         public static int OwnBuildingCount { get { LoadPack(); return ownAll.Length; } }
         // Kendi park parçalarımız (Resources/SehirPaketi/Parklar): park kareleri, göl, anıt, meydan çeşmesi
-        static GameObject[] parkTiles, courtTiles, countryExtras, kirAlanlari, kirCimenler;
+        static GameObject[] parkTiles, courtTiles, courtGardens, countryExtras, kirAlanlari, kirCimenler;
         /// <summary>Kendi binalarımızın dikey çarpanı: taban kareye sığdığı için binalar basık görünüyordu.</summary>
         const float OwnHeightBoost = 1.18f;
         static GameObject[] ownOld, ownHigh, ownMixed;
@@ -186,6 +186,7 @@ namespace KuryeTycoon
             }
             parkTiles = tiles.ToArray();
             courtTiles = courts.ToArray();
+            courtGardens = courts.FindAll(c => !c.name.Contains("otopark") && !c.name.Contains("karma")).ToArray();   // arabasız avlular
             countryExtras = extras.ToArray();
             kirAlanlari = alanlar.ToArray();
             kirCimenler = cimenler.ToArray();
@@ -538,10 +539,11 @@ namespace KuryeTycoon
                             {
                                 if (UsePack && courtTiles.Length > 0)
                                 {
-                                    // İç avlu: otopark (park etmiş arabalar), bahçe, oyun alanı, havuz; bir köşesinde ağaç.
-                                    // Referanstaki gibi avluların çoğu dolu otopark ya da yarı otopark yarı bahçe.
-                                    var avlu = courtTiles[rng.Next(courtTiles.Length)];
-                                    if (avlu.name.Contains("havuz") && rng.NextDouble() < 0.6) avlu = courtTiles[rng.Next(courtTiles.Length)];
+                                    // İç avlu: bahçe, oyun alanı, havuz; bir köşesinde ağaç.
+                                    // Otopark yok: Londra blokları avluyu dört yandan kapatıyor, arabaların girecek yolu yok.
+                                    var secenek = courtGardens != null && courtGardens.Length > 0 ? courtGardens : courtTiles;
+                                    var avlu = secenek[rng.Next(secenek.Length)];
+                                    if (avlu.name.Contains("havuz") && rng.NextDouble() < 0.6) avlu = secenek[rng.Next(secenek.Length)];
                                     AddFlat(avlu, tile, 90f * rng.Next(4), 2);
                                     AddTrees(tile, rng, 1, packTreesOk, new Vector2(rng.Next(2) == 0 ? -0.36f : 0.36f, rng.Next(2) == 0 ? -0.36f : 0.36f), 0.04f);
                                 }
