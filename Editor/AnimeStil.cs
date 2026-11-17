@@ -119,17 +119,13 @@ namespace KuryeTycoon.EditorTools
             m.SetFloat("_TonFarki", yesil ? 0.14f : 0.09f);
             m.SetFloat("_FircaOlcek", yesil ? 22f : 16f);
 
-            // Boyalı dokular (ada göre): duvar taş blok + sarmaşık, zemin çim, çatı fırça
-            bool duvar = Bas(ad, "Duvar", "Siva", "Kulube", "Lento", "Suslu") || (Bas(ad, "Tas_", "Tas") && !Bas(ad, "TasAvlu")) ||
-                         (Bas(ad, "Tugla") && !Bas(ad, "TuglaZemin"));
+            // Boyalı dokular (ada göre): duvar sarmaşık, zemin çim, çatı fırça
             bool sarmasik = Bas(ad, "Duvar", "Siva", "Tas_", "Kulube") && !Bas(ad, "TasAvlu");
             bool cim = Bas(ad, "Cim", "YCim", "KirCim", "KirOt", "Saha", "PCim");
             bool cati = Bas(ad, "Cati", "CatiKoyu", "DuzCati", "Kursun", "Cinko", "Arduvaz", "Kiremit");
-            m.SetFloat("_TasBlok", duvar ? 0.85f : 0f);
             m.SetFloat("_Sarmasik", sarmasik ? 1f : 0f);
             m.SetFloat("_Cim", cim ? 1f : 0f);
             m.SetFloat("_CatiFirca", cati ? 1f : 0f);
-            m.SetFloat("_TasBoy", 0.09f);
             m.SetFloat("_SarmasikBoy", 0.5f);
             EditorUtility.SetDirty(m);
         }

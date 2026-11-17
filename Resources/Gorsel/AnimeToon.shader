@@ -29,8 +29,6 @@ Shader "KuryeTycoon/AnimeToon"
         _TonFarki("Renk ton farkı", Range(0, 0.4)) = 0.09
 
         [Header(Boyali dokular)]
-        _TasBlok("Duvar: taş blok çizgileri", Range(0, 1)) = 0
-        _TasBoy("Taş blok yüksekliği (birim)", Float) = 0.09
         _Sarmasik("Duvar: sarmaşık", Range(0, 1)) = 0
         _SarmasikBoy("Sarmaşık yoğunluğu", Float) = 0.5
         _Cim("Zemin: fırçalı çim", Range(0, 1)) = 0
@@ -70,8 +68,6 @@ Shader "KuryeTycoon/AnimeToon"
         half _FircaGuc;
         half _TonFarki;
         half _Rim;
-        half _TasBlok;
-        float _TasBoy;
         half _Sarmasik;
         float _SarmasikBoy;
         half _Cim;
@@ -125,39 +121,17 @@ Shader "KuryeTycoon/AnimeToon"
         return frac(p.x * p.y);
     }
 
-    // Boyalı dokular: taban rengini ışıktan önce değiştirir (taş blok, sarmaşık, çim, çatı fırçası)
+    // Boyalı dokular: taban rengini ışıktan önce değiştirir (sarmaşık, çim, çatı fırçası)
     half3 AT_Dokular(half3 taban, float3 pw, float3 N, inout half isikPay)
     {
         float yukari = dot(N, AT_YUKARI);
         float dikey = saturate(1.0 - abs(yukari) * 1.6);                 // duvarlarda 1
         float h = dot(pw, AT_YUKARI);                                    // yerden yükseklik
 
-        if ((_TasBlok > 0.001 || _Sarmasik > 0.001) && dikey > 0.01)
+        if (_Sarmasik > 0.001 && dikey > 0.5)
         {
             float3 t = normalize(cross(AT_YUKARI, N) + 1e-5);
             float u = dot(pw, t);
-
-            // --- taş bloklar: sıra sıra, şaşırtmalı, kenarları titrek, her blok biraz farklı ton
-            if (_TasBlok > 0.001)
-            {
-                float bh = _TasBoy;
-                float titre = (AT_Gurultu(float3(u * 30.0, h * 30.0, 1.7)) - 0.5) * 0.18;
-                float sira = floor(h / bh + titre * 0.4);
-                float uu = u / (bh * 2.1) + AT_Hash2(float2(sira, 3.1)) + sira * 0.5;
-                float sutun = floor(uu + titre);
-                float fh = frac(h / bh + titre * 0.4);
-                float fu = frac(uu + titre);
-                float cizH = 1.0 - smoothstep(0.05, 0.11, min(fh, 1.0 - fh));
-                float cizU = 1.0 - smoothstep(0.03, 0.07, min(fu, 1.0 - fu));
-                float ciz = max(cizH, cizU);
-                // uzakta (blok birkaç pikselden küçükse) çizgiler kaybolsun: titreşim/moire olmasın
-                float pikselde = fwidth(h) / bh;
-                float gorunur = saturate(1.5 - pikselde * 3.5);
-                half ton = 1.0h + (AT_Hash2(float2(sira, sutun)) - 0.5h) * 0.22h;
-                taban *= lerp(1.0h, ton, dikey * _TasBlok * gorunur);
-                half3 derz = taban * half3(0.5, 0.47, 0.56);
-                taban = lerp(taban, derz, ciz * gorunur * dikey * _TasBlok);
-            }
 
             // --- sarmaşık: duvarda yer yer, kenarı tırtıklı yaprak lekeleri; aşağıda daha çok, yukarı doğru seyrek
             if (_Sarmasik > 0.001 && dikey > 0.5)
