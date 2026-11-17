@@ -135,9 +135,7 @@ namespace KuryeTycoon.EditorTools
             if (mevcut == null)
             {
                 if (!ac) return true;
-                var tip = AppDomain.CurrentDomain.GetAssemblies()
-                    .Select(a => { try { return a.GetTypes(); } catch { return Type.EmptyTypes; } })
-                    .SelectMany(t => t).FirstOrDefault(t => t.Name == "FullScreenPassRendererFeature" && typeof(ScriptableRendererFeature).IsAssignableFrom(t));
+                var tip = TypeCache.GetTypesDerivedFrom<ScriptableRendererFeature>().FirstOrDefault(t => t.Name == "FullScreenPassRendererFeature");
                 if (tip == null) return false;
                 mevcut = ScriptableObject.CreateInstance(tip) as ScriptableRendererFeature;
                 if (mevcut == null) return false;

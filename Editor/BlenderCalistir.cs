@@ -114,8 +114,15 @@ namespace KuryeTycoon.EditorTools
             string metin;
             lock (cikti) metin = cikti.ToString();
             surec = null;
+            try
+            {
+                string logKlasor = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Logs"));
+                Directory.CreateDirectory(logKlasor);
+                File.WriteAllText(Path.Combine(logKlasor, "blender_son.txt"), metin);
+            }
+            catch (Exception) { }
             string son = string.Join("\n", metin.Split('\n').Reverse().Take(25).Reverse());
-            if (kod != 0 || metin.Contains("Traceback"))
+            if (kod != 0 || metin.Contains("Traceback (most recent call last)"))
             {
                 Debug.LogError("Kurye Tycoon: Blender hata verdi (" + betikAdi + "):\n" + metin);
                 EditorUtility.DisplayDialog("Blender", "Blender hata verdi. Ayrıntı Console'da.\n\n" + son, "Tamam");
