@@ -14,7 +14,7 @@ Shader "KuryeTycoon/MurekkepCizgi"
         _Doygunluk("Doygunluk", Range(0.5, 1.6)) = 1.12
         _GolgeMavi("Gölgeleri maviye kaydır", Range(0, 1)) = 0.35
         _IsikSicak("Işıkları sıcağa kaydır", Range(0, 1)) = 0.3
-        _Kagit("Kâğıt dokusu", Range(0, 0.2)) = 0.035
+        _Kagit("Kâğıt dokusu", Range(0, 0.2)) = 0.015
         _Vinyet("Kenar karartması", Range(0, 1)) = 0.22
         _SisRengi("Uzak sis rengi", Color) = (0.62, 0.74, 0.9, 1)
         _SisGuc("Uzak sis gücü", Range(0, 1)) = 0.5

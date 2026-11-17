@@ -24,9 +24,9 @@ Shader "KuryeTycoon/AnimeToon"
         _Ortam("Ortam ışığı payı", Range(0, 2)) = 0.85
 
         [Header(Firca)]
-        _FircaOlcek("Fırça ölçeği", Float) = 16
-        _FircaGuc("Fırça sınır oynaması", Range(0, 0.6)) = 0.22
-        _TonFarki("Renk ton farkı", Range(0, 0.4)) = 0.09
+        _FircaOlcek("Fırça ölçeği", Float) = 6
+        _FircaGuc("Fırça sınır oynaması", Range(0, 0.6)) = 0.05
+        _TonFarki("Renk ton farkı", Range(0, 0.4)) = 0.025
 
         [Header(Boyali dokular)]
         _Sarmasik("Duvar: sarmaşık", Range(0, 1)) = 0

@@ -115,9 +115,10 @@ namespace KuryeTycoon.EditorTools
             bool cam = ad.StartsWith("Cam") || ad.StartsWith("OfisCam") || ad.StartsWith("Vitrin");
             bool yesil = ad.StartsWith("Agac") || ad.StartsWith("Yaprak") || ad.StartsWith("Cali") || ad.StartsWith("Cim") || ad.StartsWith("Sarmasik");
             m.SetFloat("_Rim", cam ? 0.45f : 0.22f);
-            m.SetFloat("_FircaGuc", yesil ? 0.32f : 0.22f);
-            m.SetFloat("_TonFarki", yesil ? 0.14f : 0.09f);
-            m.SetFloat("_FircaOlcek", yesil ? 22f : 16f);
+            // Binalarda fırça çok hafif: güçlü olunca cephelerde gölge/ton lekeleri oluşuyor (kirli görünüm)
+            m.SetFloat("_FircaGuc", yesil ? 0.3f : 0.05f);
+            m.SetFloat("_TonFarki", yesil ? 0.12f : 0.025f);
+            m.SetFloat("_FircaOlcek", yesil ? 22f : 6f);
 
             // Boyalı dokular (ada göre): duvar sarmaşık, zemin çim, çatı fırça
             bool sarmasik = Bas(ad, "Duvar", "Siva", "Tas_", "Kulube") && !Bas(ad, "TasAvlu");
@@ -126,7 +127,7 @@ namespace KuryeTycoon.EditorTools
             m.SetFloat("_Sarmasik", sarmasik ? 1f : 0f);
             m.SetFloat("_Cim", cim ? 1f : 0f);
             m.SetFloat("_CatiFirca", cati ? 1f : 0f);
-            m.SetFloat("_SarmasikBoy", 0.5f);
+            m.SetFloat("_SarmasikBoy", 0.15f);
             EditorUtility.SetDirty(m);
         }
 
@@ -180,7 +181,12 @@ namespace KuryeTycoon.EditorTools
                     mat = new Material(sh) { name = "MurekkepCizgi" };
                     AssetDatabase.CreateAsset(mat, CizgiMatYol);
                 }
-                if (mat != null) mat.SetColor("_Murekkep", Murekkep);
+                if (mat != null)
+                {
+                    mat.SetColor("_Murekkep", Murekkep);
+                    mat.SetFloat("_Kagit", 0.015f);           // kâğıt dokusu çok hafif: yüzeyler lekeli görünmesin
+                    EditorUtility.SetDirty(mat);
+                }
                 var fs = new SerializedObject(mevcut);
                 Ayarla(fs, "passMaterial", mat);
                 Ayarla(fs, "injectionPoint", 550);          // BeforeRenderingPostProcessing: bloom ve ton eşleme çizgiden sonra
