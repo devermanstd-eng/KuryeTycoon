@@ -137,6 +137,11 @@ namespace KuryeTycoon
             return true;
         }
 
+        static readonly int AnimeGokId = Shader.PropertyToID("_AnimeGok");
+        static readonly int AnimeUfukId = Shader.PropertyToID("_AnimeUfuk");
+        static readonly int AnimeGeceId = Shader.PropertyToID("_AnimeGece");
+        static readonly int AnimeBulutId = Shader.PropertyToID("_AnimeBulut");
+
         void CreateSun()
         {
             // Sahnedeki diğer yönlü ışıkları kapat (ör. karakterler için eklenen yedek güneş): iki güneş, iki gölge olmasın
@@ -252,6 +257,11 @@ namespace KuryeTycoon
             RenderSettings.ambientSkyColor = p.gok;
             RenderSettings.ambientEquatorColor = p.ufuk;
             RenderSettings.ambientGroundColor = p.zemin;
+            // Anime stil (MurekkepCizgi): boyalı gökyüzü ve mavi uzak sis saate ve havaya uysun
+            Shader.SetGlobalColor(AnimeGokId, p.gok);
+            Shader.SetGlobalColor(AnimeUfukId, p.ufuk);
+            Shader.SetGlobalFloat(AnimeGeceId, night);
+            Shader.SetGlobalFloat(AnimeBulutId, fx != null && WeatherFx.Enabled ? Mathf.Clamp01(fx.CloudAmt * 0.6f + fx.RainAmt * 0.5f + fx.StormAmt * 0.5f) : 0f);
             // Gece camlar gündüz gökyüzünü yansıtıp mavi-beyaz parlamasın
             RenderSettings.reflectionIntensity = Mathf.Lerp(1f, 0.12f, night);
             // Kod kutusu binalar (AVM, otogar, merkez) ışıktan etkilenmiyor: geceye kendileri uysun
