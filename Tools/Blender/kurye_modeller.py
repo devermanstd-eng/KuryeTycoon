@@ -1564,9 +1564,66 @@ def calilik(g, x0, x1, y, r, rnd):
             top(g, (x + 0.15, y - 0.2, EV_ZEMIN + 0.55), 0.1, 0.1, 0.1, rnd.choice(r["cicek"]))
 
 
+# ---------- boyalı (anime / Ghibli tarzı) yeşillik: koyu iç, orta gövde, aydınlık tepe; tırtıklı yaprak kümeleri
+
+YESIL_TONLAR = [  # (koyu, orta, açık, en açık)
+    ("#2c4d33", "#477a43", "#7fae55", "#b4d27a"),   # taze yeşil
+    ("#34502f", "#5a8240", "#98b84f", "#cfd879"),   # sarımsı yeşil
+    ("#26463d", "#3f7356", "#6fa66e", "#a6cf93"),   # mavimsi yeşil
+]
+
+
+def yesil_malzemeler(i):
+    k, o, a, e = YESIL_TONLAR[i % len(YESIL_TONLAR)]
+    return [M("YaprakKoyu", k), M("YaprakOrta", o), M("YaprakAcik", a), M("YaprakEnAcik", e)]
+
+
+def yaprak_kumesi(g, c, rad, rnd, mat, basik=0.82, puruz=0.13):
+    """Tek yaprak kümesi: yumuşak gölgeli, kenarı tırtıklı top (fırçayla boyanmış bulut gibi)."""
+    vs, fs = _ico2() if rad >= 0.3 else (ICO_V, ICO_F)
+    pts = []
+    for p in vs:
+        j = 1.0 + rnd.uniform(-puruz, puruz)
+        z = p[2] * basik if p[2] > 0 else p[2] * basik * 0.75       # alt yüzü daha basık
+        pts.append((c[0] + p[0] * rad * j, c[1] + p[1] * rad * j, c[2] + z * rad * j))
+    dis_bukey(g, pts, fs, mat, yumusak=True)
+
+
+def boyali_tepe(g, c, R, rnd, mats, n=None, en=1.0, boy=1.0):
+    """Ağaç tepesi: koyu büyük çekirdek + yüzeyine dizilmiş kümeler; yukarı baktıkça açık ton."""
+    koyu, orta, acik, en_acik = mats
+    yaprak_kumesi(g, c, R * 0.78, rnd, koyu, basik=0.85 * boy)
+    n = n or rnd.randint(10, 14)
+    for k in range(n):
+        a = (k + rnd.uniform(-0.3, 0.3)) * 2.399963                # altın açı: düzgün dağılım
+        zz = rnd.uniform(-0.45, 1.0)
+        rr = math.sqrt(max(0.0, 1.0 - zz * zz))
+        d = (math.cos(a) * rr, math.sin(a) * rr, zz)
+        p = (c[0] + d[0] * R * 0.62 * en, c[1] + d[1] * R * 0.62 * en, c[2] + d[2] * R * 0.55 * boy)
+        rad = R * rnd.uniform(0.36, 0.52)
+        t = zz + rnd.uniform(-0.25, 0.25)
+        mat = koyu if t < -0.15 else orta if t < 0.4 else acik
+        yaprak_kumesi(g, p, rad, rnd, mat)
+    for _ in range(rnd.randint(2, 4)):                              # tepede güneş vuran küçük açık kümeler
+        a = rnd.uniform(0, 2 * math.pi)
+        rr = rnd.uniform(0.0, 0.45)
+        p = (c[0] + math.cos(a) * R * rr * en, c[1] + math.sin(a) * R * rr * en, c[2] + R * rnd.uniform(0.5, 0.68) * boy)
+        yaprak_kumesi(g, p, R * rnd.uniform(0.24, 0.34), rnd, en_acik)
+
+
+def boyali_govde(g, x, y, z0, boy, kal, rnd, mat, dal=3):
+    """İnceltilmiş gövde ve tepeye uzanan dallar."""
+    silindir(g, x, y, z0, boy * 0.55, kal, 7, mat)
+    silindir(g, x, y, z0 + boy * 0.55 - 0.02, boy * 0.5, kal * 0.72, 7, mat)
+    for k in range(dal):
+        a = k * 2.0 * math.pi / dal + rnd.uniform(-0.5, 0.5)
+        z = z0 + boy * rnd.uniform(0.7, 0.9)
+        cubuk(g, (x, y, z), (x + math.cos(a) * boy * 0.24, y + math.sin(a) * boy * 0.24, z + boy * 0.6), kal * 0.45, mat)
+
+
 def agac(g, x, y, r, rnd, boy=1.4, rr=0.85):
-    silindir(g, x, y, EV_ZEMIN, boy, 0.09, 6, r["govde"])
-    top(g, (x, y, EV_ZEMIN + boy + rr * 0.8), rr, rr, rr * 1.05, rnd.choice(r["agac"]))
+    boyali_govde(g, x, y, EV_ZEMIN, boy, 0.09, rnd, r["govde"], dal=2)
+    boyali_tepe(g, (x, y, EV_ZEMIN + boy + rr * 0.6), rr * 1.05, rnd, yesil_malzemeler(rnd.randrange(3)), n=8)
 
 
 def duz_cati_ust(g, x0, x1, y0, y1, H, r, rnd, parapet_renk, klima=2):
@@ -2509,27 +2566,41 @@ def koni(g, cx, cy, z0, h, rad, n, mat):
 
 def agac_modeli(r, rnd, tur, renk_i):
     g = Govde()
-    renk = r["agac"][renk_i % len(r["agac"])]
+    yesil = yesil_malzemeler(renk_i)
+    govde = M("AgacGovde", "#6a4a37")
     if tur == "cam":
-        silindir(g, 0.0, 0.0, 0.0, 0.9, 0.16, 6, r["govde"])
-        koyu = M("AgacCam", "#4f7f4a")
-        for i, (z, rad, h) in enumerate(((0.7, 1.35, 1.9), (1.6, 1.05, 1.7), (2.45, 0.72, 1.5))):
-            koni(g, 0.0, 0.0, z, h, rad, 7, koyu)
+        # Uzun servi / kavak: dar, yukarı doğru incelen küme yığını
+        boyali_govde(g, 0.0, 0.0, 0.0, 1.0, 0.12, rnd, govde, dal=0)
+        koyu, orta, acik, en_acik = yesil
+        yaprak_kumesi(g, (0.0, 0.0, 1.9), 0.42, rnd, koyu, basik=3.2)
+        kat = 7
+        for k in range(kat):
+            t = k / (kat - 1)
+            z = 0.9 + t * 2.4
+            rad = 0.62 * (1.0 - t * 0.6)
+            for m in range(3):
+                a = m * 2.094 + k * 0.9 + rnd.uniform(-0.3, 0.3)
+                p = (math.cos(a) * rad * 0.55, math.sin(a) * rad * 0.55, z)
+                tt = t + math.sin(a) * 0.25 + rnd.uniform(-0.15, 0.15)
+                yaprak_kumesi(g, p, rad * rnd.uniform(0.6, 0.75), rnd, koyu if tt < 0.15 else orta if tt < 0.6 else acik, basik=1.2)
+        yaprak_kumesi(g, (0.05, 0.0, 3.45), 0.2, rnd, en_acik, basik=1.3)
     elif tur == "cali":
-        for _ in range(3):
-            top(g, (rnd.uniform(-0.35, 0.35), rnd.uniform(-0.35, 0.35), 0.4), rnd.uniform(0.45, 0.6), rnd.uniform(0.45, 0.6), 0.42, r["cali"])
+        koyu, orta, acik, en_acik = yesil
+        yaprak_kumesi(g, (0.0, 0.0, 0.32), 0.5, rnd, koyu, basik=0.7)
+        for k in range(6):
+            a = k * 1.047 + rnd.uniform(-0.3, 0.3)
+            p = (math.cos(a) * 0.38, math.sin(a) * 0.38, rnd.uniform(0.3, 0.5))
+            yaprak_kumesi(g, p, rnd.uniform(0.26, 0.34), rnd, orta if k % 2 else acik, basik=0.8)
+        yaprak_kumesi(g, (0.0, 0.05, 0.62), 0.24, rnd, en_acik)
         if rnd.random() < 0.6:
-            for _ in range(3):
-                top(g, (rnd.uniform(-0.5, 0.5), rnd.uniform(-0.5, -0.2), rnd.uniform(0.5, 0.75)), 0.1, 0.1, 0.1, rnd.choice(r["cicek"]))
+            for _ in range(5):
+                a = rnd.uniform(0, 2 * math.pi)
+                top(g, (math.cos(a) * 0.5, math.sin(a) * 0.5, rnd.uniform(0.45, 0.7)), 0.07, 0.07, 0.07, rnd.choice(r["cicek"]))
     else:
-        boy = rnd.uniform(1.3, 1.8)
-        silindir(g, 0.0, 0.0, 0.0, boy, 0.15, 6, r["govde"])
-        cubuk(g, (0.0, 0.0, boy * 0.7), (0.45, 0.1, boy + 0.25), 0.1, r["govde"])
-        rr = rnd.uniform(0.95, 1.2)
-        top(g, (0.0, 0.0, boy + rr * 0.75), rr, rr, rr * 1.0, renk)
-        top(g, (rr * 0.55, 0.15, boy + rr * 0.35), rr * 0.62, rr * 0.62, rr * 0.55, renk)
-        if rnd.random() < 0.6:
-            top(g, (-rr * 0.5, -0.1, boy + rr * 0.45), rr * 0.55, rr * 0.55, rr * 0.5, renk)
+        boy = rnd.uniform(1.4, 1.9)
+        boyali_govde(g, 0.0, 0.0, 0.0, boy, 0.15, rnd, govde, dal=3)
+        R = rnd.uniform(1.15, 1.4)
+        boyali_tepe(g, (0.0, 0.0, boy + R * 0.45), R, rnd, yesil, en=1.08)
     return g
 
 
