@@ -134,7 +134,9 @@ namespace KuryeTycoon
                     }
             }
             ownAll = own.ToArray();
-            ownHouses = houses.ToArray();
+            // Londra evleri varsa banliyöde sadece onlar (eski Avrupa evleri kullanılmaz)
+            var londraEv = houses.FindAll(h => h.name.Contains("_londra_"));
+            ownHouses = londraEv.Count > 0 ? londraEv.ToArray() : houses.ToArray();
             ownTown = town.ToArray();
             ownIndustry = industry.ToArray();
             ownFarm = farm.ToArray();
@@ -555,17 +557,17 @@ namespace KuryeTycoon
                                 kamuKalan.RemoveAt(ki);
                                 AddPrefab(kb, tile, OwnFootprint(kb, 0.97f), face, null, default, 0f, true, true);
                             }
-                            else if (own && ownRef != null && ownRef.Length > 0 && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise) &&
+                            else if (!BlokVar && own && ownRef != null && ownRef.Length > 0 && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise) &&
                                      rng.NextDouble() < 0.28)
                             {
                                 // Referans binaları (Haussmann, Altbau, pasajlı bina, pub, fırın, benzinlik …)
                                 var rb = ownRef[rng.Next(ownRef.Length)];
                                 AddPrefab(rb, tile, OwnFootprint(rb, 0.97f), face, null, default, 0f, true, true);
                             }
-                            else if (BlokVar && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise) &&
-                                     !(zone == Zone.HighRise && floors >= 10 && rng.NextDouble() < 0.5) && rng.NextDouble() < 0.88)
+                            else if (BlokVar && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise || zone == Zone.Campus))
                             {
-                                // Kapalı blok: bitişik binalar kaldırıma yaslanır, köşede L biçimli köşe binası
+                                // Kapalı blok (Londra): bitişik binalar kaldırıma yaslanır, köşede L biçimli köşe binası.
+                                // Eski Avrupa binaları (Konut_ref, Büro, ofis kulesi) Londra blokları varken kullanılmaz.
                                 AddBlok(map, tile, floors, rng);
                             }
                             else if (own && ownTown.Length > 0)

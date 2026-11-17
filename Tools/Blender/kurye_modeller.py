@@ -3437,13 +3437,14 @@ DUKKANLAR = {
     "genel_sajt":     ("SAJT", "#d9a83a", "kitap"),
 }
 
-DUKKAN_DUVAR = ["#f1e4c8", "#ecd3a4", "#f0cdb0", "#d9dfc6", "#cfdbe3", "#e8d6c8", "#f4f0e6", "#b8634a", "#9c4a35"]
+# Londra: sarı (stock) ve kırmızı tuğla, beyaz sıva, birkaç pastel
+DUKKAN_DUVAR = ["#b89a6c", "#a98b60", "#c2a577", "#a5432f", "#9b3e2c", "#b04f37", "#f4f0e7", "#efe9dc", "#f2c6c2", "#bcd6e6"]
 
 
 def dukkan_renkleri(rnd, ana):
     duvar = rnd.choice(DUKKAN_DUVAR)
-    tugla = duvar in ("#b8634a", "#9c4a35")
-    cati = rnd.choice(["#5b5d63", "#5b5d63", "#c0573a", "#b04a33"])
+    tugla = duvar in LN_TUGLA["sari"] + LN_TUGLA["kirmizi"]
+    cati = rnd.choice(LN_ARDUVAZ)
     r = {
         "duvar": M("Duvar", duvar), "suslu": M("Suslu", "#f8f4ea"), "taban": M("Taban", "#b8b0a3"),
         "cati": M("Cati", cati), "cati_koyu": M("CatiKoyu", koyu_ton(cati)), "baca": M("Baca", "#c9b9a3" if not tugla else duvar),
@@ -3568,53 +3569,41 @@ def dukkanli_bina(rnd, anahtar):
 
     dukkan_on_kati(g, on, W, zb, Hz, r, rnd, ad, tur)
 
-    # Üst katlar: pencereler, Fransız balkonları; ilk katta boydan boya balkon (Haussmann)
-    n = max(3, int(W / 2.2))
+    # Üst katlar (Londra): beyaz sürgülü pencereler, tuğla ya da taş lentolar, birinci katta ferforje korkuluk
+    lr = ln_renk(rnd, HEX.get(r["duvar"], "#b89a6c"))
+    for k in ("sash", "tas", "lento", "kursun", "baca_kap", "duz_cati", "pirinc", "siyah", "sari_isik", "tugla"):
+        r[k] = lr[k]
+    r.setdefault("cim", M("Cim", EV_SABIT["cim"]))
+    stil = rnd.choice(["parapet", "parapet", "mansart", "besik", "mansion"])
+    n = max(3, int(W / 2.0))
     for f in range(kat):
-        z = zb + Hz + f * KY + 0.55
+        zf = zb + Hz + f * KY
+        if stil == "mansion" or f == 0:
+            ckutu(g, on, -0.03, W + 0.03, 0, 0.1, zf - 0.08, zf + 0.12, r["tas"])           # taş kat bandı
         for i in range(n):
             u = W * (i + 0.5) / n
-            pencere(g, on, u, z, 0.9, 1.75, r, sade=False)
-            if stil == "mansart" and f != 1:
-                for k in range(6):
-                    uu = u - 0.5 + k * 0.2
-                    ckutu(g, on, uu - 0.02, uu + 0.02, 0.18, 0.22, z - 0.05, z + 0.6, r["demir"])
-                ckutu(g, on, u - 0.55, u + 0.55, 0.16, 0.24, z + 0.6, z + 0.66, r["demir"])
-            elif rnd.random() < 0.3:
-                p = on.P(u, 0.25, z - 0.08)
-                kutu(g, p[0] - 0.45, p[0] + 0.45, p[1] - 0.12, p[1] + 0.12, z - 0.3, z - 0.08, r["saksi"])
-                top(g, (p[0], p[1], z), 0.3, 0.12, 0.1, rnd.choice(r["cicek"]))
-        if stil == "mansart" and f == 1:
-            zz = z - 0.35
-            ckutu(g, on, -0.1, W + 0.1, 0, 0.8, zz - 0.15, zz, r["suslu"])
-            for k in range(int(W / 0.2)):
-                uu = 0.0 + k * 0.2
-                ckutu(g, on, uu - 0.02, uu + 0.02, 0.74, 0.78, zz, zz + 0.85, r["demir"])
-            ckutu(g, on, -0.1, W + 0.1, 0.72, 0.8, zz + 0.85, zz + 0.92, r["demir"])
-        if f < kat - 1:
-            ckutu(g, on, -0.03, W + 0.03, 0, 0.08, zb + Hz + (f + 1) * KY - 0.05, zb + Hz + (f + 1) * KY + 0.06, r["suslu"])
+            hh = 2.0 if f == 0 else (1.7 if f < kat - 1 else 1.45)
+            ust = "kilit" if (stil == "mansion" or not r["_tugla"]) else "lento"
+            ln_sash(g, on, u, zf + (0.35 if f == 0 else 0.55), 0.95, hh, r, ust=ust, balkonet=(f == 0 and stil != "mansion"))
         for fc, L in ((sol, D), (sag, D)):
             for u in (L * 0.3, L * 0.7):
-                pencere(g, fc, u, z, 0.8, 1.5, r, sade=True)
+                ln_sash(g, fc, u, zf + 0.55, 0.85, 1.5, r, ust="lento")
         for i in range(n):
-            pencere(g, arka, W * (i + 0.5) / n, z, 0.8, 1.4, r, sade=True)
-        if rnd.random() < 0.35:
-            klima_dis(g, rnd.choice([sol, sag]), D * 0.5, z - 0.3)
+            pencere(g, arka, W * (i + 0.5) / n, zf + 0.6, 0.8, 1.4, r, sade=True)
 
-    # Çatı
-    if stil == "mansart":
-        mansart_cati(g, x0, x1, fy, by, Ht, r, rnd, n)
-    elif stil == "kiremit":
-        r2 = dict(r)
-        r2["cati"], r2["cati_koyu"] = M("Cati", "#c0573a"), M("CatiKoyu", koyu_ton("#c0573a"))
-        kutu(g, x0 - 0.05, x1 + 0.05, fy - 0.05, by + 0.05, Ht - 0.2, Ht, r["suslu"], atla=("zn", "zp"))
-        zr = besik_cati(g, "x", x0, x1, fy, by, Ht, r2)
-        ev_baca(g, x0 + W * 0.75, fy + D / 2 + 0.6, cati_z(Ht, fy, by, fy + D / 2 + 0.6) - 0.3, zr + 0.45, r2)
+    # Çatı (Londra): parapet arkasında arduvaz mansart ya da düz kurşun, beşik arduvaz, yanlarda baca kümeleri
+    if stil in ("parapet", "mansion"):
+        ln_parapet(g, on, 0.0, W, Ht, r, r["duvar"], h=0.7)
+        kutu(g, x0, x1, fy + 0.3, by, Ht, Ht + 0.3, r["duz_cati"], atla=("zn",))
+        zt = Ht + 0.3
+    elif stil == "mansart":
+        ln_parapet(g, on, 0.0, W, Ht, r, r["duvar"], h=0.5)
+        zt = ln_mansart(g, x0, x1, fy + 0.35, by, Ht, r, n=3)
     else:
-        kutu(g, x0 - 0.2, x1 + 0.2, fy - 0.2, by + 0.2, Ht, Ht + 0.35, r["suslu"], atla=("zn",))
-        kutu(g, x0 - 0.1, x1 + 0.1, fy - 0.1, by + 0.1, Ht + 0.35, Ht + 0.85, r["duvar"], atla=("zn",), yuzler={"zp": r["beton"]})
-        cati_anteni(g, x0 + W * 0.3, fy + D * 0.6, Ht + 0.85)
-        gunes_paneli(g, x0 + W * 0.65, fy + D * 0.4, Ht + 0.85, 1.8, 1.1)
+        kutu(g, x0 - 0.05, x1 + 0.05, fy - 0.05, by + 0.05, Ht - 0.2, Ht, r["tas"], atla=("zn", "zp"))
+        zt = besik_cati(g, "x", x0, x1, fy, by, Ht, r, sacak=0.3, yan_sacak=0.15)
+    for bx in (x0 + 0.35, x1 - 0.35):
+        ln_baca(g, bx, fy + 2.0, by - 2.0, Ht, max(1.4, zt - Ht + 1.0), r)
 
     for xx in (x0 - 0.07, x1 + 0.07):
         oluk(g, xx, fy - 0.07, zb, Ht - 0.1)
@@ -6343,6 +6332,180 @@ def ln_blok(rnd, stil, kat, kose=False):
     if stil == "mansion":
         return ln_mansion(rnd, kat)
     return ln_modern(rnd, kat)
+
+
+# ------------------------------------------------------------------ LONDRA banliyö evleri (Yeşil Tepe, Bahçeli Evler)
+
+def ln_on_bahce(g, rnd, x0, x1, y_duvar, kapi_x, r):
+    """Önde alçak tuğla bahçe duvarı (taş kapaklı), arkasında çit, kapı önünde siyah demir bahçe kapısı ve yol taşları."""
+    for a, b in ((x0, kapi_x - 0.6), (kapi_x + 0.6, x1)):
+        if b - a < 0.3:
+            continue
+        kutu(g, a, b, y_duvar, y_duvar + 0.25, EV_ZEMIN, EV_ZEMIN + 0.6, r["tugla"])
+        kutu(g, a - 0.02, b + 0.02, y_duvar - 0.03, y_duvar + 0.28, EV_ZEMIN + 0.6, EV_ZEMIN + 0.68, r["tas"])
+        calilik(g, a + 0.2, b - 0.2, y_duvar + 0.6, r, rnd)
+    for s in (-1, 1):                                                           # kapı direkleri
+        kutu(g, kapi_x + s * 0.6 - 0.15, kapi_x + s * 0.6 + 0.15, y_duvar - 0.02, y_duvar + 0.27, EV_ZEMIN, EV_ZEMIN + 0.95, r["tugla"])
+        top(g, (kapi_x + s * 0.6, y_duvar + 0.12, EV_ZEMIN + 1.02), 0.13, 0.13, 0.11, r["tas"])
+    kutu(g, kapi_x - 0.45, kapi_x + 0.45, y_duvar + 0.1, y_duvar + 0.14, EV_ZEMIN + 0.1, EV_ZEMIN + 0.85, r["siyah"])
+
+
+def ln_kalca(g, x0, x1, y0, y1, zt, r, egim=0.75, sacak=0.35):
+    """Arduvaz kırma çatı."""
+    kalca_cati(g, x0, x1, y0, y1, zt, egim, r["cati"], sacak=sacak)
+
+
+def ln_ev(rnd, tip):
+    g = Govde()
+    z0 = EV_ZEMIN
+    if tip in ("ikiz", "kulube"):
+        duvar = rnd.choice(LN_TUGLA["kirmizi"] + LN_TUGLA["sari"])
+    elif tip == "villa":
+        duvar = rnd.choice(LN_SIVA + ["#f2e6cf", "#e9dcc3"])
+    else:
+        duvar = rnd.choice(LN_TUGLA["kirmizi"])
+    r = ln_renk(rnd, duvar)
+    r["siva"] = M("Siva", "#f4f0e7")
+    r.setdefault("cim", M("Cim", EV_SABIT["cim"]))
+    PW, PD = 10.0, 10.0
+    levha(g, 0.0, PW, 0.0, PD, 0.0, z0, r["cim"])
+    fy = 3.0                                                                     # ön bahçe derinliği
+    H0 = z0 + 0.45 + 3.0
+    KY = 2.9
+    kat = 2 if tip != "villa" else rnd.choice([2, 3])
+    Ht = z0 + 0.45 + 3.0 + (kat - 1) * KY
+    zf = z0 + 0.45
+
+    if tip in ("ikiz", "kulube"):
+        # İki ev, ortadan simetrik (yarı bitişik ikiz ev / iki bitişik işçi evi)
+        W = 8.6 if tip == "ikiz" else 9.4
+        x0 = (PW - W) / 2
+        by = fy + (6.2 if tip == "ikiz" else 5.6)
+        kutu(g, x0, x0 + W, fy, by, z0, Ht, r["duvar"], atla=("zn",))
+        kutu(g, x0 - 0.04, x0 + W + 0.04, fy - 0.04, by + 0.04, z0, zf, r["taban"], atla=("zn",))
+        yarim = W / 2
+        kapilar = []
+        for i in range(2):
+            a = x0 + i * yarim
+            fc = Cephe((a, fy, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+            sag_ev = i == 1
+            ku = yarim - 0.75 if not sag_ev else 0.75                            # kapılar ortada yan yana
+            cb = yarim * (0.35 if not sag_ev else 0.65)
+            ckutu(g, fc, 0.0, yarim, 0, 0.12, H0 - 0.12, H0 + 0.1, r["tas"])         # kat bandı
+            # zemin + birinci kat cumba (ikiz) ya da tek kat cumba (kulübe)
+            cw = min(2.3, yarim * 0.55)
+            z1 = H0 + KY - 0.2 if tip == "ikiz" else H0 - 0.1
+            katlar = [(zf + 0.45, 1.7)] + ([(H0 + 0.5, 1.5)] if tip == "ikiz" else [])
+            ln_cumba(g, fc, cb, cw, z0, z1, r, r["duvar"] if tip == "kulube" else r["siva"], katlar,
+                     cati="kursun")
+            ln_kapi(g, fc, ku, zf, r)
+            ckutu(g, fc, ku - 0.75, ku + 0.75, 0, 0.7, zf + 2.75, zf + 2.88, r["tas"])     # giriş saçağı
+            for f in range(kat - 1):
+                z = H0 + f * KY
+                if tip == "ikiz" and f == 0:
+                    ln_sash(g, fc, ku, z + 0.55, 0.85, 1.45, r, ust="kilit")
+                else:
+                    for u in (cb, ku):
+                        ln_sash(g, fc, u, z + 0.55, 0.9, 1.5, r, ust="kilit")
+            kapilar.append(x0 + i * yarim + ku)
+        if tip == "ikiz" and rnd.random() < 0.6:
+            # üst katta beyaz sıva ve kara ahşap şeritler (sahte Tudor alınlık) + kırma çatı
+            fc = Cephe((x0, fy, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+            for i in range(2):
+                gm = (0.35 if i == 0 else 0.65) * yarim + i * yarim
+                cw = min(2.3, yarim * 0.55) + 0.6
+                cprizma(g, fc, [(gm - cw / 2 - 0.1, Ht - 0.1), (gm + cw / 2 + 0.1, Ht - 0.1), (gm, Ht + 1.9)], -2.2, 0.9, r["cati"])
+                cprizma(g, fc, [(gm - cw / 2, Ht), (gm + cw / 2, Ht), (gm, Ht + 1.65)], 0.9, 0.93, r["siva"])
+                for k in (-0.5, 0.0, 0.5):
+                    cubuk(g, fc.P(gm + k * cw * 0.6, 0.95, Ht), fc.P(gm + k * cw * 0.6, 0.95, Ht + 1.6 - abs(k) * 1.6), 0.07, r["siyah"], kabuk=False)
+            ln_kalca(g, x0, x0 + W, fy, by, Ht, r)
+        else:
+            besik_cati(g, "x", x0, x0 + W, fy, by, Ht, r, sacak=0.3, yan_sacak=0.25)
+        ln_baca(g, x0 + W / 2, fy + 1.8, by - 1.8, Ht + 1.0, 1.8, r)
+        for xb in (x0 + 0.3, x0 + W - 0.3):
+            ln_baca(g, xb, fy + 2.2, by - 2.2, Ht + 0.6, 1.4, r)
+        arka = Cephe((x0 + W, by, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+        pencereler(g, arka, W, zf, kat, KY, r, w=0.8, h=1.3, aralik=2.0, sade=True)
+        for fcx, L in ((Cephe((x0, by, 0.0), (0.0, -1.0, 0.0), (-1.0, 0.0, 0.0)), by - fy),
+                       (Cephe((x0 + W, fy, 0.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)), by - fy)):
+            ln_sash(g, fcx, L / 2, H0 + 0.55, 0.7, 1.2, r, ust="lento")
+        for kx in kapilar:                                                       # bahçe yolu
+            kutu(g, kx - 0.45, kx + 0.45, 0.6, fy - 0.3, z0, z0 + 0.03, M("YolTasi", "#c9b9a6"))
+        ln_on_bahce(g, rnd, 0.3, kapilar[0] + 0.0, 0.35, kapilar[0], r)
+        ln_on_bahce(g, rnd, kapilar[0] + 0.6, PW - 0.3, 0.35, kapilar[1], r) if abs(kapilar[1] - kapilar[0]) > 1.4 else None
+    else:
+        # Müstakil: villa (sıvalı, simetrik, sütunlu giriş, kırma çatı) ya da Edwardian (kırmızı tuğla, alınlık, cumba)
+        W = 7.4 if tip == "villa" else 7.0
+        x0 = (PW - W) / 2
+        by = fy + 6.0
+        kutu(g, x0, x0 + W, fy, by, z0, Ht, r["duvar"], atla=("zn",))
+        kutu(g, x0 - 0.04, x0 + W + 0.04, fy - 0.04, by + 0.04, z0, zf, r["taban"], atla=("zn",))
+        fc = Cephe((x0, fy, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
+        ckutu(g, fc, 0.0, W, 0, 0.12, H0 - 0.12, H0 + 0.1, r["tas"])
+        if tip == "villa":
+            ku = W / 2
+            ln_kapi(g, fc, ku, zf, r, "portik")
+            for u in (W * 0.18, W * 0.82):
+                ln_sash(g, fc, u, zf + 0.45, 1.0, 1.95, r, ust="alinlik")
+            for f in range(kat - 1):
+                z = H0 + f * KY
+                for u in (W * 0.18, W * 0.82) + ((ku,) if f > 0 else ()):
+                    ln_sash(g, fc, u, z + 0.5, 0.95, 1.6 if f == 0 else 1.3, r, ust="ucgen" if f == 0 else "alinlik")
+            ckutu(g, fc, 0.0, 0.2, 0, 0.08, z0, Ht, r["tas"])
+            ckutu(g, fc, W - 0.2, W, 0, 0.08, z0, Ht, r["tas"])
+            ckutu(g, fc, -0.1, W + 0.1, 0, 0.35, Ht - 0.3, Ht, r["tas"])
+            ln_kalca(g, x0, x0 + W, fy, by, Ht, r, egim=0.6, sacak=0.25)
+            for xb in (x0 + 0.5, x0 + W - 0.5):
+                ln_baca(g, xb, fy + 2.2, by - 2.2, Ht + 0.8, 1.6, r)
+        else:
+            ku = W * 0.78
+            cb = W * 0.3
+            cw = 2.6
+            ln_cumba(g, fc, cb, cw, z0, H0 + KY - 0.2, r, r["duvar"], [(zf + 0.45, 1.7), (H0 + 0.5, 1.5)], cati="kursun")
+            # öne çıkan alınlık (yarı ahşap, beyaz sıva)
+            gm = cb
+            gw = cw + 0.8
+            cprizma(g, fc, [(gm - gw / 2 - 0.1, Ht - 0.1), (gm + gw / 2 + 0.1, Ht - 0.1), (gm, Ht + 2.0)], -2.5, 0.95, r["cati"])
+            cprizma(g, fc, [(gm - gw / 2, Ht), (gm + gw / 2, Ht), (gm, Ht + 1.75)], 0.95, 0.98, r["siva"])
+            for k in (-0.6, -0.2, 0.2, 0.6):
+                cubuk(g, fc.P(gm + k * gw * 0.5, 1.0, Ht), fc.P(gm + k * gw * 0.5, 1.0, Ht + 1.7 * (1 - abs(k) * 0.95)), 0.07, r["siyah"], kabuk=False)
+            ln_kapi(g, fc, ku, zf, r)
+            ckutu(g, fc, ku - 0.85, ku + 0.85, 0, 1.0, zf + 2.75, zf + 2.9, r["tas"])        # giriş sundurması
+            for s in (-1, 1):
+                cubuk(g, fc.P(ku + s * 0.8, 0.95, z0), fc.P(ku + s * 0.8, 0.95, zf + 2.75), 0.09, r["sash"], kabuk=False)
+            ln_sash(g, fc, ku, H0 + 0.55, 0.9, 1.45, r, ust="kilit")
+            ln_kalca(g, x0, x0 + W, fy, by, Ht, r, egim=0.85, sacak=0.3)
+            ln_baca(g, x0 + W - 0.6, fy + 2.0, by - 2.0, Ht + 0.9, 1.9, r)
+        arka = Cephe((x0 + W, by, 0.0), (-1.0, 0.0, 0.0), (0.0, 1.0, 0.0))
+        pencereler(g, arka, W, zf, kat, KY, r, w=0.8, h=1.3, aralik=2.0, sade=True)
+        for fcx in (Cephe((x0, by, 0.0), (0.0, -1.0, 0.0), (-1.0, 0.0, 0.0)), Cephe((x0 + W, fy, 0.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0))):
+            for u in (2.0, 4.0):
+                ln_sash(g, fcx, u, H0 + 0.55, 0.75, 1.25, r, ust="lento")
+        kx = x0 + ku
+        kutu(g, kx - 0.5, kx + 0.5, 0.6, fy - 0.3, z0, z0 + 0.03, M("YolTasi", "#c9b9a6"))
+        ln_on_bahce(g, rnd, 0.3, PW - 0.3, 0.35, kx, r)
+    # arka bahçe: ağaç, çit, kulübe
+    agac(g, rnd.uniform(1.2, 2.5), PD - 1.0, r, rnd, boy=1.6, rr=0.95)
+    if rnd.random() < 0.6:
+        agac(g, rnd.uniform(7.5, 8.8), PD - 1.1, r, rnd, boy=1.3, rr=0.75)
+    for xx in (0.15, PW - 0.15):                                                 # ahşap yan çitler
+        kutu(g, xx - 0.04, xx + 0.04, fy, PD - 0.1, z0, z0 + 1.2, M("Cit", "#7a5a3a"))
+    if CIZGI:
+        kabuk(g, CIZGI_KALINLIK)
+    return g, ortala(g)
+
+
+LN_EV_TIPLERI = ["ikiz", "ikiz", "edwardian", "villa", "kulube", "ikiz", "edwardian", "villa", "kulube"]
+
+
+def ln_evler():
+    sonuc = []
+    for i, tip in enumerate(LN_EV_TIPLERI):
+        rnd = random.Random(TOHUM * 4409 + i * 37)
+        g, gen = ln_ev(rnd, tip)
+        sonuc.append((f"MustakilEv_londra_{tip}_{i + 1}", g, gen))
+    return sonuc
+
 
 
 BLOK_STILLER = {
@@ -9286,6 +9449,8 @@ def uret():
         return keseler()
     if MODEL == "blok":
         return bloklar()
+    if MODEL == "londra_ev":
+        return ln_evler()
     if MODEL == "referans":
         return referans()
     if MODEL == "dukkan":
