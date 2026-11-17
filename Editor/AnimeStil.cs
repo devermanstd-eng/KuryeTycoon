@@ -129,6 +129,8 @@ namespace KuryeTycoon.EditorTools
             m.SetFloat("_Sarmasik", sarmasik ? 1f : 0f);
             m.SetFloat("_Cim", cim ? 1f : 0f);
             m.SetFloat("_CatiFirca", cati ? 1f : 0f);
+            m.SetFloat("_TasBoy", 0.09f);
+            m.SetFloat("_SarmasikBoy", 0.5f);
             EditorUtility.SetDirty(m);
         }
 

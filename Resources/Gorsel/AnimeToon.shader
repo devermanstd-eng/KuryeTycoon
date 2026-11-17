@@ -30,9 +30,9 @@ Shader "KuryeTycoon/AnimeToon"
 
         [Header(Boyali dokular)]
         _TasBlok("Duvar: taş blok çizgileri", Range(0, 1)) = 0
-        _TasBoy("Taş blok yüksekliği (birim)", Float) = 0.05
+        _TasBoy("Taş blok yüksekliği (birim)", Float) = 0.09
         _Sarmasik("Duvar: sarmaşık", Range(0, 1)) = 0
-        _SarmasikBoy("Sarmaşık en fazla yükseklik (birim)", Float) = 0.3
+        _SarmasikBoy("Sarmaşık yoğunluğu", Float) = 0.5
         _Cim("Zemin: fırçalı çim", Range(0, 1)) = 0
         _CatiFirca("Çatı: fırça dokusu", Range(0, 1)) = 0
 
@@ -141,50 +141,48 @@ Shader "KuryeTycoon/AnimeToon"
             if (_TasBlok > 0.001)
             {
                 float bh = _TasBoy;
-                float titre = (AT_Gurultu(float3(u * 60.0, h * 60.0, 1.7)) - 0.5) * 0.18;
+                float titre = (AT_Gurultu(float3(u * 30.0, h * 30.0, 1.7)) - 0.5) * 0.18;
                 float sira = floor(h / bh + titre * 0.4);
                 float uu = u / (bh * 2.1) + AT_Hash2(float2(sira, 3.1)) + sira * 0.5;
                 float sutun = floor(uu + titre);
                 float fh = frac(h / bh + titre * 0.4);
                 float fu = frac(uu + titre);
-                float cizH = 1.0 - smoothstep(0.035, 0.085, min(fh, 1.0 - fh));
-                float cizU = 1.0 - smoothstep(0.02, 0.05, min(fu, 1.0 - fu));
+                float cizH = 1.0 - smoothstep(0.05, 0.11, min(fh, 1.0 - fh));
+                float cizU = 1.0 - smoothstep(0.03, 0.07, min(fu, 1.0 - fu));
                 float ciz = max(cizH, cizU);
                 // uzakta (blok birkaç pikselden küçükse) çizgiler kaybolsun: titreşim/moire olmasın
                 float pikselde = fwidth(h) / bh;
-                float gorunur = saturate(1.6 - pikselde * 9.0);
-                half ton = 1.0h + (AT_Hash2(float2(sira, sutun)) - 0.5h) * 0.16h;
+                float gorunur = saturate(1.5 - pikselde * 3.5);
+                half ton = 1.0h + (AT_Hash2(float2(sira, sutun)) - 0.5h) * 0.22h;
                 taban *= lerp(1.0h, ton, dikey * _TasBlok * gorunur);
-                half3 derz = taban * half3(0.55, 0.52, 0.6);
+                half3 derz = taban * half3(0.5, 0.47, 0.56);
                 taban = lerp(taban, derz, ciz * gorunur * dikey * _TasBlok);
             }
 
-            // --- sarmaşık: duvarın dibinden yer yer tırmanan, kenarı tırtıklı yaprak lekeleri
+            // --- sarmaşık: duvarda yer yer, kenarı tırtıklı yaprak lekeleri; aşağıda daha çok, yukarı doğru seyrek
             if (_Sarmasik > 0.001 && dikey > 0.5)
             {
-                float kolon = AT_Gurultu(float3(u * 2.2, 0.0, 5.3)) * 0.7 + AT_Gurultu(float3(u * 7.0, 0.0, 9.1)) * 0.3;
-                float boy = pow(saturate(kolon * 1.5 - 0.45), 1.6) * _SarmasikBoy;
-                float yaprak = AT_Gurultu(float3(u * 90.0, h * 90.0, 2.2)) * 0.55 + AT_Gurultu(float3(u * 34.0, h * 34.0, 6.6)) * 0.45;
-                float s = boy - h + (yaprak - 0.5) * 0.09;
-                float sarmasik = smoothstep(0.0, 0.012, s) * step(-0.02, h);
-                half3 koyu = half3(0.17, 0.33, 0.19), acik = half3(0.42, 0.62, 0.28);
-                half3 yaprakRenk = lerp(koyu, acik, smoothstep(0.45, 0.7, yaprak + (h / max(boy, 0.01)) * 0.15));
+                float leke = AT_Gurultu(float3(u * 3.0, h * 2.2, 5.3)) * 0.7 + AT_Gurultu(float3(u * 9.0, h * 6.0, 9.1)) * 0.3;
+                float yaprak = AT_Gurultu(float3(u * 26.0, h * 26.0, 2.2)) * 0.55 + AT_Gurultu(float3(u * 11.0, h * 11.0, 6.6)) * 0.45;
+                float esik = 0.72 - _SarmasikBoy * 0.2 + saturate(h) * 0.12;
+                float sarmasik = smoothstep(esik, esik + 0.025, leke + (yaprak - 0.5) * 0.14);
+                half3 koyu = half3(0.16, 0.31, 0.18), acik = half3(0.45, 0.64, 0.3);
+                half3 yaprakRenk = lerp(koyu, acik, smoothstep(0.42, 0.66, yaprak + (leke - esik) * 1.5));
                 taban = lerp(taban, yaprakRenk, sarmasik * _Sarmasik * dikey);
-                isikPay = lerp(isikPay, isikPay + 0.15h, sarmasik);   // yapraklar biraz daha fırçalı/pürüzlü
             }
         }
 
         // --- fırçalı çim: yatay zeminde eğik kısa fırça darbeleri, açık lekeler sarıya kayar
         if (_Cim > 0.001 && yukari > 0.5)
         {
-            float2 p = pw.xy * 38.0;
+            float2 p = pw.xy * 18.0;
             float2 r = float2(p.x * 0.866 - p.y * 0.5, p.x * 0.5 + p.y * 0.866);
             float s1 = AT_Gurultu(float3(r.x * 0.28, r.y * 1.5, 1.3)) * 0.6 + AT_Gurultu(float3(r.x * 0.7, r.y * 3.4, 4.4)) * 0.4;
             float buyuk = AT_Gurultu(float3(pw.xy * 1.3, 8.8)) * 0.6 + AT_Gurultu(float3(pw.xy * 4.0, 2.9)) * 0.4;
-            float leke = smoothstep(0.5, 0.62, s1) - (1.0 - smoothstep(0.3, 0.42, s1));
+            float leke = smoothstep(0.5, 0.6, s1) - (1.0 - smoothstep(0.32, 0.42, s1));
             float gorunur = saturate(1.6 - fwidth(r.y) * 0.9);
             half3 c = taban * (0.86h + buyuk * 0.28h);
-            c *= 1.0h + leke * 0.17h * gorunur;
+            c *= 1.0h + leke * 0.24h * gorunur;
             c = lerp(c, c * half3(1.1, 1.07, 0.8), saturate(leke) * 0.6 * gorunur + saturate(buyuk - 0.6) * 0.5);
             taban = lerp(taban, c, _Cim);
         }
@@ -194,10 +192,10 @@ Shader "KuryeTycoon/AnimeToon"
         {
             float3 egim = normalize(AT_YUKARI - N * yukari + 1e-5);          // çatının aşağı-yukarı yönü
             float3 yan = normalize(cross(N, egim) + 1e-5);
-            float a = dot(pw, yan) * 70.0, b = dot(pw, egim) * 70.0;
+            float a = dot(pw, yan) * 26.0, b = dot(pw, egim) * 26.0;
             float iz = AT_Gurultu(float3(a * 1.2, b * 0.18, 3.3)) * 0.6 + AT_Gurultu(float3(a * 3.0, b * 0.4, 7.1)) * 0.4;
             float gorunur = saturate(1.6 - fwidth(a) * 0.5);
-            taban *= 1.0h + (iz - 0.5h) * 0.38h * _CatiFirca * gorunur;
+            taban *= 1.0h + (iz - 0.5h) * 0.5h * _CatiFirca * gorunur;
         }
         return taban;
     }
