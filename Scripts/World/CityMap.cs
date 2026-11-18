@@ -428,15 +428,17 @@ namespace KuryeTycoon
             int w = Width, h = Height;
             for (int x = 1; x < w - 1; x++)
             {
-                if (RoadAt(x, 0) && !RoadAt(x - 1, 0) && SehirPlani.Genis(SehirPlani.YolNo(x, 0))) l.Add((new Vector2(x, -70f), new Vector2(x, -0.5f)));
-                if (RoadAt(x, h - 1) && !RoadAt(x - 1, h - 1) && SehirPlani.Genis(SehirPlani.YolNo(x, h - 1))) l.Add((new Vector2(x, h - 0.5f), new Vector2(x, h + 70f)));
+                if (RoadAt(x, 0) && !RoadAt(x - 1, 0)) l.Add((new Vector2(x, -Boy(x, 0)), new Vector2(x, -0.5f)));
+                if (RoadAt(x, h - 1) && !RoadAt(x - 1, h - 1)) l.Add((new Vector2(x, h - 0.5f), new Vector2(x, h - 1 + Boy(x, h - 1))));
             }
             for (int y = 1; y < h - 1; y++)
             {
-                if (RoadAt(0, y) && !RoadAt(0, y - 1) && SehirPlani.Genis(SehirPlani.YolNo(0, y))) l.Add((new Vector2(-70f, y), new Vector2(-0.5f, y)));
-                if (RoadAt(w - 1, y) && !RoadAt(w - 1, y - 1) && SehirPlani.Genis(SehirPlani.YolNo(w - 1, y))) l.Add((new Vector2(w - 0.5f, y), new Vector2(w + 70f, y)));
+                if (RoadAt(0, y) && !RoadAt(0, y - 1)) l.Add((new Vector2(-Boy(0, y), y), new Vector2(-0.5f, y)));
+                if (RoadAt(w - 1, y) && !RoadAt(w - 1, y - 1)) l.Add((new Vector2(w - 0.5f, y), new Vector2(w - 1 + Boy(w - 1, y), y)));
             }
             organikKir = l.ToArray();
+            // Caddeler kırda uzağa gider; sokaklar banliyö kuşağından biraz öteye kadar
+            float Boy(int x, int y) => SehirPlani.Genis(SehirPlani.YolNo(x, y)) ? 70f : Banliyo + 4f + (x * 7 + y * 13) % 5;
             return organikKir;
         }
 
@@ -457,8 +459,19 @@ namespace KuryeTycoon
         public readonly List<Vector3> CountryTrees = new List<Vector3>();   // x, y, boy
         public readonly List<Vector2> Farms = new List<Vector2>();
 
+        /// <summary>Organik şehrin çevresinde banliyö kuşağı (kare): tarla ve orman burada başlamaz, evler seyrelerek kıra karışır.</summary>
+        public const float Banliyo = 7f;
+
+        /// <summary>Nokta organik şehrin banliyö kuşağında mı (şehrin dışında, kenara Banliyo kareden yakın)?</summary>
+        public static bool BanliyoKusagi(Vector2 p) =>
+            Organik && p.x > -Banliyo && p.y > -Banliyo && p.x < Width - 1 + Banliyo && p.y < Height - 1 + Banliyo;
+
+        /// <summary>Nokta bir kır yoluna yakın mı (City3D banliyö evleri yola taşmasın)?</summary>
+        public static bool KirYoluYakin(Vector2 p, float pay) => NearCountryRoad(p, pay);
+
         static bool NearCountryFeature(Vector2 p, float margin)
         {
+            if (BanliyoKusagi(p)) return true;
             // Şehrin kendisi (girintili sınır: kırdaki bloklar ormana ve tarlaya açık)
             for (int i = -1; i <= 1; i++)
                 for (int j = -1; j <= 1; j++)

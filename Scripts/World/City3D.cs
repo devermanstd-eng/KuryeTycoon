@@ -44,7 +44,7 @@ namespace KuryeTycoon
 
         static GameObject[] packBuildings, packTrees, packRoads;
         // Blender scriptiyle üretilen kendi binalarımız (Tools/Blender/kurye_modeller.py → Kurye Tycoon > Blender Binalarını Prefab Yap)
-        static GameObject[] ownHouses, ownTown, ownAll;
+        static GameObject[] ownHouses, ownHousesTum, ownTown, ownAll;
         static Dictionary<string, List<GameObject>> ownByKey;
         static readonly string[] OwnPrefixes = { "MustakilEv_", "SiraEv_", "OfisKulesi_", "Market_", "FastFood_", "Apartman_", "Dukkan_",
                                                             "Konut_", "Buro_", "Sanayi_", "Kamu_", "Blok_", "Simge_" };
@@ -137,6 +137,7 @@ namespace KuryeTycoon
             // Londra evleri varsa banliyöde sadece onlar (eski Avrupa evleri kullanılmaz)
             var londraEv = houses.FindAll(h => h.name.Contains("_londra_"));
             ownHouses = londraEv.Count > 0 ? londraEv.ToArray() : houses.ToArray();
+            ownHousesTum = houses.ToArray();     // organik şehir: bütün ev çeşitleri (Londra, Avrupa, villa, konak, salaş)
             ownTown = town.ToArray();
             ownIndustry = industry.ToArray();
             ownFarm = farm.ToArray();
@@ -536,7 +537,9 @@ namespace KuryeTycoon
                                 if (own && ownHouses.Length > 0)
                                 {
                                     // Kendi evlerimizin bahçesi ve ağaçları modelin içinde
-                                    var h = ownHouses[rng.Next(ownHouses.Length)];
+                                    // Organik şehirde ev mahalleleri çok geniş: tek tip Londra evi yerine bütün çeşitler
+                                    var evler = CityMap.Organik && ownHousesTum != null && ownHousesTum.Length > 0 ? ownHousesTum : ownHouses;
+                                    var h = evler[rng.Next(evler.Length)];
                                     AddPrefab(h, tile, OwnFootprint(h, 0.97f), face, null, default, 0f, true, true);
                                     break;
                                 }
@@ -578,6 +581,16 @@ namespace KuryeTycoon
                                 // Referans binaları (Haussmann, Altbau, pasajlı bina, pub, fırın, benzinlik …)
                                 var rb = ownRef[rng.Next(ownRef.Length)];
                                 AddPrefab(rb, tile, OwnFootprint(rb, 0.97f), face, null, default, 0f, true, true);
+                            }
+                            else if (CityMap.Organik && own && (zone == Zone.Mixed || zone == Zone.OldTown || zone == Zone.HighRise || zone == Zone.Campus) &&
+                                     rng.NextDouble() < (zone == Zone.Mixed ? 0.5 : 0.35))
+                            {
+                                // Organik şehir: blokların arasına başka binalar da karışsın (aynı modeller tekrar etmesin)
+                                bool referans = ownRef != null && ownRef.Length > 0 && rng.NextDouble() < 0.35;
+                                var havuz = referans ? ownRef : zone == Zone.HighRise ? ownHigh : zone == Zone.OldTown ? ownOld : ownMixed;
+                                if (havuz == null || havuz.Length == 0) havuz = ownTown;
+                                var b = referans ? havuz[rng.Next(havuz.Length)] : Pick(havuz, rng, floors, false);
+                                AddPrefab(b, tile, OwnFootprint(b, 0.97f), face, null, default, 0f, true, true);
                             }
                             else if (BlokVar && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise || zone == Zone.Campus))
                             {
@@ -839,6 +852,7 @@ namespace KuryeTycoon
                     }
                 }
             }
+            if (CityMap.Organik) BanliyoKur(map, rng, packTreesOk);
             int sira = 0;
             bool extras = UsePack && countryExtras != null && countryExtras.Length > 0;
             foreach (var t in map.CountryTrees)
@@ -873,6 +887,77 @@ namespace KuryeTycoon
                 // Kırmızı ahır
                 AddBoxR(anchor, new Vector2(0.7f, 0.5f), 0.35f, new Color(0.62f, 0.22f, 0.18f), null, false, off + new Vector2(0.9f, 0.2f), false);
             }
+        }
+
+        /// <summary>
+        /// Organik şehrin çevresi: şehir harita kenarında birden bitmesin. Kır yollarının iki yanında evler ve aradaki kuşakta
+        /// seyrek evler, ağaçlar; şehirden uzaklaştıkça seyrelir, sonra tarlalar başlar. Süs: sipariş gelmez, hiç kararmaz.
+        /// </summary>
+        void BanliyoKur(CityMap map, System.Random rng, bool packTreesOk)
+        {
+            var evler = ownHousesTum != null && ownHousesTum.Length > 0 ? ownHousesTum : ownHouses;
+            if (!UsePack || evler == null || evler.Length == 0) return;
+            var anchor = map.HQTile;
+            int w = CityMap.Width, h = CityMap.Height;
+            float B = CityMap.Banliyo;
+            var dolu = new HashSet<Vector2Int>();
+
+            void Ev(Vector2 p, float aci)
+            {
+                var t = new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y));
+                if (!dolu.Add(t)) return;
+                var e = evler[rng.Next(evler.Length)];
+                AddPrefab(e, anchor, OwnFootprint(e, 0.78f), aci, null, p - anchor, 0f, false, true);
+                if (packTreesOk && rng.NextDouble() < 0.6)
+                {
+                    float r = aci * Mathf.Deg2Rad;
+                    var arka = new Vector2(Mathf.Sin(r), -Mathf.Cos(r)) * 0.45f;    // evin arkası (önü yola bakar)
+                    AddPrefab(packTrees[rng.Next(packTrees.Length)], anchor, 0f, (float)rng.NextDouble() * 360f, null,
+                              p + arka + new Vector2((float)rng.NextDouble() - 0.5f, (float)rng.NextDouble() - 0.5f) * 0.4f - anchor,
+                              0.35f + (float)rng.NextDouble() * 0.25f, false);
+                }
+            }
+
+            float Uzak(Vector2 p) => Mathf.Max(Mathf.Max(-p.x, p.x - (w - 1)), Mathf.Max(-p.y, p.y - (h - 1)));
+
+            // 1) Kır yolları boyunca: iki yanda evler (şehirden uzaklaştıkça seyrek)
+            foreach (var r in CityMap.CountryRoads)
+            {
+                var yon = (r.b - r.a).normalized;
+                var yan = new Vector2(-yon.y, yon.x);
+                float L = Vector2.Distance(r.a, r.b);
+                for (float d = 0.5f; d < L; d += 1f)
+                {
+                    var p = r.a + yon * d;
+                    float u = Uzak(p);
+                    if (u < 0.6f || u > B + 5f) continue;
+                    float olasilik = 0.85f * Mathf.Exp(-u / 6f);
+                    for (int k = -1; k <= 1; k += 2)
+                    {
+                        if (rng.NextDouble() > olasilik) continue;
+                        var q = p + yan * (0.72f * k);
+                        // Yola bakan açı: City3D 0° kuzey, 90° batı, 180° güney, 270° doğu
+                        var bak = -yan * k;
+                        float aci = (Mathf.Atan2(-bak.x, bak.y) * Mathf.Rad2Deg + 360f) % 360f;
+                        Ev(q, aci);
+                    }
+                }
+            }
+
+            // 2) Kuşakta seyrek evler ve ağaç öbekleri (yollardan uzak)
+            for (int x = -(int)B; x < w + (int)B; x++)
+                for (int y = -(int)B; y < h + (int)B; y++)
+                {
+                    if (x >= 0 && y >= 0 && x < w && y < h) continue;
+                    var p = new Vector2(x + (float)rng.NextDouble() * 0.4f - 0.2f, y + (float)rng.NextDouble() * 0.4f - 0.2f);
+                    float u = Uzak(p);
+                    if (u < 0.8f || CityMap.KirYoluYakin(p, 0.7f)) continue;
+                    double z = rng.NextDouble();
+                    if (z < 0.28f * (1f - u / B)) Ev(p, 90f * rng.Next(4));
+                    else if (packTreesOk && z < 0.5f)
+                        AddPrefab(packTrees[rng.Next(packTrees.Length)], anchor, 0f, (float)rng.NextDouble() * 360f, null, p - anchor,
+                                  0.35f + (float)rng.NextDouble() * 0.3f, false);
+                }
         }
 
         // ---------- Dokulu kır zemini ----------
