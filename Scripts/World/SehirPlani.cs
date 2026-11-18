@@ -235,8 +235,8 @@ namespace KuryeTycoon
             float aci = (Mathf.Atan2(-bak.x, bak.y) * Mathf.Rad2Deg + 360f) % 360f;
             // Eksene yakın açılar 90'ın katına yuvarlanır: döndürülmüş bina küçülmesin, komşularıyla hizalı dursun.
             // Gerçekten çapraz yollarda (45° civarı) bina yola dönük kalır.
-            float en = Mathf.Round(aci / 90f) * 90f;
-            if (Mathf.Abs(Mathf.DeltaAngle(aci, en)) < 24f) aci = en % 360f;
+            float kat = Mathf.Round(aci / 90f) * 90f;
+            if (Mathf.Abs(Mathf.DeltaAngle(aci, kat)) < 24f) aci = kat % 360f;
             return aci;
         }
     }
