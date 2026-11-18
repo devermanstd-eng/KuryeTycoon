@@ -121,7 +121,7 @@ namespace KuryeTycoon
 
         void Git(Robot r, Vector2Int hedef)
         {
-            r.path = CityMap.I.FindPath(Vector2Int.RoundToInt(r.pos), hedef);
+            r.path = CityMap.Yumusat(CityMap.I.FindPath(Vector2Int.RoundToInt(r.pos), hedef));
             r.pathIndex = 0;
         }
 

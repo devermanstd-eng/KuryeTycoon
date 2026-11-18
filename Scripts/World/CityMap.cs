@@ -1292,6 +1292,42 @@ namespace KuryeTycoon
             return RandomCustomerTile(shopTile);
         }
 
+        /// <summary>
+        /// Organik şehirde kare kare (merdiven gibi) yolu düzleştirir: aradaki köşeler, düz çizgi hep yol karelerinin üstünden
+        /// geçiyorsa atlanır. Kuryeler çapraz ve eğri sokaklarda zikzak çizmeden, yol boyunca yürür. Izgara şehirde değişmez.
+        /// </summary>
+        public static List<Vector2Int> Yumusat(List<Vector2Int> p)
+        {
+            if (!Organik || p == null || p.Count < 3) return p;
+            var r = new List<Vector2Int>(p.Count) { p[0] };
+            int a = 0;
+            while (a < p.Count - 1)
+            {
+                int j = a + 1;
+                // En uzak görünen noktayı bul (en çok 12 adım ileri: uzun düz yolda bile hesap ucuz kalsın)
+                for (int k = Mathf.Min(p.Count - 1, a + 12); k > a + 1; k--)
+                    if (DuzGecer(p[a], p[k], k == p.Count - 1)) { j = k; break; }
+                r.Add(p[j]);
+                a = j;
+            }
+            return r;
+        }
+
+        static bool DuzGecer(Vector2Int a, Vector2Int b, bool sonNokta)
+        {
+            Vector2 pa = a, pb = b;
+            float L = Vector2.Distance(pa, pb);
+            int n = Mathf.CeilToInt(L / 0.2f);
+            for (int i = 1; i < n; i++)
+            {
+                var q = Vector2.Lerp(pa, pb, i / (float)n);
+                int x = Mathf.RoundToInt(q.x), y = Mathf.RoundToInt(q.y);
+                if (sonNokta && x == b.x && y == b.y) continue;      // hedef bina karesi yol değil
+                if (!RoadAt(x, y)) return false;
+            }
+            return true;
+        }
+
         /// <summary>Yollar üzerinde en kısa yol (BFS). Başlangıç ve bitiş dahil. Nehri sadece köprülerden geçer.</summary>
         public List<Vector2Int> FindPath(Vector2Int from, Vector2Int to)
         {

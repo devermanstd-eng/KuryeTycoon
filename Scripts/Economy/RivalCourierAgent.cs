@@ -46,7 +46,7 @@ namespace KuryeTycoon
 
         void GoTo(Vector2Int target)
         {
-            path = CityMap.I.FindPath(Vector2Int.RoundToInt(Position), target);
+            path = CityMap.Yumusat(CityMap.I.FindPath(Vector2Int.RoundToInt(Position), target));
             pathIndex = 0;
         }
 
