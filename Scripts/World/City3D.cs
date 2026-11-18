@@ -385,8 +385,10 @@ namespace KuryeTycoon
                     float face = FaceAngle(map, tile);
                     int floors = Addresses.Floors(tile);
 
-                    // Paket yolları açıksa zemin: kaldırım ya da çim (bölgeye göre)
-                    if (roads3D)
+                    // Paket yolları açıksa zemin: kaldırım ya da çim (bölgeye göre).
+                    // Organik şehirde kare zemin plakası yok: yollar eğri, kare plakalar yolun kenarında merdiven gibi basamak
+                    // ve mürekkep çizgisi yapıyordu. Zemin düz 2D renk, asfalt ve kaldırım çizgi mesh'i.
+                    if (roads3D && !CityMap.Organik)
                     {
                         bool grass = zone == Zone.Park || zone == Zone.Houses || zone == Zone.River ||
                                      (!frontage && (zone == Zone.HighRise || zone == Zone.Mixed || zone == Zone.Campus));

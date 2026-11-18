@@ -376,6 +376,15 @@ namespace KuryeTycoon
             if (WaterAt(x, y)) return WaterColor;
             if (RiverBankAt(x, y)) return RiverBankColor;
             if (RailAt(x, y)) return RailBedColor;
+            if (Organik)
+            {
+                // Organik şehirde kaldırım/çim ayrımı yola bitişikliğe göre değil, bölgeye göre: kare kare merdiven deseni olmasın
+                var oz = ZoneOf(x, y);
+                if (oz == Zone.Country) return CountryColor;
+                if (oz == Zone.Park || oz == Zone.Houses || oz == Zone.Campus) return GrassColor;
+                if (oz == Zone.Warehouse) return YardColor;
+                return Color.Lerp(PlazaColor, SidewalkColor, 0.6f);
+            }
             switch (ZoneOf(x, y))
             {
                 case Zone.Country: return CountryColor;
