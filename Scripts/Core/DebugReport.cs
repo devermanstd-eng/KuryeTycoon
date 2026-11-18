@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-18 u10 (atmosfer dosyası: Resources/Gorsel/Atmosfer + AtmosferProfili; stilize pilot paketi Blender betiği)";
+        public const string CodeVersion = "2026-11-18 u11 (Blender menüsü Mac'te Blender.app'i bulur ve seçtirir)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
