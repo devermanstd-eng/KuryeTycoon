@@ -20,7 +20,7 @@ namespace KuryeTycoon.EditorTools
         static bool prefabYapilsin;
         static readonly System.Text.StringBuilder cikti = new System.Text.StringBuilder();
 
-        [MenuItem("Kurye Tycoon/Blender/Anime ağaçlarını üret")]
+        [MenuItem("Kurye Tycoon/Blender/Ağaçları üret (boyalı)")]
         static void Agaclar() => Calistir("calistir_anime.py");
 
         [MenuItem("Kurye Tycoon/Blender/Londra evleri ve dükkânları üret")]

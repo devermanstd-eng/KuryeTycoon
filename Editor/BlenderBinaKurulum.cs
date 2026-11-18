@@ -189,9 +189,7 @@ namespace KuryeTycoon.EditorTools
 
             string yol = MalzemeKlasor + "/" + ad + ".mat";
             m = AssetDatabase.LoadAssetAtPath<Material>(yol);
-            bool anime = AnimeStil.Aktif;
-            var shader = Shader.Find(cizgi ? "Universal Render Pipeline/Unlit" : anime ? AnimeStil.ToonShader : "Universal Render Pipeline/Lit");
-            if (anime && ad.StartsWith("Cizgi")) renk = AnimeStil.Murekkep;
+            var shader = Shader.Find(cizgi ? "Universal Render Pipeline/Unlit" : "Universal Render Pipeline/Lit");
             if (shader == null) shader = Shader.Find(cizgi ? "Unlit/Color" : "Standard");
             if (m == null)
             {
@@ -201,7 +199,6 @@ namespace KuryeTycoon.EditorTools
             else m.shader = shader;
             if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", renk);
             m.color = renk;
-            if (anime && !cizgi && shader.name == AnimeStil.ToonShader) AnimeStil.ToonYap(m, shader);
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", ad.StartsWith("Cam") ? 0.6f : 0.1f);
             if (isikVeren && m.HasProperty("_EmissionColor"))
             {
