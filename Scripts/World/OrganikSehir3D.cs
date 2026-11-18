@@ -100,31 +100,30 @@ namespace KuryeTycoon
 
         static void KesikCizgi(MeshKurucu m, SehirPlani.Cizgi c, float yari, float z)
         {
-            const float Dolu = 0.22f, Bos = 0.18f;
-            float faz = 0f;
-            for (int k = 0; k + 1 < c.Sayi; k++)
+            const float Dolu = 0.22f, Periyot = 0.40f;
+            // Çizgi boyunca birikimli uzunluk; her kesik, başlangıç ve bitiş noktası arasında düz bir parça
+            var top = new float[c.Sayi];
+            for (int k = 1; k < c.Sayi; k++) top[k] = top[k - 1] + Vector2.Distance(c[k - 1], c[k]);
+            float L = top[c.Sayi - 1];
+            int seg = 0;
+            Vector2 Nokta(float d)
             {
-                Vector2 a = c[k], b = c[k + 1];
-                float L = Vector2.Distance(a, b);
-                if (L < 1e-4f) continue;
-                var yon = (b - a) / L;
-                var n = new Vector2(-yon.y, yon.x) * yari;
-                float s = 0f;
-                while (s < L)
-                {
-                    float periyot = Dolu + Bos;
-                    float icinde = Mathf.Repeat(faz + s, periyot);
-                    if (icinde < Dolu)
-                    {
-                        float e = Mathf.Min(L, s + (Dolu - icinde));
-                        var p0 = a + yon * s;
-                        var p1 = a + yon * e;
-                        m.Dortgen(V(p0 + n, z), V(p1 + n, z), V(p1 - n, z), V(p0 - n, z));
-                        s = e;
-                    }
-                    else s += periyot - icinde;
-                }
-                faz += L;
+                while (seg < c.Sayi - 2 && top[seg + 1] < d) seg++;
+                float u = top[seg + 1] - top[seg];
+                float t = u > 1e-5f ? (d - top[seg]) / u : 0f;
+                return Vector2.Lerp(c[seg], c[seg + 1], Mathf.Clamp01(t));
+            }
+            int adet = Mathf.FloorToInt(L / Periyot);
+            for (int i = 0; i <= adet; i++)
+            {
+                float d0 = i * Periyot + 0.09f, d1 = Mathf.Min(L, d0 + Dolu);
+                if (d1 - d0 < 0.05f) break;
+                var p0 = Nokta(d0);
+                var p1 = Nokta(d1);
+                var yon = p1 - p0;
+                if (yon.sqrMagnitude < 1e-6f) continue;
+                var n = new Vector2(-yon.y, yon.x).normalized * yari;
+                m.Dortgen(V(p0 + n, z), V(p1 + n, z), V(p1 - n, z), V(p0 - n, z));
             }
         }
 
