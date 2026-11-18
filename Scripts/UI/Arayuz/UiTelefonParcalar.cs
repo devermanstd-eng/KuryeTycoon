@@ -446,7 +446,7 @@ namespace KuryeTycoon
                     {
                         if (!CityMap.RoadAt(x, y)) continue;
                         var p = P(new Vector2(x, y), w, h);
-                        bool cadde = x % CityMap.Block == 0 || y % CityMap.Block == 0;
+                        bool cadde = CityMap.Organik ? Addresses.IsAvenue(new Vector2Int(x, y)) : x % CityMap.Block == 0 || y % CityMap.Block == 0;
                         bool kopru = CityMap.BridgeAt(x, y);
                         float r = s * (cadde ? 0.34f : 0.22f);
                         Color col = Kilit(kopru ? CKopru : cadde ? CCadde : CSokak, x, y, cm);

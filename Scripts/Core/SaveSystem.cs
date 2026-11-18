@@ -229,10 +229,12 @@ namespace KuryeTycoon
             }
         }
 
+        // Organik şehrin kayıtları ayrı dosyalarda: kare konumları ızgara şehirle uyuşmaz (eski kayıtlar bozulmasın)
+        static string Onek => CityMap.Organik ? "organik_" : "";
         public static string SlotPath(int slot) =>
-            Path.Combine(Application.persistentDataPath, slot <= 0 ? "kayit.json" : $"kayit_{slot + 1}.json");
+            Path.Combine(Application.persistentDataPath, Onek + (slot <= 0 ? "kayit.json" : $"kayit_{slot + 1}.json"));
         static string SlotBackupPath(int slot) =>
-            Path.Combine(Application.persistentDataPath, slot <= 0 ? "kayit_onceki.json" : $"kayit_{slot + 1}_onceki.json");
+            Path.Combine(Application.persistentDataPath, Onek + (slot <= 0 ? "kayit_onceki.json" : $"kayit_{slot + 1}_onceki.json"));
 
         public static string SavePath => SlotPath(Slot);
         static string BackupPath => SlotBackupPath(Slot);

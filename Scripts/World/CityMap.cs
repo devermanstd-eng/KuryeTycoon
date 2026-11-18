@@ -29,9 +29,13 @@ namespace KuryeTycoon
     {
         public static CityMap I { get; private set; }
 
-        public const int Width = 49;
-        public const int Height = 33;
+        // Izgara şehir 49×33; organik şehir (SehirPlani) açıksa boyut plandan gelir.
+        const int IzgaraW = 49, IzgaraH = 33;
+        public static int Width => Organik ? SehirPlani.W : IzgaraW;
+        public static int Height => Organik ? SehirPlani.H : IzgaraH;
         public const int Block = 4;
+        /// <summary>Organik şehir (gerçek harita planından, eğri ve çapraz sokaklar) açık mı?</summary>
+        public static bool Organik => SehirPlani.Aktif;
 
         public static readonly long[] UnlockCost = { 0, 0, 150000, 400000, 750000, 900000 };   // Yeşil Tepe 1,2 M → 0,9 M (16.11 akşam)
         public static readonly string[] DistrictNames = { "", "Merkez Mahalle", "Doğu İlçesi", "Sanayi & Kampüs", "Batı Liman", "Yeşil Tepe" };
@@ -39,6 +43,7 @@ namespace KuryeTycoon
         /// <summary>Karenin bölgesi (1–5). Bölge sınırındaki yol, açılış sırası önce gelen bölgeye aittir.</summary>
         public static int RegionOf(int x, int y)
         {
+            if (Organik) return SehirPlani.Bolge(x, y);
             if (!InCity(x, y)) return 1;   // kır: kilit yok (karartılmaz, üstünde bina da yok)
             if (y >= 25) return 5;      // Yeşil Tepe: kuzey şerit
             if (x < 12) return 4;       // Batı Liman
@@ -57,9 +62,9 @@ namespace KuryeTycoon
         public const int RailFromX = 37;
         public const float RiverY = RiverBlockY * Block + Block / 2f;   // nehrin ortası (14)
 
-        public static readonly Vector2Int PlazaCenter = new Vector2Int(18, 6);      // Kossuth Meydanı (çeşme)
-        public static readonly Vector2Int BelediyeCenter = new Vector2Int(22, 6);   // Belediye Parkı (anıt)
-        public static readonly Vector2Int OtogarCenter = new Vector2Int(6, 6);      // Otogar (Batı Liman)
+        public static Vector2Int PlazaCenter => Organik ? SehirPlani.Meydan : new Vector2Int(18, 6);      // Kossuth Meydanı (çeşme)
+        public static Vector2Int BelediyeCenter => Organik ? SehirPlani.Belediye : new Vector2Int(22, 6);   // Belediye Parkı (anıt)
+        public static Vector2Int OtogarCenter => Organik ? SehirPlani.Otogar : new Vector2Int(6, 6);      // Otogar (Batı Liman)
 
         /// <summary>
         /// Blok türleri: her satır bir blok sırası (by = 0 güney … 7 kuzey), her harf bir blok (bx = 0 batı … 11 doğu).
@@ -125,9 +130,49 @@ namespace KuryeTycoon
         }
 
         /// <summary>Kare şehrin içinde mi (kır değil)? Yollar da şehre dahil.</summary>
-        public static bool InCity(int x, int y) => RoadAt(x, y) || ZoneOf(x, y) != Zone.Country;
+        public static bool InCity(int x, int y) =>
+            Organik ? x >= 0 && y >= 0 && x < Width && y < Height : RoadAt(x, y) || ZoneOf(x, y) != Zone.Country;
 
-        public static readonly Landmark[] Landmarks =
+        /// <summary>Haritada adı yazan yerler (organik şehirde plandan: meydan, park, nehir, semtler).</summary>
+        public static Landmark[] Landmarks => Organik ? OrganikLandmarks() : IzgaraLandmarks;
+
+        static Landmark[] organikLm;
+        static Landmark[] OrganikLandmarks()
+        {
+            if (organikLm != null) return organikLm;
+            var l = new List<Landmark>
+            {
+                new Landmark("Kossuth Meydanı", (Vector2)PlazaCenter + new Vector2(0f, 1.15f), new Color(1f, 0.92f, 0.75f)),
+                new Landmark("Belediye Parkı", BelediyeCenter, new Color(0.70f, 1f, 0.70f)),
+                new Landmark("Otogar", OtogarCenter, new Color(1f, 0.92f, 0.60f)),
+            };
+            // Nehir adı: suyun üç ayrı yerinde
+            var su = new List<Vector2Int>();
+            for (int x = 0; x < Width; x++)
+                for (int y = 0; y < Height; y++)
+                    if (SehirPlani.SuVar(x, y) && SehirPlani.SuVar(x + 1, y) && SehirPlani.SuVar(x - 1, y)) su.Add(new Vector2Int(x, y));
+            if (su.Count > 0)
+                for (int i = 0; i < 3; i++)
+                    l.Add(new Landmark("Tisza", su[(su.Count - 1) * (i * 2 + 1) / 6], new Color(0.65f, 0.85f, 1f)));
+            // Semt adları: her semtin yapı karelerinin ortası
+            var top = new Vector2[6];
+            var say = new int[6];
+            for (int x = 0; x < Width; x++)
+                for (int y = 0; y < Height; y++)
+                {
+                    if (RoadAt(x, y) || WaterAt(x, y)) continue;
+                    int b = RegionOf(x, y);
+                    top[b] += new Vector2(x, y);
+                    say[b]++;
+                }
+            var renk = new[] { Color.white, new Color(1f, 0.86f, 0.70f), new Color(1f, 0.90f, 0.80f), new Color(0.80f, 0.92f, 0.90f), new Color(0.75f, 0.90f, 1f), new Color(0.80f, 1f, 0.75f) };
+            for (int b = 1; b <= 5; b++)
+                if (say[b] > 0) l.Add(new Landmark(DistrictNames[b], top[b] / say[b], renk[b]));
+            organikLm = l.ToArray();
+            return organikLm;
+        }
+
+        static readonly Landmark[] IzgaraLandmarks =
         {
             new Landmark("Eski Şehir",           new Vector2(14f, 2f),    new Color(1f, 0.86f, 0.70f)),
             new Landmark("Kossuth Meydanı",      new Vector2(18f, 7.15f), new Color(1f, 0.92f, 0.75f)),
@@ -157,6 +202,7 @@ namespace KuryeTycoon
         /// </summary>
         public static bool RoadAt(int x, int y)
         {
+            if (Organik) return SehirPlani.Yol(x, y);
             if (x < 0 || y < 0 || x >= Width || y >= Height) return false;
             bool vx = x % Block == 0, hy = y % Block == 0;
             if (!vx && !hy) return AlleyAt(x, y);
@@ -169,10 +215,10 @@ namespace KuryeTycoon
             return false;
         }
 
-        public static bool WaterAt(int x, int y) => InRiverRows(y) && !RoadAt(x, y) && RiverWaterAt(x, y);
-        public static bool BridgeAt(int x, int y) => InRiverRows(y) && RoadAt(x, y);
+        public static bool WaterAt(int x, int y) => Organik ? SehirPlani.SuVar(x, y) : InRiverRows(y) && !RoadAt(x, y) && RiverWaterAt(x, y);
+        public static bool BridgeAt(int x, int y) => Organik ? SehirPlani.Kopru(x, y) : InRiverRows(y) && RoadAt(x, y);
         /// <summary>Nehir şeridinde suyun olmadığı kıyı karesi (çimen ve ağaç: nehir dümdüz kanal gibi görünmesin).</summary>
-        public static bool RiverBankAt(int x, int y) => InRiverRows(y) && !RoadAt(x, y) && !RiverWaterAt(x, y);
+        public static bool RiverBankAt(int x, int y) => !Organik && InRiverRows(y) && !RoadAt(x, y) && !RiverWaterAt(x, y);
 
         /// <summary>
         /// Nehir şeridinin (3 kare) hangi karelerinde su var: orta sıra hep su (tekneler ve köprüler için),
@@ -194,19 +240,37 @@ namespace KuryeTycoon
         /// </summary>
         public static float RiverCurveY(float x)
         {
+            if (Organik) return -9999f;            // organik şehirde nehir şehir dışına bu eğriyle uzanmaz
             float d = x < -0.5f ? -0.5f - x : x > Width - 0.5f ? x - (Width - 0.5f) : 0f;
             if (d <= 0f) return RiverY;
             float amp = Mathf.Min(d * 0.45f, 6f);
             float side = x < 0f ? 1f : -1f;
             return RiverY + side * amp * Mathf.Sin(d * 0.16f);
         }
-        public static bool RailAt(int x, int y) => y == RailY && x >= RailFromX && x < Width && !RoadAt(x, y);
+        public static bool RailAt(int x, int y) => !Organik && y == RailY && x >= RailFromX && x < Width && !RoadAt(x, y);
         /// <summary>Tren yolunun yolu kestiği hemzemin geçit.</summary>
-        public static bool RailCrossingAt(int x, int y) => y == RailY && x >= RailFromX && RoadAt(x, y);
+        public static bool RailCrossingAt(int x, int y) => !Organik && y == RailY && x >= RailFromX && RoadAt(x, y);
 
         public static Zone ZoneOf(Vector2Int t) => ZoneOf(t.x, t.y);
         public static Zone ZoneOf(int x, int y)
         {
+            if (Organik)
+            {
+                if (x < 0 || y < 0 || x >= Width || y >= Height) return Zone.Country;
+                switch (SehirPlani.ZoneHarf(x, y))
+                {
+                    case 'O': return Zone.OldTown;
+                    case 'H': return Zone.HighRise;
+                    case 'E': return Zone.Houses;
+                    case 'C': return Zone.Campus;
+                    case 'W': return Zone.Warehouse;
+                    case 'P': return Zone.Park;
+                    case 'Z': return Zone.Plaza;
+                    case 'A': return Zone.Mall;
+                    case 'R': return Zone.River;
+                    default: return Zone.Mixed;
+                }
+            }
             if (InRiverRows(y)) return Zone.River;
             int bx = Mathf.Clamp(x / Block, 0, Layout[0].Length - 1);
             int by = Mathf.Clamp(y / Block, 0, Layout.Length - 1);
@@ -227,8 +291,9 @@ namespace KuryeTycoon
         }
 
         /// <summary>Kare, bloğunun ortasındaki kare mi (yola değmeyen iç kare)?</summary>
-        public static bool IsBlockCenter(int x, int y) => x % Block == 2 && y % Block == 2;
-        public static Vector2Int BlockCenterOf(int x, int y) => new Vector2Int(x / Block * Block + 2, y / Block * Block + 2);
+        public static bool IsBlockCenter(int x, int y) =>
+            Organik ? new Vector2Int(x, y) == BelediyeCenter : x % Block == 2 && y % Block == 2;
+        public static Vector2Int BlockCenterOf(int x, int y) => Organik ? new Vector2Int(x, y) : new Vector2Int(x / Block * Block + 2, y / Block * Block + 2);
 
         static bool CustomerZone(Zone z) =>
             z == Zone.OldTown || z == Zone.HighRise || z == Zone.Houses || z == Zone.Mixed || z == Zone.Campus || z == Zone.Warehouse;
@@ -306,7 +371,8 @@ namespace KuryeTycoon
         public static Color GroundColor(int x, int y)
         {
             if (BridgeAt(x, y)) return BridgeColor;
-            if (RoadAt(x, y)) return RoadColor;
+            // Organik şehirde asfaltı çizgi mesh'i çizer (OrganikSehir3D); kare zemini kaldırım rengi kalır
+            if (RoadAt(x, y)) return Organik ? SidewalkColor : RoadColor;
             if (WaterAt(x, y)) return WaterColor;
             if (RiverBankAt(x, y)) return RiverBankColor;
             if (RailAt(x, y)) return RailBedColor;
@@ -351,16 +417,39 @@ namespace KuryeTycoon
         // ---------- Şehir dışı (kır) ----------
 
         /// <summary>Şehrin dışına devam eden kır yolları: (başlangıç, bitiş) dünya koordinatı.</summary>
-        public static readonly (Vector2 a, Vector2 b)[] CountryRoads =
+        public static (Vector2 a, Vector2 b)[] CountryRoads => Organik ? OrganikKirYollari() : IzgaraKirYollari;
+
+        static (Vector2 a, Vector2 b)[] organikKir;
+        /// <summary>Organik şehirde kır yolları: harita kenarına değen caddeler dümdüz dışarı uzar.</summary>
+        static (Vector2 a, Vector2 b)[] OrganikKirYollari()
+        {
+            if (organikKir != null) return organikKir;
+            var l = new List<(Vector2, Vector2)>();
+            int w = Width, h = Height;
+            for (int x = 1; x < w - 1; x++)
+            {
+                if (RoadAt(x, 0) && !RoadAt(x - 1, 0) && SehirPlani.Genis(SehirPlani.YolNo(x, 0))) l.Add((new Vector2(x, -70f), new Vector2(x, -0.5f)));
+                if (RoadAt(x, h - 1) && !RoadAt(x - 1, h - 1) && SehirPlani.Genis(SehirPlani.YolNo(x, h - 1))) l.Add((new Vector2(x, h - 0.5f), new Vector2(x, h + 70f)));
+            }
+            for (int y = 1; y < h - 1; y++)
+            {
+                if (RoadAt(0, y) && !RoadAt(0, y - 1) && SehirPlani.Genis(SehirPlani.YolNo(0, y))) l.Add((new Vector2(-70f, y), new Vector2(-0.5f, y)));
+                if (RoadAt(w - 1, y) && !RoadAt(w - 1, y - 1) && SehirPlani.Genis(SehirPlani.YolNo(w - 1, y))) l.Add((new Vector2(w - 0.5f, y), new Vector2(w + 70f, y)));
+            }
+            organikKir = l.ToArray();
+            return organikKir;
+        }
+
+        static readonly (Vector2 a, Vector2 b)[] IzgaraKirYollari =
         {
             (new Vector2(-70f, 4f),  new Vector2(-0.5f, 4f)),
             (new Vector2(-70f, 28f), new Vector2(-0.5f, 28f)),
-            (new Vector2(Width - 0.5f, 8f),  new Vector2(Width + 70f, 8f)),
-            (new Vector2(Width - 0.5f, 28f), new Vector2(Width + 70f, 28f)),
+            (new Vector2(IzgaraW - 0.5f, 8f),  new Vector2(IzgaraW + 70f, 8f)),
+            (new Vector2(IzgaraW - 0.5f, 28f), new Vector2(IzgaraW + 70f, 28f)),
             (new Vector2(16f, -70f), new Vector2(16f, -0.5f)),
             (new Vector2(40f, -70f), new Vector2(40f, -0.5f)),
-            (new Vector2(8f, Height - 0.5f),  new Vector2(8f, Height + 70f)),
-            (new Vector2(32f, Height - 0.5f), new Vector2(32f, Height + 70f)),
+            (new Vector2(8f, IzgaraH - 0.5f),  new Vector2(8f, IzgaraH + 70f)),
+            (new Vector2(32f, IzgaraH - 0.5f), new Vector2(32f, IzgaraH + 70f)),
         };
 
         public struct Field { public Rect r; public Color c; }
@@ -425,7 +514,7 @@ namespace KuryeTycoon
         {
             if (InField(p, pay * 0.5f)) return true;
             if ((p.x < 0f || p.x > Width - 1f) && Mathf.Abs(p.y - RiverCurveY(p.x)) < 2.2f + pay) return true;
-            if (p.x >= -1f && p.x <= Width && Mathf.Abs(p.y - RiverY) < 2.5f) return true;
+            if (!Organik && p.x >= -1f && p.x <= Width && Mathf.Abs(p.y - RiverY) < 2.5f) return true;
             if (NearCountryRoad(p, pay * 0.6f)) return true;
             foreach (var f in Farms) if ((f - p).sqrMagnitude < 2.5f) return true;
             return false;
@@ -517,7 +606,7 @@ namespace KuryeTycoon
                 }
             }
             // Nehir kıyısında ağaç sıraları (kıvrımı belli etsin)
-            for (int side = -1; side <= 1; side += 2)
+            for (int side = -1; side <= 1 && !Organik; side += 2)
                 for (float d = 1.5f; d < ring; d += 0.9f)
                 {
                     float x = side < 0 ? -0.5f - d : Width - 0.5f + d;
@@ -708,7 +797,7 @@ namespace KuryeTycoon
             BuildDecor();
 
             // Merkez ofis: Merkez Mahalle'nin ortasındaki meydanda, güneydeki yola bakar
-            HQTile = new Vector2Int(PlazaCenter.x, PlazaCenter.y - 1);
+            HQTile = Organik ? OrganikMerkezOfis() : new Vector2Int(PlazaCenter.x, PlazaCenter.y - 1);
             HQDoor = GetDoor(HQTile);
             for (int x = PlazaCenter.x - 1; x <= PlazaCenter.x + 1; x++)
                 for (int y = PlazaCenter.y - 1; y <= PlazaCenter.y + 1; y++) reserved.Add(new Vector2Int(x, y));
@@ -717,6 +806,23 @@ namespace KuryeTycoon
             PlaceShops();
             BuildMovers();
             RefreshColors();
+        }
+
+        /// <summary>Organik şehirde merkez ofis: meydana en yakın, yola bakan yapı arsası.</summary>
+        Vector2Int OrganikMerkezOfis()
+        {
+            var m = PlazaCenter;
+            var best = m;
+            float bd = float.MaxValue;
+            for (int x = 0; x < Width; x++)
+                for (int y = 0; y < Height; y++)
+                {
+                    if (RoadAt(x, y) || WaterAt(x, y) || ZoneOf(x, y) == Zone.Park || !IsFrontage(x, y)) continue;
+                    if (new Vector2Int(x, y) == m) continue;
+                    float d = (new Vector2(x, y) - (Vector2)m).sqrMagnitude;
+                    if (d < bd) { bd = d; best = new Vector2Int(x, y); }
+                }
+            return best;
         }
 
         // ---------- 2D süsler ----------
@@ -745,7 +851,7 @@ namespace KuryeTycoon
             // Nehir şehrin iki yanından kıvrılarak devam eder: eğriyi kısa, döndürülmüş parçalarla çiz
             // (önce biraz geniş çimen kıyı, üstüne su)
             const float step = 0.7f;
-            for (int side = -1; side <= 1; side += 2)
+            for (int side = -1; side <= 1 && !Organik; side += 2)
                 for (float d = 0f; d < pad; d += step)
                 {
                     float xa = side < 0 ? -0.5f - d : Width - 0.5f + d;
@@ -809,7 +915,7 @@ namespace KuryeTycoon
                         continue;
                     }
                     // Liman: Batı'da nehrin güney kıyısında iskeleler
-                    if (WaterAt(x, y) && y == RiverBlockY * Block + 1 && x < 12 && x % 4 == 2)
+                    if (!Organik && WaterAt(x, y) && y == RiverBlockY * Block + 1 && x < 12 && x % 4 == 2)
                     {
                         Deco("İskele", root, false, new Color(0.50f, 0.38f, 0.26f), p + new Vector2(0f, -0.1f), new Vector2(0.3f, 0.9f), 1);
                         continue;
@@ -878,6 +984,7 @@ namespace KuryeTycoon
 
         void BuildMovers()
         {
+            if (Organik) return;    // nehir kıvrımlı ve tren yolu yok: tekne ve tren şimdilik sadece ızgara şehirde
             // Nehirde dört tekne (iki yönde); şehrin dışında da akar
             var boatDefs = new[]
             {

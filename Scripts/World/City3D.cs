@@ -362,6 +362,7 @@ namespace KuryeTycoon
                     var tile = new Vector2Int(x, y);
                     if (map.IsRoad(x, y))
                     {
+                        if (CityMap.Organik) continue;    // organik şehirde yollar tek parça çizgi mesh'i (OrganikSehir3D)
                         // Köprüler teknelerin üstünde çizilsin (sortingOrder 3)
                         bool bridge = CityMap.BridgeAt(x, y);
                         if (roads3D) AddRoad(map, tile, bridge ? 3 : 1);
@@ -413,6 +414,18 @@ namespace KuryeTycoon
                             }
                             continue;
                         }
+                    }
+
+                    if (CityMap.Organik && tile == CityMap.PlazaCenter && tile != map.HQTile)
+                    {
+                        // Organik şehirde meydan tek kare: çeşme
+                        if (UsePack && plazaFountain != null) AddFlat(plazaFountain, tile, 0f, 2);
+                        else
+                        {
+                            AddBoxR(tile, new Vector2(0.5f, 0.5f), 0.06f, new Color(0.70f, 0.68f, 0.64f), null, false, default, false);
+                            AddBoxR(tile, new Vector2(0.36f, 0.36f), 0.07f, new Color(0.45f, 0.72f, 0.90f), null, false, default, false);
+                        }
+                        continue;
                     }
 
                     if (tile == map.HQTile)
@@ -586,10 +599,25 @@ namespace KuryeTycoon
                     }
                 }
             }
+            if (CityMap.Organik) OrganikYollarKur(map);
             BuildCountryside(map, pack, packTreesOk, rng);
             Refresh(true);
             foreach (var p in pieces) p.t.gameObject.SetActive(false);
             Built?.Invoke();
+        }
+
+        /// <summary>Organik şehir: yol ağı ve nehir tek parça mesh (merkez ofisin karesine bağlı: hiç kararmaz).</summary>
+        void OrganikYollarKur(CityMap map)
+        {
+            Material ornek = null;
+            foreach (var p in pieces)
+            {
+                if (!p.prefab) continue;
+                var r = p.t.GetComponentInChildren<Renderer>();
+                if (r != null && r.sharedMaterial != null) { ornek = r.sharedMaterial; break; }
+            }
+            // Yol ağı ve nehir uzaktan (2D harita) da görünür kalır: 3D binalarla birlikte gizlenmez, kilitli bölgede kararmaz
+            OrganikSehir3D.Kur(root, ornek);
         }
 
         /// <summary>
@@ -636,6 +664,7 @@ namespace KuryeTycoon
         void SimgeBloklariniSec(CityMap map, Dictionary<Vector2Int, Shop> shopTiles)
         {
             simgeBlok = new Dictionary<Vector2Int, GameObject>();
+            if (CityMap.Organik) return;     // organik şehirde 3×3 blok yok
             if (!UsePack || ownSimge == null || ownSimge.Length == 0) return;
             var aday = new List<Vector2Int>();
             for (int bx = 0; bx * CityMap.Block + 3 < CityMap.Width; bx++)
@@ -696,7 +725,7 @@ namespace KuryeTycoon
             bool s = t.y > 0 && map.IsRoad(t.x, t.y - 1);
             bool e = t.x < CityMap.Width - 1 && map.IsRoad(t.x + 1, t.y);
             bool w = t.x > 0 && map.IsRoad(t.x - 1, t.y);
-            bool kose = (n || s) && (e || w) && blokKose != null && blokKose.Count > 0;
+            bool kose = !CityMap.Organik && (n || s) && (e || w) && blokKose != null && blokKose.Count > 0;
             GameObject p;
             float aci;
             if (kose)
@@ -771,6 +800,7 @@ namespace KuryeTycoon
         /// <summary>Binanın önü yola baksın (güneydeki yol öncelikli: kamera güneyden baktığı için cephe görünür).</summary>
         static float FaceAngle(CityMap map, Vector2Int t)
         {
+            if (CityMap.Organik) return SehirPlani.YolaBakanAci(t.x, t.y);
             if (t.y > 0 && map.IsRoad(t.x, t.y - 1)) return 180f;
             if (t.x > 0 && map.IsRoad(t.x - 1, t.y)) return 90f;
             if (t.x < CityMap.Width - 1 && map.IsRoad(t.x + 1, t.y)) return 270f;
@@ -1490,6 +1520,12 @@ namespace KuryeTycoon
                        Vector2 offset = default, float targetHeight = 0f, bool registerHeight = true, bool ownModel = false)
         {
             if (prefab == null) return;
+            // Organik şehirde binalar yola dönük, açıları 90'ın katı değil: döndürülmüş kare komşuya taşmasın diye küçülür
+            if (CityMap.Organik && footprint > 0f)
+            {
+                float r = faceAngle * Mathf.Deg2Rad;
+                footprint /= Mathf.Abs(Mathf.Cos(r)) + Mathf.Abs(Mathf.Sin(r));
+            }
             var holder = Holder(prefab.name, tile, offset);
             var inst = Instantiate(prefab, holder, false);
             inst.transform.localPosition = Vector3.zero;
