@@ -18,7 +18,7 @@ namespace KuryeTycoon
     public static class SokakDonatilari
     {
         const string Klasor = "SehirPaketi/Donatilar";
-        const float Olcek = 0.075f;                  // 1 m → kare (binalar ≈ 0,07; kaldırım 0,16 kare)
+        const float Olcek = 0.1f;                    // 1 m → kare (biraz abartılı: üstten bakınca seçilsin)
         const float CaddeAsfalt = 0.62f, SokakAsfalt = 0.42f, Kaldirim = 0.16f;   // OrganikSehir3D ile aynı
         const float ZKaldirim = -0.003f;
 
@@ -233,7 +233,7 @@ namespace KuryeTycoon
                 if (c.Sayi < 2) continue;
                 float yari = (c.genis ? CaddeAsfalt : SokakAsfalt) * 0.5f;
                 float ofs = yari + Kaldirim * 0.55f;
-                float lambaAra = c.genis ? 2.3f : 3.0f;
+                float lambaAra = c.genis ? 1.9f : 2.4f;
                 float durakSonra = 4f + (float)rng.NextDouble() * 6f;
                 float yol = 0f, sonrakiLamba = 0.8f + (float)rng.NextDouble(), sonrakiAra = 0.4f + (float)rng.NextDouble();
                 int lambaNo = 0;
@@ -263,7 +263,7 @@ namespace KuryeTycoon
                         }
                         if (s >= sonrakiAra)
                         {
-                            sonrakiAra = s + 0.55f + (float)rng.NextDouble() * 0.5f;
+                            sonrakiAra = s + 0.38f + (float)rng.NextDouble() * 0.35f;
                             int taraf = rng.Next(2) == 0 ? -1 : 1;
                             var p = m + sol * (ofs * taraf);
                             if (!Uygun(p)) continue;
@@ -272,7 +272,7 @@ namespace KuryeTycoon
                                 if (Koy(top, "durak", p, -sol * taraf, rng, 0.16f)) durakSonra = s + 9f + (float)rng.NextDouble() * 6f;
                                 continue;
                             }
-                            var ad = AraDonati(BolgeAt(p), (float)rng.NextDouble());
+                            var ad = AraDonati(BolgeAt(p), (float)rng.NextDouble() * 0.7f);
                             if (ad != null) Koy(top, ad, p, -sol * taraf, rng, ad == "bufe" || ad == "reklam_panosu" ? 0.14f : 0.07f);
                         }
                     }
