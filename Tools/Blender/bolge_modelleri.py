@@ -429,13 +429,21 @@ def cit_tahta(g, p0, p1, z, h, renk, aralik=0.18):
         kati(g, pts + [add(ust, (0, 0, 0.0))], [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]], m)
 
 
+ZEMIN = False         # arsa levhası: kapalı (bina şehrin kendi zeminine oturur; kare çim/taş plakalar zeminle uyuşmuyordu)
+# Zemin örtüsü sayılan yamalar (çim, avlu taşı, asfalt, kaldırım) levha kapalıyken çizilmez; işlevli yüzeyler kalır
+ORTU = ("Cim_", "TasAvlu_", "Asfalt_", "Kaldirim_", "Beton_a9a49a", "Beton_b3ada2")
+
+
 def zemin(g, mat, kenar=None):
-    """14 × 14 arsa levhası."""
-    kutu(g, -LOT, LOT, -LOT, LOT, 0, ZL, mat, atla=("zn",))
+    """14 × 14 arsa levhası (ZEMIN açıksa). Kapalıyken modelin ölçüsü yine 14 m arsaya göredir (Unity sabit ölçek kullanır)."""
+    if ZEMIN:
+        kutu(g, -LOT, LOT, -LOT, LOT, 0, ZL, mat, atla=("zn",))
 
 
-def yama(g, x0, x1, y0, y1, mat, z=ZL, k=0.012):
-    """Arsanın üstünde ince boyalı alan (yol, çakıl, çiçeklik)."""
+def yama(g, x0, x1, y0, y1, mat, z=ZL, k=0.03):
+    """Arsanın üstünde ince boyalı alan (yol, çakıl, çiçeklik, teras, saha)."""
+    if not ZEMIN and mat.startswith(ORTU):
+        return
     kutu(g, x0, x1, y0, y1, z, z + k, mat)
 
 

@@ -87,7 +87,8 @@ namespace KuryeTycoon.EditorTools
                 if (model == null) continue;
                 // Hafif sürüm (ADI_Hafif.fbx) varsa: LOD Group, yakında tam detay, uzakta hafif model
                 string lodYol = yol.Substring(0, yol.Length - 4) + "_Hafif.fbx";
-                var lod = AssetDatabase.LoadAssetAtPath<GameObject>(lodYol);
+                // Sokak donatılarının hafif sürümü yok (ince direkler hafifte boş kalıyordu); eski _Hafif dosyaları kullanılmaz
+                var lod = model.name.StartsWith("Donati_") ? null : AssetDatabase.LoadAssetAtPath<GameObject>(lodYol);
                 GameObject kopya;
                 if (lod != null)
                 {
