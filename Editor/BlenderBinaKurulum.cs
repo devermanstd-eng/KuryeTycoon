@@ -19,19 +19,21 @@ namespace KuryeTycoon.EditorTools
         const string MalzemeKlasor = "Assets/KuryeTycoon/Modeller/Malzemeler";
         const string PrefabKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Binalar";
         const string EskiKlasor = "Assets/Resources/SehirPaketi/Binalar";
-        static readonly string[] Onekler = { "MustakilEv_", "SiraEv_", "OfisKulesi_", "Market_", "FastFood_", "Apartman_", "Yol_", "Agac_", "Cali_", "Park_", "Meydan_", "Avlu_", "Kir_", "Dukkan_", "Konut_", "Buro_", "Sanayi_", "Kamu_", "Hava_", "Blok_", "Simge_", "Arac_", "Kese_" };
+        static readonly string[] Onekler = { "MustakilEv_", "SiraEv_", "OfisKulesi_", "Market_", "FastFood_", "Apartman_", "Yol_", "Agac_", "Cali_", "Park_", "Meydan_", "Avlu_", "Kir_", "Dukkan_", "Konut_", "Buro_", "Sanayi_", "Kamu_", "Hava_", "Blok_", "Simge_", "Arac_", "Kese_", "Bolge_", "Donati_" };
         const string ParkKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Parklar";
         const string YolKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Yollar";
         const string AgacKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Agaclar";
         const string HavaKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Hava";   // bulut, damla, kar, yaprak, şimşek (Hava3D)
         const string AracKlasor = "Assets/KuryeTycoon/Resources/KuryeAraclari";      // kuryelerin araçları (VW Polo 6N2 …)
         const string KeseKlasor = "Assets/KuryeTycoon/Resources/Keseler";            // dükkanların kraft kâğıt keseleri (paketler)
+        const string DonatiKlasor = "Assets/KuryeTycoon/Resources/SehirPaketi/Donatilar"; // sokak donatıları (lamba, bank, durak ...)
 
         /// <summary>Prefabın gideceği klasör: yollar ve zemin Yollar'a, ağaç ve çalılar Agaclar'a, park parçaları Parklar'a, gerisi Binalar'a.</summary>
         static string Hedef(string ad) =>
             ad.StartsWith("Hava_") ? HavaKlasor :
             ad.StartsWith("Arac_") ? AracKlasor :
             ad.StartsWith("Kese_") ? KeseKlasor :
+            ad.StartsWith("Donati_") ? DonatiKlasor :
             ad.StartsWith("Yol_") ? YolKlasor : (ad.StartsWith("Park_") || ad.StartsWith("Meydan_") || ad.StartsWith("Avlu_") || ad.StartsWith("Kir_")) ? ParkKlasor : (ad.StartsWith("Agac_") || ad.StartsWith("Cali_")) ? AgacKlasor : PrefabKlasor;
 
         [MenuItem("Kurye Tycoon/Blender Binalarını Prefab Yap")]
@@ -46,6 +48,7 @@ namespace KuryeTycoon.EditorTools
             Klasor(HavaKlasor);
             Klasor(AracKlasor);
             Klasor(KeseKlasor);
+            Klasor(DonatiKlasor);
 
             // 1) Eski yere (Resources) kaydedilmiş Blender FBX'lerini model klasörüne taşı
             int tasinan = 0;

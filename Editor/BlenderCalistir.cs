@@ -26,6 +26,10 @@ namespace KuryeTycoon.EditorTools
         [MenuItem("Kurye Tycoon/Blender/Londra evleri ve dükkânları üret")]
         static void Londra() => Calistir("calistir_londra.py");
 
+        /// <summary>Her bölgeye özel binalar (Bolge_*) ve sokak donatıları (Donati_*): Tools/Blender/bolge_modelleri.py.</summary>
+        [MenuItem("Kurye Tycoon/Blender/Bölge modellerini ve donatıları üret")]
+        static void Bolgeler() => Calistir("bolge_modelleri.py");
+
         [MenuItem("Kurye Tycoon/Blender/Londra blokları üret")]
         static void Bloklar() => Calistir("calistir_blok.py");
 

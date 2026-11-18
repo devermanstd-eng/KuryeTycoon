@@ -1,0 +1,68 @@
+import math, numpy as np
+from PIL import Image
+
+def hexrgb(h):
+    h=h.lstrip('#'); return np.array([int(h[i:i+2],16) for i in (0,2,4)],float)/255
+
+def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224)):
+    V=np.array(g.v,float)
+    S=size*ss
+    a=math.radians(az); e=math.radians(el)
+    # kamera yönü (kameradan sahneye)
+    fwd=np.array([math.sin(a)*math.cos(e)*-1, math.cos(a)*math.cos(e), -math.sin(e)])
+    fwd=np.array([-math.sin(a)*math.cos(e), math.cos(a)*math.cos(e), -math.sin(e)])
+    right=np.cross(fwd,[0,0,1]); right/=np.linalg.norm(right)
+    up=np.cross(right,fwd)
+    sx=V@right; sy=V@up; dz=V@fwd
+    mn=np.array([sx.min(),sy.min()]); mx=np.array([sx.max(),sy.max()])
+    sc=(S*0.92)/max(mx-mn)
+    cx=(mn+mx)/2
+    px=(sx-cx[0])*sc+S/2; py=S/2-(sy-cx[1])*sc
+    zb=np.full((S,S),np.inf); img=np.zeros((S,S,3)); img[:]=np.array(arka)/255
+    sun=np.array([0.45,-0.55,0.75]); sun/=np.linalg.norm(sun)
+    cols={}
+    for f,mi in zip(g.f,g.fm):
+        m=g.mats[mi]
+        P=V[f]
+        n=np.zeros(3)
+        for i in range(len(f)):
+            p,q=P[i],P[(i+1)%len(f)]
+            n+= [(p[1]-q[1])*(p[2]+q[2]),(p[2]-q[2])*(p[0]+q[0]),(p[0]-q[0])*(p[1]+q[1])]
+        ln=np.linalg.norm(n)
+        if ln<1e-12: continue
+        n/=ln
+        if n@fwd>=0: continue
+        if m not in cols: cols[m]=hexrgb(HEX[m])
+        lam=max(0,n@sun)
+        col=cols[m]*(0.55+0.55*lam)
+        if m.startswith(('Cam','Vitrin','OfisCam')): col=col*0.85+0.1
+        col=np.clip(col,0,1)
+        for k in range(1,len(f)-1):
+            tri=[f[0],f[k],f[k+1]]
+            x=px[tri]; y=py[tri]; z=dz[tri]
+            x0=max(int(math.floor(x.min())),0); x1=min(int(math.ceil(x.max())),S-1)
+            y0=max(int(math.floor(y.min())),0); y1=min(int(math.ceil(y.max())),S-1)
+            if x1<x0 or y1<y0: continue
+            gx,gy=np.meshgrid(np.arange(x0,x1+1)+0.5,np.arange(y0,y1+1)+0.5)
+            d=(y[1]-y[2])*(x[0]-x[2])+(x[2]-x[1])*(y[0]-y[2])
+            if abs(d)<1e-12: continue
+            w0=((y[1]-y[2])*(gx-x[2])+(x[2]-x[1])*(gy-y[2]))/d
+            w1=((y[2]-y[0])*(gx-x[2])+(x[0]-x[2])*(gy-y[2]))/d
+            w2=1-w0-w1
+            msk=(w0>=-1e-6)&(w1>=-1e-6)&(w2>=-1e-6)
+            if not msk.any(): continue
+            zz=w0*z[0]+w1*z[1]+w2*z[2]
+            sub=zb[y0:y1+1,x0:x1+1]
+            upd=msk&(zz<sub)
+            sub[upd]=zz[upd]
+            img[y0:y1+1,x0:x1+1][upd]=col
+    # mürekkep çizgisi: derinlik kenarları
+    dd=np.where(np.isinf(zb),1e9,zb)
+    ed=np.zeros((S,S),bool)
+    for dy,dx in ((0,1),(1,0)):
+        a1=dd; a2=np.roll(dd,(dy,dx),(0,1))
+        ed|=np.abs(a1-a2)>0.25
+    img[ed]=img[ed]*0.25+np.array([0.12,0.09,0.07])*0.75
+    im=Image.fromarray((img*255).astype(np.uint8)).resize((size,size),Image.LANCZOS)
+    if yol: im.save(yol)
+    return im

@@ -47,7 +47,12 @@ namespace KuryeTycoon
         static GameObject[] ownHouses, ownHousesTum, ownTown, ownAll;
         static Dictionary<string, List<GameObject>> ownByKey;
         static readonly string[] OwnPrefixes = { "MustakilEv_", "SiraEv_", "OfisKulesi_", "Market_", "FastFood_", "Apartman_", "Dukkan_",
-                                                            "Konut_", "Buro_", "Sanayi_", "Kamu_", "Blok_", "Simge_" };
+                                                            "Konut_", "Buro_", "Sanayi_", "Kamu_", "Blok_", "Simge_", "Bolge_" };
+        // Her bölgeye özel binalar (Blender: Tools/Blender/bolge_modelleri.py → Bolge_<bölge>_<tür>_<n>):
+        // eski şehir, çarşı, kule, evler, banliyö, kampüs, sanayi, AVM. Anahtar: bölge adı ("eski", "karma" ...).
+        static Dictionary<string, GameObject[]> bolgeHavuz;
+        int kiliseSayisi;                                    // bu kurulumda yerleşen kilise (şehirde en çok iki)
+        readonly Dictionary<string, GameObject> bolgeSon = new Dictionary<string, GameObject>();
         /// <summary>Dükkan adı → kendi binasının ad parçası (FastFood_burger_queen_1_1 gibi).</summary>
         static readonly Dictionary<string, string> ShopModel = new Dictionary<string, string>
         {
@@ -101,10 +106,21 @@ namespace KuryeTycoon
             var refs = new List<GameObject>(); var simge = new List<GameObject>();
             blokDuz = new Dictionary<int, List<GameObject>>();
             blokKose = new Dictionary<int, List<GameObject>>();
+            var bolgeTmp = new Dictionary<string, List<GameObject>>();
             foreach (var p in loaded)
             {
                 if (!IsOwn(p.name)) { all.Add(p); continue; }
                 own.Add(p);
+                if (p.name.StartsWith("Bolge_"))
+                {
+                    var parca = p.name.Split('_');
+                    if (parca.Length >= 3)
+                    {
+                        if (!bolgeTmp.TryGetValue(parca[1], out var bl)) bolgeTmp[parca[1]] = bl = new List<GameObject>();
+                        bl.Add(p);
+                    }
+                    continue;
+                }
                 if (p.name.StartsWith("Simge_")) { simge.Add(p); continue; }
                 if (p.name.StartsWith("Konut_ref") || p.name.StartsWith("Dukkan_cadde") || p.name.StartsWith("Buro_klinker")) refs.Add(p);
                 if (p.name.StartsWith("Blok_"))
@@ -134,6 +150,8 @@ namespace KuryeTycoon
                     }
             }
             ownAll = own.ToArray();
+            bolgeHavuz = new Dictionary<string, GameObject[]>();
+            foreach (var kv in bolgeTmp) bolgeHavuz[kv.Key] = kv.Value.ToArray();
             // Londra evleri varsa banliyöde sadece onlar (eski Avrupa evleri kullanılmaz)
             var londraEv = houses.FindAll(h => h.name.Contains("_londra_"));
             ownHouses = londraEv.Count > 0 ? londraEv.ToArray() : houses.ToArray();
@@ -341,6 +359,8 @@ namespace KuryeTycoon
             bool ownPark = UsePack && parkTiles.Length > 0;
             bool packTreesOk = UsePack && packTrees.Length > 0;
             kamuKalan = ownKamu != null ? new List<GameObject>(ownKamu) : new List<GameObject>();
+            kiliseSayisi = 0;
+            bolgeSon.Clear();
             bool roads3D = UsePack && UseRoads && roadStraight != null && roadCross != null;
 
             root = new GameObject("3D Şehir").transform;
@@ -497,6 +517,13 @@ namespace KuryeTycoon
                             break;
 
                         case Zone.Mall:
+                            // Organik şehirde 3×3 blok yok: AVM bölgesinin her karesine hipermarket / mağaza sırası
+                            if (CityMap.Organik)
+                            {
+                                if (!BolgeBinasi(zone, tile, frontage ? face : 90f * rng.Next(4), rng) && own && ownIndustry.Length > 0)
+                                    AddPrefab(ownIndustry[rng.Next(ownIndustry.Length)], tile, 0.97f, face, null, default, 0f, true, true);
+                                break;
+                            }
                             if (CityMap.IsBlockCenter(x, y))
                             {
                                 float top;
@@ -522,6 +549,7 @@ namespace KuryeTycoon
 
                         case Zone.Warehouse:
                             // Fabrikalar, depolar, garajlar (kendi modellerimiz varsa); yoksa geniş, alçak kutular
+                            if (own && rng.NextDouble() < 0.7 && BolgeBinasi(zone, tile, frontage ? face : 90f * rng.Next(4), rng)) break;
                             if (own && ownIndustry.Length > 0)
                             {
                                 var sb = ownIndustry[rng.Next(ownIndustry.Length)];
@@ -536,6 +564,8 @@ namespace KuryeTycoon
                             {
                                 // Müstakil ev: yola yakın küçük bina, arkasında bahçe ağacı
                                 var front = FrontDir(map, tile) * 0.14f;
+                                // Bölgeye özel evler (kocka ház, aile evi, bungalov, modern, ikiz) çoğunlukta; Londra/Avrupa evleri karışır
+                                if (own && rng.NextDouble() < 0.72 && BolgeBinasi(zone, tile, face, rng)) break;
                                 if (own && ownHouses.Length > 0)
                                 {
                                     // Kendi evlerimizin bahçesi ve ağaçları modelin içinde
@@ -549,7 +579,8 @@ namespace KuryeTycoon
                                 else AddBox(tile, 0.55f, 0.18f + floors * 0.12f, CityMap.RoofColor(zone, x, y), null, false, front);
                                 AddTrees(tile, rng, 1, packTreesOk, -front * 2.2f, 0.12f);
                             }
-                            else if (CityMap.Organik && own && ownHousesTum != null && ownHousesTum.Length > 0 && rng.NextDouble() < 0.55)
+                            else if (CityMap.Organik && own && rng.NextDouble() < 0.4 && BolgeBinasi(zone, tile, face, rng)) { }
+                            else if (CityMap.Organik && own && ownHousesTum != null && ownHousesTum.Length > 0 && rng.NextDouble() < 0.35)
                             {
                                 // Organik şehirde bloklar düzensiz: yola değmeyen arsada da arka sıra ev (boş gri arsa kalmasın)
                                 var h = ownHousesTum[rng.Next(ownHousesTum.Length)];
@@ -559,7 +590,9 @@ namespace KuryeTycoon
                             break;
 
                         default: // eski şehir, kule bloklar, çarşı, kampüs
-                            if (!frontage && CityMap.Organik && own && rng.NextDouble() < (zone == Zone.Campus ? 0.45 : 0.75))
+                            if (!frontage && CityMap.Organik && own && rng.NextDouble() < (zone == Zone.Campus ? 0.45 : 0.75) &&
+                                rng.NextDouble() < 0.7 && BolgeBinasi(zone, tile, face, rng)) { }
+                            else if (!frontage && CityMap.Organik && own && rng.NextDouble() < (zone == Zone.Campus ? 0.2 : 0.5))
                             {
                                 // Organik şehir: yola değmeyen arsada arka bina (kare avlu plakası merdiven gibi görünüyordu)
                                 var havuz = zone == Zone.HighRise ? ownHigh : zone == Zone.OldTown ? ownOld : ownMixed;
@@ -592,6 +625,7 @@ namespace KuryeTycoon
                                 kamuKalan.RemoveAt(ki);
                                 AddPrefab(kb, tile, OwnFootprint(kb, 0.97f), face, null, default, 0f, true, true);
                             }
+                            else if (own && (CityMap.Organik || !BlokVar) && rng.NextDouble() < 0.7 && BolgeBinasi(zone, tile, face, rng)) { }
                             else if (!BlokVar && own && ownRef != null && ownRef.Length > 0 && (zone == Zone.OldTown || zone == Zone.Mixed || zone == Zone.HighRise) &&
                                      rng.NextDouble() < 0.28)
                             {
@@ -648,6 +682,8 @@ namespace KuryeTycoon
             }
             // Yol ağı ve nehir uzaktan (2D harita) da görünür kalır: 3D binalarla birlikte gizlenmez, kilitli bölgede kararmaz
             OrganikSehir3D.Kur(root, ornek);
+            // Lambalar, banklar, duraklar, levhalar, elektrik direkleri ... (Blender: Donati_*)
+            if (UsePack) SokakDonatilari.Kur(root, 777);
         }
 
         /// <summary>
@@ -674,6 +710,58 @@ namespace KuryeTycoon
         {
             if (ownByKey == null || !ownByKey.TryGetValue(shopName, out var l) || l.Count == 0) return null;
             return l[rng.Next(l.Count)];
+        }
+
+        static string BolgeAnahtar(Zone z)
+        {
+            switch (z)
+            {
+                case Zone.OldTown: return "eski";
+                case Zone.Mixed: return "karma";
+                case Zone.HighRise: return "kule";
+                case Zone.Houses: return "ev";
+                case Zone.Campus: return "kampus";
+                case Zone.Warehouse: return "sanayi";
+                case Zone.Mall: return "avm";
+                default: return null;
+            }
+        }
+
+        static GameObject[] BolgeHavuzu(string anahtar) =>
+            anahtar != null && bolgeHavuz != null && bolgeHavuz.TryGetValue(anahtar, out var a) && a.Length > 0 ? a : null;
+
+        /// <summary>
+        /// Bölgeye özel bina seç (yoksa null). Aynı model art arda gelmez; kilise şehirde en çok iki kez ve seyrek çıkar.
+        /// </summary>
+        GameObject BolgeSec(string anahtar, System.Random rng)
+        {
+            var h = BolgeHavuzu(anahtar);
+            if (h == null) return null;
+            GameObject b = null;
+            for (int deneme = 0; deneme < 6; deneme++)
+            {
+                b = h[rng.Next(h.Length)];
+                bool kilise = b.name.Contains("_kilise_");
+                if (kilise && (kiliseSayisi >= 2 || rng.NextDouble() < 0.85)) continue;
+                if (bolgeSon.TryGetValue(anahtar, out var son) && son == b && h.Length > 1) continue;
+                break;
+            }
+            if (b.name.Contains("_kilise_"))
+            {
+                if (kiliseSayisi >= 2) return null;
+                kiliseSayisi++;
+            }
+            bolgeSon[anahtar] = b;
+            return b;
+        }
+
+        /// <summary>Bölgeye özel binayı kareye koy; havuz boşsa false.</summary>
+        bool BolgeBinasi(Zone zone, Vector2Int tile, float face, System.Random rng, string anahtar = null)
+        {
+            var b = BolgeSec(anahtar ?? BolgeAnahtar(zone), rng);
+            if (b == null) return false;
+            AddPrefab(b, tile, OwnFootprint(b, 0.97f), face, null, default, 0f, true, true);
+            return true;
         }
 
         /// <summary>Kendi binalarımız gerçek boylarıyla oranlı: hipermarket evden geniş, ama komşu kareye taşmaz.</summary>
@@ -924,7 +1012,10 @@ namespace KuryeTycoon
             {
                 var t = new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y));
                 if (!dolu.Add(t)) return;
-                var e = evler[rng.Next(evler.Length)];
+                // Banliyö: uzun köy evleri, çiftlikler, bağ evleri çoğunlukta; arada aile evleri ve eski evler
+                double z0 = rng.NextDouble();
+                var bh = z0 < 0.55 ? BolgeHavuzu("banliyo") : z0 < 0.8 ? BolgeHavuzu("ev") : null;
+                var e = bh != null ? bh[rng.Next(bh.Length)] : evler[rng.Next(evler.Length)];
                 AddPrefab(e, anchor, OwnFootprint(e, 0.92f), aci, null, p - anchor, 0f, false, true);
                 if (packTreesOk && rng.NextDouble() < 0.6)
                 {
