@@ -549,11 +549,26 @@ namespace KuryeTycoon
                                 else AddBox(tile, 0.55f, 0.18f + floors * 0.12f, CityMap.RoofColor(zone, x, y), null, false, front);
                                 AddTrees(tile, rng, 1, packTreesOk, -front * 2.2f, 0.12f);
                             }
+                            else if (CityMap.Organik && own && ownHousesTum != null && ownHousesTum.Length > 0 && rng.NextDouble() < 0.55)
+                            {
+                                // Organik şehirde bloklar düzensiz: yola değmeyen arsada da arka sıra ev (boş gri arsa kalmasın)
+                                var h = ownHousesTum[rng.Next(ownHousesTum.Length)];
+                                AddPrefab(h, tile, OwnFootprint(h, 0.97f), face, null, default, 0f, true, true);
+                            }
                             else AddTrees(tile, rng, 2 + rng.Next(2), packTreesOk);
                             break;
 
                         default: // eski şehir, kule bloklar, çarşı, kampüs
-                            if (!frontage)
+                            if (!frontage && CityMap.Organik && own && rng.NextDouble() < (zone == Zone.Campus ? 0.45 : 0.75))
+                            {
+                                // Organik şehir: yola değmeyen arsada arka bina (kare avlu plakası merdiven gibi görünüyordu)
+                                var havuz = zone == Zone.HighRise ? ownHigh : zone == Zone.OldTown ? ownOld : ownMixed;
+                                if (havuz == null || havuz.Length == 0) havuz = ownTown;
+                                var b = Pick(havuz, rng, Mathf.Max(1, floors - 1), false);
+                                AddPrefab(b, tile, OwnFootprint(b, 0.97f), face, null, default, 0f, true, true);
+                            }
+                            else if (!frontage && CityMap.Organik) AddTrees(tile, rng, 1 + rng.Next(3), packTreesOk);
+                            else if (!frontage)
                             {
                                 if (UsePack && courtTiles.Length > 0)
                                 {
