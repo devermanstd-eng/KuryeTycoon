@@ -36,8 +36,22 @@ namespace KuryeTycoon.EditorTools
         [MenuItem("Kurye Tycoon/Blender/Blender yerini değiştir")]
         static void YerSec()
         {
-            string y = EditorUtility.OpenFilePanel("blender.exe dosyasını seçin", "", "exe");
-            if (!string.IsNullOrEmpty(y)) EditorPrefs.SetString(YolAnahtar, y);
+            string y = Sec(Mac ? "Blender.app'i seçin" : "blender.exe dosyasını seçin");
+            if (y != null) EditorPrefs.SetString(YolAnahtar, y);
+        }
+
+        static bool Mac => Application.platform == RuntimePlatform.OSXEditor;
+
+        /// <summary>Dosya penceresinden Blender'ı seçtirir. Mac'te Blender bir .app paketi: "exe" süzgeciyle seçilemiyordu,
+        /// "app" ile seçilir ve içindeki çalıştırılabilir dosyaya (Contents/MacOS/Blender) çevrilir.</summary>
+        static string Sec(string baslik)
+        {
+            string y = EditorUtility.OpenFilePanel(baslik, Mac ? "/Applications" : "", Mac ? "app" : "exe");
+            if (string.IsNullOrEmpty(y)) return null;
+            if (y.EndsWith(".app", StringComparison.OrdinalIgnoreCase)) y = Path.Combine(y, "Contents/MacOS/Blender");
+            if (File.Exists(y)) return y;
+            Debug.LogError("Kurye Tycoon: seçilen yerde Blender yok: " + y);
+            return null;
         }
 
         static string BlenderBul()
@@ -53,13 +67,22 @@ namespace KuryeTycoon.EditorTools
                 @"C:\Program Files\Steam\steamapps\common\Blender\blender.exe",
                 "/Applications/Blender.app/Contents/MacOS/Blender",
             }.ToList();
+            string ev = Environment.GetEnvironmentVariable("HOME");
+            if (!string.IsNullOrEmpty(ev))
+            {
+                adaylar.Add(Path.Combine(ev, "Applications/Blender.app/Contents/MacOS/Blender"));
+                adaylar.Add(Path.Combine(ev, "Library/Application Support/Steam/steamapps/common/Blender/Blender.app/Contents/MacOS/Blender"));
+            }
             const string vakif = @"C:\Program Files\Blender Foundation";
             if (Directory.Exists(vakif))
                 adaylar.InsertRange(0, Directory.GetDirectories(vakif).OrderByDescending(d => d).Select(d => Path.Combine(d, "blender.exe")));
             var bulunan = adaylar.FirstOrDefault(File.Exists);
             if (bulunan != null) { EditorPrefs.SetString(YolAnahtar, bulunan); return bulunan; }
-            string secilen = EditorUtility.OpenFilePanel("blender.exe bulunamadı — lütfen seçin", "", "exe");
-            if (!string.IsNullOrEmpty(secilen) && File.Exists(secilen)) { EditorPrefs.SetString(YolAnahtar, secilen); return secilen; }
+            string secilen = Sec(Mac ? "Blender bulunamadı: Blender.app'i seçin" : "blender.exe bulunamadı: lütfen seçin");
+            if (secilen != null) { EditorPrefs.SetString(YolAnahtar, secilen); return secilen; }
+            EditorUtility.DisplayDialog("Blender",
+                "Blender bulunamadı. blender.org'dan indirip kur (Mac'te Apple Silicon sürümü, Uygulamalar klasörüne), " +
+                "bir kez normal aç, sonra menüyü tekrar çalıştır.", "Tamam");
             return null;
         }
 
