@@ -216,16 +216,18 @@ namespace KuryeTycoon
                 for (int x = 0; x < CityMap.Width; x += 2)
                 {
                     if (!CityMap.RoadAt(x, y)) continue;
+                    bool cross;
                     if (CityMap.Organik)
                     {
                         // Organik şehir: kavşaklarda (3+ yol komşusu) ve yakından bakınca yol boyunca seyrek lamba
                         int k = (CityMap.RoadAt(x + 1, y) ? 1 : 0) + (CityMap.RoadAt(x - 1, y) ? 1 : 0) + (CityMap.RoadAt(x, y + 1) ? 1 : 0) + (CityMap.RoadAt(x, y - 1) ? 1 : 0);
-                        if (k >= 3) { if (Rand01(x, y, 19) > seyrek) continue; }
+                        cross = k >= 3;
+                        if (cross) { if (Rand01(x, y, 19) > seyrek) continue; }
                         else if (!araYol || Rand01(x, y, 23) > 0.35f) continue;
                     }
                     else
                     {
-                        bool cross = x % b == 0 && y % b == 0;
+                        cross = x % b == 0 && y % b == 0;
                         // Kavşaklarda (uzaktan bir kısmında), yakından ara yollarda yarım blokta bir lamba
                         if (cross) { if (Rand01(x, y, 19) > seyrek) continue; }
                         else if (!araYol || !((x % b == 2 && y % b == 0) || (y % b == 2 && x % b == 0))) continue;
