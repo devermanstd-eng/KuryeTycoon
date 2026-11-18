@@ -13,6 +13,8 @@ namespace KuryeTycoon
     ///    şafakta pembe, akşamüstü turuncu, gece ay ışığı.
     ///  • Ortam ışığı üç tonlu (gök mavisi, ufuk sıcak, yer yeşil) ve ekran efektleri (ton eşleme, hafif ışıma, sıcak beyaz ayarı).
     ///  • Ayarlar: PlayerPrefs "KuryeTycoon.Isik3D" (1 açık, 0 kapalı; kapalıysa eski düz görünüm).
+    ///  • Atmosfer dosyası (Resources/Gorsel/Atmosfer.asset, AtmosferAyari) varsa ışık anahtarları, gölge sapması ve ekran
+    ///    efektleri profili oradan gelir ("Kurye Tycoon > Atmosferi Güncelle" yazar); yoksa aşağıdaki koddaki ayarlar.
     /// </summary>
     public class Gorsel3D : MonoBehaviour
     {
@@ -32,9 +34,12 @@ namespace KuryeTycoon
 
         Light sun;
         Volume volume;
+        VolumeProfile calismaProfili;        // atmosfer profilinin oyun içi kopyası (dosya değişmesin)
         Bloom bloom;
         bool pipelineOk;
         Camera lastCam;
+        AtmosferAyari ayar;
+        float bulutluGolge = 0.6f, geceYansima = 0.12f;
 
         // ---------------------------------------------------------------- günün dört bölümüne göre ışık
         // Sabah 06–11 (pembe şafak → serin altın, uzun gölgeler) · Gündüz 11–17 (parlak, nötr) ·
@@ -53,7 +58,8 @@ namespace KuryeTycoon
         static readonly Color Moon = C(0.62f, 0.60f, 0.90f);   // lavanta ay ışığı (referanstaki mor akşam)
         static readonly Anahtar GeceA = new Anahtar(0f, Moon, 0.35f, C(0.30f, 0.29f, 0.44f), C(0.27f, 0.23f, 0.32f), C(0.14f, 0.13f, 0.17f), 0.45f);
 
-        static readonly Anahtar[] Anahtarlar =
+        /// <summary>Koddaki varsayılan anahtarlar (atmosfer dosyası yoksa).</summary>
+        static readonly Anahtar[] Varsayilan =
         {
             GeceA,
             new Anahtar(4.9f,  Moon, 0.35f, C(0.30f, 0.29f, 0.44f), C(0.27f, 0.23f, 0.32f), C(0.14f, 0.13f, 0.17f), 0.45f),
@@ -73,6 +79,9 @@ namespace KuryeTycoon
             new Anahtar(24.0f, Moon, 0.35f, C(0.30f, 0.29f, 0.44f), C(0.27f, 0.23f, 0.32f), C(0.14f, 0.13f, 0.17f), 0.45f),
         };
 
+        /// <summary>Kullanılan anahtarlar: atmosfer dosyasından ya da varsayılan.</summary>
+        static Anahtar[] Anahtarlar = Varsayilan;
+
         /// <summary>Saate göre ışık anahtarı (iki anahtar arasında yumuşak geçiş).</summary>
         static Anahtar Profil(float h)
         {
@@ -86,7 +95,53 @@ namespace KuryeTycoon
                 return new Anahtar(h, Color.Lerp(a.gunes, b.gunes, t), Mathf.Lerp(a.siddet, b.siddet, t), Color.Lerp(a.gok, b.gok, t),
                                    Color.Lerp(a.ufuk, b.ufuk, t), Color.Lerp(a.zemin, b.zemin, t), Mathf.Lerp(a.golge, b.golge, t));
             }
-            return GeceA;
+            return Anahtarlar[0];
+        }
+
+        /// <summary>Atmosfer dosyasını okur: anahtarlar, gölge ve gece ayarları (dosya yoksa ya da bozuksa varsayılan).</summary>
+        void AtmosferOku(bool yenile)
+        {
+            ayar = AtmosferAyari.Yukle(yenile);
+            if (ayar != null && ayar.Gecerli)
+            {
+                var a = new Anahtar[ayar.anahtarlar.Length];
+                for (int i = 0; i < a.Length; i++)
+                {
+                    var k = ayar.anahtarlar[i];
+                    a[i] = new Anahtar(k.saat, k.gunes, k.siddet, k.gok, k.ufuk, k.zemin, k.golge);
+                }
+                Anahtarlar = a;
+                bulutluGolge = ayar.bulutluGolgeAzalmasi;
+                geceYansima = ayar.geceYansima;
+            }
+            else
+            {
+                if (ayar != null) Debug.LogWarning("Kurye Tycoon: atmosfer dosyasındaki ışık anahtarları eksik ya da saat sırasında değil; koddaki ayar kullanılıyor.");
+                Anahtarlar = Varsayilan;
+                bulutluGolge = 0.6f;
+                geceYansima = 0.12f;
+            }
+        }
+
+        /// <summary>
+        /// Atmosfer dosyası değişince (editörde "Atmosferi Güncelle" ya da Inspector) oyunu kapatmadan yeniden uygular:
+        /// anahtarlar, gölge sapması, ekran efektleri profili.
+        /// </summary>
+        public void AtmosferiYenile()
+        {
+            if (!pipelineOk) return;
+            AtmosferOku(true);
+            GunesSapmasi();
+            if (volume != null) ProfilKur();
+            KaliteyeUy();
+            UpdateLighting();
+        }
+
+        void GunesSapmasi()
+        {
+            if (sun == null) return;
+            sun.shadowBias = ayar != null ? ayar.golgeSapmasi : 0.02f;
+            sun.shadowNormalBias = ayar != null ? ayar.golgeNormalSapmasi : 0.25f;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -108,6 +163,7 @@ namespace KuryeTycoon
                                  "Unity'de \"Kurye Tycoon > 3D Işık ve Gölge Kurulumu\" menüsünü bir kez çalıştırın.");
                 return;
             }
+            AtmosferOku(true);
             CreateSun();
             CreateVolume();
             UpdateLighting();
@@ -159,8 +215,7 @@ namespace KuryeTycoon
             sun.type = LightType.Directional;
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.72f;          // gölge tam kara değil: referanstaki gibi yumuşak
-            sun.shadowBias = 0.02f;
-            sun.shadowNormalBias = 0.25f;
+            GunesSapmasi();
             sun.renderMode = LightRenderMode.ForcePixel;
             RenderSettings.sun = sun;
             RenderSettings.ambientMode = AmbientMode.Trilight;
@@ -173,7 +228,34 @@ namespace KuryeTycoon
             volume = go.AddComponent<Volume>();
             volume.isGlobal = true;
             volume.priority = 10f;
+            ProfilKur();
+        }
+
+        /// <summary>
+        /// Ekran efektleri: atmosfer dosyasının profili varsa onun oyun içi kopyası (kalite ayarı ışımayı açıp kapatınca dosya
+        /// değişmesin), yoksa koddaki profil.
+        /// </summary>
+        void ProfilKur()
+        {
+            if (calismaProfili != null)
+            {
+                foreach (var c in calismaProfili.components)
+                    if (c != null) Destroy(c);
+                Destroy(calismaProfili);
+                calismaProfili = null;
+                bloom = null;
+            }
+            if (ayar != null && ayar.profil != null)
+            {
+                volume.sharedProfile = ayar.profil;
+                volume.profile = null;
+                calismaProfili = volume.profile;          // Volume, paylaşılan profilin bileşenlerini kopyalar
+                calismaProfili.TryGet(out bloom);
+                return;
+            }
+            volume.profile = null;
             var p = ScriptableObject.CreateInstance<VolumeProfile>();
+            calismaProfili = p;
 
             var tone = p.Add<Tonemapping>(true);
             tone.mode.Override(TonemappingMode.Neutral);
@@ -249,7 +331,7 @@ namespace KuryeTycoon
             {
                 float overcast = Mathf.Clamp01(fx.CloudAmt * 0.45f + fx.RainAmt * 0.35f + fx.StormAmt * 0.25f + fx.SnowAmt * 0.2f);
                 sun.intensity *= 1f - overcast * 0.55f;
-                sun.shadowStrength *= 1f - overcast * 0.6f;
+                sun.shadowStrength *= 1f - overcast * bulutluGolge;
             }
             // 2D zemin ve kır da geceye uysun (ışıktan etkilenmiyorlar)
             if (CityMap.I != null) CityMap.I.SetNight(night);
@@ -263,7 +345,7 @@ namespace KuryeTycoon
             Shader.SetGlobalFloat(AnimeGeceId, night);
             Shader.SetGlobalFloat(AnimeBulutId, fx != null && WeatherFx.Enabled ? Mathf.Clamp01(fx.CloudAmt * 0.6f + fx.RainAmt * 0.5f + fx.StormAmt * 0.5f) : 0f);
             // Gece camlar gündüz gökyüzünü yansıtıp mavi-beyaz parlamasın
-            RenderSettings.reflectionIntensity = Mathf.Lerp(1f, 0.12f, night);
+            RenderSettings.reflectionIntensity = Mathf.Lerp(1f, geceYansima, night);
             // Kod kutusu binalar (AVM, otogar, merkez) ışıktan etkilenmiyor: geceye kendileri uysun
             if (City3D.I != null) City3D.I.SetNight(night);
         }

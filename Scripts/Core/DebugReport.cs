@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-16 u9 (koyu mürekkep tema: kömür paneller, açık yazı, siyah çerçeve; krem kâğıt yerine)";
+        public const string CodeVersion = "2026-11-18 u10 (atmosfer dosyası: Resources/Gorsel/Atmosfer + AtmosferProfili; stilize pilot paketi Blender betiği)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
