@@ -907,7 +907,7 @@ namespace KuryeTycoon
                 var t = new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y));
                 if (!dolu.Add(t)) return;
                 var e = evler[rng.Next(evler.Length)];
-                AddPrefab(e, anchor, OwnFootprint(e, 0.78f), aci, null, p - anchor, 0f, false, true);
+                AddPrefab(e, anchor, OwnFootprint(e, 0.92f), aci, null, p - anchor, 0f, false, true);
                 if (packTreesOk && rng.NextDouble() < 0.6)
                 {
                     float r = aci * Mathf.Deg2Rad;
@@ -953,7 +953,7 @@ namespace KuryeTycoon
                     float u = Uzak(p);
                     if (u < 0.8f || CityMap.KirYoluYakin(p, 0.7f)) continue;
                     double z = rng.NextDouble();
-                    if (z < 0.28f * (1f - u / B)) Ev(p, 90f * rng.Next(4));
+                    if (z < 0.42f * (1f - u / B)) Ev(p, 90f * rng.Next(4));
                     else if (packTreesOk && z < 0.5f)
                         AddPrefab(packTrees[rng.Next(packTrees.Length)], anchor, 0f, (float)rng.NextDouble() * 360f, null, p - anchor,
                                   0.35f + (float)rng.NextDouble() * 0.3f, false);

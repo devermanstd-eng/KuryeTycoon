@@ -436,6 +436,22 @@ namespace KuryeTycoon
                 if (RoadAt(0, y) && !RoadAt(0, y - 1)) l.Add((new Vector2(-Boy(0, y), y), new Vector2(-0.5f, y)));
                 if (RoadAt(w - 1, y) && !RoadAt(w - 1, y - 1)) l.Add((new Vector2(w - 0.5f, y), new Vector2(w - 1 + Boy(w - 1, y), y)));
             }
+            // Kenarda birbirine çok yakın sokaklar dışarıda tarak gibi paralel uzamasın: caddeler kalır, sokaklar arası en az 4 kare
+            var secilen = new List<(Vector2, Vector2)>();
+            foreach (var r in l)
+            {
+                var uc = r.Item1.x < -0.5f || r.Item1.y < -0.5f ? r.Item2 : r.Item1;     // şehir kenarındaki uç
+                var ucT = new Vector2Int(Mathf.Clamp(Mathf.RoundToInt(uc.x), 0, w - 1), Mathf.Clamp(Mathf.RoundToInt(uc.y), 0, h - 1));
+                bool genis = SehirPlani.Genis(SehirPlani.YolNo(ucT.x, ucT.y));
+                bool yakin = false;
+                foreach (var q in secilen)
+                {
+                    var uq = q.Item1.x < -0.5f || q.Item1.y < -0.5f ? q.Item2 : q.Item1;
+                    if (Vector2.Distance(uq, uc) < 4f) { yakin = true; break; }
+                }
+                if (!yakin || genis) secilen.Add(r);
+            }
+            l = secilen;
             organikKir = l.ToArray();
             // Caddeler kırda uzağa gider; sokaklar banliyö kuşağından biraz öteye kadar
             float Boy(int x, int y) => SehirPlani.Genis(SehirPlani.YolNo(x, y)) ? 70f : Banliyo + 4f + (x * 7 + y * 13) % 5;
