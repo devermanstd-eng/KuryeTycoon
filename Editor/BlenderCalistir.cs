@@ -17,6 +17,7 @@ namespace KuryeTycoon.EditorTools
         const string YolAnahtar = "KuryeTycoon.BlenderYolu";
         static Process surec;
         static string betikAdi;
+        static bool prefabYapilsin;
         static readonly System.Text.StringBuilder cikti = new System.Text.StringBuilder();
 
         [MenuItem("Kurye Tycoon/Blender/Anime ağaçlarını üret")]
@@ -27,6 +28,10 @@ namespace KuryeTycoon.EditorTools
 
         [MenuItem("Kurye Tycoon/Blender/Londra blokları üret")]
         static void Bloklar() => Calistir("calistir_blok.py");
+
+        /// <summary>Stilize pilot paketi (kurye, bisiklet, paket dolabı, ağaçlar, sokak lambası) → Modeller/Stilize. Prefab adımı yok.</summary>
+        [MenuItem("Kurye Tycoon/Blender/Stilize pilot paketini üret")]
+        static void Stilize() => Calistir("stilize_paket.py", false);
 
         [MenuItem("Kurye Tycoon/Blender/Blender yerini değiştir")]
         static void YerSec()
@@ -58,7 +63,7 @@ namespace KuryeTycoon.EditorTools
             return null;
         }
 
-        static void Calistir(string betik)
+        static void Calistir(string betik, bool prefabYap = true)
         {
             if (surec != null && !surec.HasExited)
             {
@@ -82,6 +87,7 @@ namespace KuryeTycoon.EditorTools
 
             cikti.Clear();
             betikAdi = betik;
+            prefabYapilsin = prefabYap;
             var bilgi = new ProcessStartInfo(blender, "-b --factory-startup -P \"" + sarici + "\"")
             {
                 UseShellExecute = false,
@@ -89,6 +95,8 @@ namespace KuryeTycoon.EditorTools
                 RedirectStandardError = true,
                 CreateNoWindow = true,
             };
+            // Betik çıktı klasörünü buradan bulur (sarıcıyla çalıştığı için kendi yerini bilemez)
+            bilgi.EnvironmentVariables["KURYE_TYCOON_KOK"] = Path.GetFullPath(Path.Combine(Application.dataPath, "KuryeTycoon"));
             surec = new Process { StartInfo = bilgi, EnableRaisingEvents = true };
             surec.OutputDataReceived += (s, e) => { if (e.Data != null) lock (cikti) cikti.AppendLine(e.Data); };
             surec.ErrorDataReceived += (s, e) => { if (e.Data != null) lock (cikti) cikti.AppendLine(e.Data); };
@@ -130,7 +138,7 @@ namespace KuryeTycoon.EditorTools
             }
             Debug.Log("Kurye Tycoon: Blender bitti (" + betikAdi + "):\n" + son);
             AssetDatabase.Refresh();
-            EditorApplication.ExecuteMenuItem("Kurye Tycoon/Blender Binalarını Prefab Yap");
+            if (prefabYapilsin) EditorApplication.ExecuteMenuItem("Kurye Tycoon/Blender Binalarını Prefab Yap");
         }
     }
 }
