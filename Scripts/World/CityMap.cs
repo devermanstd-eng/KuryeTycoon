@@ -370,21 +370,19 @@ namespace KuryeTycoon
         /// <summary>Karenin zemin rengi (çatının etrafında görünen kaldırım / bahçe / su).</summary>
         public static Color GroundColor(int x, int y)
         {
+            if (Organik && x >= 0 && y >= 0 && x < Width && y < Height)
+            {
+                // Organik şehir: zemin rengi yumuşak geçişli (çim ↔ taş), yol/su/park kenarlarını çizgi mesh'leri çizer.
+                // Su ve yol kareleri de zemin renginde: kare kare mavi ve gri basamaklar görünmesin.
+                if (ZoneOf(x, y) == Zone.Park) return GrassColor;
+                var tas = Color.Lerp(PlazaColor, SidewalkColor, 0.6f);
+                return Color.Lerp(GrassColor, tas, SehirPlani.Yumusak(x, y));
+            }
             if (BridgeAt(x, y)) return BridgeColor;
-            // Organik şehirde asfaltı çizgi mesh'i çizer (OrganikSehir3D); kare zemini kaldırım rengi kalır
-            if (RoadAt(x, y)) return Organik ? SidewalkColor : RoadColor;
+            if (RoadAt(x, y)) return RoadColor;
             if (WaterAt(x, y)) return WaterColor;
             if (RiverBankAt(x, y)) return RiverBankColor;
             if (RailAt(x, y)) return RailBedColor;
-            if (Organik)
-            {
-                // Organik şehirde kaldırım/çim ayrımı yola bitişikliğe göre değil, bölgeye göre: kare kare merdiven deseni olmasın
-                var oz = ZoneOf(x, y);
-                if (oz == Zone.Country) return CountryColor;
-                if (oz == Zone.Park || oz == Zone.Houses || oz == Zone.Campus) return GrassColor;
-                if (oz == Zone.Warehouse) return YardColor;
-                return Color.Lerp(PlazaColor, SidewalkColor, 0.6f);
-            }
             switch (ZoneOf(x, y))
             {
                 case Zone.Country: return CountryColor;
@@ -401,6 +399,8 @@ namespace KuryeTycoon
         /// <summary>Kuşbakışı karenin baskın rengi (telefon haritası için).</summary>
         public Color MiniColor(int x, int y)
         {
+            if (Organik && RoadAt(x, y)) return BridgeAt(x, y) ? BridgeColor : RoadColor;
+            if (Organik && WaterAt(x, y)) return WaterColor;
             if (RoadAt(x, y) || WaterAt(x, y) || RailAt(x, y)) return GroundColor(x, y);
             var z = ZoneOf(x, y);
             if (z == Zone.Park || z == Zone.Plaza || z == Zone.Mall) return RoofColor(z, x, y);
@@ -461,9 +461,15 @@ namespace KuryeTycoon
                 if (!yakin || genis) secilen.Add(r);
             }
             l = secilen;
+            // Çevre yolu: şehri banliyö kuşağının dışından saran dikdörtgen; sokaklar buna bağlanır (tarlada yarım kalmaz)
+            float c = CevreYolu;
+            l.Add((new Vector2(-c, -c), new Vector2(w - 1 + c, -c)));
+            l.Add((new Vector2(-c, h - 1 + c), new Vector2(w - 1 + c, h - 1 + c)));
+            l.Add((new Vector2(-c, -c), new Vector2(-c, h - 1 + c)));
+            l.Add((new Vector2(w - 1 + c, -c), new Vector2(w - 1 + c, h - 1 + c)));
             organikKir = l.ToArray();
             // Caddeler kırda uzağa gider; sokaklar banliyö kuşağından biraz öteye kadar
-            float Boy(int x, int y) => SehirPlani.Genis(SehirPlani.YolNo(x, y)) ? 70f : Banliyo + 4f + (x * 7 + y * 13) % 5;
+            float Boy(int x, int y) => SehirPlani.Genis(SehirPlani.YolNo(x, y)) ? 70f : CevreYolu;
             return organikKir;
         }
 
@@ -486,6 +492,8 @@ namespace KuryeTycoon
 
         /// <summary>Organik şehrin çevresinde banliyö kuşağı (kare): tarla ve orman burada başlamaz, evler seyrelerek kıra karışır.</summary>
         public const float Banliyo = 7f;
+        /// <summary>Organik şehrin çevre yolu: şehir kenarından bu kadar kare uzakta.</summary>
+        public const float CevreYolu = 9f;
 
         /// <summary>Nokta organik şehrin banliyö kuşağında mı (şehrin dışında, kenara Banliyo kareden yakın)?</summary>
         public static bool BanliyoKusagi(Vector2 p) =>

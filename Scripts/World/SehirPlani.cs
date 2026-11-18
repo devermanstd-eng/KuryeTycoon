@@ -50,6 +50,7 @@ namespace KuryeTycoon
         static int[,] yolNo;              // her yol karesini çizen çizginin numarası (sokak adı için)
         static Vector2[,] yolYonu;        // her karede en yakın yolun yönü (binalar yola dönük dursun)
         static float[,] yolUzak;          // en yakın yol çizgisine uzaklık
+        static float[,] yumusak;          // yumuşatılmış yapı yoğunluğu (0 çim … 1 taş): zemin rengi kare kare değişmesin
 
         /// <summary>Organik şehir açık mı? (Plan dosyası varsa ve ayar açıksa.)</summary>
         public static bool Aktif
@@ -99,6 +100,8 @@ namespace KuryeTycoon
         public static int YolNo(int x, int y) => Icinde(x, y) ? yolNo[x, y] : -1;
         public static Vector2 YolYonu(int x, int y) => Icinde(x, y) ? yolYonu[x, y] : Vector2.right;
         public static float YolUzakligi(int x, int y) => Icinde(x, y) ? yolUzak[x, y] : 99f;
+        /// <summary>Yumuşatılmış yapı yoğunluğu, 0 (bahçeli, yeşil) … 1 (sık, taş zemin).</summary>
+        public static float Yumusak(int x, int y) => Icinde(x, y) ? yumusak[x, y] : 0f;
 
         /// <summary>Plan dosyasını okur (bir kez). Dosya yoksa false.</summary>
         public static bool Yukle()
@@ -123,6 +126,7 @@ namespace KuryeTycoon
                     yogun[x, y] = (byte)Mathf.Clamp(Harf(v.yogunluk, x, y, '0') - '0', 0, 9);
                 }
             YolBilgisiKur();
+            YumusakKur();
             Debug.Log($"Kurye Tycoon: organik şehir planı yüklendi ({w}×{h}, {v.yollar?.Length ?? 0} yol çizgisi).");
             return true;
         }
@@ -131,6 +135,30 @@ namespace KuryeTycoon
         {
             if (satirlar == null || y >= satirlar.Length || satirlar[y] == null || x >= satirlar[y].Length) return varsayilan;
             return satirlar[y][x];
+        }
+
+        static void YumusakKur()
+        {
+            int w = v.W, h = v.H;
+            yumusak = new float[w, h];
+            const int R = 3;
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                {
+                    float top = 0f, ag = 0f;
+                    for (int dx = -R; dx <= R; dx++)
+                        for (int dy = -R; dy <= R; dy++)
+                        {
+                            int xx = x + dx, yy = y + dy;
+                            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+                            float a = 1f / (1f + dx * dx + dy * dy);
+                            char z = zone[xx, yy];
+                            float d = yogun[xx, yy] / 9f;
+                            if (z == 'P' || z == 'E' || z == 'C') d *= 0.4f;      // bahçeli bölgeler yeşile çeker
+                            top += d * a; ag += a;
+                        }
+                    yumusak[x, y] = Mathf.Clamp01(top / Mathf.Max(ag, 1e-3f) * 2.4f);
+                }
         }
 
         /// <summary>Her kare için en yakın yol çizgisi: numarası, yönü ve uzaklığı.</summary>
@@ -204,8 +232,12 @@ namespace KuryeTycoon
             var bak = en - p;
             if (bak.sqrMagnitude < 1e-4f) bak = new Vector2(-yon.y, yon.x);
             // City3D: 0° kuzeye (+y), 90° batıya, 180° güneye, 270° doğuya bakar
-            float aci = Mathf.Atan2(-bak.x, bak.y) * Mathf.Rad2Deg;
-            return (aci + 360f) % 360f;
+            float aci = (Mathf.Atan2(-bak.x, bak.y) * Mathf.Rad2Deg + 360f) % 360f;
+            // Eksene yakın açılar 90'ın katına yuvarlanır: döndürülmüş bina küçülmesin, komşularıyla hizalı dursun.
+            // Gerçekten çapraz yollarda (45° civarı) bina yola dönük kalır.
+            float en = Mathf.Round(aci / 90f) * 90f;
+            if (Mathf.Abs(Mathf.DeltaAngle(aci, en)) < 24f) aci = en % 360f;
+            return aci;
         }
     }
 }

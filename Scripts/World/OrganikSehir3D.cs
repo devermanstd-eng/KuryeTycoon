@@ -14,12 +14,13 @@ namespace KuryeTycoon
         // Genişlikler (kare = 10 m)
         const float CaddeAsfalt = 0.62f, SokakAsfalt = 0.42f;
         const float Kaldirim = 0.16f;                  // asfaltın iki yanında
-        const float ZKaldirim = -0.003f, ZAsfalt = -0.006f, ZCizgi = -0.0075f, ZSu = -0.0015f;
+        const float ZKaldirim = -0.003f, ZAsfalt = -0.006f, ZCizgi = -0.0075f, ZSu = -0.0015f, ZPark = -0.001f;
 
         static readonly Color KaldirimRenk = new Color(0.74f, 0.71f, 0.65f);
         static readonly Color AsfaltRenk = new Color(0.27f, 0.28f, 0.31f);
         static readonly Color CizgiRenk = new Color(0.92f, 0.90f, 0.82f);
         static readonly Color SuRenk = new Color(0.38f, 0.63f, 0.84f);
+        static readonly Color ParkRenk = new Color(0.47f, 0.66f, 0.36f);
 
         /// <summary>Yol ağını ve nehri kurar. ornek: şehrin bir malzemesi (aynı gölgelendirici kullanılsın: anime toon ya da URP Lit).</summary>
         public static List<GameObject> Kur(Transform parent, Material ornek)
@@ -42,6 +43,18 @@ namespace KuryeTycoon
             sonuc.Add(Nesne("Kaldırımlar (organik)", parent, kal, Malzeme("OrganikKaldirim", KaldirimRenk)));
             sonuc.Add(Nesne("Yollar (organik)", parent, asf, Malzeme("OrganikAsfalt", AsfaltRenk)));
             if (cizgi.v.Count > 0) sonuc.Add(Nesne("Yol çizgileri (organik)", parent, cizgi, Malzeme("OrganikCizgi", CizgiRenk)));
+
+            // Parklar: plan konturlarından yumuşak kenarlı çim (kare park zemini kenarda basamak yapmasın)
+            var park = new MeshKurucu();
+            foreach (var c in SehirPlani.Park)
+            {
+                if (c.Sayi < 3) continue;
+                var pts = new List<Vector2>(c.Sayi);
+                for (int i = 0; i < c.Sayi; i++) pts.Add(c[i]);
+                if ((pts[0] - pts[pts.Count - 1]).sqrMagnitude < 1e-4f) pts.RemoveAt(pts.Count - 1);
+                Poligon(park, pts, ZPark);
+            }
+            if (park.v.Count > 0) sonuc.Add(Nesne("Parklar (organik)", parent, park, Malzeme("OrganikPark", ParkRenk)));
 
             var su = new MeshKurucu();
             foreach (var c in SehirPlani.Su)

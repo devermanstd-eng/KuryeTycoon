@@ -858,12 +858,13 @@ namespace KuryeTycoon
                     int sabit = Mathf.RoundToInt(yatay ? r.a.y : r.a.x);
                     float bas = yatay ? Mathf.Min(r.a.x, r.b.x) : Mathf.Min(r.a.y, r.b.y);
                     float son = yatay ? Mathf.Max(r.a.x, r.b.x) : Mathf.Max(r.a.y, r.b.y);
-                    int lim = yatay ? CityMap.Width : CityMap.Height;
                     for (int k = Mathf.CeilToInt(bas); k <= Mathf.FloorToInt(son); k++)
                     {
-                        if (k >= 0 && k < lim) continue;                                   // şehrin içi: zaten yol karesi
-                        if ((k < 0 ? -k : k - lim + 1) > KirYoluUzunluk) continue;
                         var t = yatay ? new Vector2Int(k, sabit) : new Vector2Int(sabit, k);
+                        int W = CityMap.Width, H = CityMap.Height;
+                        if (t.x >= 0 && t.y >= 0 && t.x < W && t.y < H) continue;           // şehrin içi: zaten yol karesi
+                        int u = Mathf.Max(Mathf.Max(-t.x, t.x - W + 1), Mathf.Max(-t.y, t.y - H + 1));
+                        if (u > KirYoluUzunluk) continue;
                         // Parçalar merkez ofisin karesine bağlanır: kilitli bölge gibi kararmasın
                         AddFlat(roadStraight, anchor, yatay ? 90f : 0f, 1, new Vector2(t.x - anchor.x, t.y - anchor.y));
                     }
