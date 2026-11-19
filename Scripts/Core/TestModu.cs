@@ -50,6 +50,13 @@ namespace KuryeTycoon
         public const int SabitHaritaTohumu = 785852933, SabitBotTohumu = 40109562;
         /// <summary>StartGame bu tohumu kullanır (test başlarken dolar, oyun kurulunca boşalır).</summary>
         public static int? TestHaritaTohumu;
+        /// <summary>Toplu test (TopluTestKosucu): bu koşunun harita ve bot tohumu (SabitTohum'un yerine geçer). null = normal davranış.</summary>
+        public static int? OzelHaritaTohumu, OzelBotTohumu;
+        /// <summary>
+        /// Toplu test / -nographics: ekran görüntüsü alınmaz (kartlar, harita, pencereler), sonunda klasör açılmaz.
+        /// Oyun ve bot aynen çalışır; yalnızca görüntü adımları atlanır.
+        /// </summary>
+        public static bool Ekransiz;
         public static string TurAdi(BotTuru t) => t == BotTuru.Akilli ? "akıllı oyuncu" : t == BotTuru.Rastgele ? "rastgele seçim" : "hep ilk seçenek";
 
         public static bool Aktif { get; private set; }
@@ -70,10 +77,11 @@ namespace KuryeTycoon
             var go = new GameObject("Otomatik Test");
             go.transform.SetParent(GameBootstrap.I.transform, false);
             var t = go.AddComponent<TestModu>();   // Awake: klasör, dosyalar, kayıt kapalı
-            TestHaritaTohumu = SabitTohum ? SabitHaritaTohumu : (int?)null;
+            TestHaritaTohumu = OzelHaritaTohumu ?? (SabitTohum ? SabitHaritaTohumu : (int?)null);
             GameBootstrap.I.StartGame();
             TestHaritaTohumu = null;
-            if (SabitTohum) Random.InitState(SabitBotTohumu);   // olayların zarları da aynı yerden başlasın
+            if (OzelBotTohumu.HasValue) Random.InitState(OzelBotTohumu.Value);
+            else if (SabitTohum) Random.InitState(SabitBotTohumu);   // olayların zarları da aynı yerden başlasın
             t.OyunBasladi();
         }
 
@@ -88,7 +96,7 @@ namespace KuryeTycoon
         {
             I = this;
             Aktif = true;
-            tohum = SabitTohum ? SabitBotTohumu : System.Environment.TickCount & 0x7fffffff;
+            tohum = OzelBotTohumu ?? (SabitTohum ? SabitBotTohumu : System.Environment.TickCount & 0x7fffffff);
             rnd = new System.Random(tohum);
             eskiArkaPlan = Application.runInBackground;
             Application.runInBackground = true;   // başka pencereye geçince test durmasın
@@ -231,7 +239,7 @@ namespace KuryeTycoon
         void KartIsle(GameEvent ev)
         {
             string anahtar = KartAnahtari(ev.title);
-            if (ui != null && kartGoruntuSayisi < MaxKartGoruntusu && goruntulenenKart.Add(anahtar))
+            if (ui != null && !Ekransiz && kartGoruntuSayisi < MaxKartGoruntusu && goruntulenenKart.Add(anahtar))
             {
                 StartCoroutine(KartGoruntusuSonraSec(ev));
                 return;
@@ -602,7 +610,7 @@ namespace KuryeTycoon
                     F(Itibar.PuanOrtalamasi), F(Itibar.OlayEtkisi)
                 }));
 
-            if (gunNo == 1 || gunNo % 10 == 0) haritaBekliyor = true;
+            if (!Ekransiz && (gunNo == 1 || gunNo % 10 == 0)) haritaBekliyor = true;
         }
 
         static string F(float v) => v.ToString("0.##", Inv);
@@ -693,7 +701,7 @@ namespace KuryeTycoon
             catch (System.Exception ex) { Debug.LogWarning("Test: F9 raporu kopyalanamadı: " + ex.Message); }
 
             var kilitli = new List<string>();
-            if (ui != null) yield return StartCoroutine(ui.TestPencereGoruntuleri(ekranKlasoru, kilitli));
+            if (ui != null && !Ekransiz) yield return StartCoroutine(ui.TestPencereGoruntuleri(ekranKlasoru, kilitli));
 
             try { File.WriteAllText(Path.Combine(klasor, "ozet.txt"), Ozet(kilitli), new UTF8Encoding(false)); }
             catch (System.Exception ex) { Debug.LogWarning("Test: özet yazılamadı: " + ex.Message); }
@@ -718,7 +726,7 @@ namespace KuryeTycoon
             }
 
             mesgul = false;
-            KlasoruAc();
+            if (!Ekransiz) KlasoruAc();
         }
 
         /// <summary>
@@ -745,6 +753,21 @@ namespace KuryeTycoon
             try { Application.OpenURL(new System.Uri(Path.GetDirectoryName(klasor)).AbsoluteUri); }
             catch (System.Exception ex) { Debug.LogWarning("Test: klasör açılamadı: " + ex.Message); }
         }
+
+        // ------------------------------------------------------------------ toplu test için okuyucular (TopluTestKosucu)
+
+        /// <summary>Test bitti ve rapor dosyaları kapandı (özet, gunluk.csv, zip hazır).</summary>
+        public bool RaporHazir => bitti && !mesgul;
+        public string Klasor => klasor;
+        public string BitisNedeni => bitisNedeni;
+        public int HataToplam => hataToplam;
+        public int UyariToplam => uyariToplam;
+        public long BaslangicKasa => baslangicKasa;
+        public long EnDusukKasa => enDusukKasa;
+        public int IflasGunu => iflasGunu;
+        public int KapanisGunu => kapanisGunu;
+        /// <summary>İlk farklı hatalar (en sık önce), toplu özete yazılır.</summary>
+        public List<KeyValuePair<string, int>> EnSikHatalar(int n) => EnCok(hataSayisi, n);
 
         // ------------------------------------------------------------------ özet
 
