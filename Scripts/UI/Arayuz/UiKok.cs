@@ -7,7 +7,7 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// UI Toolkit kökü. Oyun içindeki bütün ekranlar UI Toolkit'te; IMGUI (OnGUI) yalnızca haritanın üstüne çizilenler
-    /// (etiketler, katman, uçan yazılar, seçili bina işareti), kurulum ekranı ve eski arayüz (F8) için kaldı.
+    /// (etiketler, katman, uçan yazılar, seçili bina işareti) için kaldı. Kurulum ekranı ayrı belgede (UiKurulum.cs).
     ///  • UIDocument ve PanelSettings çalışma anında kurulur (sahneye bir şey eklemek gerekmez).
     ///  • Ölçek IMGUI ile aynı (GameUI.uiScale): iki sistemin koordinatları birebir aynı, dikdörtgenler karşılaştırılabilir.
     ///  • Katmanlar: (uiKok'un altında) harita efektleri: hava, gece/gündüz, harita katmanı (UiHaritaKatmani.cs) ·
@@ -58,29 +58,8 @@ namespace KuryeTycoon
         /// <summary>Arayüz ölçeği: ekran yüksekliği 900'e göre × oyuncunun seçtiği boyut (OnGUI ile ortak).</summary>
         float UiOlcek() => Mathf.Clamp(Mathf.Clamp(Screen.height / 900f, 0.8f, 2f) * UiSizeFactor, 0.7f, 2.4f);
 
-        const string YeniArayuzKey = "KuryeTycoon.YeniArayuz";
-        static int yeniArayuzCache = -1;
-
-        /// <summary>
-        /// Yeni arayüz (UI Toolkit) açık mı? Geçiş döneminde kaçış yolu: F8 eski IMGUI arayüzüne döner (bu bilgisayarda kalıcı).
-        /// </summary>
-        static bool YeniArayuz
-        {
-            get
-            {
-                if (yeniArayuzCache < 0) yeniArayuzCache = PlayerPrefs.GetInt(YeniArayuzKey, 1);
-                return yeniArayuzCache == 1;
-            }
-            set
-            {
-                yeniArayuzCache = value ? 1 : 0;
-                PlayerPrefs.SetInt(YeniArayuzKey, yeniArayuzCache);
-                PlayerPrefs.Save();
-            }
-        }
-
-        /// <summary>Yeni arayüz kuruldu ve açık: IMGUI'deki eski çubuklar ve pencere başlığı çizilmez.</summary>
-        bool UiAktif => uiHazir && YeniArayuz;
+        /// <summary>Arayüz (UI Toolkit) kuruldu. Eski IMGUI arayüzü (F8) kaldırıldı; kurulamazsa OnGUI nedenini yazar.</summary>
+        bool UiAktif => uiHazir;
 
         bool UiSerbest =>
             (EventManager.I == null || EventManager.I.Current == null) && !pauseMenuOpen && !ConfirmOpen && !BigCardOpen;
@@ -95,7 +74,7 @@ namespace KuryeTycoon
                 try { UiKur(); }
                 catch (Exception ex)
                 {
-                    // Kurulamadıysa eski (IMGUI) arayüzle devam edilir: oyun oynanabilir kalsın
+                    // Kurulamadıysa OnGUI nedenini ekrana yazar (eski IMGUI arayüzü artık yok)
                     uiKurulamadi = true;
                     Debug.LogException(ex);
                     if (uiDoc != null) uiDoc.gameObject.SetActive(false);
@@ -108,7 +87,7 @@ namespace KuryeTycoon
             uiScale = s;
             if (Mathf.Abs(uiPanel.scale - s) > 0.0005f) uiPanel.scale = s;
 
-            bool goster = basladi && !fotoModu && YeniArayuz;
+            bool goster = basladi && !fotoModu;
             U.Goster(uiKok, goster);
             if (!goster) { U.Goster(uiIpucu, false); return; }
             // Ortadaki kutu açıkken alttaki çubuklar ve pencere tıklanmaz; üst katman (kutular, bildirimler, rehber) açık kalır

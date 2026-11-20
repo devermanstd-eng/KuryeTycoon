@@ -33,21 +33,8 @@ namespace KuryeTycoon
             return f == null || Guide.I == null || Guide.I.IsOpen(f.Value);
         }
 
-        /// <summary>Simge çubuğundan açma: kilitliyse açılmaz, nedeni haber akışına yazılır.</summary>
-        void TryOpenTab(Tab t)
-        {
-            if (!TabOpen(t))
-            {
-                EventManager.I.Notify($"{BaseTabNames[(int)t]} henüz kilitli: {Guide.LockReason(FeatureOf(t).Value)}");
-                return;
-            }
-            OpenTab(t);
-        }
-
         Tab? dockTip;       // fare üstündeki kilitli simge (ipucu kutusu için)
         Rect dockTipRect;
-
-        static readonly Color LockedIcon = new Color(0.62f, 0.65f, 0.71f, 0.32f);
 
         /// <summary>Kilitli simgenin yanında küçük açıklama kutusu.</summary>
         void DrawDockTooltip()
@@ -105,18 +92,8 @@ namespace KuryeTycoon
             target = Mathf.Clamp(target, 0f, 0.6f);   // çok dar ekranda harita fazla küçülmesin
             mapLeft01 = mapLeft01 < 0f ? target : Mathf.MoveTowards(mapLeft01, target, Time.unscaledDeltaTime * 2.2f);
             // Yüzen üst çubuk (16.11 akşam): harita üst çubuğun altına da çizilir; üst çubuk ayrı ayrı yüzen kapsüller, araları harita.
-            // Eski arayüzde (F8) üst çubuk yine bütün şeridi kaplar.
             float top = UiAktif ? 0f : Mathf.Clamp01(TopBar * uiScale / Screen.height);
             MapCamera.I.SetViewport(new Rect(mapLeft01, 0f, 1f - mapLeft01, 1f - top));
-        }
-
-        /// <summary>Harita kaydırılınca simge çubuğu ile harita arasında kalan şerit (pencerenin arkası).</summary>
-        void DrawMapGap(float sh)
-        {
-            float ml = MapLeftGui;
-            if (ml <= DockW + 0.5f) return;
-            Fill(new Rect(DockW, TopBar, ml - DockW, sh - TopBar), new Color(0.06f, 0.066f, 0.08f, 1f));
-            Fill(new Rect(ml - 1f, TopBar, 1f, sh - TopBar), UITheme.Line);
         }
 
         // ---------------------------------------------------------------- arayüz boyutu
