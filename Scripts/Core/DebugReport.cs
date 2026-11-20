@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-20 u15 (stilize varlıklar: varlik_uretici.py + varlik_uret.sh, Art/Stilize, Stilize Prefabları Kur)";
+        public const string CodeVersion = "2026-11-20 u16 (kurulum ekranı UI Toolkit'te; eski IMGUI arayüzü (F8) silindi)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 

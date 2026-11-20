@@ -5,8 +5,8 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Yorumlar, Kendi Marketin ve İstatistikler pencerelerinin ortak durumu (filtre, dönem) ve İstatistik gruplaması (BuildStats);
-    /// pencerelerin kendisi UI Toolkit'te (Arayuz/UiMesajlar, UiMarket, UiIstatistik). Burada ayrıca eski arayüzün (F8)
-    /// Dükkanlar listesindeki kendi market özeti ve haritada şehir etkinliği işareti var (bina kartı: Arayuz/UiBinaKarti.cs).
+    /// pencerelerin kendisi UI Toolkit'te (Arayuz/UiMesajlar, UiMarket, UiIstatistik). Burada ayrıca haritada şehir etkinliği
+    /// işareti var (bina kartı: Arayuz/UiBinaKarti.cs).
     /// </summary>
     public partial class GameUI
     {
@@ -15,18 +15,6 @@ namespace KuryeTycoon
         int msgFilter;   // 0 tümü, 1 kurye, 2 yorum
 
         // ================================================================ Kendi marketin
-
-        /// <summary>Eski arayüzde (F8) Dükkanlar listesinde kendi marketinin kısa özeti (dükkan kartı yerine).</summary>
-        void DrawOwnStoreSummary(bool withTitle)
-        {
-            var ds = DarkStore.I;
-            if (ds == null || !ds.IsOpen) return;
-            if (withTitle) GUILayout.Label($"{DarkStore.StoreName}  [Senin]", header);
-            GUILayout.Label($"Kendi deponun marketi · {DarkStore.SizeNames[ds.size]} · komisyon yok, brüt marj ~%{DarkStore.Margin * 100f:0}", small);
-            GUILayout.Label($"{ShopHours.StatusText(ds.shop.def)} · {ShopHours.HoursText(ds.shop.def)}", small);
-            GUILayout.Label($"Stok {Ft(ds.TotalStock)} / {Ft(ds.Capacity)} · bugün {ds.ordersToday} sipariş, brüt kâr {Ft(ds.profitToday)}", small);
-            if (GUILayout.Button("Market penceresini aç", smallButton)) deferred += () => { CloseInfo(); OpenTab(Tab.Market); };
-        }
 
         // ================================================================ İstatistikler
 

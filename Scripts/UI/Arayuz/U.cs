@@ -303,7 +303,7 @@ namespace KuryeTycoon
 
         // ------------------------------------------------------------------ koyu mürekkep teması (16.11 akşam)
         // Kurye.uss'in :root değişkenleriyle aynı renkler. Koddan satır içi verilen renkler buradan gelir: koyu kömür panel
-        // üstünde okunur açık tonlar. UITheme.Text/Good/Bad/Warn IMGUI için (harita etiketleri, kurulum ekranı, F8) kaldı;
+        // üstünde okunur açık tonlar. UITheme.Text/Good/Bad/Warn IMGUI için (harita etiketleri) kaldı;
         // UI Toolkit kodu onların yerine bunları kullanır. (Önce krem kâğıt denendi; açık haritada eridiği için koyu seçildi.)
 
         /// <summary>Panel zemini (pencere, yüzen kutular): kömür.</summary>

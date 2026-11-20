@@ -76,7 +76,7 @@ namespace KuryeTycoon
                     y.Kaydirici("Ses seviyesi", GameSounds.Volume, 0f, 1f, $"%{GameSounds.Volume * 100f:0}", v => GameSounds.Volume = v);
                     y.Dugme("Sesi dene", () => GameSounds.Play(Sfx.Iyi), true, "kucuk-dg");
                 }
-                y.Onay("Açıklamaları \"?\" balonu yerine hep açık göster (Kayıtlar ve eski arayüz)", ShowAllDetails, v => ShowAllDetails = v);
+                y.Onay("Açıklamaları \"?\" balonu yerine hep açık göster (Kayıtlar)", ShowAllDetails, v => ShowAllDetails = v);
                 y.Onay("Bütün menüleri baştan aç (deneyimli oyuncular için)", Guide.AllMenusSetting, v => Guide.AllMenusSetting = v);
                 var g = Guide.I;
                 if (g != null)

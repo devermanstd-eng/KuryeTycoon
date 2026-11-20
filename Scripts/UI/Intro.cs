@@ -26,19 +26,5 @@ namespace KuryeTycoon
                 PlayerPrefs.Save();
             }
         }
-
-        /// <param name="id">eski sürümden kalma, artık kullanılmıyor (çağrılar değişmesin diye duruyor)</param>
-        void Intro(string id, string brief, string details)
-        {
-            bool hasDetails = !string.IsNullOrEmpty(details);
-            if (!hasDetails || ShowAllDetails)
-            {
-                GUILayout.Label(brief, body);
-                if (hasDetails) GUILayout.Label(details, bodyDim);
-                return;
-            }
-            GUILayout.Label(brief, kitIntro);
-            HelpOnLast(details);
-        }
     }
 }
