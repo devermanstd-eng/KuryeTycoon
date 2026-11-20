@@ -473,6 +473,153 @@ namespace KuryeTycoon
             return organikKir;
         }
 
+        // ---------- Organik şehirde nehrin şehir dışındaki devamı ----------
+
+        /// <summary>Nehrin şehir dışına akan bir kolu: orta çizgi noktaları ve her noktadaki su genişliği (kare).</summary>
+        public class KirNehirKolu
+        {
+            public readonly List<Vector2> P = new List<Vector2>();
+            public readonly List<float> G = new List<float>();
+        }
+
+        static List<KirNehirKolu> kirNehir;
+        static float[,] kirNehirUzak;                 // kıyıya (su kenarına) uzaklık; su içinde eksi
+        const float KnPay = 56f, KnAdim = 0.5f;       // ızgara: şehrin KnPay kare ötesine kadar, yarım kare çözünürlük
+        static int knW, knH;
+
+        /// <summary>Organik şehirde nehrin şehir kenarından çıkıp harita sonuna kadar kıvrılarak akan kolları.</summary>
+        public static IReadOnlyList<KirNehirKolu> KirNehir
+        {
+            get
+            {
+                if (kirNehir == null) KirNehirUret();
+                return kirNehir;
+            }
+        }
+
+        /// <summary>
+        /// Şehir kenarındaki su karelerini bulur (her kenarda bitişik su dizisi = bir çıkış) ve her çıkıştan dışarı,
+        /// yumuşak kıvrımlarla (Perlin) harita sonuna kadar uzanan bir kol üretir. Tohumlu: her oyunda aynı.
+        /// </summary>
+        static void KirNehirUret()
+        {
+            kirNehir = new List<KirNehirKolu>();
+            if (!Organik) return;
+            int w = Width, h = Height;
+            var cikislar = new List<(Vector2 merkez, Vector2 yon, float gen)>();
+            void Tara(int n, System.Func<int, Vector2Int> kare, Vector2 yon)
+            {
+                int bas = -1;
+                for (int i = 0; i <= n; i++)
+                {
+                    bool su = false;
+                    if (i < n) { var t = kare(i); su = SehirPlani.SuVar(t.x, t.y); }
+                    if (su && bas < 0) bas = i;
+                    if (!su && bas >= 0)
+                    {
+                        var a = kare(bas); var b = kare(i - 1);
+                        var m = (new Vector2(a.x, a.y) + new Vector2(b.x, b.y)) * 0.5f;
+                        cikislar.Add((m, yon, i - bas + 0.4f));
+                        bas = -1;
+                    }
+                }
+            }
+            Tara(w, i => new Vector2Int(i, 0), Vector2.down);
+            Tara(w, i => new Vector2Int(i, h - 1), Vector2.up);
+            Tara(h, i => new Vector2Int(0, i), Vector2.left);
+            Tara(h, i => new Vector2Int(w - 1, i), Vector2.right);
+
+            int no = 0;
+            foreach (var c in cikislar)
+            {
+                no++;
+                var kol = new KirNehirKolu();
+                float g0 = Mathf.Clamp(c.gen, 2.2f, 4.5f);
+                float aci0 = Mathf.Atan2(c.yon.y, c.yon.x);
+                var p = c.merkez - c.yon * 1.6f;               // şehrin içinden başla: su çokgeniyle bindirmeli, ek yeri görünmesin
+                float sapma = 0f, s = 0f;
+                for (int adim = 0; adim < 400; adim++)
+                {
+                    kol.P.Add(p);
+                    float dis = DisariUzaklik(p);
+                    kol.G.Add(Mathf.Lerp(g0, g0 + 0.9f, Mathf.Clamp01(dis / 30f)));
+                    if (dis > KnPay - 4f) break;
+                    // Kıvrım: düşük frekanslı gürültü; şehirden çıkarken düz başlar, sonra serbestçe kıvrılır
+                    float serbest = Mathf.Clamp01((s - 2.5f) / 8f);
+                    float hedef = (Mathf.PerlinNoise(no * 17.3f + 3.1f, s * 0.045f) * 2f - 1f) * 1.25f
+                                + (Mathf.PerlinNoise(no * 5.7f + 41.2f, s * 0.13f) * 2f - 1f) * 0.35f;
+                    sapma = Mathf.Lerp(sapma, hedef * serbest, 0.25f);
+                    float aci = aci0 + Mathf.Clamp(sapma, -1.15f, 1.15f);     // hep dışarı doğru (en çok ~66° yana)
+                    p += new Vector2(Mathf.Cos(aci), Mathf.Sin(aci)) * KnAdim;
+                    s += KnAdim;
+                }
+                kirNehir.Add(kol);
+            }
+            KirNehirIzgarasi();
+            if (cikislar.Count > 0) Debug.Log($"Kurye Tycoon: nehir şehir dışında {cikislar.Count} kol halinde devam ediyor.");
+        }
+
+        /// <summary>Şehir dikdörtgeninin dışına uzaklık (kare; içerde 0).</summary>
+        static float DisariUzaklik(Vector2 p)
+        {
+            float dx = Mathf.Max(0f, Mathf.Max(-0.5f - p.x, p.x - (Width - 0.5f)));
+            float dy = Mathf.Max(0f, Mathf.Max(-0.5f - p.y, p.y - (Height - 0.5f)));
+            return Mathf.Sqrt(dx * dx + dy * dy);
+        }
+
+        /// <summary>Kıyıya uzaklık ızgarası: her parçayı çevresindeki hücrelere işler (sorgu hızlı olsun).</summary>
+        static void KirNehirIzgarasi()
+        {
+            knW = Mathf.CeilToInt((Width + 2f * KnPay) / KnAdim) + 1;
+            knH = Mathf.CeilToInt((Height + 2f * KnPay) / KnAdim) + 1;
+            kirNehirUzak = new float[knW, knH];
+            for (int i = 0; i < knW; i++) for (int j = 0; j < knH; j++) kirNehirUzak[i, j] = 99f;
+            const float Menzil = 12f;
+            foreach (var kol in kirNehir)
+                for (int k = 0; k + 1 < kol.P.Count; k++)
+                {
+                    Vector2 a = kol.P[k], b = kol.P[k + 1];
+                    float ga = kol.G[k] * 0.5f, gb = kol.G[k + 1] * 0.5f;
+                    int i0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.x, b.x) - Menzil + KnPay) / KnAdim));
+                    int i1 = Mathf.Min(knW - 1, Mathf.CeilToInt((Mathf.Max(a.x, b.x) + Menzil + KnPay) / KnAdim));
+                    int j0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.y, b.y) - Menzil + KnPay) / KnAdim));
+                    int j1 = Mathf.Min(knH - 1, Mathf.CeilToInt((Mathf.Max(a.y, b.y) + Menzil + KnPay) / KnAdim));
+                    var ab = b - a;
+                    float L2 = Mathf.Max(ab.sqrMagnitude, 1e-6f);
+                    for (int i = i0; i <= i1; i++)
+                        for (int j = j0; j <= j1; j++)
+                        {
+                            var q = new Vector2(i * KnAdim - KnPay, j * KnAdim - KnPay);
+                            float t = Mathf.Clamp01(Vector2.Dot(q - a, ab) / L2);
+                            float d = Vector2.Distance(q, a + ab * t) - Mathf.Lerp(ga, gb, t);
+                            if (d < kirNehirUzak[i, j]) kirNehirUzak[i, j] = d;
+                        }
+                }
+        }
+
+        /// <summary>Noktanın şehir dışındaki nehrin kıyısına uzaklığı (kare; su içinde eksi, nehir yoksa 99).</summary>
+        public static float KirNehirUzak(Vector2 p)
+        {
+            if (!Organik) return 99f;
+            if (kirNehir == null) KirNehirUret();
+            if (kirNehirUzak == null) return 99f;
+            float fx = (p.x + KnPay) / KnAdim, fy = (p.y + KnPay) / KnAdim;
+            if (fx < 0f || fy < 0f || fx > knW - 1.001f || fy > knH - 1.001f) return 99f;
+            int ix = (int)fx, iy = (int)fy;
+            float tx = fx - ix, ty = fy - iy;
+            float a = Mathf.Lerp(kirNehirUzak[ix, iy], kirNehirUzak[ix + 1, iy], tx);
+            float b = Mathf.Lerp(kirNehirUzak[ix, iy + 1], kirNehirUzak[ix + 1, iy + 1], tx);
+            return Mathf.Lerp(a, b, ty);
+        }
+
+        /// <summary>Nokta şehir dışındaki nehre (kıyı payıyla) yakın mı? Şehrin içi hep false (orayı plan çizer).</summary>
+        public static bool KirNehirYakin(Vector2 p, float pay) =>
+            Organik && DisariUzaklik(p) > 0f && KirNehirUzak(p) < pay;
+
+        /// <summary>Kır özelliklerinin (tarla, orman, çiftlik) nehirden kaçınması: organikte gerçek kol, ızgarada eski eğri.</summary>
+        static bool NehirUzantisiYakin(Vector2 p, float pay) =>
+            Organik ? KirNehirYakin(p, pay) : (p.x < 0f || p.x > Width - 1f) && Mathf.Abs(p.y - RiverCurveY(p.x)) < 1.7f + pay;
+
         static readonly (Vector2 a, Vector2 b)[] IzgaraKirYollari =
         {
             (new Vector2(-70f, 4f),  new Vector2(-0.5f, 4f)),
@@ -514,7 +661,7 @@ namespace KuryeTycoon
                     if (InCity(cx, cy)) return true;
                 }
             // Nehir uzantısı
-            if ((p.x < 0f || p.x > Width - 1f) && Mathf.Abs(p.y - RiverCurveY(p.x)) < 1.7f + margin) return true;
+            if (NehirUzantisiYakin(p, margin + (Organik ? 0.9f : 0f))) return true;
             // Kır yolları
             foreach (var r in CountryRoads)
             {
@@ -559,7 +706,7 @@ namespace KuryeTycoon
         public bool KirdaDolu(Vector2 p, float pay)
         {
             if (InField(p, pay * 0.5f)) return true;
-            if ((p.x < 0f || p.x > Width - 1f) && Mathf.Abs(p.y - RiverCurveY(p.x)) < 2.2f + pay) return true;
+            if (NehirUzantisiYakin(p, pay + (Organik ? 1.1f : 0.5f))) return true;
             if (!Organik && p.x >= -1f && p.x <= Width && Mathf.Abs(p.y - RiverY) < 2.5f) return true;
             if (NearCountryRoad(p, pay * 0.6f)) return true;
             foreach (var f in Farms) if ((f - p).sqrMagnitude < 2.5f) return true;
@@ -666,6 +813,23 @@ namespace KuryeTycoon
                     }
                 }
 
+            // Organik: şehir dışındaki nehir kollarının kıyısında seyrek söğüt/kavak sırası (kıvrımı belli etsin)
+            if (Organik)
+                foreach (var kol in KirNehir)
+                    for (int k = 4; k + 1 < kol.P.Count; k += 2)
+                    {
+                        var a = kol.P[k]; var b = kol.P[k + 1];
+                        if (DisariUzaklik(a) < Banliyo + 0.5f) continue;
+                        var yon = (b - a).normalized; var yan = new Vector2(-yon.y, yon.x);
+                        for (int kiyi = -1; kiyi <= 1; kiyi += 2)
+                        {
+                            if (rng.NextDouble() > 0.42) continue;
+                            var q = a + yan * kiyi * (kol.G[k] * 0.5f + 0.45f + (float)rng.NextDouble() * 0.9f);
+                            if (NearCountryRoad(q, 0.6f) || InField(q, 0.15f)) continue;
+                            CountryTrees.Add(new Vector3(q.x, q.y, 0.32f + (float)rng.NextDouble() * 0.3f));
+                        }
+                    }
+
             // Şehrin kenarı boyunca ağaç sırası (şehir kırdan yumuşakça ayrılsın)
             for (float x = -1.5f; x < Width + 1f; x += 1.1f)
             {
@@ -697,7 +861,7 @@ namespace KuryeTycoon
         void TryEdgeTree(Vector2 p, System.Random rng)
         {
             // Kenar ağaçları şehrin hemen dışında: sadece nehir ve kır yollarından uzak dur
-            if (Mathf.Abs(p.y - RiverCurveY(p.x)) < 2f) return;
+            if (Organik ? KirNehirYakin(p, 0.6f) : Mathf.Abs(p.y - RiverCurveY(p.x)) < 2f) return;
             if (InField(p, 0.2f)) return;
             foreach (var r in CountryRoads)
             {
@@ -912,6 +1076,20 @@ namespace KuryeTycoon
                     var water = Deco("Tisza", countryRoot, false, WaterColor, mid, new Vector2(len, 3f), -8, false);
                     water.transform.rotation = Quaternion.Euler(0f, 0f, ang);
                 }
+            // Organik: nehrin şehir dışındaki kolları (2D düz harita görünümü)
+            if (Organik)
+                foreach (var kol in KirNehir)
+                    for (int k = 0; k + 1 < kol.P.Count; k++)
+                    {
+                        Vector2 pa = kol.P[k], pb = kol.P[k + 1];
+                        var mid = (pa + pb) / 2f;
+                        float len = Vector2.Distance(pa, pb) + 0.3f;
+                        float ang = Mathf.Atan2(pb.y - pa.y, pb.x - pa.x) * Mathf.Rad2Deg;
+                        var bank = Deco("Tisza kıyısı", countryRoot, false, RiverBankColor, mid, new Vector2(len, kol.G[k] + 0.9f), -9, false);
+                        bank.transform.rotation = Quaternion.Euler(0f, 0f, ang);
+                        var water = Deco("Tisza", countryRoot, false, WaterColor, mid, new Vector2(len, kol.G[k]), -8, false);
+                        water.transform.rotation = Quaternion.Euler(0f, 0f, ang);
+                    }
             foreach (var r in CountryRoads)
             {
                 var mid = (r.a + r.b) / 2f;

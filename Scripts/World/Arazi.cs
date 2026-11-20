@@ -91,7 +91,9 @@ namespace KuryeTycoon
             // Yollar vadide
             var p = new Vector2(x, y);
             float yol = CityMap.KirYoluYakin(p, 0.8f) ? 0f : CityMap.KirYoluYakin(p, 1.8f) ? 0.25f : CityMap.KirYoluYakin(p, 3.2f) ? 0.6f : 1f;
-            return h * yol;
+            // Nehir vadide akar: kıyıdan ~2 kare düz taban, sonra yamaçlar yavaşça yükselir
+            float vadi = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.5f, 10f, CityMap.KirNehirUzak(p)));
+            return h * yol * vadi;
         }
 
         /// <summary>

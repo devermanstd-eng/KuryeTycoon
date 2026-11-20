@@ -100,7 +100,117 @@ namespace KuryeTycoon
                 var suMat = SuMalzemesi();
                 sonuc.Add(Nesne("Tisza (organik)", parent, su, suMat != null ? suMat : Malzeme("OrganikSu", SuRenk), golgeAl: false));
             }
+            KirNehirKur(parent, sonuc);
             return sonuc;
+        }
+
+        // ------------------------------------------------------------------ nehrin şehir dışındaki kolları
+
+        static readonly Color KumRenk = new Color(0.72f, 0.66f, 0.50f);
+        static readonly Color KopruRenk = new Color(0.66f, 0.64f, 0.60f);
+
+        /// <summary>
+        /// Nehir şehrin kenarında bitmesin: CityMap.KirNehir kolları aynı canlı suyla harita sonuna kadar akar.
+        /// Kıyıda ince kum/çakıl şeridi; kır yollarının nehri geçtiği yerde korkuluklu beton köprü.
+        /// </summary>
+        static void KirNehirKur(Transform parent, List<GameObject> sonuc)
+        {
+            var kollar = CityMap.KirNehir;
+            if (kollar == null || kollar.Count == 0) return;
+            int W = CityMap.Width, H = CityMap.Height;
+            bool Disarida(Vector2 p) => p.x < -0.5f || p.y < -0.5f || p.x > W - 0.5f || p.y > H - 0.5f;
+
+            var su = new MeshKurucu();
+            var kum = new MeshKurucu();
+            foreach (var kol in kollar)
+            {
+                int n = kol.P.Count;
+                if (n < 2) continue;
+                Vector2 Yan(int i)
+                {
+                    var d = (kol.P[Mathf.Min(n - 1, i + 1)] - kol.P[Mathf.Max(0, i - 1)]).normalized;
+                    return new Vector2(-d.y, d.x);
+                }
+                for (int i = 0; i + 1 < n; i++)
+                {
+                    Vector2 a = kol.P[i], b = kol.P[i + 1], na = Yan(i), nb = Yan(i + 1);
+                    float ga = kol.G[i] * 0.5f, gb = kol.G[i + 1] * 0.5f;
+                    su.Dortgen(V(a + na * ga, ZSu), V(b + nb * gb, ZSu), V(b - nb * gb, ZSu), V(a - na * ga, ZSu));
+                    if (!Disarida(a) && !Disarida(b)) continue;          // şehrin içinde kıyıyı plan çizer
+                    for (int k = -1; k <= 1; k += 2)
+                    {
+                        float ia = ga - 0.05f, ib = gb - 0.05f, da = ga + 0.3f, db = gb + 0.3f;
+                        kum.Dortgen(V(a + na * k * ia, ZSu + 0.0007f), V(b + nb * k * ib, ZSu + 0.0007f),
+                                    V(b + nb * k * db, ZSu + 0.0007f), V(a + na * k * da, ZSu + 0.0007f));
+                    }
+                }
+            }
+            if (su.v.Count == 0) return;
+            var suMat = SuMalzemesi();
+            sonuc.Add(Nesne("Tisza · şehir dışı", parent, su, suMat != null ? suMat : Malzeme("OrganikSu", SuRenk), golgeAl: false));
+            if (kum.v.Count > 0) sonuc.Add(Nesne("Tisza kıyısı · şehir dışı", parent, kum, Malzeme("OrganikKum", KumRenk)));
+
+            // Köprüler: kır yolu × nehir kolu kesişimleri
+            var kopruler = new GameObject("Kır köprüleri").transform;
+            kopruler.SetParent(parent, false);
+            sonuc.Add(kopruler.gameObject);
+            var beton = Malzeme("OrganikKopru", KopruRenk);
+            var asfalt = Malzeme("OrganikAsfalt", AsfaltRenk);
+            foreach (var r in CityMap.CountryRoads)
+                foreach (var kol in kollar)
+                    for (int i = 0; i + 1 < kol.P.Count; i++)
+                    {
+                        if (!Kesisim(r.a, r.b, kol.P[i], kol.P[i + 1], out var x)) continue;
+                        if (!Disarida(x)) continue;
+                        var yol = (r.b - r.a).normalized;
+                        var nehir = (kol.P[i + 1] - kol.P[i]).normalized;
+                        float sin = Mathf.Abs(yol.x * nehir.y - yol.y * nehir.x);
+                        float boy = kol.G[i] / Mathf.Max(0.4f, sin) + 1.1f;
+                        Kopru(kopruler, x, yol, boy, beton, asfalt);
+                    }
+        }
+
+        static bool Kesisim(Vector2 p, Vector2 p2, Vector2 q, Vector2 q2, out Vector2 x)
+        {
+            x = default;
+            var r = p2 - p; var s = q2 - q;
+            float den = r.x * s.y - r.y * s.x;
+            if (Mathf.Abs(den) < 1e-6f) return false;
+            var qp = q - p;
+            float t = (qp.x * s.y - qp.y * s.x) / den;
+            float u = (qp.x * r.y - qp.y * r.x) / den;
+            if (t < 0f || t > 1f || u < 0f || u > 1f) return false;
+            x = p + r * t;
+            return true;
+        }
+
+        /// <summary>Basit beton köprü: tabliye, üstünde asfalt, iki yanda korkuluk, ortada iki ayak (−Z yukarı).</summary>
+        static void Kopru(Transform parent, Vector2 merkez, Vector2 yon, float boy, Material beton, Material asfalt)
+        {
+            float aci = Mathf.Atan2(yon.y, yon.x) * Mathf.Rad2Deg;
+            var kok = new GameObject("Köprü").transform;
+            kok.SetParent(parent, false);
+            kok.localPosition = new Vector3(merkez.x, merkez.y, 0f);
+            kok.localRotation = Quaternion.Euler(0f, 0f, aci);
+            void Kutu(Vector3 orta, Vector3 boyut, Material m)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                var col = go.GetComponent<Collider>();
+                if (col != null) Object.Destroy(col);
+                go.transform.SetParent(kok, false);
+                go.transform.localPosition = orta;
+                go.transform.localScale = boyut;
+                var mr = go.GetComponent<MeshRenderer>();
+                mr.sharedMaterial = m;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            }
+            Kutu(new Vector3(0f, 0f, 0.004f), new Vector3(boy, 1.0f, 0.04f), beton);                 // tabliye (üstü −0,016)
+            Kutu(new Vector3(0f, 0f, -0.017f), new Vector3(boy + 0.02f, 0.74f, 0.003f), asfalt);      // asfalt
+            for (int k = -1; k <= 1; k += 2)
+            {
+                Kutu(new Vector3(0f, k * 0.475f, -0.045f), new Vector3(boy, 0.05f, 0.058f), beton);   // korkuluk duvarı
+                Kutu(new Vector3(boy * 0.22f * k, 0f, 0.03f), new Vector3(0.12f, 0.7f, 0.06f), beton); // ayak
+            }
         }
 
         // ------------------------------------------------------------------ mesh yardımcıları
