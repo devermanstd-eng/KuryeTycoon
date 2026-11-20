@@ -6,6 +6,7 @@
 #   Tools/toplu_test.sh                       # hepsi, 64×
 #   Tools/toplu_test.sh --hiz 32              # denge onayı için daha yavaş ve hassas
 #   Tools/toplu_test.sh --sec tohum           # sadece 5 tohum (ya da: senaryo)
+#   Tools/toplu_test.sh --gun 120 --sec tohum # uzun vade: 5 tohum 120'şer gün (pazar payı ve büyük paketler)
 #   UNITY_PATH=/yol/Unity Tools/toplu_test.sh # Unity başka yerdeyse
 #
 # Çıktı: <Unity projesi>/TopluTest/toplu_TARİH/ (toplu_ozet.txt, gunluk_*.csv, ozet_*.txt, unity.log)
@@ -14,17 +15,22 @@
 UNITY_SURUM="6000.6.9f1"
 HIZ=64
 SEC="hepsi"
-ZAMAN_ASIMI=360   # dk
+GUN=60
+ZAMAN_ASIMI=""    # dk; verilmezse 360, 60 günden uzun koşularda süreyle orantılı artar
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --hiz) HIZ="$2"; shift 2 ;;
     --sec) SEC="$2"; shift 2 ;;
+    --gun) GUN="$2"; shift 2 ;;
     --zaman-asimi) ZAMAN_ASIMI="$2"; shift 2 ;;
-    -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "Bilinmeyen seçenek: $1"; exit 2 ;;
   esac
 done
+
+case "$GUN" in ''|*[!0-9]*) echo "--gun bir sayı olmalı (10–365)"; exit 2 ;; esac
+[ -n "$ZAMAN_ASIMI" ] || ZAMAN_ASIMI=$(( GUN > 60 ? 360 * GUN / 60 : 360 ))
 
 say()  { printf "\033[1;36m==> %s\033[0m\n" "$1"; }
 fail() { printf "\033[1;31mHATA: %s\033[0m\n" "$1"; exit 2; }
@@ -72,14 +78,14 @@ LOG="$CIKTI/unity.log"
 
 say "Proje: $PROJE"
 say "Unity: $UNITY"
-say "Koşular: $SEC · hız ${HIZ}× · rapor: $CIKTI"
+say "Koşular: $SEC · Klasik $GUN gün · hız ${HIZ}× · zaman aşımı $ZAMAN_ASIMI dk · rapor: $CIKTI"
 echo "İlerleme aşağıda ([TopluTest] satırları). Tam log: $LOG"
 BASLA=$(date +%s)
 
 "$UNITY" -batchmode -nographics -projectPath "$PROJE" \
   -executeMethod KuryeTycoon.EditorTools.TopluTest.Calistir \
   -logFile "$LOG" \
-  -topluCikti "$CIKTI" -topluHiz "$HIZ" -topluSec "$SEC" -topluZamanAsimi "$ZAMAN_ASIMI" &
+  -topluCikti "$CIKTI" -topluHiz "$HIZ" -topluSec "$SEC" -topluGun "$GUN" -topluZamanAsimi "$ZAMAN_ASIMI" &
 UNITY_PID=$!
 
 trap 'echo; echo "Durduruluyor..."; kill $UNITY_PID 2>/dev/null; kill $TAIL_PID 2>/dev/null; exit 130' INT TERM
