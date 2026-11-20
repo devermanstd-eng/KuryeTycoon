@@ -4,6 +4,7 @@ Orijinal kodu (`main` dalı) bozmadan kendi eklemelerini yapmanın yolu:
 **kendi dalında çalış → Pull Request aç → proje sahibi inceleyip birleştirsin.**
 
 `main` dalına doğrudan push yapma. Her yeni özellik için ayrı bir dal aç.
+Claude (Claude Code vb.) ile çalışıyorsan aynı kurallar `CLAUDE.md`'de; Claude onu kendisi okur.
 
 ---
 
