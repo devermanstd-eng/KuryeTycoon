@@ -1,21 +1,27 @@
 # -*- coding: utf-8 -*-
 """
-KURYE TYCOON · STİLİZE PİLOT PAKETİ (Blender scripti)
+KURYE TYCOON · STİLİZE VARLIK ÜRETİCİSİ (Blender scripti; eski adı stilize_paket.py)
 
-SimplePoly City ve City People paketlerinin yerine oyunun kendi tek tip görünümü için pilot: düşük poligonlu, yumuşak
-köşeli (pahlı kutu, kapsül, top), sıcak renkli ve mürekkep dış çizgili altı model.
-  1. Kurye: şirket renginde mont, termal çanta ve kask; iskeletli, "basic walk", "idle" ve "pedal" animasyonları FBX'in içinde
-  2. Bisiklet (tekerler ve pedal ayrı obje: Unity'de döndürülür) ve paket dolabı (şirket renginde yan paneller)
-  3. Ağaç (yuvarlak ve kavak) ve sokak lambası (camı ayrı "Isik" objesi: gece yakılır)
+SimplePoly City ve City People paketlerinin yerine oyunun kendi tek tip görünümü: düşük poligonlu, yumuşak köşeli (pahlı kutu,
+kapsül, top), sıcak renkli, mürekkep dış çizgili ve bütün renkleri tek ortak dokuda (StilizePalet.png) modeller.
+  1. Kurye karakteri: şirket renginde mont, termal çanta ve kask; iskeletli, "basic walk", "idle" ve "pedal" animasyonları FBX'in içinde
+  2. Teslimat araçları: bisiklet ve geç oyun kargo bisikleti (önde yük kasası); tekerler ve pedal ayrı obje (Unity'de döndürülür).
+     Ölçü gerçek (metre): Erman'ın VW Polo'su (3,75 m) ile aynı ölçekte.
+  3. Şehir donatıları: paket dolabı (şirket renginde yan paneller), iki ağaç (yuvarlak, kavak), sokak lambası (camı ayrı "Isik")
+  4. Budapeşte tarzı binalar (14 m arsaya): bérház (okra, altta dükkânlar), köşe binası (pembe, bakır külahlı kule),
+     dükkân binası (adaçayı, beşik çatı), apartman (sarı, arduvaz mansart çatı). Camlar ayrı "Cam" / "Vitrin" malzemesinde (gece yanar).
 
-Çalıştırma (üçü de aynı çıktıyı verir):
-  • Unity: Kurye Tycoon > Blender > Stilize pilot paketini üret   (Blender arka planda, pencere açmadan)
-  • Terminal: blender -b --factory-startup -P Tools/Blender/stilize_paket.py -- --cikti Modeller/Stilize
+Çalıştırma (hepsi aynı çıktıyı verir):
+  • Mac terminal (repo kökünden): Tools/varlik_uret.sh            (Blender'ı kendisi bulur, arka planda çalıştırır)
+  • Unity: Kurye Tycoon > Blender > Stilize varlıkları üret
+  • Terminal: blender --background --python Tools/Blender/varlik_uretici.py -- --cikti Art/Stilize
   • Blender içinde: Scripting > Text > Open ile bu dosyayı aç, Run Script (▶). Çıktı klasörü için aşağıda CIKTI.
-  Blender'sız (sadece Python): python3 stilize_paket.py --onizleme onizleme.png   → modellerin önizleme resmi
+  Blender'sız (sadece Python): python3 varlik_uretici.py --onizleme onizleme.png   → modellerin önizleme resmi
+  Sadece bazıları: -- --modeller kurye,bina_berhaz
 
-Çıktı (varsayılan Assets/KuryeTycoon/Modeller/Stilize): Kurye.fbx, Bisiklet.fbx, PaketDolabi.fbx, Agac_Yuvarlak.fbx,
-Agac_Kavak.fbx, SokakLambasi.fbx ve StilizePalet.png (bütün modellerin ortak renk dokusu).
+Çıktı (varsayılan Assets/KuryeTycoon/Art/Stilize): Kurye, Bisiklet, KargoBisikleti, PaketDolabi, Agac_Yuvarlak, Agac_Kavak,
+SokakLambasi, Bina_Berhaz, Bina_Kose, Bina_Dukkan, Bina_Apartman (.fbx) ve StilizePalet.png. Unity'de
+Kurye Tycoon > Stilize Prefabları Kur malzemeleri ve Prefabs/Stilize altındaki prefabları kurar.
 
 Kurallar (kurye_modeller.py ile aynı, Unity tarafı bunlara göre kurulu):
   • Önü Blender'da −Y'ye bakar, sol el +X, taban z = 0, ölçü metre.
@@ -23,6 +29,7 @@ Kurallar (kurye_modeller.py ile aynı, Unity tarafı bunlara göre kurulu):
     yürüme animasyonunu bütün karakterlere takar). Biri değişirse ikisi birlikte değişmeli. İskelet FBX'te "Iskelet" adını alır.
   • "SirketRengi" ve "SirketRengi2" ile başlayan malzemeler oyunda oyuncunun şirket renklerine boyanır (CharacterVisuals).
   • "Cizgi" malzemesi ters kabuk dış çizgidir: Unity'de Universal Render Pipeline/Unlit, siyah.
+  • "Isik_", "Cam_" ve "Vitrin_" malzemeleri gündüz kendi renginde, gece oyun (GeceIsiklari) yakar.
   • Renkler tek dokuda (StilizePalet.png, 8×8 renk karesi): her yüz kendi renginin karesine bakar; karenin içinde yukarıdan
     aşağı hafif degrade var (üst sıcak ve açık, alt serin ve koyu), model boyunca boyanmış gibi görünür. Tek malzeme,
     tek çizim çağrısı; renk değiştirmek için dokuyu boyamak ya da PALET'i değiştirip yeniden çalıştırmak yeter.
@@ -42,17 +49,20 @@ except ImportError:          # Blender dışında sadece geometri ve önizleme
     IN_BLENDER = False
 
 # ================================== AYARLAR ==================================
-CIKTI = ""                   # boşsa: Assets/KuryeTycoon/Modeller/Stilize (bulunamazsa ~/Desktop/KuryeStilize)
+CIKTI = ""                   # boşsa: Assets/KuryeTycoon/Art/Stilize (bulunamazsa ~/Desktop/KuryeStilize)
 CIZGI = True                 # mürekkep dış çizgi (ters kabuk; üçgen sayısını yaklaşık ikiye katlar)
 CIZGI_KALINLIK = 0.012       # metre (kurye); modele göre çarpanla büyür
 TOHUM = 7                    # ağaç yapraklarının pürüzü
-MODELLER = ("kurye", "bisiklet", "paket_dolabi", "agac_yuvarlak", "agac_kavak", "sokak_lambasi")
+MODELLER = ("kurye", "bisiklet", "kargo_bisikleti", "paket_dolabi", "agac_yuvarlak", "agac_kavak", "sokak_lambasi",
+            "bina_berhaz", "bina_kose", "bina_dukkan", "bina_apartman")
 DISA_AKTAR = True
 
 SIRKET_RENGI = "#009ede"     # Unity'de oyuncunun şirket rengine boyanır
 SIRKET_RENGI2 = "#ffffff"
 ISIK_RENGI = "#ffd27a"       # lamba camı (gece yanar)
 CIZGI_RENGI = "#1e1712"      # sıcak siyah mürekkep
+CAM_RENGI = "#86a9ad"        # pencere camı (gece yanar)
+VITRIN_RENGI = "#a3c4c0"     # dükkân vitrini (gece yanar)
 
 # Sıcak palet: (ad, renk). Sıra dokudaki yer: 8 sütun, yukarıdan aşağı.
 PALET = [
@@ -64,13 +74,19 @@ PALET = [
     ("kabuk", "#7a5238"), ("toprak", "#8a6446"), ("cicek1", "#e2725f"), ("cicek2", "#f2b84b"),
     ("direk", "#3f4e4a"), ("direk_acik", "#5f716b"), ("saksi", "#c8744a"), ("yesil_isik", "#7ccf7a"),
     ("kirmizi", "#d65a46"), ("tahta", "#9a6a44"), ("beyaz", "#f7f1e6"), ("gri", "#8c8680"),
+    # Budapeşte binaları: pastel / toprak cepheler, taş, kiremit, arduvaz, bakır patina
+    ("tas", "#d8ccb2"), ("tas_koyu", "#a8987c"), ("okra", "#d9a55e"), ("okra_acik", "#e6bf80"),
+    ("pembe", "#dea294"), ("pembe_acik", "#ecbcae"), ("adacayi", "#9fb48a"), ("sari", "#e9cf86"),
+    ("kiremit", "#b85a3c"), ("kiremit_koyu", "#93412e"), ("arduvaz", "#5b6470"), ("bakir", "#6ea592"),
+    ("baca", "#a5624a"), ("kapi", "#6a412c"), ("tente1", "#c4513f"), ("tente2", "#3f7a72"),
+    ("demir", "#2f3437"),
 ]
 SUTUN, KARE = 8, 32          # doku 256×256: 8×8 kare, her biri 32 piksel
 PALET_DOKU = "StilizePalet.png"
 
 # Dokusuz (düz) malzemeler: oyun bunları adından tanır
-SR, SR2, ISIK, CIZ = "SirketRengi", "SirketRengi2", "Isik", "Cizgi"
-DUZ = {SR: SIRKET_RENGI, SR2: SIRKET_RENGI2, ISIK: ISIK_RENGI, CIZ: CIZGI_RENGI}
+SR, SR2, ISIK, CIZ, CAM, VITRIN = "SirketRengi", "SirketRengi2", "Isik", "Cizgi", "Cam", "Vitrin"
+DUZ = {SR: SIRKET_RENGI, SR2: SIRKET_RENGI2, ISIK: ISIK_RENGI, CIZ: CIZGI_RENGI, CAM: CAM_RENGI, VITRIN: VITRIN_RENGI}
 
 
 def mal_adi(anahtar):
@@ -617,15 +633,381 @@ def sokak_lambasi(rnd):
     return g
 
 
+# ------------------------------------------------------------------ 2c. kargo bisikleti (geç oyun)
+
+def kargo_bisikleti():
+    """Önde büyük yük kasalı "long john" kargo bisikleti. Ölçü gerçek (metre): Polo (3,75 m) ile aynı ölçekte ~2,5 m."""
+    g = Govde("KargoBisikleti")
+    k = 0.6
+    arka, on = (0.0, 0.62, 0.33), (0.0, -1.28, 0.25)          # arka 26", ön 20" teker
+    orta = (0.0, 0.18, 0.3)
+    sele_alt, gidon_alt, gidon_ust = (0.0, 0.26, 0.8), (0.0, -0.22, 0.66), (0.0, -0.26, 0.92)
+    boru = lambda a, b, r=0.024, renk=SR: silindir(g, a, b, r, r, renk, n=8, kalinlik=k)
+    boru(arka, orta)
+    boru(orta, sele_alt, 0.028)
+    boru((0.0, 0.25, 0.77), (0.0, -0.22, 0.8), 0.026)          # üst boru
+    boru(orta, gidon_alt, 0.03)
+    boru(arka, (0.0, 0.25, 0.75), 0.02)
+    # Uzun alt şasi: orta göbekten öne, kasanın altından ön çatala (iki paralel boru)
+    for s in (1, -1):
+        boru((0.11 * s, 0.12, 0.26), (0.11 * s, -1.05, 0.2), 0.022, "metal_koyu")
+    boru((0.0, 0.12, 0.26), (0.0, 0.18, 0.3), 0.024, "metal_koyu")
+    silindir(g, (-0.12, -1.06, 0.2), (0.12, -1.06, 0.2), 0.022, 0.022, "metal_koyu", n=6, kalinlik=k)
+    silindir(g, (0.0, -1.08, 0.2), (0.0, -1.16, 0.56), 0.03, 0.03, "metal_koyu", n=8, kalinlik=k)   # ön baş borusu
+    for s in (1, -1):                                                                               # ön çatal
+        silindir(g, (0.04 * s, -1.16, 0.52), (0.04 * s, -1.28, 0.25), 0.015, 0.013, "metal_koyu", n=6, kalinlik=k)
+    silindir(g, gidon_alt, gidon_ust, 0.034, 0.034, SR, n=8, kalinlik=k)                           # arka baş borusu
+    silindir(g, (0.0, -0.24, 0.45), (0.0, -1.1, 0.5), 0.009, 0.009, "metal", n=4, kabuk=False)     # direksiyon çubuğu
+    # Gidon (geniş, geriye kıvrık), sele
+    silindir(g, gidon_ust, (0.0, -0.24, 1.0), 0.018, 0.018, "metal_koyu", n=6, kalinlik=k)
+    silindir(g, (-0.3, -0.18, 1.0), (0.3, -0.18, 1.0), 0.015, 0.015, "metal_koyu", n=6, kalinlik=k)
+    for s in (1, -1):
+        kapsul(g, (0.24 * s, -0.17, 1.0), (0.32 * s, -0.12, 1.0), 0.022, "lastik", n=6, k=1, kalinlik=k)
+    silindir(g, sele_alt, (0.0, 0.29, 0.9), 0.014, 0.014, "metal", n=6, kalinlik=k)
+    pah_kutu(g, (0.0, 0.28, 0.92), (0.08, 0.14, 0.03), 0.022, "sele", kalinlik=k)
+    # Yük kasası (şirket rengi), kapak (ikinci renk), logo yeri, tahta taban, yan tutamak
+    pah_kutu(g, (0.0, -0.66, 0.27), (0.3, 0.36, 0.025), 0.01, "tahta", kalinlik=k)
+    pah_kutu(g, (0.0, -0.66, 0.53), (0.31, 0.37, 0.24), 0.05, SR, kalinlik=k)
+    pah_kutu(g, (0.0, -0.66, 0.79), (0.32, 0.38, 0.03), 0.02, SR2, kalinlik=k)
+    pah_kutu(g, (0.0, -1.034, 0.55), (0.16, 0.005, 0.1), 0.005, SR2, kabuk=False)                   # önde logo yeri
+    for s in (1, -1):
+        pah_kutu(g, (0.315 * s, -0.66, 0.55), (0.005, 0.2, 0.09), 0.004, SR2, kabuk=False)          # yanlarda logo yeri
+    # Çamurluk, ön lamba, ayaklık (park ayağı)
+    yay(g, arka, 0.4, 0.022, "krem", math.radians(15), math.radians(165), n=10, m=4, kalinlik=k)
+    yay(g, on, 0.29, 0.02, "krem", math.radians(25), math.radians(150), n=8, m=4, kalinlik=k)
+    pah_kutu(g, (0.0, -1.06, 0.36), (0.04, 0.03, 0.03), 0.012, "krem", kalinlik=k)
+    pah_kutu(g, (0.0, -1.092, 0.36), (0.028, 0.004, 0.022), 0.004, ISIK, kabuk=False)
+    for s in (1, -1):
+        silindir(g, (0.12 * s, -0.66, 0.2), (0.2 * s, -0.66, 0.02), 0.013, 0.013, "metal_koyu", n=6, kabuk=False)
+    # Tekerler ve pedal ayrı obje (bisikletle aynı adlar: oyun aynı şekilde döndürür)
+    for ad, p, R in (("Teker_On", on, 0.23), ("Teker_Arka", arka, 0.31)):
+        t = Govde(ad)
+        yay(t, (0.0, 0.0, 0.0), R, 0.042, "lastik", n=16, m=6, kalinlik=k)
+        yay(t, (0.0, 0.0, 0.0), R - 0.045, 0.014, "metal", n=16, m=4, kabuk=False)
+        silindir(t, (-0.05, 0.0, 0.0), (0.05, 0.0, 0.0), 0.032, 0.032, "metal_koyu", n=8, kalinlik=k)
+        for i in range(4):
+            a = math.pi * i / 4
+            rr = R - 0.05
+            silindir(t, (0.0, rr * math.cos(a), rr * math.sin(a)), (0.0, -rr * math.cos(a), -rr * math.sin(a)),
+                     0.005, 0.005, "metal", n=4, kabuk=False)
+        g.parcalar.append((ad, t, p))
+    p = Govde("Pedal")
+    silindir(p, (0.04, 0.0, 0.0), (0.055, 0.0, 0.0), 0.1, 0.1, "metal", n=12, kalinlik=k)
+    for s in (1, -1):
+        silindir(p, (0.075 * s, 0.0, 0.0), (0.075 * s, 0.0, -0.17 * s), 0.013, 0.013, "metal_koyu", n=6, kabuk=False)
+        pah_kutu(p, (0.115 * s, 0.0, -0.17 * s), (0.045, 0.03, 0.01), 0.006, "lastik", kalinlik=k)
+    g.parcalar.append(("Pedal", p, orta))
+    return g
+
+
+# ------------------------------------------------------------------ 4. Budapeşte tarzı binalar
+# Arsa 14 m (City3D'de bir kare ≈ 0,97 ölçekle): taban en fazla ~13,6 × 13 m, önü −Y, taban z = 0, arsa levhası yok.
+# Pencere camları "Cam", vitrinler "Vitrin" düz malzemesinde: gündüz cam rengi, gece oyun (GeceIsiklari) yakar.
+
+def kutu(g, c, h, renk, kabuk=False, kalinlik=1.0):
+    """Pahsız düz kutu (12 üçgen): pencere, bant, kapı gibi çok tekrar eden küçük ayrıntılar için."""
+    pts = [(c[0] + sx * h[0], c[1] + sy * h[1], c[2] + sz * h[2]) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
+    F = [[0, 1, 3, 2], [4, 6, 7, 5], [0, 4, 5, 1], [2, 3, 7, 6], [0, 2, 6, 4], [1, 5, 7, 3]]
+    parca(g, pts, F, renk, False, kabuk, kalinlik)
+
+
+def kesik_piramit(g, x0, x1, y0, y1, z, iceri, h, renk, kalinlik=1.0):
+    """Alt dikdörtgenden 'iceri' kadar daralan üst dikdörtgene (h yukarıda) kapalı gövde: mansart çatının dik eteği."""
+    a = [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]
+    b = [(x0 + iceri, y0 + iceri, z + h), (x1 - iceri, y0 + iceri, z + h), (x1 - iceri, y1 - iceri, z + h),
+         (x0 + iceri, y1 - iceri, z + h)]
+    F = [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]]
+    parca(g, a + b, F, renk, False, True, kalinlik)
+
+
+def cati_kirma(g, x0, x1, y0, y1, z, h, renk, kalinlik=1.0):
+    """Kırma çatı (dört yana eğimli): mahya uzun kenar boyunca; kare tabanda piramit."""
+    w, d = x1 - x0, y1 - y0
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    taban = [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)]
+    r = abs(w - d) / 2
+    if r < 0.05:
+        parca(g, taban + [(cx, cy, z + h)], [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4], [0, 3, 2, 1]], renk, False, True, kalinlik)
+        return
+    if w > d:
+        a, b = (cx - r, cy, z + h), (cx + r, cy, z + h)
+        F = [[0, 1, 5, 4], [1, 2, 5], [2, 3, 4, 5], [3, 0, 4], [0, 3, 2, 1]]
+    else:
+        a, b = (cx, cy - r, z + h), (cx, cy + r, z + h)
+        F = [[0, 1, 4], [1, 2, 5, 4], [2, 3, 5], [3, 0, 4, 5], [0, 3, 2, 1]]
+    parca(g, taban + [a, b], F, renk, False, True, kalinlik)
+
+
+def cati_besik(g, x0, x1, y0, y1, z, h, renk, alin, kalinlik=1.0):
+    """Beşik çatı, mahya sokağa paralel (X boyunca): eğimler çatı renginde, iki yan üçgen (alınlık) cephe renginde."""
+    cy = (y0 + y1) / 2
+    p = [(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z), (x0, cy, z + h), (x1, cy, z + h)]
+    parca(g, p, [[0, 1, 5, 4], [2, 3, 4, 5]], renk, False, True, kalinlik)
+    parca(g, p, [[1, 2, 5], [3, 0, 4], [0, 3, 2, 1]], alin, False, True, kalinlik)
+
+
+def baca(g, x, y, z, h, kalinlik=1.0):
+    pah_kutu(g, (x, y, z + h / 2), (0.32, 0.32, h / 2), 0.04, "baca", kalinlik=kalinlik)
+    kutu(g, (x, y, z + h + 0.06), (0.38, 0.38, 0.06), "tas_koyu")
+
+
+def pencere(g, x, yf, z, w, h, yon=1, cerceve="beyaz", cam="Cam", denizlik=True, panjur=None):
+    """
+    Cepheye pencere: çerçeve plakası, önünde biraz küçük cam, altında denizlik (12'şer üçgen, dış çizgisiz).
+    yon=1: ön cephe (yf: cephenin y'si, dışarısı −Y). yon=0: yan cephe (yf: cephenin x'i, dışarısı işaretine göre).
+    """
+    def kut(dx, dd, dz, hx, hd, hz, renk):
+        if yon == 1:
+            kutu(g, (x + dx, yf - dd, z + dz), (hx, hd, hz), renk)
+        else:
+            s = 1.0 if yf > 0 else -1.0
+            kutu(g, (yf + s * dd, x + dx, z + dz), (hd, hx, hz), renk)
+    kut(0.0, 0.03, 0.0, w / 2 + 0.1, 0.03, h / 2 + 0.1, cerceve)
+    kut(0.0, 0.065, 0.0, w / 2, 0.012, h / 2, cam)
+    if denizlik:
+        kut(0.0, 0.08, -h / 2 - 0.13, w / 2 + 0.16, 0.08, 0.045, "tas")
+    if panjur:
+        for s in (-1, 1):
+            kut(s * (w / 2 + 0.32), 0.05, 0.0, 0.2, 0.025, h / 2 + 0.04, panjur)
+
+
+def bant(g, x0, x1, yf, z, kalinlik_z, cikinti, renk="tas"):
+    """Ön cephede yatay korniş / kat bandı."""
+    kutu(g, ((x0 + x1) / 2, yf - cikinti / 2, z), ((x1 - x0) / 2 + cikinti, cikinti / 2, kalinlik_z / 2), renk)
+
+
+def yan_bant(g, y0, y1, xf, z, kalinlik_z, cikinti, renk="tas"):
+    s = 1.0 if xf > 0 else -1.0
+    kutu(g, (xf + s * cikinti / 2, (y0 + y1) / 2, z), (cikinti / 2, (y1 - y0) / 2 + cikinti, kalinlik_z / 2), renk)
+
+
+def tente(g, x0, x1, yf, z, derinlik=0.95, dusus=0.45, renkler=("tente1", "beyaz"), dilim=6):
+    """Çizgili tente: duvardan çıkan eğik kama, dilim dilim iki renk."""
+    w = (x1 - x0) / dilim
+    for i in range(dilim):
+        a, b = x0 + i * w, x0 + (i + 1) * w
+        p = [(a, yf, z), (b, yf, z), (b, yf - derinlik, z - dusus), (a, yf - derinlik, z - dusus),
+             (a, yf, z - 0.12), (b, yf, z - 0.12)]
+        parca(g, p, [[0, 1, 2, 3], [3, 2, 5, 4], [0, 3, 4], [1, 5, 2], [0, 4, 5, 1]], renkler[i % 2], False, i in (0, dilim - 1), 1.5)
+    kutu(g, ((x0 + x1) / 2, yf - derinlik - 0.01, z - dusus - 0.09), ((x1 - x0) / 2, 0.012, 0.09), renkler[0])   # saçak
+
+
+def korkuluk(g, x0, x1, yf, z, derinlik, renk="demir"):
+    """Balkon: taş döşeme ve demir korkuluk (üst tırabzan + dikmeler)."""
+    kutu(g, ((x0 + x1) / 2, yf - derinlik / 2, z - 0.09), ((x1 - x0) / 2, derinlik / 2, 0.09), "tas", kabuk=True, kalinlik=2.0)
+    yk = yf - derinlik + 0.04
+    kutu(g, ((x0 + x1) / 2, yk, z + 0.95), ((x1 - x0) / 2, 0.025, 0.025), renk)
+    for s in (-1, 1):
+        kutu(g, (x0 if s < 0 else x1, yf - derinlik / 2, z + 0.95), (0.025, derinlik / 2, 0.025), renk)
+    n = max(2, int((x1 - x0) / 0.28))
+    for i in range(n + 1):
+        kutu(g, (x0 + (x1 - x0) * i / n, yk, z + 0.47), (0.012, 0.012, 0.47), renk)
+
+
+def kapi(g, x, yf, w, h, renk="kapi", ust_cam=True):
+    kutu(g, (x, yf - 0.04, h / 2 + 0.05), (w / 2 + 0.14, 0.04, h / 2 + 0.12), "tas")
+    kutu(g, (x, yf - 0.07, h / 2), (w / 2, 0.03, h / 2), renk)
+    if ust_cam:
+        kutu(g, (x, yf - 0.1, h - 0.28), (w / 2 - 0.08, 0.012, 0.18), "Cam")
+    kutu(g, (x + w * 0.32, yf - 0.11, h * 0.48), (0.03, 0.02, 0.09), "metal")
+
+
+def cati_penceresi(g, x, y_on, z_alt, renk_cati, yukseklik=1.2):
+    """
+    Çatı eğiminden çıkan küçük çatı penceresi (dormer): dikey ön yüzü y_on'da, alt kenarı z_alt'ta (çatı yüzeyinin
+    o noktadaki yüksekliğinin biraz altında seçilmeli ki cam çatının içinde kalmasın), geri doğru çatının içine gömülür.
+    """
+    kutu(g, (x, y_on + 0.8, z_alt + yukseklik / 2), (0.55, 0.8, yukseklik / 2), "beyaz", kabuk=True, kalinlik=2.0)
+    kutu(g, (x, y_on - 0.01, z_alt + yukseklik / 2 + 0.05), (0.34, 0.012, yukseklik / 2 - 0.22), "Cam")
+    cati_kirma(g, x - 0.68, x + 0.68, y_on - 0.12, y_on + 1.7, z_alt + yukseklik, 0.42, renk_cati, 2.0)
+
+
+def bina_berhaz():
+    """Klasik bérház (kiralık apartman): okra cephe, altta taş zemin katta iki dükkân ve tenteler, üstte 3 kat, kiremit kırma çatı."""
+    g = Govde("Bina_Berhaz")
+    k = 4.0
+    W, D, ZK, KAT, NK = 13.0, 12.0, 4.2, 3.4, 3
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    H = ZK + KAT * NK
+    pah_kutu(g, (0.0, 0.0, ZK / 2), (W / 2, D / 2, ZK / 2), 0.08, "tas", yumusak=False, kalinlik=k)       # taş zemin kat
+    pah_kutu(g, (0.0, 0.0, ZK + KAT * NK / 2), (W / 2 - 0.05, D / 2 - 0.05, KAT * NK / 2), 0.08, "okra", yumusak=False, kalinlik=k)
+    bant(g, x0, x1, y0, 0.3, 0.6, 0.06, "tas_koyu")                                                       # su basmanı
+    bant(g, x0, x1, y0, ZK, 0.32, 0.16, "krem")
+    for i in range(1, NK):
+        bant(g, x0, x1, y0, ZK + KAT * i, 0.16, 0.08, "okra_acik")
+    bant(g, x0 - 0.1, x1 + 0.1, y0, H + 0.12, 0.38, 0.42, "krem")                                          # ana korniş
+    for xs in (x0, x1):
+        yan_bant(g, y0, y1, xs, ZK, 0.32, 0.16, "krem")
+        yan_bant(g, y0, y1, xs, H + 0.12, 0.38, 0.42, "krem")
+    # Zemin kat: iki vitrin + ortada bina kapısı, vitrinlerin üstünde çizgili tente ve tabela
+    for cx in (-3.6, 3.6):
+        kutu(g, (cx, y0 - 0.03, 1.9), (2.0, 0.03, 1.35), "tahta")
+        kutu(g, (cx, y0 - 0.07, 1.85), (1.85, 0.012, 1.2), "Vitrin")
+        kutu(g, (cx, y0 - 0.06, 3.55), (2.0, 0.05, 0.28), "krem")
+        tente(g, cx - 2.05, cx + 2.05, y0, 3.2, renkler=("tente1", "beyaz") if cx < 0 else ("tente2", "beyaz"))
+    kapi(g, 0.0, y0, 1.5, 3.0)
+    # Üst katlar: önde 5, yanlarda 3 pencere; orta pencerede küçük balkon
+    for i in range(NK):
+        zc = ZK + KAT * i + 1.65
+        for j, cx in enumerate((-4.8, -2.4, 0.0, 2.4, 4.8)):
+            pencere(g, cx, y0, zc, 1.15, 1.75)
+        for cy in (-3.6, 0.0, 3.6):
+            pencere(g, cy, x0, zc, 1.1, 1.7, yon=0)
+            pencere(g, cy, x1, zc, 1.1, 1.7, yon=0)
+    korkuluk(g, -0.95, 0.95, y0, ZK + KAT * 1 + 0.12, 0.7)
+    # Çatı: kiremit kırma çatı, iki çatı penceresi, iki baca
+    cati_kirma(g, x0 - 0.35, x1 + 0.35, y0 - 0.35, y1 + 0.35, H + 0.3, 4.2, "kiremit", k)
+    egim = 4.2 / (D / 2 + 0.35)
+    for cx in (-3.0, 3.0):                                       # ön yüzü çatı saçağından 0,95 m içeride
+        cati_penceresi(g, cx, y0 + 0.6, H + 0.3 + 0.95 * egim - 0.12, "kiremit_koyu")
+    baca(g, -2.2, 2.6, H + 2.6, 2.0, 2.0)
+    baca(g, 3.6, 1.2, H + 3.3, 1.6, 2.0)
+    return g
+
+
+def bina_kose():
+    """Köşe binası: pastel pembe, sol önde yuvarlak kule ve bakır (yeşil patina) külah, demir balkonlar."""
+    g = Govde("Bina_Kose")
+    k = 4.0
+    W, D, ZK, KAT, NK = 12.4, 12.4, 4.0, 3.4, 2
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    H = ZK + KAT * NK
+    pah_kutu(g, (0.0, 0.0, ZK / 2), (W / 2, D / 2, ZK / 2), 0.08, "pembe", yumusak=False, kalinlik=k)
+    pah_kutu(g, (0.0, 0.0, ZK + KAT * NK / 2), (W / 2 - 0.04, D / 2 - 0.04, KAT * NK / 2), 0.08, "pembe_acik", yumusak=False, kalinlik=k)
+    bant(g, x0, x1, y0, 0.3, 0.6, 0.06, "tas_koyu")
+    yan_bant(g, y0, y1, x0, 0.3, 0.6, 0.06, "tas_koyu")
+    for z, t, c in ((ZK, 0.28, 0.14), (ZK + KAT, 0.14, 0.07), (H + 0.12, 0.36, 0.38)):
+        bant(g, x0, x1, y0, z, t, c, "beyaz")
+        yan_bant(g, y0, y1, x0, z, t, c, "beyaz")
+        yan_bant(g, y0, y1, x1, z, t, c, "beyaz")
+    # Köşe kulesi: bir kat yüksek, silindir gövde, bakır külah ve tepe süsü
+    kx, ky, kr = x0 + 0.6, y0 + 0.6, 2.3
+    silindir(g, (kx, ky, 0.0), (kx, ky, H + KAT), kr, kr, "pembe", n=16, yumusak=True, kalinlik=k)
+    for z in (ZK, H, H + KAT):
+        silindir(g, (kx, ky, z - 0.14), (kx, ky, z + 0.14), kr + 0.12, kr + 0.12, "beyaz", n=16, kabuk=False)
+    silindir(g, (kx, ky, H + KAT + 0.1), (kx, ky, H + KAT + 3.4), kr + 0.3, 0.12, "bakir", n=16, kalinlik=k)
+    silindir(g, (kx, ky, H + KAT + 3.3), (kx, ky, H + KAT + 4.1), 0.06, 0.03, "demir", n=6, kabuk=False)
+    top(g, (kx, ky, H + KAT + 3.55), (0.16, 0.16, 0.16), "cicek2", n=8, m=5, kabuk=False)
+    for kat in range(NK + 2):
+        zc = (1.9 if kat == 0 else ZK + KAT * (kat - 1) + 1.65)
+        for t in (0.25, 0.785, 1.32):              # kulenin sokağa bakan çeyreğinde (−X ile −Y arası) üç pencere
+            a = math.pi + t
+            px, py = kx + (kr + 0.01) * math.cos(a), ky + (kr + 0.01) * math.sin(a)
+            pah_kutu(g, (px, py, zc), (0.05, 0.4, 0.75 if kat else 1.0), 0.01, "Cam", kabuk=False, aci=a)
+    # Zemin kat: önde kafe vitrini + tente, yanda kapı
+    kutu(g, (2.2, y0 - 0.03, 1.9), (2.6, 0.03, 1.35), "tahta")
+    kutu(g, (2.2, y0 - 0.07, 1.85), (2.45, 0.012, 1.2), "Vitrin")
+    tente(g, -0.4, 4.8, y0, 3.25, renkler=("tente2", "beyaz"), dilim=8)
+    for cy in (1.0, 4.0):
+        pencere(g, cy, x1, 2.0, 1.1, 1.6, yon=0)
+    kutu(g, (x0 - 0.04, 3.0, 1.5), (0.04, 0.85, 1.5), "kapi")
+    # Üst katlar: önde 3, yanlarda 3 pencere; ilk katta önde uzun demir balkon
+    for i in range(NK):
+        zc = ZK + KAT * i + 1.65
+        for cx in (0.2, 2.6, 5.0):
+            pencere(g, cx, y0, zc, 1.1, 1.75, cerceve="beyaz")
+        for cy in (0.2, 2.6, 5.0):
+            pencere(g, cy, x0, zc, 1.1, 1.75, yon=0)
+        for cy in (-3.6, 0.0, 3.6):
+            pencere(g, cy, x1, zc, 1.1, 1.7, yon=0)
+    korkuluk(g, -0.6, 5.8, y0, ZK + 0.14, 0.8)
+    cati_kirma(g, x0 - 0.3, x1 + 0.3, y0 - 0.3, y1 + 0.3, H + 0.3, 3.6, "kiremit_koyu", k)
+    baca(g, 2.8, 2.4, H + 1.9, 2.0, 2.0)
+    return g
+
+
+def bina_dukkan():
+    """İki katlı dükkân binası: adaçayı yeşili cephe, tam boy vitrin, çizgili tente, tabela, beşik kiremit çatı, panjurlar."""
+    g = Govde("Bina_Dukkan")
+    k = 4.0
+    W, D, ZK, KAT = 10.0, 9.6, 4.0, 3.3
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    H = ZK + KAT
+    pah_kutu(g, (0.0, 0.0, H / 2), (W / 2, D / 2, H / 2), 0.08, "adacayi", yumusak=False, kalinlik=k)
+    bant(g, x0, x1, y0, 0.3, 0.6, 0.06, "tas_koyu")
+    bant(g, x0, x1, y0, ZK, 0.26, 0.12, "beyaz")
+    bant(g, x0, x1, y0, H + 0.1, 0.3, 0.3, "beyaz")
+    for xs in (x0, x1):
+        yan_bant(g, y0, y1, xs, H + 0.1, 0.3, 0.3, "beyaz")
+    # Vitrin (kapı dahil), tabela (tahta) ve geniş tente
+    kutu(g, (0.0, y0 - 0.03, 1.85), (4.4, 0.03, 1.4), "tahta")
+    kutu(g, (-1.0, y0 - 0.07, 1.8), (3.2, 0.012, 1.25), "Vitrin")
+    kutu(g, (3.35, y0 - 0.07, 1.55), (0.7, 0.03, 1.5), "kapi")
+    kutu(g, (3.35, y0 - 0.1, 2.5), (0.5, 0.012, 0.42), "Vitrin")
+    kutu(g, (0.0, y0 - 0.08, 3.62), (4.0, 0.06, 0.3), "krem")
+    for i in range(7):                                                                            # tabelada "yazı"
+        kutu(g, (-2.7 + i * 0.9, y0 - 0.15, 3.62), (0.26, 0.015, 0.14), "kapi")
+    tente(g, x0 + 0.3, x1 - 0.3, y0, 3.25, derinlik=1.15, dusus=0.5, renkler=("tente2", "beyaz"), dilim=10)
+    for s in (-1, 1):                                                                             # vitrin önü saksılar
+        silindir(g, (s * 4.55, y0 - 0.35, 0.0), (s * 4.55, y0 - 0.35, 0.55), 0.24, 0.3, "saksi", n=10, kalinlik=2.0)
+        top(g, (s * 4.55, y0 - 0.35, 0.85), (0.38, 0.38, 0.4), "yaprak2", n=8, m=6, kalinlik=2.0)
+    # Üst kat: üç panjurlu pencere; yanlarda iki pencere
+    for cx in (-3.0, 0.0, 3.0):
+        pencere(g, cx, y0, ZK + 1.65, 1.1, 1.7, panjur="tente2")
+    for cy in (-2.2, 2.2):
+        pencere(g, cy, x0, ZK + 1.65, 1.0, 1.6, yon=0)
+        pencere(g, cy, x1, ZK + 1.65, 1.0, 1.6, yon=0)
+    cati_besik(g, x0 - 0.1, x1 + 0.1, y0 - 0.55, y1 + 0.55, H + 0.25, 3.0, "kiremit", "adacayi", k)
+    baca(g, 2.6, 1.6, H + 1.4, 2.0, 2.0)
+    return g
+
+
+def bina_apartman():
+    """Beş katlı apartman: açık Budapeşte sarısı, taş rustik zemin kat, Fransız balkonları, arduvaz mansart çatı ve çatı pencereleri."""
+    g = Govde("Bina_Apartman")
+    k = 4.0
+    W, D, ZK, KAT, NK = 13.4, 12.4, 4.2, 3.3, 4
+    x0, x1, y0, y1 = -W / 2, W / 2, -D / 2, D / 2
+    H = ZK + KAT * NK
+    pah_kutu(g, (0.0, 0.0, ZK / 2), (W / 2, D / 2, ZK / 2), 0.08, "tas", yumusak=False, kalinlik=k)
+    for i in range(1, 6):                                                                         # rustik derzler
+        bant(g, x0, x1, y0, ZK * i / 6, 0.05, 0.03, "tas_koyu")
+    pah_kutu(g, (0.0, 0.0, ZK + KAT * NK / 2), (W / 2 - 0.05, D / 2 - 0.05, KAT * NK / 2), 0.08, "sari", yumusak=False, kalinlik=k)
+    bant(g, x0, x1, y0, ZK, 0.34, 0.18, "krem")
+    bant(g, x0, x1, y0, ZK + KAT * 2, 0.16, 0.08, "krem")
+    bant(g, x0 - 0.15, x1 + 0.15, y0, H + 0.15, 0.45, 0.5, "krem")
+    for xs in (x0, x1):
+        yan_bant(g, y0, y1, xs, ZK, 0.34, 0.18, "krem")
+        yan_bant(g, y0, y1, xs, H + 0.15, 0.45, 0.5, "krem")
+    kapi(g, 0.0, y0, 1.7, 3.3)
+    for cx in (-4.6, -2.3, 2.3, 4.6):
+        pencere(g, cx, y0, 2.1, 1.2, 1.9, cerceve="tas_koyu")
+    for i in range(NK):
+        zc = ZK + KAT * i + 1.6
+        for cx in (-4.6, -2.3, 0.0, 2.3, 4.6):
+            pencere(g, cx, y0, zc, 1.15, 1.85)
+            if i in (0, 1) and cx != 0.0:
+                korkuluk(g, cx - 0.75, cx + 0.75, y0, zc - 1.0, 0.35)
+        for cy in (-3.8, 0.0, 3.8):
+            pencere(g, cy, x0, zc, 1.1, 1.75, yon=0)
+            pencere(g, cy, x1, zc, 1.1, 1.75, yon=0)
+    korkuluk(g, -1.0, 1.0, y0, ZK + 0.15, 0.85)                                                   # ortada asıl balkon
+    # Mansart çatı: dik arduvaz etek, üstte basık kırma çatı; etekte dört çatı penceresi
+    kesik_piramit(g, x0 - 0.2, x1 + 0.2, y0 - 0.2, y1 + 0.2, H + 0.38, 1.0, 2.8, "arduvaz", k)
+    cati_kirma(g, x0 + 0.8, x1 - 0.8, y0 + 0.8, y1 - 0.8, H + 3.18, 1.2, "arduvaz", k)
+    for cx in (-4.2, -1.4, 1.4, 4.2):
+        kutu(g, (cx, y0 + 0.75, H + 1.95), (0.55, 0.6, 0.75), "beyaz", kabuk=True, kalinlik=2.0)
+        kutu(g, (cx, y0 + 0.14, H + 1.9), (0.36, 0.012, 0.45), "Cam")
+        cati_kirma(g, cx - 0.68, cx + 0.68, y0 + 0.02, y0 + 1.4, H + 2.7, 0.45, "arduvaz", 2.0)
+    for bx, by in ((-3.4, 3.2), (3.4, 3.2), (0.0, -1.2)):
+        baca(g, bx, by, H + 3.2, 1.3, 2.0)
+    return g
+
+
 def uret():
     rnd = random.Random(TOHUM)
     yap = {
         "kurye": kurye,
         "bisiklet": bisiklet,
+        "kargo_bisikleti": kargo_bisikleti,
         "paket_dolabi": paket_dolabi,
         "agac_yuvarlak": lambda: agac_yuvarlak(rnd),
         "agac_kavak": lambda: agac_kavak(rnd),
         "sokak_lambasi": lambda: sokak_lambasi(rnd),
+        "bina_berhaz": bina_berhaz,
+        "bina_kose": bina_kose,
+        "bina_dukkan": bina_dukkan,
+        "bina_apartman": bina_apartman,
     }
     return [(m, yap[m]()) for m in MODELLER]
 
@@ -891,19 +1273,20 @@ def fbx_karakter(arm, ob, yol):
         arm.location = eski_yer
 
 
-DOSYA_ADI = {"kurye": "Kurye", "bisiklet": "Bisiklet", "paket_dolabi": "PaketDolabi",
-             "agac_yuvarlak": "Agac_Yuvarlak", "agac_kavak": "Agac_Kavak", "sokak_lambasi": "SokakLambasi"}
+DOSYA_ADI = {"kurye": "Kurye", "bisiklet": "Bisiklet", "kargo_bisikleti": "KargoBisikleti", "paket_dolabi": "PaketDolabi",
+             "agac_yuvarlak": "Agac_Yuvarlak", "agac_kavak": "Agac_Kavak", "sokak_lambasi": "SokakLambasi",
+             "bina_berhaz": "Bina_Berhaz", "bina_kose": "Bina_Kose", "bina_dukkan": "Bina_Dukkan", "bina_apartman": "Bina_Apartman"}
 
 
 # ------------------------------------------------------------------ çıktı klasörü ve komut satırı
 
 def argumanlar():
-    """Blender'da '--' sonrasındaki, Python'da bütün argümanlar: --cikti KLASOR, --cizgi 0/1, --onizleme DOSYA."""
+    """Blender'da '--' sonrasındaki, Python'da bütün argümanlar: --cikti KLASOR, --cizgi 0/1, --onizleme DOSYA, --modeller a,b."""
     a = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else (sys.argv[1:] if not IN_BLENDER else [])
     out = {}
     i = 0
     while i < len(a):
-        if a[i] in ("--cikti", "--cizgi", "--onizleme") and i + 1 < len(a):
+        if a[i] in ("--cikti", "--cizgi", "--onizleme", "--modeller") and i + 1 < len(a):
             out[a[i][2:]] = a[i + 1]
             i += 2
         else:
@@ -918,12 +1301,12 @@ def cikti_klasoru(arg):
         return os.path.abspath(os.path.expanduser(CIKTI))
     kok = os.environ.get("KURYE_TYCOON_KOK")                  # Unity'deki menü verir: Assets/KuryeTycoon
     if kok and os.path.isdir(kok):
-        return os.path.join(kok, "Modeller", "Stilize")
+        return os.path.join(kok, "Art", "Stilize")
     f = globals().get("__file__")
     if f:
         d = os.path.dirname(os.path.abspath(f))
         if os.path.basename(d) == "Blender" and os.path.basename(os.path.dirname(d)) == "Tools":
-            return os.path.join(os.path.dirname(os.path.dirname(d)), "Modeller", "Stilize")
+            return os.path.join(os.path.dirname(os.path.dirname(d)), "Art", "Stilize")
     return os.path.expanduser("~/Desktop/KuryeStilize")
 
 
@@ -932,6 +1315,13 @@ def main():
     arg = argumanlar()
     if "cizgi" in arg:
         CIZGI = arg["cizgi"] not in ("0", "hayir", "false")
+    global MODELLER
+    if arg.get("modeller"):
+        istenen = tuple(m.strip() for m in arg["modeller"].split(",") if m.strip())
+        bilinmeyen = [m for m in istenen if m not in DOSYA_ADI]
+        if bilinmeyen:
+            raise SystemExit("Bilinmeyen model: " + ", ".join(bilinmeyen) + " (seçenekler: " + ", ".join(DOSYA_ADI) + ")")
+        MODELLER = istenen
     modeller = uret()
     satir = [f"{DOSYA_ADI[m]}: {g.ucgen_sayisi()} üçgen" for m, g in modeller]
     if not IN_BLENDER:
@@ -966,9 +1356,10 @@ def main():
             ob.location = (x, 0.0, 0.0)
             if DISA_AKTAR:
                 fbx_model(ob, yol)
-        x += 2.6
+        genislik = max(p[0] for p in g.v) - min(p[0] for p in g.v) if g.v else 1.0
+        x += max(2.6, genislik + 2.0)
     satir.append(f"FBX ve {PALET_DOKU}: {klasor}")
-    print("STILIZE PAKET\n" + "\n".join(satir))
+    print("STILIZE VARLIKLAR\n" + "\n".join(satir))
 
 
 # ------------------------------------------------------------------ Blender'sız önizleme (matplotlib)
@@ -986,10 +1377,12 @@ def onizleme(modeller, yol):
         return hex_rgb(PALET[palet_kare(r)][1])
 
     isik = norm((-0.5, -0.8, 0.9))
-    fig = plt.figure(figsize=(3.2 * len(modeller), 4.6), dpi=110)
+    sutun = min(len(modeller), 6)
+    satir_n = (len(modeller) + sutun - 1) // sutun
+    fig = plt.figure(figsize=(3.2 * sutun, 4.6 * satir_n), dpi=110)
     fig.patch.set_facecolor("#efe6d4")
     for i, (m, g) in enumerate(modeller):
-        ax = fig.add_subplot(1, len(modeller), i + 1, projection="3d")
+        ax = fig.add_subplot(satir_n, sutun, i + 1, projection="3d")
         ax.set_facecolor("#efe6d4")
         polys, renkler = [], []
 
