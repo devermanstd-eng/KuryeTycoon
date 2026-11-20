@@ -17,7 +17,8 @@ namespace KuryeTycoon.EditorTools
         const string YolAnahtar = "KuryeTycoon.BlenderYolu";
         static Process surec;
         static string betikAdi;
-        static bool prefabYapilsin;
+        /// <summary>Blender bitince çalışacak menü (boşsa hiçbiri).</summary>
+        static string sonrakiMenu;
         static readonly System.Text.StringBuilder cikti = new System.Text.StringBuilder();
 
         [MenuItem("Kurye Tycoon/Blender/Ağaçları üret (boyalı)")]
@@ -33,9 +34,12 @@ namespace KuryeTycoon.EditorTools
         [MenuItem("Kurye Tycoon/Blender/Londra blokları üret")]
         static void Bloklar() => Calistir("calistir_blok.py");
 
-        /// <summary>Stilize pilot paketi (kurye, bisiklet, paket dolabı, ağaçlar, sokak lambası) → Modeller/Stilize. Prefab adımı yok.</summary>
-        [MenuItem("Kurye Tycoon/Blender/Stilize pilot paketini üret")]
-        static void Stilize() => Calistir("stilize_paket.py", false);
+        /// <summary>
+        /// Stilize varlıklar (kurye, bisiklet, kargo bisikleti, paket dolabı, ağaçlar, sokak lambası, Budapeşte binaları)
+        /// → Art/Stilize; bitince "Stilize Prefabları Kur" malzemeleri ve Prefabs/Stilize'yi kurar.
+        /// </summary>
+        [MenuItem("Kurye Tycoon/Blender/Stilize varlıkları üret")]
+        static void Stilize() => Calistir("varlik_uretici.py", StilizeVarlikKurucu.MenuYolu);
 
         [MenuItem("Kurye Tycoon/Blender/Blender yerini değiştir")]
         static void YerSec()
@@ -90,7 +94,7 @@ namespace KuryeTycoon.EditorTools
             return null;
         }
 
-        static void Calistir(string betik, bool prefabYap = true)
+        static void Calistir(string betik, string sonraki = "Kurye Tycoon/Blender Binalarını Prefab Yap")
         {
             if (surec != null && !surec.HasExited)
             {
@@ -114,7 +118,7 @@ namespace KuryeTycoon.EditorTools
 
             cikti.Clear();
             betikAdi = betik;
-            prefabYapilsin = prefabYap;
+            sonrakiMenu = sonraki;
             var bilgi = new ProcessStartInfo(blender, "-b --factory-startup -P \"" + sarici + "\"")
             {
                 UseShellExecute = false,
@@ -165,7 +169,7 @@ namespace KuryeTycoon.EditorTools
             }
             Debug.Log("Kurye Tycoon: Blender bitti (" + betikAdi + "):\n" + son);
             AssetDatabase.Refresh();
-            if (prefabYapilsin) EditorApplication.ExecuteMenuItem("Kurye Tycoon/Blender Binalarını Prefab Yap");
+            if (!string.IsNullOrEmpty(sonrakiMenu)) EditorApplication.ExecuteMenuItem(sonrakiMenu);
         }
     }
 }
