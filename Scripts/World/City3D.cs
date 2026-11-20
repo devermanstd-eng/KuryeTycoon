@@ -362,6 +362,7 @@ namespace KuryeTycoon
             kiliseSayisi = 0;
             bolgeSon.Clear();
             binaBolge = null;
+            if (CityMap.Organik) Arazi.Hazirla();   // nehir yatağı ve tepeler: modeller araziye oturur
             bool roads3D = UsePack && UseRoads && roadStraight != null && roadCross != null;
 
             root = new GameObject("3D Şehir").transform;
@@ -685,7 +686,11 @@ namespace KuryeTycoon
                 if (r != null && r.sharedMaterial != null) { ornek = r.sharedMaterial; break; }
             }
             // Yol ağı ve nehir uzaktan (2D harita) da görünür kalır: 3D binalarla birlikte gizlenmez, kilitli bölgede kararmaz
+            // Bölgeye göre desenli 3D zemin (nehir yatağı çukur), canlı nehir (tekneler, ördekler, sazlık)
+            OrganikZemin.Kur(root, ornek);
+            map.Zemin3D();
             OrganikSehir3D.Kur(root, ornek);
+            NehirHayati.Kur(root, 99);
             // Lambalar, banklar, duraklar, levhalar, elektrik direkleri ... (Blender: Donati_*)
             if (UsePack) SokakDonatilari.Kur(root, 777);
         }
@@ -1140,14 +1145,53 @@ namespace KuryeTycoon
             var mf = go.AddComponent<MeshFilter>();
             var mr = go.AddComponent<MeshRenderer>();
             var m = new Mesh { name = "KirZemini" };
-            m.vertices = new[] { new Vector3(x0, y0, 0f), new Vector3(x0 + w, y0, 0f), new Vector3(x0 + w, y0 + h, 0f), new Vector3(x0, y0 + h, 0f) };
-            m.uv = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) };
-            m.normals = new[] { Vector3.back, Vector3.back, Vector3.back, Vector3.back };   // (0,0,−1): yukarı
-            m.triangles = new[] { 0, 2, 1, 0, 3, 2 };
+            if (CityMap.Organik)
+            {
+                // Tepeli kır: kare başına bir köşe; şehirden uzaklaştıkça yükselen tepeler (Arazi.Tepe), yollar vadide
+                int nx = Mathf.CeilToInt(w), ny = Mathf.CeilToInt(h);
+                var v = new Vector3[(nx + 1) * (ny + 1)];
+                var uv = new Vector2[v.Length];
+                for (int j = 0; j <= ny; j++)
+                    for (int i = 0; i <= nx; i++)
+                    {
+                        float x = x0 + w * i / nx, y = y0 + h * j / ny;
+                        v[j * (nx + 1) + i] = new Vector3(x, y, -Arazi.Tepe(x, y));
+                        uv[j * (nx + 1) + i] = new Vector2((float)i / nx, (float)j / ny);
+                    }
+                var tr = new int[nx * ny * 6];
+                int k = 0;
+                for (int j = 0; j < ny; j++)
+                    for (int i = 0; i < nx; i++)
+                    {
+                        int a = j * (nx + 1) + i, b = a + 1, c = a + nx + 1, d = c + 1;
+                        tr[k++] = a; tr[k++] = c; tr[k++] = b;
+                        tr[k++] = b; tr[k++] = c; tr[k++] = d;
+                    }
+                m.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+                m.vertices = v;
+                m.uv = uv;
+                m.triangles = tr;
+                m.RecalculateNormals();
+                var nr = m.normals;
+                if (nr.Length > 0 && nr[0].z > 0f)
+                {
+                    for (int q = 0; q < tr.Length; q += 3) { int tmp = tr[q + 1]; tr[q + 1] = tr[q + 2]; tr[q + 2] = tmp; }
+                    m.triangles = tr;
+                    m.RecalculateNormals();
+                }
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;   // tepeler gölge düşürsün
+            }
+            else
+            {
+                m.vertices = new[] { new Vector3(x0, y0, 0f), new Vector3(x0 + w, y0, 0f), new Vector3(x0 + w, y0 + h, 0f), new Vector3(x0, y0 + h, 0f) };
+                m.uv = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) };
+                m.normals = new[] { Vector3.back, Vector3.back, Vector3.back, Vector3.back };   // (0,0,−1): yukarı
+                m.triangles = new[] { 0, 2, 1, 0, 3, 2 };
+            }
             m.RecalculateBounds();
             mf.sharedMesh = m;
             mr.sharedMaterial = kirMalzeme;
-            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (!CityMap.Organik) mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = true;
             mr.sortingOrder = -20;
             map.Kir3DZemin();   // 2D çayır ve tarlalar gizlenir (sadece kar yağınca beyaz örtü olarak görünür)
@@ -1790,6 +1834,8 @@ namespace KuryeTycoon
             float height = b.size.z;
             // Kendi binalarımızın arsa levhasının üstü, yol kaldırımıyla aynı seviyede olsun (bina ne gömük ne havada)
             if (ownModel && !bolge) inst.transform.position += new Vector3(0f, 0f, OwnLotDepth * s + OwnSidewalkTop);
+            // Araziye otur: tepelerde yukarıda, nehir kıyısında aşağıda (şehrin içi düz: 0)
+            if (CityMap.Organik) inst.transform.position += new Vector3(0f, 0f, Arazi.Z(holder.position.x, holder.position.y));
             // Aynı model her karede biraz farklı renkte (duvar, kapı, panjur, çatı): şehir tekrar eden kopyalar gibi görünmesin
             int seed = ownModel ? ((tile.x + 101) * 73856093 ^ (tile.y + 37) * 19349663 ^ (int)(offset.x * 1000f)) & 0x7fffffff : -1;
 

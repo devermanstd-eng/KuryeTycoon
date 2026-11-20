@@ -1207,6 +1207,19 @@ namespace KuryeTycoon
         bool kir3D;
 
         /// <summary>City3D dokulu kır zeminini kurunca çağırır.</summary>
+        /// <summary>Kar örtüsü (0–1) ve ıslaklık (0–1): 3D şehir zemini (OrganikZemin) dokusuna işler.</summary>
+        public float KarMiktari => snowCover;
+        bool zemin3D;
+
+        /// <summary>Organik şehrin 3D zemini kuruldu: düz 2D kareler gizlenir (nehir yatağı çukurunu örtmesinler).</summary>
+        public void Zemin3D()
+        {
+            zemin3D = true;
+            if (ground != null)
+                foreach (var sr in ground) if (sr != null) sr.enabled = false;
+            RefreshColors();
+        }
+
         public void Kir3DZemin()
         {
             kir3D = true;
@@ -1239,6 +1252,7 @@ namespace KuryeTycoon
                     if (!IsUnlocked(x, y)) c = LockedTint(c);
                     ground[x, y].color = Night(c);
                 }
+            if (zemin3D) OrganikZemin.Renkle(this);
 
             foreach (var d in decor)
             {

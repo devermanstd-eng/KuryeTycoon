@@ -19,7 +19,7 @@ namespace KuryeTycoon
     {
         const string Klasor = "SehirPaketi/Donatilar";
         const float Olcek = 0.1f;                    // 1 m → kare (biraz abartılı: üstten bakınca seçilsin)
-        const float CaddeAsfalt = 0.62f, SokakAsfalt = 0.42f, Kaldirim = 0.16f;   // OrganikSehir3D ile aynı
+        const float CaddeAsfalt = OrganikSehir3D.CaddeAsfalt, SokakAsfalt = OrganikSehir3D.SokakAsfalt, Kaldirim = OrganikSehir3D.Kaldirim;
         const float ZKaldirim = -0.003f;
 
         class Tur
@@ -105,7 +105,7 @@ namespace KuryeTycoon
             var t = l[rng.Next(l.Count)];
             float aci = Mathf.Atan2(-bak.x, bak.y) * Mathf.Rad2Deg;
             var rot = Quaternion.Euler(0f, 0f, aci) * Quaternion.Euler(-90f, 0f, 0f);
-            var poz = new Vector3(p.x, p.y, ZKaldirim - t.taban * Olcek);
+            var poz = new Vector3(p.x, p.y, ZKaldirim - t.taban * Olcek + Arazi.Z(p));
             var dunya = Matrix4x4.TRS(poz, rot, Vector3.one * Olcek);
             foreach (var (mesh, sub, mat, m) in t.parcalar)
             {
