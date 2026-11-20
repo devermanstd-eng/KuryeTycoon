@@ -9,7 +9,7 @@ namespace KuryeTycoon
     ///  • Kök elemanın ilk çocuğu (uiKok'tan önce): üst çubuk, pencere, kurye telefonu, bina kartı, durum kartları, bildirimler
     ///    ve olay kartı hep üstünde kalır. Eskiden bunlar OnGUI'de çiziliyordu ve IMGUI UI Toolkit'in üstüne çıktığı için güneş
     ///    parlaması telefonun üstüne biniyordu (16.11).
-    ///  • uiKok'tan ayrı: foto modunda ve eski arayüzde (F8) de görünür; ortada bir kutu açıkken de çizilir.
+    ///  • uiKok'tan ayrı: foto modunda da görünür; ortada bir kutu açıkken de çizilir.
     ///  • Hava kaydı ekran pikseli, katman kaydı GUI birimi; panel birimine ölçekle çevrilir ve kaydın alanına kırpılır.
     /// Harita etiketleri IMGUI'de kaldı; UI Toolkit kutularının altına giren etiket çizilmez (UiHaritaUstuDolu).
     /// </summary>

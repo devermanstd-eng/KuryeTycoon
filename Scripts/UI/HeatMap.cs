@@ -287,29 +287,5 @@ namespace KuryeTycoon
             float h = HeatModeCount * 28f + 10f;
             return new Rect(DockW + 10f + 378f, sh - 44f - 6f - h, 200f, h);
         }
-
-        void DrawHeatMenu(float sh)
-        {
-            if (!heatMenuOpen) return;
-            var r = HeatMenuRect(sh);
-            UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.94f), 10f, 4f);
-            for (int i = 0; i < HeatModeCount; i++)
-            {
-                var m = (HeatMode)i;
-                var row = new Rect(r.x + 5f, r.y + 5f + i * 28f, r.width - 10f, 26f);
-                bool sec = m == heatMode;
-                if (sec) UITheme.Box(row, UITheme.WithAlpha(UITheme.Accent, 0.3f), 6f);
-                else if (row.Contains(Event.current.mousePosition)) UITheme.Box(row, new Color(1f, 1f, 1f, 0.06f), 6f);
-                small.normal.textColor = UITheme.Yazi(sec ? Color.white : new Color(0.85f, 0.87f, 0.9f));
-                GUI.Label(new Rect(row.x + 10f, row.y + 3f, row.width - 14f, 20f), HeatName(m), small);
-                if (GUI.Button(row, GUIContent.none, GUIStyle.none)) { var mm = m; deferred += () => SetHeat(mm); }
-            }
-            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
-            // Menü dışına tıklayınca kapanır
-            var e = Event.current;
-            if (e.type == EventType.MouseDown && !r.Contains(e.mousePosition)
-                && !new Rect(DockW + 10f + 378f, sh - 44f, 150f, 30f).Contains(e.mousePosition))
-                deferred += () => heatMenuOpen = false;
-        }
     }
 }

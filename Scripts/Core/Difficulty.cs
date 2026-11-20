@@ -58,23 +58,5 @@ namespace KuryeTycoon
     {
         DifficultyLevel setupDifficulty;
         bool setupDifficultyLoaded;   // PlayerPrefs alan başlatıcısında okunamaz (Unity izin vermez), ilk çizimde okunur
-
-        void DrawDifficultyPicker()
-        {
-            if (!setupDifficultyLoaded)
-            {
-                setupDifficultyLoaded = true;
-                setupDifficulty = Difficulty.LastChoice;
-            }
-            GUILayout.Label("Zorluk", header);
-            GUILayout.BeginHorizontal();
-            foreach (var d in Difficulty.Levels)
-            {
-                var dd = d;
-                if (SelectButton(setupDifficulty == d, Difficulty.Name(d), button, GUILayout.Height(30))) setupDifficulty = dd;
-            }
-            GUILayout.EndHorizontal();
-            GUILayout.Label(Difficulty.Description(setupDifficulty), small);
-        }
     }
 }

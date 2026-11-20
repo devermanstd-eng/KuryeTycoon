@@ -75,7 +75,7 @@ namespace KuryeTycoon
             var soru = AracEkle(yardim, "?", null, null);
             Ipucu(soru, "Harita kısayolları\nTekerlek: yakınlaş · sol sürükle: kaydır · sağ sürükle ya da Q/E: döndür\n" +
                         "N: kuzey · M: düz harita · 0: tüm harita · H: harita katmanları\n" +
-                        "Boşluk: duraklat · 1–8: hız · Esc: menü · F10: fotoğraf modu · F8: eski arayüz");
+                        "Boşluk: duraklat · 1–8: hız · Esc: menü · F10: fotoğraf modu");
 
             katmanNot = U.Yazi(aracKok, "", "katman-not");
             U.Goster(katmanNot, false);
