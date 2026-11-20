@@ -174,7 +174,7 @@ namespace KuryeTycoon
                         int p = Puan();
                         int enIyi = PlayerPrefs.GetInt(EnIyiKey, 0);
                         bool rekor = p > enIyi;
-                        if (rekor) { PlayerPrefs.SetInt(EnIyiKey, p); PlayerPrefs.Save(); }
+                        if (rekor && !TestModu.Aktif) { PlayerPrefs.SetInt(EnIyiKey, p); PlayerPrefs.Save(); }   // test botu oyuncunun rekorunu yazmasın
                         Bitir(true, $"Bugünün şehrinde 14 gün: {Teslimatlar()} teslimat, itibar {CompanyProfile.Reputation:0.0}. Puanın {p}." +
                                     (rekor ? " Bu bilgisayardaki en iyi puan!" : $" Bu bilgisayardaki en iyi: {enIyi}.") +
                                     " Yarın yeni bir şehir gelecek.");
