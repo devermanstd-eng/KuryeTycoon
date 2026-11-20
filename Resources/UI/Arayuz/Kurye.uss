@@ -979,6 +979,8 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .yz-kutu:hover { background-color: var(--dugme-ust); }
 .yz-kutu-baslik { font-size: 10px; color: var(--etiket); letter-spacing: 0.8px; -unity-font-style: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .yz-kutu-deger { font-size: 18px; -unity-font-style: bold; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yz-kutu-deger.uzun { font-size: 15px; margin-top: 4px; }        /* 11–13 karakter (Yazici.Kutu) */
+.yz-kutu-deger.cok-uzun { font-size: 13px; margin-top: 5px; }    /* 14+ karakter */
 .yz-kutu-alt { font-size: 11px; color: var(--soluk); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .yz-tablo-satir {
@@ -1241,6 +1243,8 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .tel .yz-kutular { margin: 4px -6px 2px 0; }
 .tel .yz-kutu { background-color: var(--kagit-acik); min-width: 90px; }
 .tel .yz-kutu-deger { font-size: 16px; color: var(--yazi); }
+.tel .yz-kutu-deger.uzun { font-size: 14px; }
+.tel .yz-kutu-deger.cok-uzun { font-size: 12px; }
 .tel .kart.tel-kart {
     background-color: rgba(0, 0, 0, 0);
     border-width: 1.5px;

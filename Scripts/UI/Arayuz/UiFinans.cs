@@ -72,8 +72,9 @@ namespace KuryeTycoon
                     long dunNet = dun.Profit - dun.penalties;
                     y.Kutu("Dün net", Ft(dunNet), dun.deliveries > 0 ? $"paket başı {Ft(dun.DeliveryProfit / dun.deliveries)}" : "", MoneyColor(dunNet));
                 }
-                y.Kutu("Sabit gider", Ft(sabit) + "/gün", "işletme + geliştirme", null,
-                       "Her gece kesilen işletme giderleri (aşağıda kalem kalem) ve geliştirmelerin günlük işletme bedeli.");
+                // "/gün" değerin yanında 18 px kalın yazıda kutuya sığmıyordu (kesiliyordu): alt satıra indi
+                y.Kutu("Sabit gider", Ft(sabit), "her gece kesilir", null,
+                       "Günlük sabit gider: her gece kesilen işletme giderleri (aşağıda kalem kalem) ve geliştirmelerin günlük işletme bedeli.");
                 y.KutularBitir();
                 if (e.bankLoanRemaining > 0)
                     y.Uyari($"Acil banka kredisi: kalan {Ft(e.bankLoanRemaining)} · her gün {Ft(e.bankLoanDaily)} kesilir");

@@ -394,6 +394,10 @@ namespace KuryeTycoon
                 });
                 U.Metin(o.a, BuyukHarf(baslik));
                 U.Metin(o.b, deger);
+                // Uzun değer (Ft gösteriminde milyonlar, eksi tutarlar) dar kutuda kesilmesin: yazı küçülür
+                int uzunluk = deger != null ? deger.Length : 0;
+                o.b.EnableInClassList("uzun", uzunluk > 10 && uzunluk <= 13);
+                o.b.EnableInClassList("cok-uzun", uzunluk > 13);
                 RenkAyarla(o.b, renk);
                 bool altVar = !string.IsNullOrEmpty(alt);
                 U.Goster(o.c, altVar);
