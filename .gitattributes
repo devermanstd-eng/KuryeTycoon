@@ -1,0 +1,16 @@
+# İkili dosyalar: satır sonu dönüşümü ve metin birleştirmesi yapılmasın (Windows'ta autocrlf bozmasın, çakışmada yarım dosya oluşmasın).
+# Git LFS kullanılmıyor (22.11: ikili dosyalar toplam ~50 MB, en büyüğü 1 MB'ın altında); bkz. CLAUDE.md > Git.
+*.fbx    binary
+*.blend  binary
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.psd    binary
+*.tga    binary
+*.exr    binary
+*.wav    binary
+*.mp3    binary
+*.ogg    binary
+*.ttf    binary
+*.otf    binary
+*.bundle binary

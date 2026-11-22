@@ -12,6 +12,9 @@ Ekipte birden fazla kişi kendi Claude'uyla çalışıyor; bu kurallar kimsenin 
 - Sadece işle ilgili dosyaları commit'le. `Modeller/Malzemeler/*.mat`'ta yalnızca sayı yuvarlaması (`_Color`
   ondalıkları) değişmişse bu Unity'nin yeniden kaydetme gürültüsüdür, commit'leme.
 - Commit mesajı ve PR açıklaması Türkçe: ne değişti, neden; denge değeri değiştiyse eski → yeni.
+- Büyük ikili dosya yok: Git LFS kullanılmıyor (ikili dosyalar toplam ~50 MB). 10 MB'tan büyük bir dosya (ses, video,
+  doku) eklemeden önce ekibe sor; `.gitattributes` ikili türleri işaretler, yeni türü oraya ekle.
+- Unity'nin kendiliğinden değiştirdiği dosyaları (ör. `.mat` sayı yuvarlaması) başkasının işiyle aynı PR'a katma.
 
 ## Her değişiklikte
 1. **`.meta`**: her yeni dosya ve klasörün `.meta`'sı commit'te olsun. Unity dışında oluşturduysan yeni GUID'li
