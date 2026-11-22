@@ -263,7 +263,8 @@ namespace KuryeTycoon
             k.kurye = CourierManager.I != null ? CourierManager.I.Couriers.Count : 0;
             k.kuryeSiniri = UpgradeManager.I != null ? UpgradeManager.I.CourierCap : 0;
             k.krediKalan = FamilyLoan.I != null ? FamilyLoan.I.Remaining : 0;
-            if (CityMap.I != null) foreach (var s in CityMap.I.Shops) if (s.own) k.dukkan++;
+            // Sözleşmeli dükkan (kendi marketlerimiz hariç); eskiden yalnızca kendi marketleri sayılıyordu ve hep 0 çıkıyordu
+            if (CityMap.I != null) foreach (var s in CityMap.I.Shops) if (s.contracted && !s.own) k.dukkan++;
 
             var gunler = StatsHistory.I != null ? StatsHistory.I.Days : null;
             k.gun = gunler != null ? gunler.Count : 0;

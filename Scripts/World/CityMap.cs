@@ -37,7 +37,9 @@ namespace KuryeTycoon
         /// <summary>Organik şehir (gerçek harita planından, eğri ve çapraz sokaklar) açık mı?</summary>
         public static bool Organik => SehirPlani.Aktif;
 
-        public static readonly long[] UnlockCost = { 0, 0, 150000, 400000, 750000, 900000 };   // Yeşil Tepe 1,2 M → 0,9 M (16.11 akşam)
+        // Yeşil Tepe 1,2 M → 0,9 M (16.11 akşam). 21.11: Batı Liman 750 → 600 bin, Yeşil Tepe 900 → 720 bin: 120 günlük testte
+        // 39–44. ve 63–64. günde açılıyordu; 32 ve 45 hesaplık paketler bu bölgeleri beklerken 10–12 gün dolu kalıyordu.
+        public static readonly long[] UnlockCost = { 0, 0, 150000, 400000, 600000, 720000 };
         public static readonly string[] DistrictNames = { "", "Merkez Mahalle", "Doğu İlçesi", "Sanayi & Kampüs", "Batı Liman", "Yeşil Tepe" };
 
         /// <summary>Karenin bölgesi (1–5). Bölge sınırındaki yol, açılış sırası önce gelen bölgeye aittir.</summary>
