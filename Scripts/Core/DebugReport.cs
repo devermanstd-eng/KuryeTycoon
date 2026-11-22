@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-22 u17 (denge: Şehir/Metropol paketi 675 bin, Kurumsal+ 3 M, Batı Liman 600 bin, Yeşil Tepe 720 bin)";
+        public const string CodeVersion = "2026-11-22 u18 (stilize kurye ve bisiklet oyunda; prefablar Resources/Stilize)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
