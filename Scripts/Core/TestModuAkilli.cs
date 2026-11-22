@@ -908,6 +908,7 @@ namespace KuryeTycoon
             // Yeni iş kolu ve kurye akademisi
             if (OrtMoral < 0.55f && cm.Couriers.Count >= 10) adaylar.Add((UpgradeKind.Akademi, $"ort. moral {OrtMoral:0.00}, {cm.Couriers.Count} kurye: bırakma ve ayartılma riski"));
             if (cm.Couriers.Count >= 10 && iptal < 0.06f && kuryeBasi < 11f) adaylar.Add((UpgradeKind.Kargo, $"kurye başı {kuryeBasi:0} teslimat: sakin saatlerde boş kapasite var"));
+            if (cm.Couriers.Count >= 8) adaylar.Add((UpgradeKind.Otomasyon, $"{cm.Couriers.Count} kurye: günlük ayarları otomasyona bırak, oyun kapalıyken kazanç"));
 
             foreach (var a in adaylar)
             {

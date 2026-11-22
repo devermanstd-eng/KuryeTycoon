@@ -36,8 +36,8 @@ namespace KuryeTycoon
             return $"{(m / 60) % 24:00}:{m % 60:00}";
         }
 
-        static string ShopAddress(Shop s) => $"{Addresses.StreetOf(s.door)} {Addresses.Number(s.tile, s.door)}, 4400 Nyíregyháza";
-        static string CustomerAddress(Order o) => $"{o.street} {o.number}" + (o.blocks > 1 ? $" {o.block} Blok" : "") + ", 4400 Nyíregyháza";
+        static string ShopAddress(Shop s) => $"{Addresses.StreetOf(s.door)} {Addresses.Number(s.tile, s.door)}, {Marka.PostaKodu} {Marka.SehirAdi}";
+        static string CustomerAddress(Order o) => $"{o.street} {o.number}" + (o.blocks > 1 ? $" {o.block} Blok" : "") + $", {Marka.PostaKodu} {Marka.SehirAdi}";
 
         static bool InPickupPhase(Courier c) =>
             c.State == CourierState.DukkanaGidiyor || c.State == CourierState.Bekliyor;

@@ -30,7 +30,8 @@ namespace KuryeTycoon
         public static float ApplicationRate => Easy ? 1.3f : Hard ? 0.8f : 1f;
         public static float SurpriseInterval => Easy ? 1.5f : Hard ? 0.75f : 1f;
         /// <summary>Başlangıç kasasının çarpanı (taban 2 500 €).</summary>
-        public static float StartCash => Easy ? 1.2f : Hard ? 0.55f : 0.65f;
+        public static float StartCash => StartCashFor(Level);
+        public static float StartCashFor(DifficultyLevel d) => d == DifficultyLevel.Kolay ? 1.2f : d == DifficultyLevel.Zor ? 0.55f : 0.65f;
 
         public static string Name(DifficultyLevel d) =>
             d == DifficultyLevel.Kolay ? "Kolay" : d == DifficultyLevel.Zor ? "Zor" : "Normal";

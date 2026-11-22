@@ -125,7 +125,7 @@ namespace KuryeTycoon
             long toplamBorc = (long)Mathf.Round(borc * (1f + (FamilyLoan.I != null ? FamilyLoan.I.faizOrani : 0.08f)) / 1000f) * 1000;
             y.Yazi($"Yıllarca {FamilyLoan.EskiSirket}'te kuryelik yaptın. Şimdi {FamilyLoan.Banka}'tan aldığın {Ft(borc)} girişimci kredisiyle kendi kurye " +
                    "şirketini kuruyorsun. " +
-                   (borc > gb.familyLoanAmount ? $"Kuruluş masraflarından sonra kasada {Ft(gb.familyLoanAmount)} kalıyor. " : "") +
+                   (borc > gb.BaslangicKasasi(setupDifficulty) ? $"Kuruluş masraflarından sonra kasada {Ft(gb.BaslangicKasasi(setupDifficulty))} kalıyor. " : "") +
                    $"Krediyi faiziyle ({Ft(toplamBorc)}) Temmuz sonuna kadar ayda ~{Ft(toplamBorc / 5)} taksitle geri ödemen gerekiyor; " +
                    "eski patronun artık rakiplerinden biri.");
 
@@ -134,11 +134,15 @@ namespace KuryeTycoon
             y.Kucuk("•  Dükkanlarla anlaş, kurye al, siparişleri zamanında teslim ettir. Hızlı teslimat puanını ve pazar payını büyütür.");
             y.Kucuk("•  Gelirin: dükkan komisyonu ve teslimat ücreti. Giderin: kurye hakedişi, ekipman, geliştirmeler, personel.");
             y.Kucuk("•  Kuryeler serbest çalışır: saatte iyi kazanırsa mutlu olur, uzun günler biriktikçe yorulur. Çok kurye alırsan iş başına düşen kazanç azalır.");
-            y.Kucuk("•  İtibar son iki haftanın müşteri puanıdır; iptal edilen sipariş 1 yıldız sayılır. Şirket büyüdükçe yatırımlar da pahalanır.");
+            y.Kucuk("•  İtibar son iki haftanın müşteri puanıdır; iptal edilen sipariş 1 yıldız sayılır.");
+            y.Kucuk("•  Büyüdükçe hızlanırsın: büyük kilometre taşları geliri kalıcı artırır, Operasyon otomasyonu günlük işleri devralır ve oyun kapalıyken de kazandırır. " +
+                    "Şirket değerlenince satıp daha büyük bir şehirde marka puanlarıyla yeniden başlayabilirsin.");
             y.Kucuk("•  Şehir yaşıyor: gündüz ve gece, hava, trafik ve şehir olayları siparişleri ve kuryeleri etkiler.");
             y.Kucuk("•  İlk hedef: banka kredisini zamanında ödemek. Sonrası: şehrin en büyük kurye şirketi olmak.");
             y.Not("Boşluk: duraklat · 1–8: hız · H: sipariş yoğunluğu · F10: fotoğraf modu · Esc: menü. Oyun her gece kendini kaydeder.");
             y.KartBitir();
+
+            if (Marka.Veri.satilan > 0 || Marka.Veri.puan > 0) MarkaBolumu(y);
 
             y.Bolum("Şirket adı");
             y.Ozel("kurulum-ad", () =>
@@ -182,6 +186,30 @@ namespace KuryeTycoon
             y.Dugme("Şirketi Kur ve Başla", KurulumBasla, true, "vurgu kurulum-basla");
             if (Application.isEditor || Debug.isDebugBuild) TestBolumu(y);
             y.Bitir();
+        }
+
+        /// <summary>Prestij: marka puanı ve kalıcı geliştirmeler (önceki şirketlerin satışından).</summary>
+        void MarkaBolumu(Yazici y)
+        {
+            var v = Marka.Veri;
+            y.KartBasla();
+            y.Baslik($"Marka · {v.puan} harcanabilir puan");
+            y.Kucuk($"{v.satilan} şirket sattın" + (string.IsNullOrEmpty(v.sonSirket) ? "" : $" (son: {v.sonSirket})") +
+                    $". Yeni Klasik oyunun {Marka.Sehirler[Marka.SiradakiSehir]} şehrinde kurulur: daha çok sipariş, daha güçlü rakipler. " +
+                    $"Satılan her şirket komisyon gelirini kalıcı %5 artırır (şu an ×{Marka.GelirCarpani:0.00}).");
+            var perkler = (MarkaPerk[])Enum.GetValues(typeof(MarkaPerk));
+            foreach (var p in perkler)
+            {
+                int lv = v.seviye[(int)p], maks = Marka.PerkMaks[(int)p];
+                y.KV($"{Marka.PerkAdlari[(int)p]} ({lv}/{maks})", Marka.PerkEtkisi(p, lv));
+                if (lv < maks)
+                {
+                    int bedel = Marka.PerkBedeli(p);
+                    var perk = p;
+                    y.Dugme($"Yükselt: {Marka.PerkEtkisi(p, lv + 1)} — {bedel} puan", () => Marka.PerkAl(perk), v.puan >= bedel, "kucuk-dg");
+                }
+            }
+            y.KartBitir();
         }
 
         void KayitliOyunlar(Yazici y)

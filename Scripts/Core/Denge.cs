@@ -40,8 +40,17 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>
+        /// 2026-11-22: fiyatların gelirle şişmesi kapatıldı (incremental büyüme hissi: oyuncu büyüdükçe zenginleştiğini görsün).
+        /// Her geliştirmenin kendi seviye fiyatı var; büyük para artık prestije (Marka) ve büyük geliştirmelere gider.
+        /// Eski hesap aşağıda duruyor; tekrar açmak için FiyatOlcekleme = true.
+        /// </summary>
+        public const bool FiyatOlcekleme = false;
+
         static float Hesapla()
         {
+            if (!FiyatOlcekleme) return 1f;
+#pragma warning disable CS0162
             var d = StatsHistory.I != null ? StatsHistory.I.Days : null;
             if (d == null || d.Count == 0) return 1f;
             int n = Mathf.Min(14, d.Count);
@@ -51,6 +60,7 @@ namespace KuryeTycoon
             if (oran <= 1f) return 1f;
             float m = Mathf.Min(FiyatTavan, Mathf.Pow(oran, FiyatUs));
             return Mathf.Round(m * 4f) / 4f;
+#pragma warning restore CS0162
         }
 
         /// <summary>
