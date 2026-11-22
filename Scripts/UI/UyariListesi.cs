@@ -20,6 +20,8 @@ namespace KuryeTycoon
             public Courier kurye;
             public Shop dukkan;
             public float oncelik;   // büyük olan üstte
+            public bool kayitlar;   // tıklayınca Kayıtlar açılır (kurye kapsaması)
+            public int kapsamaBolum;
         }
 
         readonly List<Uyari> uyarilar = new List<Uyari>();
@@ -126,12 +128,26 @@ namespace KuryeTycoon
                     });
             }
 
+            // 5) Haftalık kurye kapsaması: sipariş beklenen ama hiç kurye olmayan saatler (KapsamaTablosu.cs)
+            KapsamaUyarilari();
+
             uyarilar.Sort((a, b) => b.oncelik.CompareTo(a.oncelik));
         }
 
         /// <summary>Uyarının yerine gider; kuryeyse telefonunu, dükkansa bilgi kartını açar.</summary>
         void UyariyaGit(Uyari u)
         {
+            if (u.kayitlar)
+            {
+                // Kayıtlar'ı aç, o gün bölümünde çalışan adayları göster
+                System.Array.Clear(workParts, 0, 4);
+                workParts[Mathf.Clamp(u.kapsamaBolum, 0, 3)] = true;
+                applicationFilter = -1;
+                tab = Tab.IseAlim;
+                panelOpen = true;
+                scroll = Vector2.zero;
+                return;
+            }
             if (MapCamera.I != null) MapCamera.I.FocusOn(u.yer, 0.7f);
             if (u.kurye != null && CourierManager.I.Couriers.Contains(u.kurye))
             {

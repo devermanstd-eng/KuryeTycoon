@@ -6,6 +6,8 @@ namespace KuryeTycoon
     /// <summary>
     /// Kurye ve adayların çalışma saatleri (Kayıtlar, Kuryeler ve büyük kart kullanır).
     ///  • "Çalışma saatleri": Hafta içi 17:00–23:00 · Hafta sonu 11:00–20:00 gibi düz yazı (lines); gün bölümleri (parts).
+    ///  • Kayıtlar'daki saat filtresi: Sabah / Öğlen / Akşam / Gece, birden fazla seçilebilir; seçilenlerin hepsinde
+    ///    çalışan adaylar listelenir (ör. Sabah + Akşam). Hiçbiri seçili değilse filtre yok.
     /// Saatler elle yazılmaz; kuryenin oyunda çevrimiçi olma kararını verdiği Courier.PreferenceAt'ten hesaplanır.
     /// Aynı saatleri olan günler tek satırda birleşir (Her gün / Hafta içi / Hafta sonu / Pzt–Çar ...);
     /// vardiyalı işçide bu hafta ve gelecek hafta ayrı yazılır.
@@ -17,6 +19,7 @@ namespace KuryeTycoon
         const int WorkPartMinHours = 2;  // filtre: o bölümde en az bu kadar saat kesin çalışan aday
 
         static readonly string[] WorkDayNames = { "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz" };
+        static readonly string[] WorkPartNames = { "Sabah", "Öğlen", "Akşam", "Gece" };
         static readonly int[] WorkPartFrom = { 6, 12, 17, 22 };
         static readonly int[] WorkPartTo = { 12, 17, 22, 30 };   // 30 = ertesi gün 06:00
 
@@ -28,6 +31,23 @@ namespace KuryeTycoon
 
         readonly Dictionary<string, WorkInfo> workCache = new Dictionary<string, WorkInfo>();
         int workCacheDay = -1;
+
+        // ---------------------------------------------------------------- saat filtresi (Kayıtlar)
+
+        readonly bool[] workParts = new bool[4];   // seçili gün bölümleri; hiçbiri seçili değilse filtre yok
+
+        bool AnyWorkPart => workParts[0] || workParts[1] || workParts[2] || workParts[3];
+
+        /// <summary>Aday seçilen bölümlerin hepsinde çalışıyor mu (filtre kapalıysa hep evet).</summary>
+        bool PassesWorkFilter(CourierCandidate c)
+        {
+            if (!AnyWorkPart || GameClock.I == null) return true;
+            var parts = WorkInfoFor(c.occupation, c.scheduleSeed, GameClock.I).parts;
+            for (int i = 0; i < 4; i++) if (workParts[i] && !parts[i]) return false;
+            return true;
+        }
+
+        static string WorkPartRange(int i) => $"{WorkPartFrom[i]:00}:00–{WorkPartTo[i] % 24:00}:00";
 
 
         // ---------------------------------------------------------------- hesap
