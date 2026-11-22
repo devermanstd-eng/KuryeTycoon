@@ -11,6 +11,8 @@ namespace KuryeTycoon
     /// Karta tıklayınca ayrıntı açılır (sade): dört sayı kutusu (puan, hesap, kapasite, toplam), 2×2 beceri yıldızları,
     /// üç kısa bilgi satırı (meslek, sigorta, ekipman), eğitim çipleri ve işlemler (büyüt, telefon, ekipman, çanta, askı, kapat).
     /// Ayrıntılar (kazanç formülü, ders programı, seçicilik…) kutuların ipucunda.
+    /// Araç filtresinin altında saat filtresi (Sabah / Öğlen / Akşam / Gece, birden fazla seçilebilir): seçilen bölümlerin
+    /// hepsinde çalışan kuryeler kalır, araç filtresiyle birlikte çalışır. Ayrıntıda "Saatler" satırı (WorkHoursView.cs).
     /// </summary>
     public partial class GameUI
     {
@@ -23,6 +25,8 @@ namespace KuryeTycoon
             readonly HashSet<Courier> acik = new HashSet<Courier>();
             int arac = -1;           // -1 hepsi, yoksa (int)VehicleKind
             int sira;                // 0 durum, 1 moral, 2 yorgunluk, 3 bugün, 4 ad
+            readonly bool[] saat = new bool[4];   // saat filtresi: Sabah, Öğlen, Akşam, Gece (hiçbiri = filtre yok)
+            readonly List<Label> saatOgeler = new List<Label>();
             string ozetImza = "";
 
             static readonly string[] SiraAdlari = { "Durum", "Moral", "Yorgunluk", "Bugün", "Ad" };
@@ -38,7 +42,7 @@ namespace KuryeTycoon
                 public Label puan, puanAlt, hesap, hesapAlt, kapasite, kapasiteAlt, toplam, toplamAlt;
                 public string puanIpucu = "", hesapIpucu = "", kapasiteIpucu = "", toplamIpucu = "", meslekIpucu = "";
                 public VisualElement hedefSatir;
-                public Label meslek, sigorta, ekipman, hedef;
+                public Label meslek, sigorta, ekipman, hedef, saatler;
                 public int portreRuh = -1;
                 public VisualElement ozellikSatir;
                 public readonly List<(Button b, Label durum, KuryeEgitim.Tur t)> egitimler = new List<(Button, Label, KuryeEgitim.Tur)>();
@@ -57,6 +61,23 @@ namespace KuryeTycoon
                 filtreler.style.marginBottom = 6;
                 filtre = U.SecenekEkle(filtreler, new[] { "Hepsi", "Bisiklet", "Scooter", "Motor", "Araba" }, () => arac + 1, v => arac = v - 1);
                 filtre.kok.style.flexGrow = 1;
+
+                // Saat filtresi: birden fazla seçilebilir
+                var ss = U.El(ust, "satir");
+                ss.style.marginBottom = 6;
+                U.Yazi(ss, "Saat:", "kucuk", "soluk").style.marginRight = 8;
+                var saatKok = U.El(ss, "secenekler");
+                saatKok.style.flexGrow = 1;
+                for (int i = 0; i < 4; i++)
+                {
+                    int b = i;
+                    var l = U.Kalin(saatKok, WorkPartNames[i], "secenek");
+                    l.pickingMode = PickingMode.Position;
+                    U.Tikla(l, () => { saat[b] = !saat[b]; SaatYenile(CourierManager.I); });
+                    ui.Ipucu(l, $"{WorkPartNames[i]} {WorkPartRange(i)}: bu saatlerde çalışan kuryeler. Birden fazla seçersen hepsinde çalışanlar kalır; tekrar tıklayınca kalkar.");
+                    saatOgeler.Add(l);
+                }
+
                 var sr = U.El(ust, "satir");
                 sr.style.marginBottom = 8;
                 U.Yazi(sr, "Sırala:", "kucuk", "soluk").style.marginRight = 8;
@@ -136,6 +157,7 @@ namespace KuryeTycoon
                 ui.Ipucu(meslekSatir, () => k.meslekIpucu);
                 k.sigorta = BilgiSatiri(k.ayrinti, "Sigorta", out _);
                 k.ekipman = BilgiSatiri(k.ayrinti, "Ekipman", out _);
+                k.saatler = BilgiSatiri(k.ayrinti, "Saatler", out _);
                 k.hedef = BilgiSatiri(k.ayrinti, "Hedefler", out k.hedefSatir);
 
                 // Eğitimler: şirket öder, beceri artar ya da yeni sipariş türü açılır. Alınanlar yeşil çip, alınmayanlar düğme.
@@ -213,6 +235,35 @@ namespace KuryeTycoon
                 }
                 s.userData = (System.Func<Courier, int>)yildiz;
                 ui.Ipucu(s, () => $"{ad} {yildiz(k.c)}/5: {aciklama}");
+            }
+
+            bool SaatSecili => saat[0] || saat[1] || saat[2] || saat[3];
+
+            /// <summary>Kurye seçilen bölümlerin hepsinde çalışıyor mu (seçim yoksa hep evet).</summary>
+            bool SaatUygun(Courier c)
+            {
+                if (!SaatSecili || GameClock.I == null) return true;
+                var parts = ui.WorkInfoFor(c.occupation, c.scheduleSeed, GameClock.I).parts;
+                for (int i = 0; i < 4; i++) if (saat[i] && !parts[i]) return false;
+                return true;
+            }
+
+            /// <summary>Saat düğmeleri: seçili olan vurgulu, yanında o saatte çalışan (araç filtresine uyan) kurye sayısı.</summary>
+            void SaatYenile(CourierManager cm)
+            {
+                if (cm == null || GameClock.I == null) return;
+                for (int i = 0; i < saatOgeler.Count; i++)
+                {
+                    int n = 0;
+                    foreach (var c in cm.Couriers)
+                        if (PassesFilter(arac, c.vehicle) && ui.WorkInfoFor(c.occupation, c.scheduleSeed, GameClock.I).parts[i]) n++;
+                    var l = saatOgeler[i];
+                    bool sec = saat[i];
+                    U.Metin(l, $"{(sec ? "✓ " : "")}{WorkPartNames[i]} {n}");
+                    l.EnableInClassList("secili", sec);
+                    U.Zemin(l, sec ? UITheme.Accent : new Color(0, 0, 0, 0));
+                    U.Renk(l, sec ? UITheme.AccentText : U.Soluk);
+                }
             }
 
             static List<string> Sorunlar(Courier c)
@@ -310,6 +361,8 @@ namespace KuryeTycoon
                                              : "yok (kazada masrafını kendi öder, daha uzun süre çalışamaz)");
                 U.Renk(k.sigorta, c.insured ? U.YaziRengi : U.Uyari);
                 U.Metin(k.ekipman, $"{EquipmentText(c)} · çanta {c.bagUses}/{Courier.BagWornUses}" + (c.BagWorn ? " (yıprandı)" : ""));
+                if (GameClock.I != null)
+                    U.Metin(k.saatler, string.Join("  ·  ", ui.WorkInfoFor(c.occupation, c.scheduleSeed, GameClock.I).lines));
                 var camp = CampaignManager.I;
                 var hedefler = new List<string>();
                 if (camp.weeklyChallenge) hedefler.Add(c.weeklyRewardClaimed ? "haftalık tamam" : $"haftalık {c.weekDeliveries}/{camp.weeklyTarget}");
@@ -390,15 +443,16 @@ namespace KuryeTycoon
                 }
                 filtre.Yenile();
                 siralama.Yenile();
+                SaatYenile(cm);
 
                 var liste = new List<Courier>();
-                foreach (var c in cm.Couriers) if (PassesFilter(arac, c.vehicle)) liste.Add(c);
+                foreach (var c in cm.Couriers) if (PassesFilter(arac, c.vehicle) && SaatUygun(c)) liste.Add(c);
                 int s = sira;
                 liste.Sort((a, b) => Kiyasla(a, b, s));
                 U.Goster(bosNot, liste.Count == 0);
                 if (liste.Count == 0)
                     U.Metin(bosNot, cm.Couriers.Count == 0 ? "Henüz kurye yok: Kayıtlar sekmesinden kayıt sürecine bak."
-                                                           : "Bu araçla çalışan kurye yok.");
+                                                           : SaatSecili ? "Bu araç ve saatlerde çalışan kurye yok." : "Bu araçla çalışan kurye yok.");
                 kartlar.Esitle(liste);
                 acik.RemoveWhere(c => !cm.Couriers.Contains(c));
             }

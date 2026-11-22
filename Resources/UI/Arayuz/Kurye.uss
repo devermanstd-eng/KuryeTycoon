@@ -998,6 +998,9 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .yz-tablo-hucre { width: 66px; flex-shrink: 0; margin-left: 4px; font-size: 13px; -unity-text-align: middle-right; white-space: nowrap; }
 .yz-tablo-satir.baslik .yz-tablo-ilk,
 .yz-tablo-satir.baslik .yz-tablo-hucre { font-size: 10px; color: var(--etiket); letter-spacing: 0.8px; -unity-font-style: bold; }
+/* Kayıtlar: haftalık kurye kapsaması (7 gün sütunu dar hücrelerle sığsın, satır adı kısalmasın) */
+.kapsama-tablo .yz-tablo-ilk { min-width: 64px; flex-shrink: 0; overflow: visible; }
+.kapsama-tablo .yz-tablo-hucre { width: auto; flex-grow: 1; flex-shrink: 1; min-width: 26px; margin-left: 2px; -unity-text-align: middle-center; }
 
 .yz-kaydir { flex-direction: row; align-items: center; min-height: 28px; margin-bottom: 1px; }
 .yz-kaydir-ad { width: 132px; flex-shrink: 0; font-size: 13px; color: var(--soluk); white-space: normal; }

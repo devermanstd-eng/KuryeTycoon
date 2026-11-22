@@ -25,6 +25,7 @@ namespace KuryeTycoon
             readonly HashSet<CourierCandidate> acik = new HashSet<CourierCandidate>();
             readonly List<string> aracAdlari = new List<string>();
             readonly List<string> filtreAdlari = new List<string>();
+            readonly List<string> saatAdlari = new List<string>();
             readonly List<string> cipAd = new List<string>();
             readonly List<Color> cipRenk = new List<Color>();
             static readonly string[] BonusAdlari = new string[3];
@@ -66,6 +67,7 @@ namespace KuryeTycoon
                 if (up.CourierCapFull)
                     y.Uyari($"Kurye hesapları dolu: süreci bitiren {ks.HesapBekleyen} kişi hesap bekliyor. {up.CourierCapHint}");
 
+                Kapsama();   // haftalık kurye kapsaması (KapsamaTablosu.cs)
                 Huni(ks);
                 KayitDurumu(ks);
                 Kontrol(ks);
@@ -80,6 +82,53 @@ namespace KuryeTycoon
                     ui.UiDestekAdaylari(y);
                 }
                 y.Bitir();
+            }
+
+            static readonly string[] KapsamaBaslik = { "", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz" };
+            readonly string[] kapsamaHucre = new string[8];
+            readonly Color?[] kapsamaRenk = new Color?[8];
+
+            void Kapsama()
+            {
+                var k = ui.Kapsama();
+                if (k == null) return;
+                y.Bolum("Haftalık kurye kapsaması",
+                        "Sayılar: haftanın o günü o saatlerde çalışan kurye. Kırmızı: sipariş var ama kurye yok. Sarı: kurye az. " +
+                        "Gri: o saatlerde sipariş az. Kuryeler çalışma saatlerine göre sayılır (Kayıtlar'daki adaylar dahil değil).");
+                y.KartBasla("kapsama-tablo");
+                y.Tablo(KapsamaBaslik, true);
+                for (int p = 0; p < 4; p++)
+                {
+                    kapsamaHucre[0] = WorkPartNames[p];
+                    kapsamaRenk[0] = null;
+                    for (int d = 0; d < 7; d++)
+                    {
+                        var du = k.durum[d, p];
+                        kapsamaHucre[d + 1] = du == KapsamaDurum.Eksik ? "0 !" : k.kurye[d, p].ToString();
+                        kapsamaRenk[d + 1] = du == KapsamaDurum.Eksik ? U.Kotu : du == KapsamaDurum.Az ? U.Uyari
+                                           : du == KapsamaDurum.Sakin ? U.Soluk : U.Iyi;
+                    }
+                    y.Tablo(kapsamaHucre, false, null, kapsamaRenk,
+                            $"{WorkPartNames[p]} {WorkPartRange(p)}: sipariş {TalepAdi(k.talep[0, p])} (hafta içi), {TalepAdi(k.talep[5, p])} (hafta sonu)");
+                }
+                y.KartBitir();
+
+                bool hepsiTamam = true;
+                for (int p = 0; p < 4; p++)
+                {
+                    string gunler = ui.KapsamaEksikGunler(k, p, false);
+                    if (gunler.Length == 0) continue;
+                    hepsiTamam = false;
+                    int bolum = p;
+                    y.Kucuk($"{WorkPartNames[p]} eksik ({gunler}). {KapsamaIpucu(p)}");
+                    y.Dugme($"{WorkPartNames[p]} çalışan adayları göster", () =>
+                    {
+                        System.Array.Clear(ui.workParts, 0, 4);
+                        ui.workParts[bolum] = true;
+                        ui.applicationFilter = -1;
+                    }, true, "kucuk-dg");
+                }
+                if (hepsiTamam) y.Kucuk("Siparişin beklendiği bütün saatlerde yeterli kurye var.");
             }
 
             void Huni(KayitSistemi ks)
@@ -187,6 +236,8 @@ namespace KuryeTycoon
                 {
                     y.Kucuk(ks.BeklemeListesi > 0 ? $"Süreçte kimse yok; bekleme listesinde {ks.BeklemeListesi} kişi var (kaydı aç)."
                                                   : "Şu an süreçte kimse yok. Yeni kayıtlar zamanla gelir.");
+                    if (ui.AnyWorkPart)
+                        y.Kucuk("Saat filtresi aday geldiğinde burada görünür. Kayıtları hızlandırmak için yukarıdaki kayıt kampanyalarına bak.");
                     return;
                 }
                 if (ks.Adaylar.Count >= 5)
@@ -204,11 +255,46 @@ namespace KuryeTycoon
                 }
                 else ui.applicationFilter = -1;
 
+                SaatFiltresi(ks);
+
                 acik.RemoveWhere(c => !ks.Adaylar.Exists(a => a.aday == c));
                 // Son aşamadakiler önce
                 for (int s = 4; s >= 0; s--)
                     foreach (var a in ks.Adaylar)
-                        if ((int)a.asama == s && PassesFilter(ui.applicationFilter, a.aday.vehicle)) Aday(a, now);
+                        if ((int)a.asama == s && PassesFilter(ui.applicationFilter, a.aday.vehicle) && ui.PassesWorkFilter(a.aday)) Aday(a, now);
+            }
+
+            /// <summary>
+            /// Saat filtresi (WorkHoursView.cs): Sabah / Öğlen / Akşam / Gece; birden fazla seçilebilir, seçilenlerin hepsinde
+            /// çalışan adaylar kalır. Süreçte en az 1 aday varken görünür.
+            /// </summary>
+            void SaatFiltresi(KayitSistemi ks)
+            {
+                if (ks.Adaylar.Count < 1 || GameClock.I == null)
+                {
+                    System.Array.Clear(ui.workParts, 0, 4);
+                    return;
+                }
+                saatAdlari.Clear();
+                for (int i = 0; i < 4; i++)
+                {
+                    int n = 0;
+                    foreach (var a in ks.Adaylar) if (ui.WorkInfoFor(a.aday.occupation, a.aday.scheduleSeed, GameClock.I).parts[i]) n++;
+                    saatAdlari.Add($"{WorkPartNames[i]} {WorkPartRange(i)} ({n})");
+                }
+                y.Kucuk("Çalışma saatine göre (birden fazla seçebilirsin):");
+                y.CokluSecim(saatAdlari, i => ui.workParts[i], i => ui.workParts[i] = !ui.workParts[i]);
+                if (!ui.AnyWorkPart) return;
+
+                int kalan = 0;
+                foreach (var a in ks.Adaylar)
+                    if (PassesFilter(ui.applicationFilter, a.aday.vehicle) && ui.PassesWorkFilter(a.aday)) kalan++;
+                var secilen = new List<string>();
+                for (int i = 0; i < 4; i++) if (ui.workParts[i]) secilen.Add(WorkPartNames[i]);
+                string ne = string.Join(" + ", secilen);
+                y.Kucuk(kalan == 0 ? $"{ne}: bu saatlerin hepsinde çalışan aday yok."
+                                   : $"{ne}: bu saatlerin hepsinde çalışan {kalan} aday gösteriliyor.");
+                y.Dugme("Saat filtresini kaldır", () => System.Array.Clear(ui.workParts, 0, 4), true, "kucuk-dg");
             }
 
             void Aday(KayitAdayi a, float now)
