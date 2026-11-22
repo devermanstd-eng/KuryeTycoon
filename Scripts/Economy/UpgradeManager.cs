@@ -75,7 +75,9 @@ namespace KuryeTycoon
                 // Metropol (32 → 45) 1,6 M → 1,1 M → 0,9 M, Kurumsal (45 → 60) 2,8 M → 2,4 M → 2,0 M → 1,3 M. 15.11'de 32'de 30 gün,
                 // 16.11 sabah 32'de 17, 45'te 18; 16.11 akşam 22'de 11, 32'de 11, 45'te yine 18 gün beklendi (hedef 10–13): Yeşil Tepe
                 // 5 810 € + Kurumsal 9 745 € ≈ 15 500 €, günde ~1 000 € birikirken. Yeşil Tepe de 1,2 M → 0,9 M (CityMap.UnlockCost).
-                costs = new[] { 80000, 200000, 450000, 900000, 900000, 1300000, 4500000, 20000000, 40000000, 70000000, 120000000 },
+                // 20.11 120 günlük test (2 şehir): 32, 45 ve 60 hesapta paket 21–28 gün dolu kaldı (hedef ≤13), 60'ta 44–46 gün.
+                // Şehir 900 → 675 bin, Metropol 900 → 675 bin, Kurumsal+ 4,5 → 3 M (bölgeler de ucuzladı: CityMap.UnlockCost).
+                costs = new[] { 80000, 200000, 450000, 675000, 675000, 1300000, 3000000, 20000000, 40000000, 70000000, 120000000 },
                 daily = new[] { 0, 1500, 3000, 5000, 8000, 12000, 17000, 24000, 34000, 46000, 62000, 85000 },
                 levelNames = new[] { "Başlangıç", "Büyüme", "Profesyonel", "Bölgesel", "Şehir", "Metropol", "Kurumsal", "Kurumsal+",
                                      "Büyük şehir", "Büyük şehir+", "Bölge lideri", "Pazar lideri" },
