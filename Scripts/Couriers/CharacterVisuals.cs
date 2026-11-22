@@ -24,6 +24,37 @@ namespace KuryeTycoon
         }
 
         public static float TargetHeight = 0.36f;
+
+        // ---------------------------------------------------------------- stilize kurye (kendi modelimiz)
+        /// <summary>Resources/Stilize: Tools/Blender/varlik_uretici.py + "Kurye Tycoon > Stilize Prefabları Kur" çıktısı.</summary>
+        public const string StilizeFolder = "Stilize";
+        /// <summary>Stilize kuryenin modeldeki adı: UpdateModel kendi animatörünü (StilizeKuryeAnimator) değiştirmesin diye.</summary>
+        public const string StilizeName = "KarakterStilize";
+        const string StilizeKey = "KuryeTycoon.StilizeKurye";
+        static GameObject stilizeKurye, stilizeBisiklet;
+        static bool stilizeArandi;
+
+        /// <summary>Oyuncunun kuryeleri City People yerine stilize kurye karakteriyle görünsün (varsayılan açık; Ayarlar).</summary>
+        public static bool Stilize
+        {
+            get { return PlayerPrefs.GetInt(StilizeKey, 1) == 1; }
+            set { PlayerPrefs.SetInt(StilizeKey, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>Stilize kurye prefabı projede var mı (Resources/Stilize/Kurye).</summary>
+        public static bool StilizeVar
+        {
+            get
+            {
+                if (!stilizeArandi)
+                {
+                    stilizeArandi = true;
+                    stilizeKurye = Resources.Load<GameObject>(StilizeFolder + "/Kurye");
+                    stilizeBisiklet = Resources.Load<GameObject>(StilizeFolder + "/Bisiklet");
+                }
+                return stilizeKurye != null;
+            }
+        }
         /// <summary>Arabalı kuryenin aracı (Blender: VW Polo 6N2) haritada bu boyda (1 = bir kare ≈ 10 m; insanlar gibi ~2 kat büyük).</summary>
         public static float CarLength = 0.62f;
         public const string CarFolder = "KuryeAraclari";
@@ -38,6 +69,8 @@ namespace KuryeTycoon
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics()
         {
+            stilizeArandi = false;
+            stilizeKurye = stilizeBisiklet = null;
             prefabs = null;
             walkController = null;
             sun = null;
@@ -145,15 +178,36 @@ namespace KuryeTycoon
             }
         }
 
-        public static bool Available => Mode != 2 && Count > 0;
+        public static bool Available => Mode != 2 && (Count > 0 || StilizeVar);
 
-        /// <summary>Kuryeye model takar; model yoksa null döner (daire gösterilmeye devam eder).</summary>
-        public static GameObject Spawn(Transform parent, string seedName, bool sirketKiyafeti = true)
+        /// <summary>
+        /// Kuryeye model takar; model yoksa null döner (daire gösterilmeye devam eder).
+        /// stilizeOlabilir: oyuncunun kuryesi (Courier) — Ayarlar'da açıksa stilize kurye karakteri takılır; bisikletli kurye
+        /// stilize bisikletin üstünde pedal çevirir. Rakip kuryeler ve dükkan çalışanları City People'dan, karışık kalır.
+        /// </summary>
+        public static GameObject Spawn(Transform parent, string seedName, bool sirketKiyafeti = true, bool stilizeOlabilir = false, bool bisikletli = false)
         {
-            if (!Available) return null;
-            int idx = Mathf.Abs(seedName.GetHashCode()) % prefabs.Length;
-            var go = Object.Instantiate(prefabs[idx], parent, false);
-            go.name = "Karakter";
+            if (Mode == 2) return null;
+            bool stilize = stilizeOlabilir && sirketKiyafeti && Stilize && StilizeVar;
+            if (!stilize && Count == 0) return null;
+            GameObject go;
+            if (stilize)
+            {
+                go = Object.Instantiate(stilizeKurye, parent, false);
+                go.name = StilizeName;
+                if (bisikletli && stilizeBisiklet != null)
+                {
+                    // Bisiklet aynı ölçüde ve aynı tabanda (z = 0, önü aynı yöne) modellendi: karakterin kökünde, onunla döner ve ölçeklenir
+                    var bis = Object.Instantiate(stilizeBisiklet, go.transform, false);
+                    bis.name = "Bisiklet";
+                }
+            }
+            else
+            {
+                int idx = Mathf.Abs(seedName.GetHashCode()) % prefabs.Length;
+                go = Object.Instantiate(prefabs[idx], parent, false);
+                go.name = "Karakter";
+            }
             // Harita XY düzleminde, "yukarı" −Z (kameraya doğru). Model ayakta durur, yüzü güneye (kameraya) bakar.
             go.transform.localScale = Vector3.one;
             go.transform.localPosition = Vector3.zero;
@@ -195,7 +249,7 @@ namespace KuryeTycoon
             var anim = go.GetComponentInChildren<Animator>();
             if (anim != null)
             {
-                if (ctrl != null) anim.runtimeAnimatorController = ctrl;
+                if (ctrl != null && !stilize) anim.runtimeAnimatorController = ctrl;   // stilize kurye kendi animatörüyle gelir
                 anim.applyRootMotion = false;             // animasyon kuryeyi yoldan kaydırmasın
                 anim.cullingMode = AnimatorCullingMode.AlwaysAnimate;
             }
@@ -265,6 +319,7 @@ namespace KuryeTycoon
 
             var anim = model.GetComponentInChildren<Animator>();
             if (anim == null) return;
+            if (model.name == StilizeName) { StilizeGuncelle(model, anim, moving); return; }
             // Animasyon menüsü oyun açıkken çalıştırıldıysa da controller'ı tak
             var ctrl = LoadController();
             if (ctrl != null && anim.runtimeAnimatorController != ctrl)
@@ -286,9 +341,47 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>
+        /// Stilize kurye: yürürken "walking"; bisikletliyse hep "pedal" (dururken poz donar, sele üstünde kalır) ve tekerlerle
+        /// pedal yürürken döner. Parametreler StilizeKuryeAnimator'deki adlarla aynı (Editor/StilizeVarlikKurucu.cs).
+        /// </summary>
+        static void StilizeGuncelle(GameObject model, Animator anim, bool moving)
+        {
+            float gs = GameClock.I != null ? GameClock.I.SpeedMultiplier : 1f;
+            float hiz = Mathf.Clamp(Mathf.Sqrt(gs), 1f, 3f);
+            var bis = model.transform.Find("Bisiklet");
+            if (bis != null)
+            {
+                anim.SetBool(PedalHash, true);
+                anim.SetBool(WalkingHash, false);
+                anim.speed = moving ? hiz : 0f;
+                if (moving)
+                {
+                    float derece = 540f * hiz * Time.deltaTime;   // ~1,5 tur/sn
+                    Dondur(bis, "Teker_On", derece);
+                    Dondur(bis, "Teker_Arka", derece);
+                    Dondur(bis, "Pedal", derece * 0.6f);
+                }
+                return;
+            }
+            anim.SetBool(PedalHash, false);
+            anim.SetBool(WalkingHash, moving);
+            anim.speed = moving ? hiz : 1f;
+        }
+
+        static readonly int PedalHash = Animator.StringToHash("pedal");
+        static readonly int WalkingHash = Animator.StringToHash("walking");
+
+        static void Dondur(Transform kok, string ad, float derece)
+        {
+            var t = kok.Find(ad);
+            if (t != null) t.Rotate(Vector3.right, derece, Space.Self);   // aks Blender'da X (sol-sağ)
+        }
+
         /// <summary>Ayar değişince kuryelerin modellerini yeniler.</summary>
         public static void Refresh()
         {
+            stilizeArandi = false;
             prefabs = null;
             walkController = null;
             cars = null;

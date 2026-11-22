@@ -292,7 +292,8 @@ namespace KuryeTycoon
             if (model != null) Destroy(model);
             // Arabalı kurye: yürüyen karakter yerine aracı (VW Polo 6N2, kurye sürümü) görünür
             modelArac = vehicle == VehicleKind.Araba && CharacterVisuals.CarAvailable;
-            model = modelArac ? CharacterVisuals.SpawnCar(transform, this) : CharacterVisuals.Spawn(transform, courierName);
+            model = modelArac ? CharacterVisuals.SpawnCar(transform, this)
+                              : CharacterVisuals.Spawn(transform, courierName, true, true, vehicle == VehicleKind.Bisiklet);
             if (GetComponent<KuryePaketi>() == null) gameObject.AddComponent<KuryePaketi>();     // elde kese, dükkanda hazırlık
             if (body != null) body.enabled = true;
             lastModelPos = Position;

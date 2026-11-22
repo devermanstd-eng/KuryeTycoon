@@ -17,18 +17,19 @@ namespace KuryeTycoon.EditorTools
     ///    düz renkler adındaki renkten (ör. "Cam_86a9ad" → #86a9ad). Anime stil açıksa AnimeToon, değilse URP/Lit.
     ///    "Cizgi" URP/Unlit (ters kabuk dış çizgi); "Isik_", "Cam_", "Vitrin_" gündüz söner, gece GeceIsiklari yakar;
     ///    "SirketRengi" / "SirketRengi2" adları korunur (CharacterVisuals şirket rengine boyar).
-    ///  • Prefablar (Prefabs/Stilize): mevcut şehir ve araç prefablarıyla aynı yapı: kökte model, parçalar ayrı çocuk
+    ///  • Prefablar (Resources/Stilize): mevcut şehir ve araç prefablarıyla aynı yapı: kökte model, parçalar ayrı çocuk
     ///    (Teker_On, Teker_Arka, Pedal, Isik), collider yok (oyun tıklamayı haritanın karelerinden bulur, araç prefablarındaki
     ///    collider'ları da siler). Kuryede kökte Animator ve StilizeKuryeAnimator ("walking" ve "pedal" parametreleri;
     ///    "walking" oyunun KuryeAnimator'üyle aynı).
-    /// Henüz oyunda kullanılmıyor: eski SimplePoly / City People referansları sonraki adımda bunlarla değişecek.
+    /// Oyunda: kurye ve bisiklet (CharacterVisuals, Ayarlar'da "Stilize kurye"); diğerleri sonraki adımlarda.
     /// </summary>
     public static class StilizeVarlikKurucu
     {
         public const string MenuYolu = "Kurye Tycoon/Stilize Prefabları Kur";
         const string ModelKlasor = "Assets/KuryeTycoon/Art/Stilize";
         const string MalzemeKlasor = ModelKlasor + "/Malzemeler";
-        const string PrefabKlasor = "Assets/KuryeTycoon/Prefabs/Stilize";
+        // Resources altında: oyun kurye ve bisikleti buradan yükler (CharacterVisuals.StilizeFolder)
+        const string PrefabKlasor = "Assets/KuryeTycoon/Resources/Stilize";
         const string ControllerYol = PrefabKlasor + "/StilizeKuryeAnimator.controller";
         const string PaletAdi = "StilizePalet";
         const string KarakterAdi = "Kurye";
@@ -84,8 +85,8 @@ namespace KuryeTycoon.EditorTools
             string mesaj = $"{yapilan} prefab hazır: {PrefabKlasor}\n• {onbellek.Count} malzeme: {MalzemeKlasor}\n" +
                            $"• Gölgelendirici: {(AnimeStil.Aktif ? "AnimeToon (anime stil açık)" : "URP/Lit")}\n" +
                            (notlar.Count > 0 ? "\n" + string.Join("\n", notlar) + "\n" : "") +
-                           "\nHenüz oyunda kullanılmıyor (eski modellerin yerine bir sonraki adımda geçecek). " +
-                           "Prefabs/Stilize ve Art/Stilize/Malzemeler'i .meta'larıyla commit'le.";
+                           "\nKurye ve bisiklet oyunda kullanılıyor (Ayarlar > Stilize kurye); diğerleri sonraki adımlarda. " +
+                           "Resources/Stilize ve Art/Stilize/Malzemeler'i .meta'larıyla commit'le.";
             Debug.Log("Kurye Tycoon: " + mesaj.Replace("\n", " "));
             EditorUtility.DisplayDialog("Stilize Prefabları Kur", mesaj, "Tamam");
         }

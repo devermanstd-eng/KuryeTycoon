@@ -251,14 +251,26 @@ namespace KuryeTycoon
                 }
 
                 y.Bolum("Kurye karakterleri (3D)");
+                if (CharacterVisuals.StilizeVar)
+                {
+                    y.Onay("Stilize kurye (oyunun kendi modeli; bisikletliler bisiklette)", CharacterVisuals.Stilize,
+                           v => { CharacterVisuals.Stilize = v; CharacterVisuals.Refresh(); });
+                    y.Kucuk("Kapalıyken kuryeler eski karakter paketinden (City People) karışık görünür. Rakip kuryeler ve dükkan çalışanları hep o paketten.");
+                }
                 int adet = CharacterVisuals.Count;
                 if (adet == 0)
-                    y.Kucuk("Karakter modeli bulunamadı; kuryeler daire olarak çiziliyor. Kurmak için: Asset Store'dan karakter paketini içe aktar, " +
+                {
+                    if (!CharacterVisuals.StilizeVar)
+                        y.Kucuk("Karakter modeli bulunamadı; kuryeler daire olarak çiziliyor. Kurmak için: Asset Store'dan karakter paketini içe aktar, " +
                             "sonra Unity menüsünden Kurye Tycoon > Karakterleri Kur. (Ayrıntı KURULUM.md'de.)");
+                }
                 else
                 {
                     if (CharacterVisuals.HasWalkAnimation) y.Kucuk($"{adet} karakter modeli yüklü · yürüme animasyonu kurulu");
                     else y.Uyari($"{adet} karakter modeli yüklü · yürüme animasyonu KURULU DEĞİL (Unity menüsü: Kurye Tycoon > Karakter Animasyonlarını Kur)");
+                }
+                if (adet > 0 || CharacterVisuals.StilizeVar)
+                {
                     y.Secim(KarakterModlari, CharacterVisuals.Mode, v => { CharacterVisuals.Mode = v; CharacterVisuals.Refresh(); });
                     y.Kucuk("Karakterler siyah/karanlık görünürse \"Düz renk\"i seç. Pembe görünürse malzemeler projenin render pipeline'ına çevrilmeli (KURULUM.md).");
                 }
