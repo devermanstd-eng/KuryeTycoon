@@ -40,6 +40,18 @@ namespace KuryeTycoon
         [Range(0, 4)] public int weekdayBoostCount = 2;
         public float weekdayMaxPercent = 0.30f;
 
+        [Header("Yoğun saat primi (her gün)")]
+        // Akşam yemeği yoğunluğunda (18–21) kuryelere yüzde ek ödeme: o saatlerde daha çok kurye çevrimiçi olur,
+        // teklif reddetmez, aynı anda +1 paket alır; kazançları artınca morali de yükselir. Bedeli kârdan ödenir.
+        public bool aksamPrimi;
+        public int aksamPrimiBas = 18;
+        public int aksamPrimiBit = 21;
+        public float aksamPrimiYuzde = 0.2f;
+        public bool oglePrimi;
+        public int oglePrimiBas = 11;
+        public int oglePrimiBit = 14;
+        public float oglePrimiYuzde = 0.15f;
+
         [Header("Kötü hava boostu (otomatik)")]
         public bool weatherBoost = true;
         public float coldBoost = 0.05f;
@@ -183,6 +195,10 @@ namespace KuryeTycoon
         public List<BoostWindow> TodayWindows()
         {
             var list = new List<BoostWindow>();
+            if (aksamPrimi)
+                list.Add(new BoostWindow { startHour = aksamPrimiBas, endHour = aksamPrimiBit, percent = aksamPrimiYuzde, label = "Akşam yoğunluk primi" });
+            if (oglePrimi)
+                list.Add(new BoostWindow { startHour = oglePrimiBas, endHour = oglePrimiBit, percent = oglePrimiYuzde, label = "Öğle yoğunluk primi" });
             if (GameClock.I.IsWeekend)
             {
                 if (weekendMorningBoost)

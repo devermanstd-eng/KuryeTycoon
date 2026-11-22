@@ -207,6 +207,9 @@ namespace KuryeTycoon
             Rakipler.AddRange(Varsayilanlar());
             Tehditler.Clear();
             sonTehditSeviyesi = 0;
+            for (int b = 0; b < bolgeSadakat.Length; b++) bolgeSadakat[b] = 1f;
+            savasGormezden = false;
+            sonGeriKazanmaGunu = -999;
 
             var shops = CityMap.I.Shops;
             foreach (var s in shops)
@@ -251,6 +254,7 @@ namespace KuryeTycoon
             };
             foreach (var t in Tehditler) s.tehditler.Add(JsonUtility.FromJson<RakipTehdit>(JsonUtility.ToJson(t)));
             foreach (var r in Rakipler) s.rakipler.Add(JsonUtility.FromJson<Rakip>(JsonUtility.ToJson(r)));
+            SadakatKaydet(s);
             // Eski sürümlerin okuyabilmesi için lider rakip eski alanlara da yazılır
             var l = Lider;
             s.reputation = l.reputation; s.couriers = l.couriers; s.money = l.money; s.deliveriesLastWeek = l.deliveriesLastWeek;
@@ -272,6 +276,7 @@ namespace KuryeTycoon
             sonTehditSeviyesi = s.tehditSeviyesi;
             Tehditler.Clear();
             if (s.tehditler != null) Tehditler.AddRange(s.tehditler);
+            SadakatYukle(s);
 
             Rakipler.Clear();
             var defs = Varsayilanlar();
@@ -366,8 +371,12 @@ namespace KuryeTycoon
         }
 
         /// <summary>Fiyat savaşı bölgesindeyse senin talep çarpanın.</summary>
-        public float WarFactor(Shop s) =>
-            priceWarDays > 0 && warDistrict > 0 && CityMap.RegionOf(s.tile) == warDistrict ? warFactor : 1f;
+        public float WarFactor(Shop s)
+        {
+            int bolge = CityMap.RegionOf(s.tile);
+            float savas = priceWarDays > 0 && warDistrict > 0 && bolge == warDistrict ? warFactor : 1f;
+            return savas * BolgeSadakati(bolge);   // görmezden gelinen eski savaşların kalıcı izi
+        }
 
         /// <summary>Senin bu dükkandaki sipariş payın (talep çarpanı).</summary>
         public float ShareFor(Shop s)
@@ -443,6 +452,7 @@ namespace KuryeTycoon
         /// <summary>Teslimat sonrası: zamanında artar, gecikme ve soğuk yemek düşürür.</summary>
         public void OnDelivered(Order o, float lateMinutes)
         {
+            if (o.kargo) return;   // kargo paketi yemek/market pazar payına sayılmaz
             var s = o.shop;
             s.monthOrders++;
             myDeliveriesThisWeek++;
@@ -574,8 +584,10 @@ namespace KuryeTycoon
             {
                 var o = RakipAt(warOwner);
                 EventManager.I.Notify($"{(o != null ? TurkceEk.In(o.ad) : "Rakibin")} {CityMap.DistrictNames[Mathf.Clamp(warDistrict, 0, 5)]} fiyat savaşı bitti.");
+                SavasBittiSadakat(warDistrict, TehditSeviyesi >= 2);
                 warDistrict = 0;
             }
+            SadakatGunluk();
 
             foreach (var s in shops)
             {
@@ -649,7 +661,7 @@ namespace KuryeTycoon
                 var r = Rakipler[i];
                 if (r.satinAlindi) continue;
                 // Saldırganlık: pazar payın eşiğin üstüne çıktıkça rakip daha çok hamle yapar, yatırım arar
-                // Takvime değil pazar payına bağlı: %35'ten (3 rakipte) sonra tetikte, %50'den sonra saldırıda (taban saldırganlık)
+                // Takvime değil pazar payına bağlı: %35'ten (3 rakipte) sonra tetikte, %45'ten sonra saldırıda (taban saldırganlık)
                 float targetAgg = Mathf.Clamp01((MarketShare - esik) * 2.5f * r.saldirganlik);
                 float taban = seviye >= 2 ? 0.7f : seviye == 1 ? 0.35f : 0f;
                 targetAgg = Mathf.Max(targetAgg, taban * r.saldirganlik);
@@ -698,20 +710,28 @@ namespace KuryeTycoon
                 }
             }
 
-            // Moralsiz kuryeyi ayartma (haftada en fazla bir; çalışan statüsündeki kuryeler gitmez)
+            // Moralsiz kuryeyi ayartma: rakipler tetikteyken ve saldırıdayken moral eşiği yükselir, saldırıda haftada iki kurye.
+            // Çalışan statüsündeki kuryeler gitmez; sadakat programında kıdemli kurye kalır; akademi ayartmayı zorlaştırır.
             if (!CrisisManager.Employees)
+            {
+                float esikMoral = seviye >= 2 ? 0.48f : seviye == 1 ? 0.42f : 0.35f;
+                int enFazla = seviye >= 2 ? 2 : 1, giden = 0;
+                float akademi = UpgradeManager.I != null ? UpgradeManager.I.AkademiAyartmaCarpani : 1f;
                 foreach (var c in CourierManager.I.Couriers.ToArray())
                 {
-                    if (c.morale >= 0.35f || c.OrderCount > 0) continue;
+                    if (giden >= enFazla) break;
+                    if (c.morale >= esikMoral || c.OrderCount > 0) continue;
                     if (UpgradeManager.I != null && UpgradeManager.I.LoyaltyProgram && c.level >= 3) continue;   // sadakat programı: kıdemli kurye kalır
-                    if (Random.value < 0.2f + 0.05f * (Rakipler.Count - 1))
+                    float sans = (0.2f + 0.05f * (Rakipler.Count - 1) + (esikMoral - c.morale) * 0.8f) * akademi;
+                    if (Random.value < sans)
                     {
                         var r = Rakipler[Sec()];
                         r.couriers++;
                         CourierManager.I.PoachToRival(c, r.ad);
-                        break;
+                        giden++;
                     }
                 }
+            }
         }
 
         /// <summary>Rakip yeni bir dükkanla anlaşır (münhasır dükkanlar hariç). Senin dükkanınsa siparişler paylaşılmaya başlar.</summary>
@@ -812,7 +832,8 @@ namespace KuryeTycoon
             if (shop.exclusive) { MunhasirDukkanTeklifi(ri, shop); return; }
             float indirim = Mathf.Lerp(0.03f, 0.05f, r.fiyatEgilimi) + (saldiri ? 0.01f : 0f);
             float offer = Mathf.Max(0.05f, shop.Commission - indirim);
-            float keep = Mathf.Clamp(0.15f + shop.satisfaction / 100f * 0.8f - (saldiri ? 0.05f : 0f), 0.15f, 0.95f);
+            // Saldırıdayken rakip daha cömert davranır; öncelikli hazırlık anlaşması olan dükkan daha sadık
+            float keep = Mathf.Clamp(0.15f + shop.satisfaction / 100f * 0.8f - (saldiri ? 0.1f : 0f) + SadakatEki(shop), 0.15f, 0.95f);
             Telemetry.Add("Rakip: dükkan teklifi");
             var ev = new GameEvent($"{r.ad}, {shop.Name} dükkanına göz dikti",
                 $"{r.ad} ({r.Tanim}) sözleşmen bitmeden {shop.Name} dükkanına {Pct(offer)} komisyonla teklif verdi " +
@@ -948,12 +969,14 @@ namespace KuryeTycoon
             EventManager.I.Push(new GameEvent($"Fiyat savaşı: {dn}",
                     $"{r.ad}, {dn} bölgesinde {priceWarDays} gün boyunca teslimat ücretini sıfırladı. Bu bölgedeki siparişlerin %{(1f - warFactor) * 100f:0} düşecek.\n\n" +
                     "Savaş sürerken büyüme giderleri (İşletme giderleri) hafifler: şirket tek seferde batmasın.")
-                .Add($"Karşı kampanya yap (−{GameData.Ft(cost)}, kayıp %10'a iner)", () =>
+                .Add($"Karşı kampanya yap (−{GameData.Ft(cost)}, kayıp %10'a iner, müşteriler sende kalır)", () =>
                 {
                     EconomyManager.I.Spend(cost, $"Fiyat savaşı karşı kampanyası ({dn})", ExpenseCategory.Reklam);
                     warFactor = 0.9f;
+                    savasGormezden = false;
                 })
-                .Add($"Görmezden gel (bölgede siparişler −%{(1f - warFactor) * 100f:0})", null));
+                .Add($"Görmezden gel (bölgede siparişler −%{(1f - warFactor) * 100f:0}; savaş bitince müşterilerin bir kısmı rakipte kalır: kalıcı −%{(saldiri ? 16 : 12)})",
+                    () => { savasGormezden = true; }));
         }
 
         /// <summary>İki hafta yoğun reklam: müşteriler rakibi daha iyi görür.</summary>
@@ -1035,6 +1058,7 @@ namespace KuryeTycoon
             var r = RakipAt(ri) ?? Lider;
             s.contracted = false;
             s.exclusive = false;
+            s.oncelikli = false;
             if (ri >= 0 && ri < Rakipler.Count) Ekle(s, ri);
             s.resignBlockedUntil = Day + 30;
             s.satisfaction = 40f;

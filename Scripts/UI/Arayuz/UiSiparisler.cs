@@ -227,10 +227,14 @@ namespace KuryeTycoon
                 var eco = EconomyManager.I;
                 float now = GameClock.I.TotalMinutes;
                 float kalan = Mathf.Max(0f, o.createdAt + om.pendingTimeout - now);
-                U.Metin(s.sure, $"{kalan:0} dk");
-                U.CipRengi(s.sure, kalan <= 5f ? U.Kotu : kalan <= 10f ? U.Uyari : U.Notr);
-                U.Metin(s.ad, $"#{o.id} {o.shop.Name}");
+                if (o.planli || o.kargo) kalan = Mathf.Max(0f, o.deadlineAt - now);   // planlı/kargo: teslim saatine kalan
+                bool bekletiliyor = o.holdUntil > now;
+                U.Metin(s.sure, bekletiliyor ? $"{(o.holdUntil - now):0} dk sonra" : $"{kalan:0} dk");
+                U.CipRengi(s.sure, bekletiliyor ? U.Notr : kalan <= 5f ? U.Kotu : kalan <= 10f ? U.Uyari : U.Notr);
+                U.Metin(s.ad, $"#{o.id} {o.shop.Name}" + (o.ekspres ? " · EKSPRES" : o.planli ? " · planlı" : o.kargo ? " · kargo" : ""));
                 var bilgi = new List<string> { GameData.KmText(o.distance), GameData.KgText(o.weightKg), o.CustomerTypeName };
+                if (o.ekspres) bilgi.Add($"{HizmetSeviyeleri.EkspresSoz:0} dk sözü: {Mathf.Max(0f, o.deadlineAt - now):0} dk kaldı");
+                if (bekletiliyor) bilgi.Add("saati gelince atanır");
                 if (o.IsHeavy) bilgi.Add("ağır: araba");
                 if (o.cashPay) bilgi.Add("nakit");
                 if (o.dolap) bilgi.Add("dolaba");

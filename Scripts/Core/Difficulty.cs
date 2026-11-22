@@ -12,6 +12,9 @@ namespace KuryeTycoon
     ///  • Kurye seçiciliği / teklif beklentisi    Kolay ×0,85  Zor ×1,12   (Courier.OfferThreshold)
     ///  • Kurye başvurusu sıklığı                  Kolay ×1,3   Zor ×0,8    (CourierManager)
     ///  • Sürpriz vergi/harç arası (gün)           Kolay ×1,5   Zor ×0,75   (EconomyManager)
+    ///  • Başlangıç kasası                          Kolay 3 000 €  Normal 1 625 €  Zor 1 375 €   (GameBootstrap)
+    ///    (2026-11 testi: 2 500 € ile akıllı bot ilk 2 haftada serbest kasanın en dibinde bile 1 240 € tutuyordu;
+    ///     Normal'de ilk 2 hafta kasanın sıfıra yaklaşması hedeflendi.)
     /// </summary>
     public static class Difficulty
     {
@@ -26,6 +29,8 @@ namespace KuryeTycoon
         public static float OfferThreshold => Easy ? 0.85f : Hard ? 1.12f : 1f;
         public static float ApplicationRate => Easy ? 1.3f : Hard ? 0.8f : 1f;
         public static float SurpriseInterval => Easy ? 1.5f : Hard ? 0.75f : 1f;
+        /// <summary>Başlangıç kasasının çarpanı (taban 2 500 €).</summary>
+        public static float StartCash => Easy ? 1.2f : Hard ? 0.55f : 0.65f;
 
         public static string Name(DifficultyLevel d) =>
             d == DifficultyLevel.Kolay ? "Kolay" : d == DifficultyLevel.Zor ? "Zor" : "Normal";
@@ -35,11 +40,11 @@ namespace KuryeTycoon
             switch (d)
             {
                 case DifficultyLevel.Kolay:
-                    return "Oyunu öğrenmek için: daha çok sipariş (+%15), kuryeler daha az seçici, kurye kayıtları daha sık.";
+                    return "Oyunu öğrenmek için: daha çok sipariş (+%15), kuryeler daha az seçici, kurye kayıtları daha sık, başlangıç kasası 3 000 €.";
                 case DifficultyLevel.Zor:
-                    return "Deneyimliler için: daha az sipariş (−%12), kuryeler daha seçici, kurye kayıtları daha seyrek.";
+                    return "Deneyimliler için: daha az sipariş (−%12), kuryeler daha seçici, kurye kayıtları daha seyrek, başlangıç kasası 1 375 €.";
                 default:
-                    return "Oyunun dengelendiği seviye.";
+                    return "Oyunun dengelendiği seviye. Başlangıç kasası 1 625 €: ilk iki hafta kasa dar, her harcamayı düşün.";
             }
         }
 

@@ -5,7 +5,7 @@ namespace KuryeTycoon
     // Sıra kayıt uyumluluğu için sabit: yeni türler sona eklenir
     // Dinlenme = kurye avantaj programı, Bakim = anlaşmalı servisler, Hijyen = çanta kontrolü ve ekipman partneri (eski adlar kayıt uyumu için)
     // Yeni türler hep sona eklenir (kayıttaki seviye dizisi sıraya göre okunur)
-    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo, KargoBisikleti, PaketDolabi, Robot }
+    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo, KargoBisikleti, PaketDolabi, Robot, Kargo, Akademi }
 
     public class UpgradeDef
     {
@@ -268,7 +268,46 @@ namespace KuryeTycoon
                 extraLock = lv => lv == 1 ? Need(UpgradeKind.Ofis, 2) : "",
                 category = ExpenseCategory.Ekipman,
             },
+            new UpgradeDef
+            {
+                kind = UpgradeKind.Kargo, name = "Kargo teslimatı",
+                summary = "Yeni iş kolu: bir kargo şirketinin şehir içi paket dağıtımını üstlenirsin. Depona her sabah paketler gelir, " +
+                          "09:00–16:00 arasında dağıtıma çıkar, akşam 19:00'a kadar teslim edilmeli. Sıcak yemek gibi acelesi yok: kuryeler " +
+                          "boşta kaldıkları sakin saatlerde götürür (yemek siparişlerinin önüne geçmez). Kargo şirketi paket başına mesafeye göre öder; " +
+                          "teslim edilemeyen paket için ceza keser. Ağır paketler için arabalı kurye gerekir.",
+                costs = new[] { 1200000, 3500000, 9000000 },
+                daily = new[] { 0, 8000, 16000, 28000 },
+                levelNames = new[] { "Yok", "Kargo anlaşması (küçük depo)", "Bölge kargo deposu", "Şehir kargo merkezi" },
+                effect = lv => lv == 0 ? "sadece yemek ve market" : $"günde ~{KargoAnlasmasi.GunlukPaket(lv)} paket",
+                reqDistrict = new[] { 2, 3, 4 },
+                extraLock = lv => lv == 3 ? Need(UpgradeKind.Ofis, 2) : "",
+                category = ExpenseCategory.Gelistirme,
+            },
+            new UpgradeDef
+            {
+                kind = UpgradeKind.Akademi, name = "Kurye akademisi",
+                summary = "Kuryelere ücretsiz eğitim, mentorluk ve kariyer yolu. Kendini değerli hisseden kurye daha mutlu çalışır: moral hedefi " +
+                          "yükselir, teklifleri daha kolay kabul eder, işi bırakması ve rakibe gitmesi zorlaşır. Yeni kuryeler daha yüksek moralle başlar.",
+                costs = new[] { 600000, 2500000, 8000000 },
+                daily = new[] { 0, 3000, 8000, 18000 },
+                levelNames = new[] { "Yok", "Eğitim odası", "Kurye akademisi", "Akademi kampüsü" },
+                effect = lv => lv == 0 ? "kurye kendi başına öğrenir"
+                             : $"moral +{AkademiMoralAt(lv) * 100f:0} puan, teklif beklentisi −%{(1f - AkademiTeklifAt(lv)) * 100f:0}, bırakma/ayartılma −%{(1f - AkademiAyartmaAt(lv)) * 100f:0}",
+                reqDistrict = new[] { 0, 3, 4 },
+                reqOffice = new[] { 0, 2, 3 },
+                category = ExpenseCategory.Gelistirme,
+            },
         };
+
+        static float AkademiMoralAt(int lv) => new[] { 0f, 0.04f, 0.08f, 0.12f }[Mathf.Clamp(lv, 0, 3)];
+        static float AkademiTeklifAt(int lv) => new[] { 1f, 0.97f, 0.94f, 0.9f }[Mathf.Clamp(lv, 0, 3)];
+        static float AkademiAyartmaAt(int lv) => new[] { 1f, 0.8f, 0.6f, 0.45f }[Mathf.Clamp(lv, 0, 3)];
+        /// <summary>Kurye akademisi: moral hedefine eklenen.</summary>
+        public float AkademiMoralEki => AkademiMoralAt(Level(UpgradeKind.Akademi));
+        /// <summary>Kurye akademisi: teklif beklentisi çarpanı.</summary>
+        public float AkademiTeklifCarpani => AkademiTeklifAt(Level(UpgradeKind.Akademi));
+        /// <summary>Kurye akademisi: işi bırakma ve rakibe gitme ihtimali çarpanı.</summary>
+        public float AkademiAyartmaCarpani => AkademiAyartmaAt(Level(UpgradeKind.Akademi));
 
         public static int KargoBisikletiAt(int lv) => new[] { 0, 4, 10, 20 }[Mathf.Clamp(lv, 0, 3)];
         public static float DolapAt(int lv) => new[] { 0f, 0.1f, 0.2f, 0.3f }[Mathf.Clamp(lv, 0, 3)];

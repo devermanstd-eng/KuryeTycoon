@@ -39,6 +39,7 @@ namespace KuryeTycoon
             { "InterSzpar",     H(7, 21, 7, 20) },
             { "BioSzpar",       H(7, 20, 8, 18) },
             { DarkStore.StoreName, H(7, 24, 8, 24) },     // kendi marketin (dark store)
+            { KargoAnlasmasi.DepoAdi, H(8, 19, 8, 14) },  // kargo deposu (pazar kapalı ama tablo hafta sonunu tek tutuyor)
             // Bakkal / éjjel-nappali: 24 saat
             { "Market 24",      Nonstop },
             { "ABC Non-Stop",   Nonstop },

@@ -80,7 +80,7 @@ namespace KuryeTycoon
 
         // ------------------------------------------------------------------ kurulum kredisi
 
-        /// <summary>Kurulum kredisinin tamamı (Ft): 6 000 €, faiziyle 5 taksit (Mart–Temmuz sonu, ayda ~1 300 €). Başlangıç kasası ayrı (2 500 €).</summary>
+        /// <summary>Kurulum kredisinin tamamı (Ft): 6 000 €, faiziyle 5 taksit (Mart–Temmuz sonu, ayda ~1 300 €). Başlangıç kasası ayrı (taban 2 500 €, zorluk çarpanıyla: Difficulty.StartCash).</summary>
         public const long AileBorcu = 2400000;
 
         // ------------------------------------------------------------------ yorgunluk

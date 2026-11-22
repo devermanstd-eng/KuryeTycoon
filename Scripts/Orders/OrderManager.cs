@@ -325,10 +325,22 @@ namespace KuryeTycoon
             {
                 int free = 0;
                 foreach (var c in CourierManager.I.Couriers) if (c.Available && c.CanTakeMore) free++;
-                return Pending.Count - free - 2;
+                return AktifBekleyen - free - 2;
             }
         }
         public bool IsBusy => BusyExcess > 0;
+
+        /// <summary>Şu an kurye bekleyen sipariş (saati gelmemiş planlı siparişler ve kargo paketleri sayılmaz: onlar yoğunluk yaratmaz).</summary>
+        public int AktifBekleyen
+        {
+            get
+            {
+                float now = GameClock.I != null ? GameClock.I.TotalMinutes : 0f;
+                int n = 0;
+                foreach (var o in Pending) if (!o.kargo && o.holdUntil <= now) n++;
+                return n;
+            }
+        }
 
         /// <summary>
         /// Geç teslimatın müşteri puanından götürdüğü: her gecikme en az yarım yıldız, sonra 8 dakikada bir yıldız (en fazla 3,5).
@@ -351,7 +363,12 @@ namespace KuryeTycoon
             }
 
             int excess = BusyExcess;
-            if (excess > 0 && Random.value < Mathf.Min(0.75f, excess * 0.12f))
+            bool planliyaDondu = false;
+            bool yogunKayip = excess > 0 && Random.value < Mathf.Min(0.75f, excess * 0.12f);
+            if (yogunKayip && HizmetSeviyeleri.I != null && HizmetSeviyeleri.I.YogunluktaPlanliyaDoner()
+                && ShopHours.IsOpenAt(shop.def, GameClock.I.TotalMinutes + 90f))
+                planliyaDondu = true;   // "şu an kurye yok, 1–2 saat sonrasına planla" seçeneğini aldı: sipariş kaçmaz
+            else if (yogunKayip)
             {
                 busyLostToday++;
                 yogunKacanToday++;
@@ -501,12 +518,20 @@ namespace KuryeTycoon
                 o.customerNote = "Paket dolabına bırakın.";
                 o.noteTranslation = "";
             }
-            o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Random.Range(0.8f, 1.3f);
+            // Hazırlık: dükkanın hızı × saat yoğunluğu × mutfaktaki sıra (öncelikli hazırlık anlaşması sırayı atlar)
+            o.readyAt = now + shop.def.prepMinutes * shop.prepMultiplier * Mutfak.Carpan(shop) * Random.Range(0.8f, 1.3f);
             // Söz verilen süre (uygulamadaki gibi): kurye dükkana giderken yemek hazırlanır (en az ~8 dk yol payı),
             // sonra ortalama ~11 km/saat ile müşteriye, kapıda geçen süre ve pay (aceleci müşteride daha az)
             // Pay: uygulamalar söz verdikleri süreyi siparişlerin ~%80'i zamanında gelecek şekilde verir
             o.deadlineAt = Mathf.Max(o.readyAt, now + 8f) + dist / 0.9f + (o.customerType == CustomerType.Aceleci ? 10f : 18f)
                            + o.DoorMinutes(1f, true); // müşteri katını da hesaba katan tahmini süre
+            // Hizmet seviyeleri: planlı teslimat (yoğunlukta kaçacakken ya da müşteri sonraki saati seçti) ya da ekspres
+            var hz = HizmetSeviyeleri.I;
+            if (hz != null)
+            {
+                if (planliyaDondu || hz.PlanliSecer(o)) hz.PlanliUygula(o, planliyaDondu);
+                else if (hz.EkspresSecer(o, o.readyAt - now)) hz.EkspresUygula(o);
+            }
             o.marker = SpriteFactory.Create($"Müşteri #{o.id}", markerRoot, true,
                 o.IsHeavy ? new Color(0.75f, 0.35f, 1f) : new Color(1f, 0.6f, 0.2f),
                 CityMap.ToWorld(custTile), o.IsHeavy ? 0.6f : 0.45f, 15); // 3D binaların üstünde görünsün
@@ -524,9 +549,18 @@ namespace KuryeTycoon
             {
                 var o = Pending[i];
                 float limit = pendingTimeout + (o.supportCalled ? SupportManager.I.extraWaitMinutes : 0f);
-                if (o.catering) limit = Mathf.Max(limit, o.deadlineAt - o.createdAt + 10f);   // kurumsal: teslim saati geçene kadar bekler
+                if (o.catering || o.planli || o.kargo) limit = Mathf.Max(limit, o.deadlineAt - o.createdAt + 10f);   // kurumsal/planlı/kargo: teslim saati geçene kadar bekler
                 if (now - o.createdAt < limit) continue;
                 if (o.catering && KurumsalSiparisler.I != null) KurumsalSiparisler.I.Kacti(o);
+                if (o.kargo)
+                {
+                    // Kargo paketi gün içinde dağıtılamadı: depoya döner, kargo şirketi ceza keser (itibar etkilenmez)
+                    o.status = OrderStatus.Iptal;
+                    if (o.marker != null) Destroy(o.marker.gameObject);
+                    Pending.RemoveAt(i);
+                    if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Kacti(o);
+                    continue;
+                }
                 if (SupportManager.I.TryCallCustomer(o)) continue; // destek müşteriyi arayıp oyalar
                 o.status = OrderStatus.Iptal;
                 if (o.marker != null) Destroy(o.marker.gameObject);
@@ -563,7 +597,7 @@ namespace KuryeTycoon
 
         void PlanCancellation(Order o, float now)
         {
-            if (o.shop.own) return; // kendi marketinde stok sistemi zaten eksikleri yönetiyor
+            if (o.shop.own || o.planli || o.kargo) return; // kendi marketinde stok sistemi zaten eksikleri yönetiyor; planlı saatini kendi seçti
             int hour = GameClock.I.Hour;
             bool night = hour >= 22 || hour < 4;
             bool lastHour = !ShopHours.Is24h(o.shop.def) && !ShopHours.IsOpenAt(o.shop.def, now + 60f);
@@ -603,7 +637,7 @@ namespace KuryeTycoon
 
         void CheckCancel(Order o, float now, float dm)
         {
-            if (o.catering) return;   // kurumsal sipariş anlaşmalı: müşteri vazgeçmez, teslim saati geçerse ExpirePending kaçırır
+            if (o.catering || o.kargo) return;   // kurumsal sipariş anlaşmalı / kargo paketi: müşteri vazgeçmez, teslim saati geçerse ExpirePending kaçırır
             if (o.cancelPlan > 0 && now >= o.cancelAt) { CancelOrder(o, o.cancelPlan); return; }
             // Beklemekten vazgeçme (gerçekte müşteri, uygulamada gördüğü tahmini varış saatine göre sabreder):
             //  - kurye hâlâ atanmadıysa: 12 dk sonra yavaşça artan ihtimal ("kurye aranıyor" ekranında bekleme)
@@ -612,7 +646,7 @@ namespace KuryeTycoon
             float over, hazard;
             if (o.courier == null)
             {
-                over = now - (o.createdAt + 12f);
+                over = now - (Mathf.Max(o.createdAt, o.holdUntil) + 12f);   // planlı: saati gelince aramaya başlanır
                 if (over <= 0f) return;
                 hazard = Mathf.Min(0.012f, 0.0008f * over);
             }
@@ -737,10 +771,17 @@ namespace KuryeTycoon
         void AutoAssign()
         {
             float now = GameClock.I.TotalMinutes;
-            bool idleSurplus = IdleCourierCount() > Pending.Count;
+            bool idleSurplus = IdleCourierCount() > AktifBekleyen;
+            // İki tur: önce ekspres siparişler (30 dk sözü var), sonra diğerleri. Kargo paketleri en sona kalır:
+            // boşta kurye yoksa yemek siparişinin önüne geçmez.
+            for (int tur = 0; tur < 3; tur++)
             for (int i = 0; i < Pending.Count; i++)
             {
                 var o = Pending[i];
+                int siparisTuru = o.ekspres ? 0 : o.kargo ? 2 : 1;
+                if (siparisTuru != tur) continue;
+                if (o.holdUntil > now) continue;   // planlı: saati gelmedi
+                if (o.kargo && !idleSurplus && AktifBekleyen > 0) continue;   // kargo: önce bekleyen yemek/market siparişleri
 
                 // 10 dk'dan uzun bekleyen ve fiyat yüzünden reddedilen sipariş: reddedenlere bir kez daha, daha esnek sorulur
                 if (!o.secondRound && o.priceDeclines > 0 && now - o.createdAt > 10f)
@@ -994,6 +1035,49 @@ namespace KuryeTycoon
             return o;
         }
 
+        /// <summary>
+        /// Kargo paketi (KargoAnlasmasi): sepet ve komisyon yok, kargo şirketi mesafeye göre öder. Acelesi yok (akşama kadar),
+        /// müşteri vazgeçmez; atamada en sona kalır. Kapı kodu, kat ve evde yok derdi normal siparişteki gibi.
+        /// </summary>
+        public Order KargoSiparisi(Shop depo, Vector2Int custTile, float kg, float sonAn)
+        {
+            var map = CityMap.I;
+            var custDoor = map.GetDoor(custTile);
+            int dist = Mathf.Max(1, map.FindPath(depo.door, custDoor).Count - 1);
+            int ucret = KargoAnlasmasi.Ucret(dist);
+            float now = GameClock.I.TotalMinutes;
+            var o = new Order
+            {
+                shop = depo,
+                customerTile = custTile,
+                customerDoor = custDoor,
+                customerType = CustomerType.Normal,
+                addressIssue = RandomAddressIssue(),
+                basket = 0,
+                distance = dist,
+                weightKg = kg,
+                commissionIncome = 0,
+                deliveryFee = ucret,
+                feeBase = ucret,
+                createdAt = now,
+                items = new List<OrderItem> { new OrderItem { name = kg >= 8f ? "Büyük kargo kolisi" : "Kargo paketi", qty = 1, unitPrice = 0, cat = 'N' } },
+                customerName = GameData.RandomName(),
+                stockCost = 0
+            };
+            o.SetAddress(custTile, custDoor);
+            o.customerNote = "Kargo: imza gerekmez, evde yoksa kapıya bırakın.";
+            o.noteTranslation = "";
+            o.noContact = Random.value < 0.6f;
+            o.kargo = true;
+            o.readyAt = now + 2f;
+            o.deadlineAt = Mathf.Max(now + 90f, sonAn);
+            o.marker = SpriteFactory.Create($"Kargo #{o.id}", markerRoot, true, new Color(0.75f, 0.58f, 0.36f),
+                CityMap.ToWorld(custTile), 0.4f, 15);
+            Pending.Add(o);
+            depo.ordersTotal++;
+            return o;
+        }
+
         public void CompleteDelivery(Order o, Courier c)
         {
             float now = GameClock.I.TotalMinutes;
@@ -1002,15 +1086,20 @@ namespace KuryeTycoon
 
             float late = o.customerFault ? 0f : now - o.deadlineAt; // müşterinin adres hatası gecikmesi sayılmaz
             Telemetry.Add("Teslim edildi");
-            Telemetry.DayDelivered++;
-            Telemetry.DayMinutes += now - o.createdAt;
-            if (o.assignedAt >= o.createdAt) Telemetry.DayAssignWait += o.assignedAt - o.createdAt;   // atanma zamanı yoksa (0) sayılmaz
-            if (o.assignedAt >= o.createdAt && o.pickedAt >= o.assignedAt) Telemetry.DayPickupWait += o.pickedAt - o.assignedAt;
+            // Ortalama süreler: kargo paketi sayılmaz (akşama kadar zamanı var); planlı sipariş saati geldiği andan sayılır
+            float basAn = o.planli ? Mathf.Max(o.createdAt, o.holdUntil) : o.createdAt;
+            if (!o.kargo)
+            {
+                Telemetry.DayDelivered++;
+                Telemetry.DayMinutes += now - basAn;
+                if (o.assignedAt >= basAn) Telemetry.DayAssignWait += o.assignedAt - basAn;   // atanma zamanı yoksa (0) sayılmaz
+                if (o.assignedAt >= basAn && o.pickedAt >= o.assignedAt) Telemetry.DayPickupWait += o.pickedAt - o.assignedAt;
+            }
             if (late > 0f) Telemetry.DayLate++;
             if (late > 15f) Telemetry.DayLate15++;
             if (late > 0f) Telemetry.Add("Teslim: geç");
             if (late > 15f) Telemetry.Add("Teslim: 15 dk'dan fazla geç");
-            Telemetry.Add($"Teslim süresi (dk): {Mathf.Min(120, Mathf.FloorToInt((now - o.createdAt) / 10f) * 10):000}–{Mathf.Min(130, Mathf.FloorToInt((now - o.createdAt) / 10f) * 10 + 10):000}");
+            if (!o.kargo) Telemetry.Add($"Teslim süresi (dk): {Mathf.Min(120, Mathf.FloorToInt((now - basAn) / 10f) * 10):000}–{Mathf.Min(130, Mathf.FloorToInt((now - basAn) / 10f) * 10 + 10):000}");
             float rating = 5f;
             rating -= GecCezasi(late);
             rating += (c.politeness - 0.75f) * 2f;
@@ -1032,9 +1121,12 @@ namespace KuryeTycoon
             if (c.hygiene < Courier.HygieneLimit) rating -= (Courier.HygieneLimit - c.hygiene) * 3f; // kirli çanta
             if (o.dolap) rating += 0.2f;   // dolaptan istediği saatte aldı
             rating += KuryeOzellik.PuanEki(c);   // güler yüzlü / kestirmeci
+            if (o.ekspres && HizmetSeviyeleri.I != null) rating += HizmetSeviyeleri.I.Teslim(o, late);   // ekspres sözü tutuldu mu (geçse ücret iade)
+            if (o.planli && late <= 0f) rating += 0.1f;   // tam seçtiği saatte geldi
             o.rating = Mathf.Clamp(rating, 1f, 5f);
-            OrderHeat.RecordDelivery(o.customerTile, now - o.createdAt);   // harita: teslimat süresi katmanı
+            if (!o.kargo) OrderHeat.RecordDelivery(o.customerTile, now - basAn);   // harita: teslimat süresi katmanı
             if (o.catering && KurumsalSiparisler.I != null) KurumsalSiparisler.I.Teslim(o, late);
+            if (o.kargo && KargoAnlasmasi.I != null) KargoAnlasmasi.I.Teslim(o, late);
             DukkanKari.Record(o);                                          // harita: dükkan kârlılığı katmanı
 
             RollTip(o, c, late);

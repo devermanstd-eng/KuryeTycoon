@@ -56,6 +56,23 @@ namespace KuryeTycoon
                             new Color?[] { bitti ? U.Soluk : (Color?)null, null, su ? U.Iyi : U.Soluk });
                 }
 
+                // Yoğun saat primi: her gün aynı saatte (oyuncunun planı)
+                y.Bolum("Yoğun saat primi (her gün)",
+                        "Her gün aynı saatte kuryelere yüzde ek ödeme. Akşam yemeği (18–21) ve öğle (11–14) en çok siparişin geldiği, " +
+                        "kurye bulunamadığı için en çok iptalin olduğu saatler. Prim saatinde daha çok kurye çevrimiçi olur, teklif reddetmez " +
+                        "ve aynı anda +1 paket alır; kazancı artan kuryenin morali de yükselir. Diğer boostlarla toplanmaz, yüksek olan geçerli olur.");
+                int[] iptalSaat = OrderManager.I != null ? OrderManager.I.cancelledByHour : null;
+                int aksamIptal = 0, ogleIptal = 0;
+                if (iptalSaat != null) { for (int h = 18; h < 21; h++) aksamIptal += iptalSaat[h]; for (int h = 11; h < 14; h++) ogleIptal += iptalSaat[h]; }
+                y.Onay($"Akşam primi {camp.aksamPrimiBas:00}:00–{camp.aksamPrimiBit:00}:00", camp.aksamPrimi, v => camp.aksamPrimi = v);
+                if (camp.aksamPrimi)
+                    y.Kaydirici("Akşam", camp.aksamPrimiYuzde, 0.05f, 0.6f, Yuzde(camp.aksamPrimiYuzde), v => camp.aksamPrimiYuzde = Yuzde5(v));
+                y.Onay($"Öğle primi {camp.oglePrimiBas:00}:00–{camp.oglePrimiBit:00}:00", camp.oglePrimi, v => camp.oglePrimi = v);
+                if (camp.oglePrimi)
+                    y.Kaydirici("Öğle", camp.oglePrimiYuzde, 0.05f, 0.6f, Yuzde(camp.oglePrimiYuzde), v => camp.oglePrimiYuzde = Yuzde5(v));
+                if (iptalSaat != null)
+                    y.Kucuk($"Bugün iptaller: akşam (18–21) {aksamIptal}, öğle (11–14) {ogleIptal}.");
+
                 // Kötü hava
                 y.Bolum("Kötü hava boostu (otomatik)",
                         "Kötü havada siparişler artar ama bisiklet, scooter ve motor kuryeleri dışarı çıkmaya daha az isteklidir " +

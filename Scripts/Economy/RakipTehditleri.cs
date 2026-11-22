@@ -25,8 +25,8 @@ namespace KuryeTycoon
     ///
     /// Tehdit seviyesi takvime değil pazar payına bağlı (3 rakipte):
     ///  • 0 sakin (%35 altı): hamleler seyrek.
-    ///  • 1 tetikte (%35–50): saldırganlık tabanı yükselir, yatırım ararlar, kurye teklifleri 4 haftada bir.
-    ///  • 2 saldırıda (%50+): haftada iki hamle olabilir, yatırım çok daha olası, en değerli (eğitimli) kuryelere %30 fazla teklif
+    ///  • 1 tetikte (%35–45): saldırganlık tabanı yükselir, yatırım ararlar, kurye teklifleri 4 haftada bir.
+    ///  • 2 saldırıda (%45+): haftada iki hamle olabilir, yatırım çok daha olası, en değerli (eğitimli) kuryelere %30 fazla teklif
     ///    (3 haftada bir), münhasır dükkanlara bile teklif, fiyat savaşı en çok sipariş aldığın bölgede ve 10 gün.
     /// Dükkan, kurye ve fiyat savaşı hamleleri birkaç gün önceden duyurulur (bildirim + sağ üstte durum kartı); oyuncu o arada
     /// dükkana münhasırlık önerebilir, memnuniyetini, kuryelerin moralini yükseltebilir, para ayırabilir. Vadesinde karar kartı gelir.
@@ -36,9 +36,9 @@ namespace KuryeTycoon
         public readonly List<RakipTehdit> Tehditler = new List<RakipTehdit>();
         int sonTehditSeviyesi;
 
-        /// <summary>Pazar payının tehdit eşikleri (3 rakipte %35 ve %50).</summary>
+        /// <summary>Pazar payının tehdit eşikleri (3 rakipte %35 ve %45).</summary>
         public float TehditEsigi1 => SaldirganlikEsigi;
-        public float TehditEsigi2 => SaldirganlikEsigi + 0.15f;
+        public float TehditEsigi2 => SaldirganlikEsigi + 0.10f;
 
         /// <summary>0 sakin, 1 tetikte, 2 saldırıda (geçen haftanın pazar payına göre; ilk hafta 0).</summary>
         public int TehditSeviyesi
@@ -181,7 +181,7 @@ namespace KuryeTycoon
             var r = Rakipler[ri];
             float offer = Mathf.Max(0.05f, shop.Commission - Mathf.Lerp(0.05f, 0.07f, r.fiyatEgilimi));
             // Münhasır dükkan daha sadık: memnuniyet 80'de ~%83 kalır
-            float keep = Mathf.Clamp(0.35f + shop.satisfaction / 100f * 0.6f, 0.35f, 0.97f);
+            float keep = Mathf.Clamp(0.35f + shop.satisfaction / 100f * 0.6f + SadakatEki(shop), 0.35f, 0.97f);
             Telemetry.Add("Rakip: münhasır dükkan teklifi");
             var ev = new GameEvent($"{r.ad}, münhasır {shop.Name} dükkanına göz dikti",
                 $"{r.ad} ({r.Tanim}), münhasırlığı bozması için {shop.Name} dükkanına {Pct(offer)} komisyon teklif etti " +

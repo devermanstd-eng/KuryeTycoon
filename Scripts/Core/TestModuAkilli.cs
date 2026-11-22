@@ -13,7 +13,7 @@ namespace KuryeTycoon
     ///   • Telefon kapanması, yağmur, kaza gibi olaylara göre ekipman teklif eder; memnun dükkanla pazarlık yapar.
     ///   • Kaçan sipariş çoksa teslimat ücretini düşürür, kuryeler teklif reddediyorsa bonusu artırır (haftada bir).
     ///   • Borcu vadesinden önce öder, kasa rahatsa borcun tamamını kapatır; sonra kendi marketini açar.
-    /// Kampanya (boost) ayarlarına dokunmaz: varsayılanlar zaten açık.
+    /// Kampanya ayarlarından yalnızca yoğun saat primini açıp kapatır (TestModuYeni); diğer boost varsayılanları zaten açık.
     /// </summary>
     public partial class TestModu
     {
@@ -70,6 +70,7 @@ namespace KuryeTycoon
                 AkilliDukkanBakimi();
                 AkilliMarket();
                 AkilliEgitim();
+                AkilliHizmet();
                 if (clk.DayOfWeek == 0 && sonHaftaGun != clk.Day) { sonHaftaGun = clk.Day; AkilliFiyat(); }
             }
         }
@@ -904,6 +905,9 @@ namespace KuryeTycoon
             if (bisikletli >= 3 && (iptal > 0.03f || kuryeBasi > 14f)) adaylar.Add((UpgradeKind.KargoBisikleti, $"{bisikletli} bisikletli kurye, iptal %{iptal * 100f:0}, kurye başı {kuryeBasi:0}"));
             if (dunAdres >= 2 || cm.Couriers.Count >= 10) adaylar.Add((UpgradeKind.PaketDolabi, $"dün {dunAdres} adres sorunu, {cm.Couriers.Count} kurye"));
             if (cm.Couriers.Count >= 12 && iptal < 0.08f) adaylar.Add((UpgradeKind.Robot, $"{cm.Couriers.Count} kurye: kısa siparişleri robotlar alsın"));
+            // Yeni iş kolu ve kurye akademisi
+            if (OrtMoral < 0.55f && cm.Couriers.Count >= 10) adaylar.Add((UpgradeKind.Akademi, $"ort. moral {OrtMoral:0.00}, {cm.Couriers.Count} kurye: bırakma ve ayartılma riski"));
+            if (cm.Couriers.Count >= 10 && iptal < 0.06f && kuryeBasi < 11f) adaylar.Add((UpgradeKind.Kargo, $"kurye başı {kuryeBasi:0} teslimat: sakin saatlerde boş kapasite var"));
 
             foreach (var a in adaylar)
             {
