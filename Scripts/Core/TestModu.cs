@@ -804,6 +804,21 @@ namespace KuryeTycoon
             sb.AppendLine("Kapasite: " + (parca.Count > 0 ? string.Join(" · ", parca) : "kurye hesapları hiç dolmadı"));
             sb.AppendLine($"Kaçan siparişin {yogun}'i yoğunluktan (%{Yuzde(yogun, kacToplam):0}) · yoğunlukta uzak yerine yakından gelen " +
                           $"{Sayac("Sipariş: yoğunlukta uzak yerine yakından")} · itibarın dibi {(enDusukGun > 0 ? $"{enDusuk:0.00} ({enDusukGun}. gün sonu)" : "-")}");
+            // Yeni oynanış: hizmet seviyeleri, mutfak, kargo, planı bozan olaylar, rakip bölge kaybı
+            var hz = HizmetSeviyeleri.I;
+            var kg = KargoAnlasmasi.I;
+            int oncelikli = 0;
+            if (CityMap.I != null) foreach (var s in CityMap.I.Shops) if (s.oncelikli) oncelikli++;
+            string sadakat = "";
+            if (RivalCompany.I != null)
+                for (int b = 1; b < RivalCompany.I.bolgeSadakat.Length; b++)
+                    if (RivalCompany.I.bolgeSadakat[b] < 0.995f) sadakat += $" {CityMap.DistrictNames[b]} %{RivalCompany.I.bolgeSadakat[b] * 100f:0}";
+            sb.AppendLine($"Hizmet: ekspres {(hz != null ? hz.ekspresToplam : 0)} (geç/iade {(hz != null ? hz.ekspresGecToplam : 0)}, " +
+                          $"net {GameData.Ft(hz != null ? hz.ekspresGelirToplam - hz.ekspresIadeToplam : 0)}) · planlı {(hz != null ? hz.planliToplam : 0)} " +
+                          $"(yoğunluktan kurtarılan {(hz != null ? hz.planliKurtarilanToplam : 0)}) · öncelikli hazırlık {oncelikli} dükkan · " +
+                          $"kargo {(kg != null ? kg.toplamTeslim : 0)} teslim / {(kg != null ? kg.toplamKacan : 0)} kaçan ({GameData.Ft(kg != null ? kg.toplamGelir : 0)}) · " +
+                          $"hastalık {Sayac("Kurye: hastalandı") + Sayac("Kurye: grip (dalga)")} (grip dalgası {Sayac("Olay: grip dalgası")}) · " +
+                          $"bölge sadakati:{(sadakat.Length > 0 ? sadakat : " kayıp yok")}");
         }
 
         string Ozet(List<string> kilitli)

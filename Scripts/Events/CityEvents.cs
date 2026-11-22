@@ -287,7 +287,7 @@ namespace KuryeTycoon
             EarlyGameHints(hour, day);
         }
 
-        static string ImpactText(CityEvent e)
+        public static string ImpactText(CityEvent e)
         {
             var parts = new List<string>();
             float all = e.demand;

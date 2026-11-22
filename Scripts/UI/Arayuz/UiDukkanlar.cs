@@ -158,7 +158,21 @@ namespace KuryeTycoon
                 }
                 if (rv.priceWarDays > 0 && rv.warDistrict > 0)
                     y.Uyari($"Fiyat savaşı: {(rv.RakipAt(rv.warOwner) != null ? rv.RakipAt(rv.warOwner).ad : "rakip")} {CityMap.DistrictNames[rv.warDistrict]} bölgesinde " +
-                            $"{rv.priceWarDays} gün daha ücret kırıyor (oradaki siparişler −%{(1f - rv.warFactor) * 100f:0}).");
+                            $"{rv.priceWarDays} gün daha ücret kırıyor (oradaki siparişler −%{(1f - rv.warFactor) * 100f:0})." +
+                            (rv.savasGormezden ? " Karşılık vermedin: savaş bitince müşterilerin bir kısmı rakipte kalacak." : ""));
+                // Bölge sadakati: görmezden gelinen eski fiyat savaşlarının kalıcı izi
+                for (int b = 1; b < rv.bolgeSadakat.Length; b++)
+                {
+                    float sad = rv.bolgeSadakat[b];
+                    if (sad >= 0.995f) continue;
+                    int bolge = b;
+                    y.Cubuk($"{CityMap.DistrictNames[b]} sadakati", sad, sad < 0.85f ? U.Kotu : U.Uyari, $"%{sad * 100f:0} · siparişler −%{(1f - sad) * 100f:0}");
+                    y.Dugme($"Geri kazanma kampanyası: kaybın yarısı geri — {Ft(rv.GeriKazanmaBedeli)}", () => ui.AskConfirm("Geri kazanma kampanyası",
+                            $"{CityMap.DistrictNames[bolge]} bölgesinde indirim kuponu ve reklam kampanyası yapılsın mı? Rakibe alışan müşterilerin yarısı " +
+                            $"hemen geri döner (sadakat %{rv.bolgeSadakat[bolge] * 100f:0} → %{(rv.bolgeSadakat[bolge] + (1f - rv.bolgeSadakat[bolge]) * 0.5f) * 100f:0}). " +
+                            $"Bedel {Ft(rv.GeriKazanmaBedeli)}. {RivalCompany.GeriKazanmaBekleme} günde bir yapılabilir.",
+                            "Evet, kampanya yap", () => rv.GeriKazan(bolge)), rv.GeriKazanabilirMi(b), "kucuk-dg");
+                }
                 y.KartBitir();
             }
         }
@@ -220,9 +234,26 @@ namespace KuryeTycoon
             Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);
             y.Cubuk("Memnuniyet", s.satisfaction / 100f, sc, $"{s.satisfaction:0}/100");
             y.Kucuk(RivalCompany.PerformanceText(s));
-            y.Kucuk($"Hazırlık ~{s.def.prepMinutes:0} dk · sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · " +
+            y.Kucuk($"{Mutfak.Ozet(s)} · sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · " +
                     $"{GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)} · toplam {s.ordersTotal} sipariş");
             if (agir != null) y.Uyari(agir);
+            if (s.oncelikli)
+                y.Yazi($"Öncelikli hazırlık anlaşması var: siparişlerin sıraya girmeden hazırlanıyor, dükkan komisyondan " +
+                       $"{Mutfak.OncelikKomisyon * 100f:0} puan fazla alıyor.", "kucuk not-renk");
+            y.Dugme(s.oncelikli
+                    ? $"Öncelikli hazırlığı bitir (komisyon +{Mutfak.OncelikKomisyon * 100f:0} puan geri gelir)"
+                    : $"Öncelikli hazırlık iste: yoğun saatte ~{Mutfak.YogunDk(s, false):0} dk → ~{Mutfak.YogunDk(s, true):0} dk · komisyon −{Mutfak.OncelikKomisyon * 100f:0} puan",
+                () => AskConfirm(shop.oncelikli ? "Öncelikli hazırlığı bitir" : "Öncelikli hazırlık anlaşması",
+                    shop.oncelikli
+                        ? $"{shop.def.name} ile öncelikli hazırlık anlaşması bitsin mi? Komisyonun {Mutfak.OncelikKomisyon * 100f:0} puan geri gelir " +
+                          "ama siparişlerin yoğun saatte yine mutfak sırasına girer. Dükkanın memnuniyeti biraz düşer."
+                        : $"{shop.def.name} senin siparişlerini sıraya sokmadan hemen hazırlasın: temel hazırlık süresi %30 kısalır ve yoğun saatte " +
+                          $"sıra uzamaz (yoğun saatte ~{Mutfak.YogunDk(shop, false):0} dk yerine ~{Mutfak.YogunDk(shop, true):0} dk). Karşılığında dükkan " +
+                          $"komisyonundan {Mutfak.OncelikKomisyon * 100f:0} puan daha fazla pay alır (senin oranın %{shop.Commission * 100f:0.#} → " +
+                          $"%{(shop.Commission - Mutfak.OncelikKomisyon) * 100f:0.#}). Dükkan memnun olur ve rakip teklif ederse daha zor gider. " +
+                          $"Anlaşma en sık {Mutfak.DegisimBekleme} günde bir değiştirilebilir.",
+                    shop.oncelikli ? "Evet, bitir" : "Evet, anlaş", () => Mutfak.Degistir(shop, !shop.oncelikli)),
+                Mutfak.DegistirilebilirMi(s), "kucuk-dg");
             y.SatirBasla();
             y.Dugme($"Pazarlık: +2 puan (şans %{rv.NegotiateChance(s) * 100f:0})", () => rv.Negotiate(shop), rv.CanNegotiate(s), "kucuk-dg");
             y.Dugme(s.exclusive ? "Münhasır" : $"Münhasırlık öner: −3 puan (şans %{rv.ExclusiveChance(s) * 100f:0})", () => AskConfirm("Münhasırlık öner",

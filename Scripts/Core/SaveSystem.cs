@@ -69,6 +69,8 @@ namespace KuryeTycoon
         public float commissionBonus, prepMultiplier, satisfaction;
         public int ordersTotal, contractStartDay, contractEndDay, monthOrders, lastMonthOrders;
         public int negotiateCooldownUntil, resignBlockedUntil;
+        public bool oncelikli;                 // öncelikli hazırlık anlaşması (eski kayıtlarda yok)
+        public int oncelikDegisimGunu = -999;
     }
 
     [System.Serializable]
@@ -101,6 +103,10 @@ namespace KuryeTycoon
         // Önceden duyurulan rakip hamleleri ve pazar payına göre tehdit seviyesi (eski kayıtlarda yok)
         public List<RakipTehdit> tehditler = new List<RakipTehdit>();
         public int tehditSeviyesi;
+        // Bölge sadakati: görmezden gelinen fiyat savaşının kalıcı kaybı (eski kayıtlarda yok: hepsi 1)
+        public float[] bolgeSadakat;
+        public bool savasGormezden;
+        public int sonGeriKazanmaGunu = -999;
     }
 
     [System.Serializable]
@@ -180,6 +186,9 @@ namespace KuryeTycoon
         public int senaryoDurum;
         public int gunlukTohum;
         public int anlatici = 1;               // Anlatici.Tur (eski kayıtlarda Klasik)
+        public HizmetSave hizmet;              // ekspres ve planlı teslimat (eski kayıtlarda yok)
+        public KargoSave kargo;                // kargo deposu ve sayıları (eski kayıtlarda yok)
+        public GunPlaniSave gunPlani;          // grip dalgası (eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -407,7 +416,10 @@ namespace KuryeTycoon
                 cityEvents = CityEvents.I != null ? CityEvents.I.CaptureSave() : null,
                 crisis = CrisisManager.I != null ? CrisisManager.I.CaptureSave() : null,
                 messages = CourierMessages.I != null ? CourierMessages.I.CaptureSave() : null,
-                telemetry = Telemetry.Capture()
+                telemetry = Telemetry.Capture(),
+                hizmet = HizmetSeviyeleri.I != null ? HizmetSeviyeleri.I.Kaydet() : null,
+                kargo = KargoAnlasmasi.I != null ? KargoAnlasmasi.I.Kaydet() : null,
+                gunPlani = GunPlani.I != null ? GunPlani.I.Kaydet() : null
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -419,7 +431,7 @@ namespace KuryeTycoon
                     prepMultiplier = s.prepMultiplier, satisfaction = s.satisfaction, ordersTotal = s.ordersTotal,
                     contractStartDay = s.contractStartDay, contractEndDay = s.contractEndDay, monthOrders = s.monthOrders,
                     lastMonthOrders = s.lastMonthOrders, negotiateCooldownUntil = s.negotiateCooldownUntil,
-                    resignBlockedUntil = s.resignBlockedUntil
+                    resignBlockedUntil = s.resignBlockedUntil, oncelikli = s.oncelikli, oncelikDegisimGunu = s.oncelikDegisimGunu
                 });
 
             foreach (var c in cm.Couriers)
@@ -466,8 +478,12 @@ namespace KuryeTycoon
                 s.contractStartDay = ss.contractStartDay; s.contractEndDay = ss.contractEndDay; s.monthOrders = ss.monthOrders;
                 s.lastMonthOrders = ss.lastMonthOrders; s.negotiateCooldownUntil = ss.negotiateCooldownUntil;
                 s.resignBlockedUntil = ss.resignBlockedUntil;
+                s.oncelikli = ss.oncelikli && s.contracted; s.oncelikDegisimGunu = ss.oncelikDegisimGunu;
             }
             if (DarkStore.I != null) DarkStore.I.RestoreSave(d.darkStore);
+            if (HizmetSeviyeleri.I != null) HizmetSeviyeleri.I.Yukle(d.hizmet);
+            if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Yukle(d.kargo);
+            if (GunPlani.I != null) GunPlani.I.Yukle(d.gunPlani);
             CityMap.I.RefreshColors();
             if (d.gearStock != null)
                 for (int i = 0; i < cm.gearStock.Length && i < d.gearStock.Length; i++) cm.gearStock[i] = d.gearStock[i];
