@@ -979,6 +979,8 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .yz-kutu:hover { background-color: var(--dugme-ust); }
 .yz-kutu-baslik { font-size: 10px; color: var(--etiket); letter-spacing: 0.8px; -unity-font-style: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .yz-kutu-deger { font-size: 18px; -unity-font-style: bold; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.yz-kutu-deger.uzun { font-size: 15px; margin-top: 4px; }        /* 11–13 karakter (Yazici.Kutu) */
+.yz-kutu-deger.cok-uzun { font-size: 13px; margin-top: 5px; }    /* 14+ karakter */
 .yz-kutu-alt { font-size: 11px; color: var(--soluk); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .yz-tablo-satir {
@@ -996,6 +998,9 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .yz-tablo-hucre { width: 66px; flex-shrink: 0; margin-left: 4px; font-size: 13px; -unity-text-align: middle-right; white-space: nowrap; }
 .yz-tablo-satir.baslik .yz-tablo-ilk,
 .yz-tablo-satir.baslik .yz-tablo-hucre { font-size: 10px; color: var(--etiket); letter-spacing: 0.8px; -unity-font-style: bold; }
+/* Kayıtlar: haftalık kurye kapsaması (7 gün sütunu dar hücrelerle sığsın, satır adı kısalmasın) */
+.kapsama-tablo .yz-tablo-ilk { min-width: 64px; flex-shrink: 0; overflow: visible; }
+.kapsama-tablo .yz-tablo-hucre { width: auto; flex-grow: 1; flex-shrink: 1; min-width: 26px; margin-left: 2px; -unity-text-align: middle-center; }
 
 .yz-kaydir { flex-direction: row; align-items: center; min-height: 28px; margin-bottom: 1px; }
 .yz-kaydir-ad { width: 132px; flex-shrink: 0; font-size: 13px; color: var(--soluk); white-space: normal; }
@@ -1241,6 +1246,8 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .tel .yz-kutular { margin: 4px -6px 2px 0; }
 .tel .yz-kutu { background-color: var(--kagit-acik); min-width: 90px; }
 .tel .yz-kutu-deger { font-size: 16px; color: var(--yazi); }
+.tel .yz-kutu-deger.uzun { font-size: 14px; }
+.tel .yz-kutu-deger.cok-uzun { font-size: 12px; }
 .tel .kart.tel-kart {
     background-color: rgba(0, 0, 0, 0);
     border-width: 1.5px;
@@ -1502,3 +1509,42 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .yz-metin.bk-baslik { font-size: 11px; color: var(--etiket); letter-spacing: 0.9px; -unity-font-style: bold; margin-bottom: 5px; }
 .bk-beceri { flex-direction: row; align-items: center; min-height: 22px; }
 .bk-dugmeler { margin-top: 12px; flex-shrink: 0; }
+
+/* ---------------------------------------------------------------- kurulum ekranı (Arayuz/UiKurulum.cs; oyun başlamadan) */
+
+.kurulum-zemin {
+    position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+    background-color: var(--zemin-koyu);
+    align-items: center; justify-content: center;
+}
+.kurulum-kart {
+    width: 660px; max-width: 96%; max-height: 96%;
+    background-color: var(--zemin);
+    border-width: 2px; border-bottom-width: 4px; border-color: var(--cerceve); border-radius: 18px;
+    padding: 18px 8px 18px 22px;
+}
+.kurulum-kaydir { flex-grow: 1; flex-shrink: 1; }
+.kurulum-kaydir > .unity-scroll-view__content-viewport > .unity-scroll-view__content-container { padding-right: 14px; }
+.kurulum-baslik { font-size: 24px; -unity-font-style: bold; margin-bottom: 4px; }
+.kurulum-ad { margin: 2px 0 6px 0; font-size: 15px; }
+.kurulum-ad > .unity-text-field__input {
+    padding: 6px 10px; border-radius: 9px; border-width: 1.5px;
+    background-color: var(--kagit-acik); border-color: var(--kenar); color: var(--yazi);
+}
+.kurulum-renkler { flex-direction: row; flex-wrap: wrap; margin: 4px 0 6px 0; }
+.kurulum-renk { width: 34px; height: 34px; margin: 0 6px 6px 0; border-radius: 9px; border-width: 2px; border-color: var(--kenar); }
+.kurulum-renk:hover { border-color: var(--soluk); }
+.kurulum-renk.secili { border-width: 3px; border-color: var(--yazi); }
+.kurulum-onizleme {
+    flex-direction: row; align-items: center; height: 120px; padding: 0 16px; margin: 4px 0 8px 0;
+    border-radius: 14px; border-width: 2px; border-color: var(--cerceve);
+}
+.kurulum-logo { width: 84px; height: 84px; border-radius: 14px; padding: 7px; }
+.kurulum-logo-ic { flex-grow: 1; border-radius: 9px; align-items: center; justify-content: center; }
+.kurulum-harf { font-size: 40px; -unity-text-align: middle-center; }
+.kurulum-oniz-metin { flex-grow: 1; flex-shrink: 1; margin: 0 14px; }
+.kurulum-oniz-ad { font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kurulum-oniz-alt { font-size: 12px; white-space: normal; margin-top: 4px; }
+.kurulum-kurye { width: 56px; height: 56px; border-radius: 12px; padding: 9px; }
+.kurulum-kurye-ic { flex-grow: 1; border-radius: 7px; }
+Button.dg.yz-dugme.kurulum-basla { min-height: 46px; font-size: 17px; margin-top: 4px; }

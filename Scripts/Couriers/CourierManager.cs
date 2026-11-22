@@ -211,6 +211,9 @@ namespace KuryeTycoon
             var courier = go.AddComponent<Courier>();
             courier.Init(c, CityMap.I.HQDoor);
             GiveStarterKit(courier);
+            // Kurye akademisi: yeni kurye eğitimle ve bir mentorla başlar
+            if (UpgradeManager.I != null && UpgradeManager.I.AkademiMoralEki > 0f)
+                courier.morale = Mathf.Min(1f, courier.morale + UpgradeManager.I.AkademiMoralEki * 1.5f);
             Couriers.Add(courier);
             return courier;
         }
@@ -609,6 +612,7 @@ namespace KuryeTycoon
             if (c.V.exposed && season == Season.Kis && !c.Has(EquipmentKind.KisMontu)) hedef -= 0.12f;
             if (c.V.exposed && season == Season.Yaz && !c.Has(EquipmentKind.YazTisort)) hedef -= 0.06f;
             if (c.fatigue > 0.7f) hedef -= 0.05f;
+            if (UpgradeManager.I != null) hedef += UpgradeManager.I.AkademiMoralEki;   // kurye akademisi: kendini değerli hisseder
             return Mathf.Clamp01(hedef);
         }
 
@@ -646,7 +650,8 @@ namespace KuryeTycoon
                 c.morale = Mathf.Clamp01(c.morale + (Mathf.Clamp01(moralHedef) - c.morale) * Denge.MoralYaklasma);
 
                 // Çok mutsuz kurye bırakır: moral 0,2'de günde %5, 0,1'de %10
-                float birak = (Denge.BirakmaMoralSiniri - c.morale) * Denge.BirakmaOrani * KuryeOzellik.BirakmaCarpani(c);
+                float birak = (Denge.BirakmaMoralSiniri - c.morale) * Denge.BirakmaOrani * KuryeOzellik.BirakmaCarpani(c)
+                              * (UpgradeManager.I != null ? UpgradeManager.I.AkademiAyartmaCarpani : 1f);
                 if (birak > 0f && c.OrderCount == 0 && Random.value < birak)
                 {
                     Quit(c);
@@ -705,6 +710,16 @@ namespace KuryeTycoon
 
         bool RollSickness(Courier c, Season season)
         {
+            // Genel hastalık (soğuk algınlığı, mide, grip dalgası): araç fark etmez. Grip dalgasında 4 katı (GunPlani).
+            if (Random.value < GunPlani.GenelHastalik(season))
+            {
+                int gun = Random.Range(1, 3);
+                bool grip = GunPlani.GripVar;
+                c.SetOnLeave(gun, "hasta");
+                EventManager.I.Notify($"{c.courierName} {(grip ? "grip oldu" : "hastalandı")}, {(gun == 1 ? "bugün" : $"{gun} gün")} çalışamayacak.");
+                Telemetry.Add(grip ? "Kurye: grip (dalga)" : "Kurye: hastalandı");
+                return true;
+            }
             if (!c.V.exposed) return false;
             float risk = 0f;
             string cause = "";

@@ -675,6 +675,9 @@ namespace KuryeTycoon
             Built?.Invoke();
         }
 
+        Material organikOrnek;
+        readonly List<Vector2> koyNoktalari = new List<Vector2>();
+
         /// <summary>Organik şehir: yol ağı ve nehir tek parça mesh (merkez ofisin karesine bağlı: hiç kararmaz).</summary>
         void OrganikYollarKur(CityMap map)
         {
@@ -687,6 +690,7 @@ namespace KuryeTycoon
             }
             // Yol ağı ve nehir uzaktan (2D harita) da görünür kalır: 3D binalarla birlikte gizlenmez, kilitli bölgede kararmaz
             // Bölgeye göre desenli 3D zemin (nehir yatağı çukur), canlı nehir (tekneler, ördekler, sazlık)
+            organikOrnek = ornek;
             OrganikZemin.Kur(root, ornek);
             map.Zemin3D();
             OrganikSehir3D.Kur(root, ornek);
@@ -997,7 +1001,12 @@ namespace KuryeTycoon
                     }
                 }
             }
-            if (CityMap.Organik) BanliyoKur(map, rng, packTreesOk);
+            if (CityMap.Organik)
+            {
+                BanliyoKur(map, rng, packTreesOk);
+                KoyleriKur(map, rng, packTreesOk);
+                KirOrman.Kur(root, map, organikOrnek, koyNoktalari, 2026);
+            }
             int sira = 0;
             bool extras = UsePack && countryExtras != null && countryExtras.Length > 0;
             foreach (var t in map.CountryTrees)
@@ -1050,6 +1059,7 @@ namespace KuryeTycoon
             void Ev(Vector2 p, float aci)
             {
                 var t = new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y));
+                if (CityMap.KirNehirYakin(p, 0.7f)) return;
                 if (!dolu.Add(t)) return;
                 // Banliyö: uzun köy evleri, çiftlikler, bağ evleri çoğunlukta; arada aile evleri ve eski evler
                 double z0 = rng.NextDouble();
@@ -1106,6 +1116,79 @@ namespace KuryeTycoon
                         AddPrefab(packTrees[rng.Next(packTrees.Length)], anchor, 0f, (float)rng.NextDouble() * 360f, null, p - anchor,
                                   0.35f + (float)rng.NextDouble() * 0.3f, false);
                 }
+        }
+
+        /// <summary>
+        /// Köyler: şehirden uzağa giden caddelerin (kır yolları) üstünde, çevre yolunun ötesinde birer küçük köy.
+        /// Yolun iki yanına dizili köy evleri, ortada bir kilise ya da büyük yapı, evlerin arkasında ağaçlar.
+        /// Kırın boş görünmemesi için; süs: sipariş gelmez, kararmaz.
+        /// </summary>
+        void KoyleriKur(CityMap map, System.Random rng, bool packTreesOk)
+        {
+            koyNoktalari.Clear();
+            var evler = BolgeHavuzu("banliyo");
+            if (evler == null || evler.Length == 0) evler = ownHousesTum != null && ownHousesTum.Length > 0 ? ownHousesTum : ownHouses;
+            if (!UsePack || evler == null || evler.Length == 0) return;
+            // Köy kilisesi: bölge modelleri arasındaki kiliseler (şehirdeki iki kilise sınırı köyleri saymaz)
+            var kiliseler = new List<GameObject>();
+            if (bolgeHavuz != null)
+                foreach (var kv in bolgeHavuz) foreach (var b in kv.Value) if (b != null && b.name.Contains("_kilise_") && !kiliseler.Contains(b)) kiliseler.Add(b);
+            var buyuk = kiliseler.ToArray();
+            var anchor = map.HQTile;
+            int w = CityMap.Width, h = CityMap.Height;
+            float Uzak(Vector2 p) => Mathf.Max(Mathf.Max(-p.x, p.x - (w - 1)), Mathf.Max(-p.y, p.y - (h - 1)));
+            var dolu = new HashSet<Vector2Int>();
+            int koy = 0, ev = 0;
+            foreach (var r in CityMap.CountryRoads)
+            {
+                float L = Vector2.Distance(r.a, r.b);
+                if (L < 30f) continue;                                   // sadece uzağa giden caddeler (çevre yolu değil)
+                var yon = (r.b - r.a).normalized;
+                var yan = new Vector2(-yon.y, yon.x);
+                // Yolun şehirden uzak ucuna doğru: şehir kenarından 17–30 kare ötede köy merkezi
+                bool disaBas = Uzak(r.a) > Uzak(r.b);
+                var dis = disaBas ? r.a : r.b;
+                var ic = disaBas ? r.b : r.a;
+                var d = (dis - ic).normalized;
+                float hedef = 17f + (float)rng.NextDouble() * 13f;
+                var merkez = ic + d * hedef;
+                if (CityMap.KirNehirYakin(merkez, 4f)) merkez += d * 6f;
+                if (Uzak(merkez) > 40f) continue;
+                bool yakinKoy = false;
+                foreach (var k in koyNoktalari) if ((k - merkez).sqrMagnitude < 14f * 14f) { yakinKoy = true; break; }
+                if (yakinKoy) continue;
+                koy++;
+                int yari = 4 + rng.Next(4);
+                for (int i = -yari; i <= yari; i++)
+                {
+                    var p = merkez + d * (i * 0.95f);
+                    for (int k = -1; k <= 1; k += 2)
+                    {
+                        if (rng.NextDouble() < 0.18) continue;
+                        float uzaklik = Mathf.Abs(i) / (float)yari;
+                        var q = p + new Vector2(-d.y, d.x) * (k * (0.75f + (float)rng.NextDouble() * 0.12f));
+                        var t = new Vector2Int(Mathf.RoundToInt(q.x * 2f), Mathf.RoundToInt(q.y * 2f));
+                        if (CityMap.KirNehirYakin(q, 0.6f) || !dolu.Add(t)) continue;
+                        var bak = -new Vector2(-d.y, d.x) * k;
+                        float aci = (Mathf.Atan2(-bak.x, bak.y) * Mathf.Rad2Deg + 360f) % 360f;
+                        bool kilise = i == 0 && k == 1 && buyuk != null && buyuk.Length > 0;
+                        var prefab = kilise ? buyuk[rng.Next(buyuk.Length)] : evler[rng.Next(evler.Length)];
+                        AddPrefab(prefab, anchor, OwnFootprint(prefab, kilise ? 1.0f : 0.85f - uzaklik * 0.1f), aci, null, q - anchor, 0f, false, true);
+                        koyNoktalari.Add(q);
+                        ev++;
+                        // Arka bahçede bir iki ağaç
+                        if (packTreesOk && rng.NextDouble() < 0.7)
+                        {
+                            var arka = q + new Vector2(-d.y, d.x) * (k * (0.75f + (float)rng.NextDouble() * 0.35f)) + d * (((float)rng.NextDouble() - 0.5f) * 0.6f);
+                            if (!CityMap.KirNehirYakin(arka, 0.4f))
+                                AddPrefab(packTrees[rng.Next(packTrees.Length)], anchor, 0f, (float)rng.NextDouble() * 360f, null, arka - anchor,
+                                          0.35f + (float)rng.NextDouble() * 0.25f, false);
+                        }
+                    }
+                }
+                koyNoktalari.Add(merkez);
+            }
+            if (koy > 0) Debug.Log($"Kurye Tycoon: kırda {koy} köy, {ev} köy evi.");
         }
 
         // ---------- Dokulu kır zemini ----------

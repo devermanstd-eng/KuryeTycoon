@@ -20,10 +20,11 @@ namespace KuryeTycoon
             public Courier kurye;
             public Shop dukkan;
             public float oncelik;   // büyük olan üstte
+            public bool kayitlar;   // tıklayınca Kayıtlar açılır (kurye kapsaması)
+            public int kapsamaBolum;
         }
 
         readonly List<Uyari> uyarilar = new List<Uyari>();
-        float uyariYenileAni;
         const int UyariMax = 5;
         const float UyariW = 310f, UyariSatir = 24f;
         const string UyariKey = "KuryeTycoon.DikkatListesiKucuk";
@@ -127,58 +128,26 @@ namespace KuryeTycoon
                     });
             }
 
+            // 5) Haftalık kurye kapsaması: sipariş beklenen ama hiç kurye olmayan saatler (KapsamaTablosu.cs)
+            KapsamaUyarilari();
+
             uyarilar.Sort((a, b) => b.oncelik.CompareTo(a.oncelik));
-        }
-
-        void DrawUyarilar(float sw)
-        {
-            if (Event.current.type == EventType.Layout && Time.unscaledTime >= uyariYenileAni)
-            {
-                uyariYenileAni = Time.unscaledTime + 1f;
-                UyarilariTopla();
-            }
-            if (!UyariGorunur) return;
-
-            var r = UyariRect(sw);
-            UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.88f), 12f, 4f);
-
-            // Başlık: tıklayınca küçülür / açılır
-            var hr = new Rect(r.x, r.y, r.width, 30f);
-            Icons.Draw(new Rect(r.x + 10f, r.y + 8f, 14f, 14f), Icons.Kind.Warning, UITheme.Warn);
-            small.normal.textColor = UITheme.Yazi(new Color(0.93f, 0.94f, 0.96f));
-            GUI.Label(new Rect(r.x + 30f, r.y + 5f, r.width - 60f, 20f), $"Dikkat ({uyarilar.Count})", small);
-            GUI.Label(new Rect(r.xMax - 24f, r.y + 5f, 20f, 20f), UyariKucuk ? "▼" : "▲", small);
-            if (GUI.Button(hr, GUIContent.none, GUIStyle.none)) { bool k = !UyariKucuk; deferred += () => UyariKucuk = k; }
-
-            if (!UyariKucuk)
-            {
-                int n = Mathf.Min(UyariMax, uyarilar.Count);
-                for (int i = 0; i < n; i++)
-                {
-                    var u = uyarilar[i];
-                    var row = new Rect(r.x + 6f, r.y + 30f + i * UyariSatir, r.width - 12f, UyariSatir - 2f);
-                    if (row.Contains(Event.current.mousePosition)) UITheme.Box(row, new Color(1f, 1f, 1f, 0.07f), 6f);
-                    UITheme.Box(new Rect(row.x + 6f, row.center.y - 3f, 6f, 6f), u.renk, 3f);
-                    small.normal.textColor = UITheme.Yazi(new Color(0.88f, 0.9f, 0.93f));
-                    GUI.Label(new Rect(row.x + 18f, row.y + 2f, row.width - 22f, 20f), u.metin, small);
-                    if (GUI.Button(row, GUIContent.none, GUIStyle.none))
-                    {
-                        var sec = u;
-                        deferred += () => UyariyaGit(sec);
-                    }
-                }
-                if (uyarilar.Count > n)
-                {
-                    small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
-                    GUI.Label(new Rect(r.xMax - 70f, r.y + 5f, 44f, 20f), $"+{uyarilar.Count - n}", small);
-                }
-            }
-            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
         }
 
         /// <summary>Uyarının yerine gider; kuryeyse telefonunu, dükkansa bilgi kartını açar.</summary>
         void UyariyaGit(Uyari u)
         {
+            if (u.kayitlar)
+            {
+                // Kayıtlar'ı aç, o gün bölümünde çalışan adayları göster
+                System.Array.Clear(workParts, 0, 4);
+                workParts[Mathf.Clamp(u.kapsamaBolum, 0, 3)] = true;
+                applicationFilter = -1;
+                tab = Tab.IseAlim;
+                panelOpen = true;
+                scroll = Vector2.zero;
+                return;
+            }
             if (MapCamera.I != null) MapCamera.I.FocusOn(u.yer, 0.7f);
             if (u.kurye != null && CourierManager.I.Couriers.Contains(u.kurye))
             {

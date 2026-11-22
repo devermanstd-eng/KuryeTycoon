@@ -104,8 +104,8 @@ namespace KuryeTycoon
                 string status = !map.IsUnlocked(s.tile) ? "Kilitli bölge" : s.exclusive ? "Münhasır" : s.contracted ? "Sözleşmeli" : "Sözleşmesiz";
                 renk = s.def.color;
                 U.SimgeAyarla(binaSimge, s.def.isMarket ? Icons.Kind.Orders : Icons.Kind.Shops, renk.grayscale > 0.7f ? new Color(0.1f, 0.1f, 0.12f) : Color.white);
-                U.Metin(binaAd, s.own && DarkStore.I != null ? DarkStore.StoreName : s.Name);
-                U.Metin(binaAlt, s.own ? "Senin marketin · komisyonsuz" : $"{kind} · {status} · {(ShopHours.IsOpen(s.def) ? "Açık" : "Kapalı")}");
+                U.Metin(binaAd, s.kargo ? KargoAnlasmasi.DepoAdi : s.own && DarkStore.I != null ? DarkStore.StoreName : s.Name);
+                U.Metin(binaAlt, s.kargo ? "Senin kargo deponun · paket dağıtımı" : s.own ? "Senin marketin · komisyonsuz" : $"{kind} · {status} · {(ShopHours.IsOpen(s.def) ? "Açık" : "Kapalı")}");
             }
             else
             {
@@ -124,6 +124,20 @@ namespace KuryeTycoon
             y.Bitir();
         }
 
+        void BinaKargo(Yazici y)
+        {
+            var k = KargoAnlasmasi.I;
+            if (k == null) return;
+            y.Kucuk($"İş günlerinde 09:00–16:00 arası paketler dağıtıma çıkar, 19:00'a kadar teslim edilmeli (cumartesi yarısı, pazar yok). " +
+                    $"Paket başı {GameData.Ft(KargoAnlasmasi.Ucret(15))} (3 km); dağıtılamayan paket için {GameData.Ft(KargoAnlasmasi.Ceza)} ceza.");
+            y.KutularBasla();
+            y.Kutu("Bugün", $"{k.bugunTeslim}/{k.BugunPlan}", $"çıkan {k.BugunCikan}");
+            y.Kutu("Dün", $"{k.dunTeslim} teslim", k.dunKacan > 0 ? $"{k.dunKacan} kaçtı" : "kaçan yok", null, null, k.dunKacan > 0 ? U.Uyari : (Color?)null);
+            y.Kutu("Dünkü gelir", GameData.Ft(k.dunGelir), k.dunCeza > 0 ? $"ceza −{GameData.Ft(k.dunCeza)}" : null);
+            y.Kutu("Toplam", $"{k.toplamTeslim} paket", GameData.Ft(k.toplamGelir));
+            y.KutularBitir();
+        }
+
         void BinaDukkan(Yazici y, Shop s, OrderManager om, float now)
         {
             y.Kucuk($"Adres: {AddressOf(s.tile)} · {CityMap.DistrictOf(s.tile)}");
@@ -137,7 +151,8 @@ namespace KuryeTycoon
             y.Kutu("Toplam", s.ordersTotal.ToString());
             y.KutularBitir();
 
-            if (s.own) BinaKendiMarket(y);
+            if (s.kargo) BinaKargo(y);
+            else if (s.own) BinaKendiMarket(y);
             else UiDukkanAyrinti(y, s, RivalCompany.I);
 
             // Menü / ürünler

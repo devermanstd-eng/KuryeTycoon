@@ -76,7 +76,7 @@ namespace KuryeTycoon
                     y.Kaydirici("Ses seviyesi", GameSounds.Volume, 0f, 1f, $"%{GameSounds.Volume * 100f:0}", v => GameSounds.Volume = v);
                     y.Dugme("Sesi dene", () => GameSounds.Play(Sfx.Iyi), true, "kucuk-dg");
                 }
-                y.Onay("Açıklamaları \"?\" balonu yerine hep açık göster (Kayıtlar ve eski arayüz)", ShowAllDetails, v => ShowAllDetails = v);
+                y.Onay("Açıklamaları \"?\" balonu yerine hep açık göster (Kayıtlar)", ShowAllDetails, v => ShowAllDetails = v);
                 y.Onay("Bütün menüleri baştan aç (deneyimli oyuncular için)", Guide.AllMenusSetting, v => Guide.AllMenusSetting = v);
                 var g = Guide.I;
                 if (g != null)
@@ -130,6 +130,36 @@ namespace KuryeTycoon
                 y.Kutu("Kuryeye", "−" + Ft(odeme), "muhtemel kurye");
                 y.Kutu("Kâr", Ft(kar), null, MoneyColor(kar));
                 y.KutularBitir();
+
+                // Hizmet seviyeleri: ekspres ve planlı teslimat
+                var hz = HizmetSeviyeleri.I;
+                if (hz != null)
+                {
+                    y.Bolum("Hizmet seviyeleri",
+                            "Standart teslimatın yanında müşteriye iki seçenek daha sunabilirsin.\n\n" +
+                            $"Ekspres: müşteri ek ücret öder, sipariş {HizmetSeviyeleri.EkspresSoz:0} dakikada teslim sözüyle gelir ve atamada öne geçer. " +
+                            "Sadece 30 dakikada yetişebilecek siparişlerde (hazırlık ve yol kısa) sunulur. Aceleci müşteriler daha çok seçer, ücret arttıkça seçen azalır. " +
+                            "Geç kalırsan ekspres ücreti müşteriye iade edilir ve puan daha çok düşer; zamanında gelirse müşteri çok memnun kalır.\n\n" +
+                            "Planlı teslimat: müşteri 1–2 saat sonraki bir saat aralığını seçer, küçük bir indirim alır. Yoğun saatte \"kurye yok\" görüp " +
+                            "vazgeçecek müşterilerin bir kısmı planlıya döner (sipariş kaçmaz); yoğun saatte bazıları da kendiliğinden sonraki saati seçer. " +
+                            "Planlı sipariş saati gelene kadar kuryeye atanmaz: talep yoğun saatten sakin saate kayar.");
+                    y.Onay($"Ekspres teslimat ({HizmetSeviyeleri.EkspresSoz:0} dk garanti)", hz.ekspresAcik, v => hz.ekspresAcik = v);
+                    if (hz.ekspresAcik)
+                    {
+                        y.Kaydirici("Ekspres ücreti", hz.ekspresUcret, 200, 2000, Ft(hz.ekspresUcret), v => hz.ekspresUcret = Mathf.RoundToInt(v / 50f) * 50);
+                        int ekBugun = hz.ekspresBugun, ekDun = hz.ekspresDun;
+                        y.KV("Bugün / dün", $"{ekBugun} ekspres ({hz.ekspresGecBugun} geç) · dün {ekDun} ({hz.ekspresGecDun} geç)");
+                        y.KV("Ekspres geliri (dün)", $"{Ft(hz.ekspresGelirDun)} − iade {Ft(hz.ekspresIadeDun)}");
+                        if (ekDun >= 5 && hz.ekspresGecDun > ekDun * 0.25f)
+                            y.Uyari("Dün ekspres siparişlerin dörtte birinden fazlası geç kaldı: iadeler geliri yiyor ve puanı düşürüyor. Kurye sayısını artır ya da ücreti yükselt.");
+                    }
+                    y.Onay("Planlı teslimat (müşteri sonraki bir saati seçebilir)", hz.planliAcik, v => hz.planliAcik = v);
+                    if (hz.planliAcik)
+                    {
+                        y.Kaydirici("Planlı indirimi", hz.planliIndirim, 0, 800, Ft(hz.planliIndirim), v => hz.planliIndirim = Mathf.RoundToInt(v / 50f) * 50);
+                        y.KV("Bugün / dün", $"{hz.planliBugun} planlı ({hz.planliKurtarilanBugun} yoğunluktan kurtarıldı) · dün {hz.planliDun} ({hz.planliKurtarilanDun})");
+                    }
+                }
 
                 y.Bolum("Kurye ücretleri (araca göre)");
                 y.Tablo(new[] { "Araç", "Paket başı", "Km başı" }, true);

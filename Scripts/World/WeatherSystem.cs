@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace KuryeTycoon
@@ -10,7 +11,15 @@ namespace KuryeTycoon
         public static WeatherSystem I { get; private set; }
 
         public WeatherKind Current { get; private set; } = WeatherKind.Gunesli;
-        float nextChange;
+
+        /// <summary>
+        /// Hava önceden planlanır (en az 36 saat ileri): her değişimin saati ve türü bellidir. Böylece yarının hava tahmini
+        /// verilebilir (GunPlani akşam 20:00'de duyurur) ve oyuncu yoğun saat primini, kurye sayısını ona göre ayarlar.
+        /// Tahmin gerçekle aynıdır (oyun içi meteoroloji yanılmaz).
+        /// </summary>
+        public struct Degisim { public float at; public WeatherKind kind; }
+        readonly List<Degisim> plan = new List<Degisim>();
+        const float PlanUfku = 36f * 60f;
 
         static readonly WeatherKind[][] SeasonKinds =
         {
@@ -30,23 +39,37 @@ namespace KuryeTycoon
 
         void Awake() { I = this; }
 
-        void Start() { Roll(); }
+        void Start()
+        {
+            Current = Ciz();
+            PlaniUzat();
+        }
 
         void Update()
         {
-            if (GameClock.I != null && GameClock.I.TotalMinutes >= nextChange) Roll();
+            if (GameClock.I == null) return;
+            float now = GameClock.I.TotalMinutes;
+            if (plan.Count == 0) PlaniUzat();
+            while (plan.Count > 0 && now >= plan[0].at)
+            {
+                var d = plan[0];
+                plan.RemoveAt(0);
+                Uygula(d.kind);
+                PlaniUzat();
+            }
         }
 
-        /// <summary>Kayıttan yüklerken havayı geri koyar (bir sonraki değişim yeniden belirlenir).</summary>
+        /// <summary>Kayıttan yüklerken havayı geri koyar (plan yeniden yapılır).</summary>
         public void Restore(WeatherKind k)
         {
             Current = k;
-            nextChange = GameClock.I.TotalMinutes + Random.Range(240f, 480f);
+            plan.Clear();
+            PlaniUzat();
         }
 
-        void Roll()
+        static WeatherKind Ciz()
         {
-            int s = (int)GameClock.I.Season;
+            int s = GameClock.I != null ? (int)GameClock.I.Season : 0;
             var kinds = SeasonKinds[s];
             var weights = SeasonWeights[s];
             int total = 0;
@@ -54,10 +77,27 @@ namespace KuryeTycoon
             int r = Random.Range(0, total);
             for (int i = 0; i < kinds.Length; i++)
             {
-                if (r < weights[i]) { Current = kinds[i]; break; }
+                if (r < weights[i]) return kinds[i];
                 r -= weights[i];
             }
-            nextChange = GameClock.I.TotalMinutes + Random.Range(240f, 480f);
+            return kinds[0];
+        }
+
+        void PlaniUzat()
+        {
+            if (GameClock.I == null) return;
+            float now = GameClock.I.TotalMinutes;
+            float son = plan.Count > 0 ? plan[plan.Count - 1].at : now;
+            while (son < now + PlanUfku)
+            {
+                son += Random.Range(240f, 480f);
+                plan.Add(new Degisim { at = son, kind = Ciz() });
+            }
+        }
+
+        void Uygula(WeatherKind k)
+        {
+            Current = k;
             if (EventManager.I != null && GameBootstrap.I != null && GameBootstrap.I.Started)
             {
                 string extra = "";
@@ -70,6 +110,86 @@ namespace KuryeTycoon
                 if (extra.Length > 0) EventManager.I.Notify($"Hava değişti: {Name}{extra}");
                 else EventManager.I.NotifyQuiet($"Hava değişti: {Name}");
             }
+        }
+
+        // ------------------------------------------------------------------ tahmin
+
+        /// <summary>Verilen andaki (planlanmış) hava.</summary>
+        public WeatherKind At(float t)
+        {
+            var k = Current;
+            foreach (var d in plan)
+            {
+                if (d.at > t) break;
+                k = d.kind;
+            }
+            return k;
+        }
+
+        public static bool Kotu(WeatherKind k) =>
+            k == WeatherKind.Yagmurlu || k == WeatherKind.Firtina || k == WeatherKind.Karli || k == WeatherKind.Soguk;
+
+        public static string Ad(WeatherKind k)
+        {
+            switch (k)
+            {
+                case WeatherKind.Sicak: return "sıcak";
+                case WeatherKind.Bulutlu: return "bulutlu";
+                case WeatherKind.Yagmurlu: return "yağmurlu";
+                case WeatherKind.Soguk: return "soğuk";
+                case WeatherKind.Karli: return "karlı";
+                case WeatherKind.Firtina: return "fırtına";
+                default: return "güneşli";
+            }
+        }
+
+        public static float TalepCarpani(WeatherKind k)
+        {
+            switch (k)
+            {
+                case WeatherKind.Karli: return 1.5f;
+                case WeatherKind.Firtina: return 1.45f;
+                case WeatherKind.Yagmurlu: return 1.35f;
+                case WeatherKind.Soguk: return 1.2f;
+                case WeatherKind.Sicak: return 1.1f;
+                default: return 1f;
+            }
+        }
+
+        /// <summary>
+        /// Bir günün (mutlak gün, 06:00–24:00) hava tahmini: saat aralıklarıyla. Kötü hava aralıkları ve en kötüsü döner.
+        /// Örnek: "sabah güneşli, 13:00'ten itibaren yağmurlu (siparişler +%35)".
+        /// </summary>
+        public string Tahmin(int gun, out WeatherKind enKotu, out float enKotuBas)
+        {
+            float bas = (gun - 1) * 24f * 60f + 6f * 60f, bit = gun * 24f * 60f;
+            var parcalar = new List<string>();
+            var kotu = WeatherKind.Gunesli;
+            float kotuBas = bas;
+            float enKotuCarpan = 0f;
+            var k = At(bas);
+            float parcaBas = bas;
+            void Ekle(WeatherKind kind, float a, float b)
+            {
+                if (b - a < 30f) return;
+                int ha = Mathf.FloorToInt((a % 1440f) / 60f), hb = Mathf.Clamp(Mathf.CeilToInt((b % 1440f == 0f ? 1440f : b % 1440f) / 60f), 0, 24);
+                string ad = Ad(kind);
+                if (parcalar.Count > 0 && parcalar[parcalar.Count - 1].EndsWith(ad)) return;
+                parcalar.Add(a <= bas + 1f ? (b >= bit - 1f ? $"gün boyu {ad}" : $"{hb:00}:00'e kadar {ad}") : $"{ha:00}:00'ten itibaren {ad}");
+                float c = TalepCarpani(kind) + (Kotu(kind) ? 0.01f : 0f);
+                if (c > enKotuCarpan) { enKotuCarpan = c; kotu = kind; kotuBas = a; }
+            }
+            foreach (var d in plan)
+            {
+                if (d.at <= bas) continue;
+                if (d.at >= bit) break;
+                Ekle(k, parcaBas, d.at);
+                k = d.kind; parcaBas = d.at;
+            }
+            Ekle(k, parcaBas, bit);
+            enKotu = kotu;
+            enKotuBas = kotuBas;
+            return string.Join(", ", parcalar);
         }
 
         public bool IsRainy => Current == WeatherKind.Yagmurlu || Current == WeatherKind.Firtina;
