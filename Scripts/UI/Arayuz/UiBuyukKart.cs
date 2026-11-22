@@ -194,6 +194,7 @@ namespace KuryeTycoon
             y.Bosluk(4);
             y.KV("Aynı anda", $"{c.EffectiveCapacity} paket");
             y.Kucuk($"Seçicilik: {c.PickinessText}");
+            y.Kucuk(MoralEtkisi.Aciklama(c));
             y.Bitir();
         }
 

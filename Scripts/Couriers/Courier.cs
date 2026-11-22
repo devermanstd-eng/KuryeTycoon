@@ -1303,6 +1303,8 @@ namespace KuryeTycoon
             t *= UpgradeManager.I.OfferThresholdMultiplier; // kurye uygulaması 2.0
             t *= Difficulty.OfferThreshold;                  // zorluk seviyesi
             t *= KuryeOzellik.TeklifCarpani(this);           // paragöz kurye daha seçici
+            t *= MoralEtkisi.TeklifCarpani(morale);          // morali yüksek kurye daha çok işi kabul eder
+            if (UpgradeManager.I != null) t *= UpgradeManager.I.AkademiTeklifCarpani;   // kurye akademisi
             return t;
         }
 

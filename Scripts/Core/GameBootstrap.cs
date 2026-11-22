@@ -81,6 +81,9 @@ namespace KuryeTycoon
             Make<CityEvents>("Şehir Etkinlikleri");
             Make<CrisisManager>("Krizler");
             Make<CourierMessages>("Kurye Mesajları");
+            Make<HizmetSeviyeleri>("Hizmet Seviyeleri");
+            Make<KargoAnlasmasi>("Kargo");
+            Make<GunPlani>("Gün Planı");
             Make<DebugReport>("Hata Ayıklama");
             Make<UpgradeManager>("Geliştirmeler");
             Make<SupportManager>("Destek Ekibi");
@@ -180,6 +183,9 @@ namespace KuryeTycoon
                 CityEvents.I.Init();
                 CrisisManager.I.Init();
                 CourierMessages.I.Init();
+                HizmetSeviyeleri.I.Init();
+                KargoAnlasmasi.I.Init();
+                GunPlani.I.Init();
                 FamilyLoan.I.principal = d.loan != null && d.loan.principal > 0 ? d.loan.principal : familyLoanAmount;
                 FamilyLoan.I.InitRestored(d.loan);
                 SaveSystem.ApplyAfterInit(d);
@@ -209,7 +215,7 @@ namespace KuryeTycoon
             Denge.Sifirla();
             Anlatici.Sifirla();
             Senaryo.Sifirla();
-            EconomyManager.I.money = familyLoanAmount;
+            EconomyManager.I.money = (long)(Mathf.Round(familyLoanAmount * Difficulty.StartCash / 1000f) * 1000f);   // zorluğa göre başlangıç kasası
             EconomyManager.I.InitCashMarkers();
             OrderHeat.Reset(); DukkanKari.Reset();
             Telemetry.Reset();
@@ -228,6 +234,9 @@ namespace KuryeTycoon
             CityEvents.I.Init();
             CrisisManager.I.Init();
             CourierMessages.I.Init();
+            HizmetSeviyeleri.I.Init();
+            KargoAnlasmasi.I.Init();
+            GunPlani.I.Init();
             long borc = Senaryo.AileBorcu(System.Math.Max(familyLoanTotal, familyLoanAmount));
             if (borc <= 0) FamilyLoan.I.BorcsuzBasla();   // serbest mod
             else

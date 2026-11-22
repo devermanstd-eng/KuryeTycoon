@@ -40,9 +40,13 @@ namespace KuryeTycoon
         // Son günlerin hizmet karnesi (her gün %20 unutulur: ~5 günlük hafıza). Memnuniyet buna göre yavaşça değişir.
         public float perfOk, perfLate, perfCold, perfCancel, perfIncident;
         public bool own;                   // kendi marketin (dark store): komisyon yok, satışın tamamı senin, stok senin
+        public bool kargo;                 // kargo deposu (KargoAnlasmasi): siparişleri kargo şirketi verir, sepet yok
+        // Öncelikli hazırlık anlaşması (Mutfak): dükkan senin siparişlerini sıraya sokmadan hazırlar, karşılığında komisyonundan pay alır
+        public bool oncelikli;
+        public int oncelikDegisimGunu = -999;
 
         public string Name => def.name;
-        public float Commission => own ? 1f : Mathf.Max(0.05f, def.commission + commissionBonus);
+        public float Commission => own ? 1f : Mathf.Max(0.05f, def.commission + commissionBonus - (oncelikli ? Mutfak.OncelikKomisyon : 0f));
     }
 
     public class Order
@@ -125,6 +129,11 @@ namespace KuryeTycoon
         public bool robot;             // teslimat robotu götürdü (RobotFilo)
         public bool eczane;            // eczane siparişi: ilaç sertifikalı kurye götürür, kapıda kimlik/PIN (KuryeEgitim.Ilac)
         public bool catering;          // kurumsal / catering siparişi: zamanı önceden belli, büyük (KurumsalSiparisler)
+        public bool ekspres;           // ekspres teslimat: 30 dk sözü ve ek ücret; geç kalırsa ücret iade edilir (HizmetSeviyeleri)
+        public int ekspresUcret;
+        public bool planli;            // planlı teslimat: müşteri daha sonraki bir saat aralığını seçti (HizmetSeviyeleri)
+        public float holdUntil = -1f;  // bu ana kadar kuryeye atanmaz (planlı teslimat)
+        public bool kargo;             // kargo paketi (KargoAnlasmasi): gün içinde, akşama kadar teslim
         public string noteTranslation = ""; // not Macarca ise Türkçesi ("Çevir")
         public bool markedLate;        // kurye "gecikme bildir"e bastı: müşteriye haber verildi, söz verilen süre +10 dk
         public bool shopPinged;        // destek dükkanı hızlandırması için aradı
