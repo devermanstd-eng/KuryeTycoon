@@ -280,9 +280,9 @@ namespace KuryeTycoon
                 {
                     int n = 0;
                     foreach (var a in ks.Adaylar) if (ui.WorkInfoFor(a.aday.occupation, a.aday.scheduleSeed, GameClock.I).parts[i]) n++;
-                    saatAdlari.Add($"{WorkPartNames[i]} {WorkPartRange(i)} ({n})");
+                    saatAdlari.Add($"{WorkPartNames[i]} ({n})");
                 }
-                y.Kucuk("Çalışma saatine göre (birden fazla seçebilirsin):");
+                y.Kucuk("Çalışma saati (birden fazla seçebilirsin) · Sabah 06–12 · Öğlen 12–17 · Akşam 17–22 · Gece 22–06");
                 y.CokluSecim(saatAdlari, i => ui.workParts[i], i => ui.workParts[i] = !ui.workParts[i]);
                 if (!ui.AnyWorkPart) return;
 
