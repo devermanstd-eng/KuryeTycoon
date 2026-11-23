@@ -14,6 +14,8 @@ namespace KuryeTycoon
         class UiGelisim : UiSekme
         {
             Label kasa, fiyat, hesaplar, gider;
+            Label bKar, bCarpan, bDeger, bMarka, bEngel;
+            Button bSat;
             readonly List<Kart> kartlar = new List<Kart>();
 
             class Kart
@@ -38,8 +40,38 @@ namespace KuryeTycoon
                 fiyat.style.marginTop = 6;
                 ui.Ipucu(bilgi, "Her geliştirmenin kurulum bedeli ve günlük gideri var. Sadece gerçekten gerektiğinde yükselt. " +
                                 "Büyük platform paketleri şehir büyüdükçe, tesisler ise merkez ofis büyüdükçe açılır. İşletme gideri olanları küçültebilirsin " +
-                                "(kurulum bedeli geri gelmez). Fiyatlar şirketin büyüklüğüne göre değişir: son iki haftanın günlük geliri arttıkça kurulum " +
-                                "bedelleri artar, günlük giderler daha yavaş artar. Erken yatırım ucuzdur.");
+                                "(kurulum bedeli geri gelmez). Fiyatlar sabit: şirket büyüdükçe aynı geliştirme sana daha ucuz gelir.");
+
+                // Büyüme: çarpanlar, şirket değeri ve satış (prestij)
+                var bk = U.El(kok, "kart");
+                U.Kalin(bk, "Büyüme ve şirket değeri", "buyuk");
+                bKar = U.Yazi(bk, "", "kucuk");
+                bKar.style.marginTop = 4;
+                bCarpan = U.Yazi(bk, "", "kucuk");
+                bCarpan.style.marginTop = 2;
+                bDeger = U.Yazi(bk, "", "kucuk");
+                bDeger.style.marginTop = 6;
+                bMarka = U.Yazi(bk, "", "minik", "soluk");
+                bMarka.style.marginTop = 3;
+                bEngel = U.Yazi(bk, "", "kilit-yazi");
+                var bd = U.El(bk, "satir");
+                bd.style.marginTop = 8;
+                bSat = U.Dugme(bd, "", () =>
+                {
+                    long deger = Marka.SirketDegeri;
+                    int p = Marka.PuanFor(deger);
+                    string sonraki = Marka.Sehirler[Mathf.Min(Marka.Veri.satilan + 1, Marka.Sehirler.Length - 1)];
+                    ui.AskConfirm("Şirketi sat",
+                        $"{CompanyProfile.Name} {Ft(deger)} değerle satılacak. Karşılığında {p} marka puanı kazanırsın. " +
+                        $"Bu oyun biter ve kaydı silinir; {sonraki} şehrinde yeni bir şirketle baştan başlarsın. Marka puanlarını kurulum ekranında " +
+                        "kalıcı geliştirmelere harcarsın (sermaye, sipariş, kurye ağı, komisyon, indirimli geliştirme, hazır otomasyon). " +
+                        "Ayrıca her satılan şirket komisyon gelirini kalıcı olarak %5 artırır.",
+                        "Evet, sat ve yeni şehre geç", () =>
+                        {
+                            int alinan = Marka.Sat();
+                            if (alinan > 0) ui.deferred = () => GameBootstrap.Restart();
+                        });
+                }, "ilk");
 
                 foreach (var d in UpgradeManager.Defs)
                 {
@@ -95,6 +127,24 @@ namespace KuryeTycoon
                 U.Metin(kasa, Ft(e.FreeCash));
                 U.Metin(gider, Ft(up.TotalDailyCost));
                 U.Metin(hesaplar, $"{CourierManager.I.Couriers.Count}/{up.CourierCap}");
+                long ort = Buyume.OrtalamaNet(7);
+                float eg = Buyume.Egilim;
+                U.Metin(bKar, $"Günlük kâr (7 gün ort.): {(ort < 0 ? "−" : "+")}{Ft(System.Math.Abs(ort))}" +
+                              (Mathf.Abs(eg) > 0.05f ? $" · son 3 gün %{Mathf.Abs(eg) * 100f:0} {(eg > 0 ? "yükselişte" : "düşüşte")}" : ""));
+                U.Renk(bKar, ort < 0 ? U.Kotu : U.YaziRengi);
+                U.Metin(bCarpan, Buyume.CarpanAciklama);
+                long deger = Marka.SirketDegeri;
+                int puan = Marka.PuanFor(deger);
+                U.Metin(bDeger, $"Şirketin değeri {Ft(deger)} · satarsan {puan} marka puanı (sonraki puan {Ft(Marka.SonrakiPuanDegeri(puan))} değerde)");
+                bool markaVar = Marka.Veri.satilan > 0 || Marka.Veri.puan > 0;
+                U.Metin(bMarka, (markaVar ? $"Marka: {Marka.Ozet}. " : "") +
+                                $"Şehir: {Marka.SehirAdi}. Değer = 7 günlük ort. kâr × 90 + serbest kasa + dükkanlar + bölgeler − kalan kredi.");
+                string engel = Marka.SatisEngeli;
+                U.Goster(bEngel, engel.Length > 0);
+                if (engel.Length > 0) U.Metin(bEngel, $"Satış için: {engel}.");
+                U.Goster(bSat, engel.Length == 0);
+                if (engel.Length == 0) U.Metin(bSat, $"Şirketi sat — {puan} marka puanı");
+
                 bool carpan = Denge.FiyatCarpani > 1f;
                 U.Goster(fiyat, carpan);
                 if (carpan) U.Metin(fiyat, $"Fiyat seviyesi ×{Denge.FiyatCarpani:0.00}: son 14 günün ortalama gelirine göre (şirket büyüdükçe tedarikçiler de fiyat artırır).");

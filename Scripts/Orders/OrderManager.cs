@@ -161,7 +161,7 @@ namespace KuryeTycoon
 
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
-                         * Difficulty.OrderRate * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
+                         * Difficulty.OrderRate * Marka.SiparisCarpani * Marka.SehirSiparisCarpani * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
                          * CrisisManager.DemandFactor
                          * (RivalCompany.I != null ? RivalCompany.I.ServiceDemandFactor : 1f);   // hızlı teslimat pazarı büyütür
             if (!CrisisManager.OrdersBlocked) spawnAcc += rate * dm;   // uygulama çöktüyse yeni sipariş gelmez
@@ -444,6 +444,8 @@ namespace KuryeTycoon
             int commission = Mathf.RoundToInt(basket * shop.Commission);
             var quote = EconomyManager.I.QuoteFee(commission, dist, kg);
             int fee = quote.Total;
+            // Büyüme: kilometre taşı ve marka çarpanı komisyona ücret hesaplandıktan sonra uygulanır (müşteri ücreti düşmez, kâr artar)
+            commission = Mathf.RoundToInt(commission * Buyume.KomisyonCarpani);
 
             // Pahalı teslimat ücreti = müşteri vazgeçebilir (kötü hava ücretini çoğu müşteri anlayışla karşılar)
             // Ücret ~3,75 € (1500 Ft) iken müşterilerin ~%90'ı sipariş verir, 5 €'da ~%73, 6,25 €'da ~%57
@@ -1009,7 +1011,7 @@ namespace KuryeTycoon
                 basket = basket,
                 distance = dist,
                 weightKg = kg,
-                commissionIncome = Mathf.RoundToInt(basket * shop.Commission),
+                commissionIncome = Mathf.RoundToInt(basket * shop.Commission * Buyume.KomisyonCarpani),
                 deliveryFee = teslimatUcreti,
                 feeBase = teslimatUcreti,
                 createdAt = now,

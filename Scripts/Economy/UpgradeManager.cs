@@ -5,7 +5,7 @@ namespace KuryeTycoon
     // Sıra kayıt uyumluluğu için sabit: yeni türler sona eklenir
     // Dinlenme = kurye avantaj programı, Bakim = anlaşmalı servisler, Hijyen = çanta kontrolü ve ekipman partneri (eski adlar kayıt uyumu için)
     // Yeni türler hep sona eklenir (kayıttaki seviye dizisi sıraya göre okunur)
-    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo, KargoBisikleti, PaketDolabi, Robot, Kargo, Akademi }
+    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo, KargoBisikleti, PaketDolabi, Robot, Kargo, Akademi, Otomasyon }
 
     public class UpgradeDef
     {
@@ -299,6 +299,23 @@ namespace KuryeTycoon
                 reqOffice = new[] { 0, 2, 3 },
                 category = ExpenseCategory.Gelistirme,
             },
+            new UpgradeDef
+            {
+                kind = UpgradeKind.Otomasyon, name = "Operasyon otomasyonu",
+                summary = "Her gün elle yaptığın ayarları bir yazılım ve küçük bir ekip devralır: yoğun saat primleri, planlı teslimat, kurye " +
+                          "kayıtları, mutfak anlaşmaları. Ne yaptığını her sabah bildirir. Sen oyunda değilken de şirket çalışmaya devam eder: " +
+                          "oyuna dönünce \"sen yokken\" kazancı gelir (seviye arttıkça daha uzun ve daha verimli).",
+                costs = new[] { 150000, 600000, 2000000 },
+                daily = new[] { 0, 500, 1500, 4000 },
+                levelNames = new[] { "Yok", "Vardiya asistanı", "+ Kayıt asistanı", "+ Operasyon müdürü" },
+                effect = lv => (lv == 0 ? "her ayar elle"
+                             : lv == 1 ? "yoğun saat primlerini ve planlı teslimatı kendisi açar/kapatır"
+                             : lv == 2 ? "primler ve planlı teslimat + kurye kayıtlarını ihtiyaca göre açar/kapatır"
+                             : "primler, planlı teslimat, kayıtlar + dükkanda bekleme uzarsa öncelikli hazırlık anlaşması")
+                             + $" · oyun kapalıyken kazanç %{Otomasyon.Verim(lv) * 100f:0}, en fazla {Otomasyon.SaatSiniri(lv):0} saat",
+                reqDistrict = new[] { 0, 2, 3 },
+                category = ExpenseCategory.Gelistirme,
+            },
         };
 
         static float AkademiMoralAt(int lv) => new[] { 0f, 0.04f, 0.08f, 0.12f }[Mathf.Clamp(lv, 0, 3)];
@@ -378,6 +395,13 @@ namespace KuryeTycoon
         public int Level(UpgradeKind k) => levels[(int)k];
         public bool Has(UpgradeKind k) => levels[(int)k] > 0;
 
+        /// <summary>Doğrudan seviye ver (yeni oyunda marka bonusu: hazır sistemler). Bedel alınmaz.</summary>
+        public void SetLevel(UpgradeKind k, int lv)
+        {
+            var d = Def(k);
+            levels[(int)k] = Mathf.Clamp(lv, 0, d != null ? d.MaxLevel : 0);
+        }
+
         // ---------- Kayıt ----------
         public int[] CaptureLevels() => (int[])levels.Clone();
 
@@ -442,7 +466,9 @@ namespace KuryeTycoon
             // Şirket büyüdükçe kurulum bedeli artar. Kurye platformu paketi çarpanın yarısını alır: 15.11 testinde (işletme giderleri
             // ve geçici vergiyle) kurye sayısı 30 gün 32'de kaldı, 45 hesaplık paket 9 000–9 900 €'ya çıkmıştı; kayıplar ve geç teslim arttı.
             // Metropol tabanı da 1,6 M'dan 1,1 M'ya indi (çarpan 2,75'te ~5 100 €).
-            return lv >= d.MaxLevel ? -1 : (int)Denge.Olcekle(d.costs[lv], k == UpgradeKind.Platform ? 0.5f : 1f);
+            if (lv >= d.MaxLevel) return -1;
+            long bedel = Denge.Olcekle(d.costs[lv], k == UpgradeKind.Platform ? 0.5f : 1f);
+            return (int)(Mathf.Round(bedel * Marka.GelistirmeCarpani / 1000f) * 1000f);   // marka: deneyimli yönetim indirimi
         }
 
         public bool Buy(UpgradeKind k)

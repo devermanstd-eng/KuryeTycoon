@@ -819,6 +819,9 @@ namespace KuryeTycoon
                           $"kargo {(kg != null ? kg.toplamTeslim : 0)} teslim / {(kg != null ? kg.toplamKacan : 0)} kaçan ({GameData.Ft(kg != null ? kg.toplamGelir : 0)}) · " +
                           $"hastalık {Sayac("Kurye: hastalandı") + Sayac("Kurye: grip (dalga)")} (grip dalgası {Sayac("Olay: grip dalgası")}) · " +
                           $"bölge sadakati:{(sadakat.Length > 0 ? sadakat : " kayıp yok")}");
+            sb.AppendLine($"Büyüme: komisyon çarpanı ×{Buyume.KomisyonCarpani:0.00} ({Buyume.KartTasSayisi} büyük taş) · 7 gün ort. kâr {GameData.Ft(Buyume.OrtalamaNet(7))} · " +
+                          $"şirket değeri {GameData.Ft(Marka.SirketDegeri)} ({Marka.PuanFor(Marka.SirketDegeri)} marka puanı) · " +
+                          $"otomasyon seviye {Otomasyon.Seviye} ({(Otomasyon.I != null ? Otomasyon.I.toplamIslem : 0)} işlem)");
         }
 
         string Ozet(List<string> kilitli)

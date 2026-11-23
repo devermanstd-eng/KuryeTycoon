@@ -28,7 +28,7 @@ namespace KuryeTycoon
             public Label deger, alt;
         }
 
-        Gosterge gKasa, gItibar, gKurye, gPazar, gZaman;
+        Gosterge gKasa, gKar, gItibar, gKurye, gPazar, gZaman;
 
         static readonly Color KasaRengi = new Color(0.40f, 0.85f, 0.55f);
         static readonly Color HarcaRengi = new Color(0.45f, 0.75f, 1f);
@@ -53,6 +53,17 @@ namespace KuryeTycoon
                        $"Harcanabilir: {Ft(e.FreeCash)}. Kuryelere ödenecek hakedişler düşülünce kalan; harcamalarını buna göre yap.\n" +
                        "Kurye hakedişleri ayın 15'inde ve son günü kasadan ödenir.";
             });
+            gKar = GostergeEkle(sol, Icons.Kind.Chart, KasaRengi, () =>
+            {
+                long ort = Buyume.OrtalamaNet(7);
+                float eg = Buyume.Egilim;
+                return $"Son 7 günün ortalama net kârı: {Ft(ort)}/gün" +
+                       (Mathf.Abs(eg) > 0.05f ? $" (son 3 gün {(eg > 0 ? "yükselişte" : "düşüşte")}, %{Mathf.Abs(eg) * 100f:0})" : "") + ".\n" +
+                       Buyume.CarpanAciklama + " Her büyük kilometre taşı geliri kalıcı olarak artırır.\n" +
+                       (Marka.Veri.satilan > 0 || Marka.Veri.puan > 0 ? $"Marka: {Marka.Ozet}.\n" : "") +
+                       $"Şirketin değeri {Ft(Marka.SirketDegeri)} (Gelişim > Büyüme: şirketi satıp yeni şehirde marka puanıyla başlayabilirsin).";
+            });
+            U.Tikla(gKar.kok, () => SekmeyeGit(Tab.Gelistirmeler));
             gItibar = GostergeEkle(sol, Icons.Kind.Star, ItibarRengi, () =>
             {
                 float f = ItibarFarki();
@@ -187,6 +198,10 @@ namespace KuryeTycoon
 
             bool eksi = eco.FreeCash < 0;
             GostergeAyarla(gKasa, Ft(eco.money), "harcanabilir " + Ft(eco.FreeCash), KasaRengi, null, eksi ? U.Kotu : (Color?)null);
+            long karOrt = Buyume.OrtalamaNet(7);
+            float karEg = Buyume.Egilim;
+            GostergeAyarla(gKar, (karOrt >= 0 ? "+" : "−") + Ft(System.Math.Abs(karOrt)) + (karEg > 0.05f ? " ▲" : karEg < -0.05f ? " ▼" : ""),
+                           $"günlük kâr · ×{Buyume.KomisyonCarpani:0.00}", KasaRengi, karOrt < 0 ? U.Kotu : (Color?)null);
             float fark = ItibarFarki();
             GostergeAyarla(gItibar, $"{CompanyProfile.Reputation:0.0}" + (fark > 0.01f ? " ▲" : fark < -0.01f ? " ▼" : ""), "itibar", ItibarRengi,
                            fark < -0.01f ? new Color(1f, 0.6f, 0.5f) : (Color?)null);

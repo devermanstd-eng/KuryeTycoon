@@ -88,6 +88,46 @@ namespace KuryeTycoon
             });
         }
 
+        static int SozlesmeliDukkan
+        {
+            get
+            {
+                if (CityMap.I == null) return 0;
+                int n = 0;
+                foreach (var s in CityMap.I.Shops) if (s.contracted && !s.own) n++;
+                return n;
+            }
+        }
+
+        void Dukkanlar(string id, int target, long reward)
+        {
+            Defs.Add(new MilestoneDef
+            {
+                id = id, card = true, reward = reward,
+                title = $"{target} sözleşmeli dükkan",
+                text = $"{target} dükkan siparişlerini senin kuryelerinle gönderiyor.",
+                reached = () => SozlesmeliDukkan >= target,
+                progress = () => $"{Mathf.Min(SozlesmeliDukkan, target)} / {target}"
+            });
+        }
+
+        void GunlukKar(string id, long target, long reward)
+        {
+            Defs.Add(new MilestoneDef
+            {
+                id = id, card = true, reward = reward,
+                title = $"Günde {Ft(target)} kâr",
+                text = $"Bir günde {Ft(target)} net kâr ettin.",
+                reached = () =>
+                {
+                    var h = StatsHistory.I;
+                    if (h == null) return false;
+                    foreach (var d in h.Days) if (d.net >= target) return true;
+                    return false;
+                }
+            });
+        }
+
         void BuildDefs()
         {
             Defs.Clear();
@@ -95,10 +135,23 @@ namespace KuryeTycoon
             Deliveries("teslimat_1", 1, false, 2000);
             Deliveries("teslimat_100", 100, true, 10000);
             Deliveries("teslimat_1000", 1000, true, 50000, 0.05f);
+            Deliveries("teslimat_5000", 5000, true, 120000);
             Deliveries("teslimat_10000", 10000, true, 250000, 0.1f);
+            Deliveries("teslimat_25000", 25000, true, 500000);
+            Deliveries("teslimat_50000", 50000, true, 900000);
+            Deliveries("teslimat_100000", 100000, true, 1600000, 0.1f);
             Couriers("kurye_5", 5, 10000);
             Couriers("kurye_10", 10, 30000);
             Couriers("kurye_20", 20, 80000);
+            Couriers("kurye_40", 40, 200000);
+            Couriers("kurye_80", 80, 500000);
+            Couriers("kurye_150", 150, 1200000);
+            Dukkanlar("dukkan_5", 5, 40000);
+            Dukkanlar("dukkan_10", 10, 100000);
+            Dukkanlar("dukkan_20", 20, 300000);
+            GunlukKar("gunluk_kar_2", 400000, 120000);
+            GunlukKar("gunluk_kar_3", 1200000, 400000);
+            GunlukKar("gunluk_kar_4", 4000000, 1200000);
             Defs.Add(new MilestoneDef
             {
                 id = "bolge_2", card = true, title = "Yeni ilçe", reward = 40000,
@@ -190,16 +243,20 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Büyük taşların kalıcı ödülü (Buyume.TasCarpani).</summary>
+        static string KaliciMetin =>
+            $"\nKalıcı ödül: komisyon geliri +%{Buyume.TasBasi * 100f:0} (şimdi toplam ×{Buyume.KomisyonCarpani:0.00}).";
+
         /// <summary>Ödülü öder; kart/bildirim için açıklama döner.</summary>
         static string PayReward(MilestoneDef m)
         {
             if (m.reward > 0 && EconomyManager.I != null) EconomyManager.I.AddIncome(m.reward, $"Kilometre taşı ödülü: {m.title}");
             if (m.reputation > 0f) CompanyProfile.AddReputation(m.reputation);
             if (m.reward <= 0 && m.reputation <= 0f) return "";
-            if (m.reward <= 0) return m.card ? "\n\nÖdül: itibarın arttı." : " Ödül: itibar.";
+            if (m.reward <= 0) return m.card ? "\n\nÖdül: itibarın arttı." + KaliciMetin : " Ödül: itibar.";
             string rep = m.reputation > 0f ? " ve itibar" : "";
             return m.card
-                ? $"\n\nÖdül: {Ft(m.reward)}{rep} (basın ilgisi ve sponsorluk). Kasana eklendi."
+                ? $"\n\nÖdül: {Ft(m.reward)}{rep} (basın ilgisi ve sponsorluk). Kasana eklendi.{KaliciMetin}"
                 : $" Ödül: {Ft(m.reward)}{rep}.";
         }
 

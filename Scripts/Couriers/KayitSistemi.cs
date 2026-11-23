@@ -234,7 +234,7 @@ namespace KuryeTycoon
                 float rep = 0.5f + 0.15f * CompanyProfile.Reputation;
                 float bonus = Mathf.Lerp(0.8f, 1.3f, (EconomyManager.I.bonusMultiplier - 0.5f) / 1.5f);
                 float kampanya = (ReklamAktif ? 1.6f : 1f) * (1f + 0.15f * yeniBonus) * (1f + 0.08f * tavsiyePrim) * (IlanAktif ? 1.25f : 1f);
-                return rep * bonus * kampanya * UpgradeManager.I.ApplicationMultiplier * Difficulty.ApplicationRate;
+                return rep * bonus * kampanya * UpgradeManager.I.ApplicationMultiplier * Difficulty.ApplicationRate * Marka.BasvuruCarpani;
             }
         }
 

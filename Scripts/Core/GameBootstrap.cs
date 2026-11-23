@@ -84,6 +84,7 @@ namespace KuryeTycoon
             Make<HizmetSeviyeleri>("Hizmet Seviyeleri");
             Make<KargoAnlasmasi>("Kargo");
             Make<GunPlani>("Gün Planı");
+            Make<Otomasyon>("Otomasyon");
             Make<DebugReport>("Hata Ayıklama");
             Make<UpgradeManager>("Geliştirmeler");
             Make<SupportManager>("Destek Ekibi");
@@ -168,6 +169,7 @@ namespace KuryeTycoon
                 Senaryo.GunlukTohum = d.gunlukTohum;
                 Anlatici.Secili = (Anlatici.Tur)Mathf.Clamp(d.anlatici, 0, 2);
                 Anlatici.Sifirla();
+                Marka.AktifSehir = Mathf.Clamp(d.sehirNo, 0, Marka.Sehirler.Length - 1);
 
                 GenerateWorld(d.mapSeed);
                 CourierManager.I.Init();
@@ -186,6 +188,7 @@ namespace KuryeTycoon
                 HizmetSeviyeleri.I.Init();
                 KargoAnlasmasi.I.Init();
                 GunPlani.I.Init();
+                Otomasyon.I.Init();
                 FamilyLoan.I.principal = d.loan != null && d.loan.principal > 0 ? d.loan.principal : familyLoanAmount;
                 FamilyLoan.I.InitRestored(d.loan);
                 SaveSystem.ApplyAfterInit(d);
@@ -204,7 +207,27 @@ namespace KuryeTycoon
             GameClock.I.SpeedMultiplier = 1f;
             GameClock.I.Paused = false;
             EventManager.I.Notify($"Kayıtlı oyun yüklendi ({d.gameDate}). Kayıt anında yolda olan siparişler iptal oldu, kuryeler merkez ofiste.");
+            Otomasyon.SenYokken(d.kayitUtc);   // oyun kapalıyken kazanç (incremental)
             return true;
+        }
+
+        /// <summary>Yeni oyunun başlangıç kasası: zorluğa göre (Difficulty.StartCash) + marka sermayesi.</summary>
+        public long BaslangicKasasi(DifficultyLevel d) =>
+            (long)(Mathf.Round(familyLoanAmount * Difficulty.StartCashFor(d) / 1000f) * 1000f) + Marka.BaslangicEki;
+
+        /// <summary>Marka (prestij): hazır sistemler ve büyük şehirde güçlü rakipler.</summary>
+        static void MarkaBaslangici()
+        {
+            int oto = Marka.HazirOtomasyon;
+            if (oto > 0 && UpgradeManager.I != null) UpgradeManager.I.SetLevel(UpgradeKind.Otomasyon, oto);
+            int sehir = Marka.AktifSehir;
+            if (sehir > 0 && RivalCompany.I != null)
+                foreach (var r in RivalCompany.I.Rakipler)
+                {
+                    r.couriers += 2 * sehir;
+                    r.reputation = Mathf.Min(4.4f, r.reputation + 0.08f * sehir);
+                    r.money += 600000L * sehir;
+                }
         }
 
         /// <summary>Kurulum ekranındaki "Başla" butonu çağırır.</summary>
@@ -215,7 +238,9 @@ namespace KuryeTycoon
             Denge.Sifirla();
             Anlatici.Sifirla();
             Senaryo.Sifirla();
-            EconomyManager.I.money = (long)(Mathf.Round(familyLoanAmount * Difficulty.StartCash / 1000f) * 1000f);   // zorluğa göre başlangıç kasası
+            // Marka: satılan şirket sayısı kadar büyük şehre geçilir (sadece Klasik oyunda)
+            Marka.AktifSehir = Senaryo.Secili == Senaryo.Tur.Klasik ? Marka.SiradakiSehir : 0;
+            EconomyManager.I.money = BaslangicKasasi(Difficulty.Level);
             EconomyManager.I.InitCashMarkers();
             OrderHeat.Reset(); DukkanKari.Reset();
             Telemetry.Reset();
@@ -237,6 +262,7 @@ namespace KuryeTycoon
             HizmetSeviyeleri.I.Init();
             KargoAnlasmasi.I.Init();
             GunPlani.I.Init();
+            Otomasyon.I.Init();
             long borc = Senaryo.AileBorcu(System.Math.Max(familyLoanTotal, familyLoanAmount));
             if (borc <= 0) FamilyLoan.I.BorcsuzBasla();   // serbest mod
             else
@@ -245,6 +271,7 @@ namespace KuryeTycoon
                 FamilyLoan.I.Init();
             }
             Senaryo.Baslat();   // senaryonun başlangıç ayarları (sermaye, güçlü rakip...)
+            MarkaBaslangici();
             Guide.I.InitNew();
             SaveSystem.I.Init();
 
@@ -253,6 +280,8 @@ namespace KuryeTycoon
 
             // Kısa tutuldu: menüleri ilk gün rehberi (Tutorial.cs) tek tek gösterir, ayrıntılar pencerelerdeki "Ayrıntı"da.
             EventManager.I.Push(new GameEvent($"Hoş geldin, {CompanyProfile.Name}!",
+                (Marka.AktifSehir > 0 ? $"Yeni şehir: {Marka.SehirAdi}. Önceki şirketlerinin tecrübesi seninle: {Marka.Ozet}. " +
+                                        "Bu şehir daha büyük (daha çok sipariş) ama rakipler de daha güçlü.\n\n" : "") +
                 "2 kuryen ve 2 sözleşmeli dükkanın var; siparişler otomatik atanır.\n" +
                 (Senaryo.Secili == Senaryo.Tur.Klasik ? "Amacın: kâr et, kredi taksitlerini öde, rakiplerini geç.\n\n"
                                                        : $"Senaryo: {Senaryo.Adlar[(int)Senaryo.Secili]}. {Senaryo.Aciklamalar[(int)Senaryo.Secili]}\n\n") +

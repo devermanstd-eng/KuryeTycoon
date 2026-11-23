@@ -189,6 +189,8 @@ namespace KuryeTycoon
         public HizmetSave hizmet;              // ekspres ve planlı teslimat (eski kayıtlarda yok)
         public KargoSave kargo;                // kargo deposu ve sayıları (eski kayıtlarda yok)
         public GunPlaniSave gunPlani;          // grip dalgası (eski kayıtlarda yok)
+        public int sehirNo;                    // Marka: oyunun şehri (0 = Nyíregyháza; eski kayıtlarda 0)
+        public long kayitUtc;                  // kaydın gerçek zamanı (UTC tick): oyun kapalıyken kazanç için
     }
 
     // =====================================================================
@@ -419,7 +421,9 @@ namespace KuryeTycoon
                 telemetry = Telemetry.Capture(),
                 hizmet = HizmetSeviyeleri.I != null ? HizmetSeviyeleri.I.Kaydet() : null,
                 kargo = KargoAnlasmasi.I != null ? KargoAnlasmasi.I.Kaydet() : null,
-                gunPlani = GunPlani.I != null ? GunPlani.I.Kaydet() : null
+                gunPlani = GunPlani.I != null ? GunPlani.I.Kaydet() : null,
+                sehirNo = Marka.AktifSehir,
+                kayitUtc = System.DateTime.UtcNow.Ticks
             };
 
             foreach (var s in CityMap.I.Shops)

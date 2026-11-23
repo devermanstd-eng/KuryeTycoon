@@ -228,7 +228,7 @@ namespace KuryeTycoon
                 {
                     int dow = Random.value < 0.5f ? 2 : (Random.value < 0.5f ? 5 : 6);
                     float kick = Random.value < 0.5f ? 18.5f : 20.75f;
-                    Add(new CityEvent { title = "Maç akşamı: Nyíregyháza Spartacus", day = weekStart + dow, fromHour = kick - 1.5f, toHour = kick + 2f,
+                    Add(new CityEvent { title = $"Maç akşamı: {Marka.Takim}", day = weekStart + dow, fromHour = kick - 1.5f, toHour = kick + 2f,
                         food = 1.4f, market = 1.15f, desc = "Şehrin takımı oynuyor. Maçı evde izleyenler pizza, burger ve bira söylüyor; maç başlamadan hemen önce yoğunluk zirve yapar." });
                     break;
                 }
