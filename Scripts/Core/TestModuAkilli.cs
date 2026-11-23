@@ -560,14 +560,18 @@ namespace KuryeTycoon
 
             if (t == "Platform Çalışanları Yasası")
             {
-                var govde = Tutarlar((ev.body ?? "").Replace("~", "−"));
-                long calisanGunluk = 0;
-                foreach (var v in govde) if (v < 0) calisanGunluk = -v;   // gövdedeki son tutar: "günde ~X"
-                long calisanAylik = calisanGunluk * 30;
-                int serbest = Bul(ev, izinli, "serbest çalışan");
-                long serbestAylik = serbest >= 0 ? Gider(ev.choices[serbest].label) : long.MaxValue;
-                if (calisanAylik > 0 && calisanAylik < serbestAylik) { neden = $"çalışan statüsü ayda ~{Ft(calisanAylik)} < serbest {Ft(serbestAylik)}, üstelik moral ve grev avantajı"; return Bul(ev, izinli, "çalışan statüsüne"); }
-                neden = $"serbest kalmak ayda {Ft(serbestAylik)}, çalışan statüsü ~{Ft(calisanAylik)}"; return serbest;
+                // Üç modelin aylık beklenen maliyeti: hepsi çalışan · karma (tam zamanlılar çalışan) · serbest (uyum + beklenen ceza)
+                int n = CourierManager.I.Couriers.Count;
+                long hepsi = CrisisManager.EmployeeDailyCost(n) * 30;
+                long karma = CrisisManager.KarmaGunlukMaliyet(true) * 30 + CrisisManager.KarmaAylikUyum(true);
+                long serbestM = CrisisManager.SerbestAylikUyum(n) + (long)(CrisisManager.SerbestDenetimIhtimali() * CrisisManager.DenetimCezasi());
+                int iHepsi = Bul(ev, izinli, "bütün kuryeleri çalışan"), iKarma = Bul(ev, izinli, "karma model"), iSerbest = Bul(ev, izinli, "serbest çalışan");
+                string ozet = $"aylık: hepsi çalışan ~{Ft(hepsi)}, karma ~{Ft(karma)}, serbest ~{Ft(serbestM)} (beklenen ceza dahil)";
+                // Çalışan kuryenin moral ve sadakat avantajı var: karma, serbestten %15'e kadar pahalıysa yine karma
+                if (iKarma >= 0 && karma <= serbestM * 1.15f && karma <= hepsi) { neden = ozet + " → karma model"; return iKarma; }
+                if (iHepsi >= 0 && hepsi < serbestM && hepsi < karma) { neden = ozet + " → hepsi çalışan"; return iHepsi; }
+                neden = ozet + " → serbest";
+                return iSerbest >= 0 ? iSerbest : iKarma;
             }
 
             // Bilinmeyen kart: her seçeneği puanla
@@ -803,10 +807,15 @@ namespace KuryeTycoon
             foreach (var t in rv.Tehditler)
             {
                 var ts = rv.TehditDukkani(t);
-                if (ts == null || ts.exclusive || !rv.CanOfferExclusive(ts) || rv.ExclusiveChance(ts) < 0.4f) continue;
+                if (ts == null || ts.exclusive || !rv.CanOfferExclusive(ts)) continue;
+                // Şans düşükse ve kasa rahatsa primli teklif (prim sadece kabul ederse ödenir)
+                bool primT = rv.ExclusiveChance(ts) < 0.4f && rv.CanOfferExclusivePrim(ts) && BosDar >= DukkanSadakati.Prim(ts) * 4 &&
+                             rv.ExclusiveChance(ts, true) >= 0.5f;
+                if (rv.ExclusiveChance(ts) < 0.4f && !primT) continue;
                 var tr = rv.RakipAt(t.rakip);
-                Eylem("Pazarlık", $"{ts.Name}'a münhasırlık önerildi: {(tr != null ? tr.ad : "rakip")} teklif hazırlıyor (şans %{rv.ExclusiveChance(ts) * 100f:0})");
-                rv.OfferExclusive(ts);
+                Eylem("Pazarlık", $"{ts.Name}'a {(primT ? $"primli ({Ft(DukkanSadakati.Prim(ts))}) " : "")}münhasırlık önerildi: {(tr != null ? tr.ad : "rakip")} teklif hazırlıyor " +
+                                  $"(şans %{rv.ExclusiveChance(ts, primT) * 100f:0}, sadakat {DukkanSadakati.Ad(ts)})");
+                rv.OfferExclusive(ts, primT);
                 sonPazarlikGun = clk.Day;
                 return;
             }
@@ -817,12 +826,14 @@ namespace KuryeTycoon
             if (gecen < (sev >= 1 ? 3 : 7)) return;
             float esikM = sev >= 1 ? 0.55f : 0.65f;
             Shop enM = null, enP = null;
+            bool enMPrim = false;
             foreach (var s in CityMap.I.Shops)
             {
                 if (!s.contracted || s.own) continue;
-                if (s.rivalContracted && rv.CanOfferExclusive(s) && rv.ExclusiveChance(s) >= esikM && DukkanPayi(s) >= 0.1f)
+                bool primS = rv.ExclusiveChance(s) < esikM && rv.CanOfferExclusivePrim(s) && BosDar >= DukkanSadakati.Prim(s) * 4;
+                if (s.rivalContracted && rv.CanOfferExclusive(s) && rv.ExclusiveChance(s, primS) >= esikM && DukkanPayi(s) >= 0.1f)
                 {
-                    if (enM == null || DukkanPayi(s) > DukkanPayi(enM)) enM = s;
+                    if (enM == null || DukkanPayi(s) > DukkanPayi(enM)) { enM = s; enMPrim = primS; }
                 }
                 else if (rv.CanNegotiate(s) && rv.NegotiateChance(s) >= 0.5f && (enP == null || DukkanPayi(s) > DukkanPayi(enP))) enP = s;
             }
@@ -830,8 +841,9 @@ namespace KuryeTycoon
             if (enM != null)
             {
                 sonPazarlikGun = clk.Day;
-                Eylem("Pazarlık", $"{enM.Name}'a münhasırlık önerildi (şans %{rv.ExclusiveChance(enM) * 100f:0}, rakip de çalışıyor)");
-                rv.OfferExclusive(enM);
+                Eylem("Pazarlık", $"{enM.Name}'a {(enMPrim ? $"primli ({Ft(DukkanSadakati.Prim(enM))}) " : "")}münhasırlık önerildi " +
+                                  $"(şans %{rv.ExclusiveChance(enM, enMPrim) * 100f:0}, rakip de çalışıyor, sadakat {DukkanSadakati.Ad(enM)})");
+                rv.OfferExclusive(enM, enMPrim);
             }
             else if (enP != null)
             {
@@ -920,6 +932,7 @@ namespace KuryeTycoon
             // Yeni iş kolu ve kurye akademisi
             if (OrtMoral < 0.55f && cm.Couriers.Count >= 10) adaylar.Add((UpgradeKind.Akademi, $"ort. moral {OrtMoral:0.00}, {cm.Couriers.Count} kurye: bırakma ve ayartılma riski"));
             if (cm.Couriers.Count >= 10 && iptal < 0.06f && kuryeBasi < 11f) adaylar.Add((UpgradeKind.Kargo, $"kurye başı {kuryeBasi:0} teslimat: sakin saatlerde boş kapasite var"));
+            if (cm.Couriers.Count >= 12 && iptal < 0.06f && kuryeBasi < 12f) adaylar.Add((UpgradeKind.Isletme, $"kurye başı {kuryeBasi:0} teslimat: öğleden önce ve öğleden sonra boş kurye, işletme paketleri komisyonsuz gelir"));
 
             foreach (var a in adaylar)
             {

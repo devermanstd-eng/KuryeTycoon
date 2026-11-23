@@ -115,7 +115,7 @@ namespace KuryeTycoon
 
         /// <summary>Dükkanın şu anki talep ağırlığı (yoğunluk × saat çarpanı).</summary>
         static float ShopDemand(Shop s) =>
-            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s);
+            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s) * DukkanSadakati.SiparisCarpani(s);
 
         /// <summary>Saat çarpanı; dükkan kapalıysa (ya da kapanışa 15 dk kaldıysa) 0. 24 saat açık yerlerde gece de biraz sipariş.</summary>
         static float CurveNow(Shop s)
@@ -151,6 +151,7 @@ namespace KuryeTycoon
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
             float dm = GameClock.I.DeltaMinutes;
             if (dm <= 0f) return;
+            SaatAnalizi.Ornekle();   // analitik: saatlik kurye açığı örneği
 
             // Her sözleşmeli dükkan kendi türüne göre (yemek / market) saatlik talep üretir
             float demand = 0f;
@@ -563,7 +564,8 @@ namespace KuryeTycoon
                     o.status = OrderStatus.Iptal;
                     if (o.marker != null) Destroy(o.marker.gameObject);
                     Pending.RemoveAt(i);
-                    if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Kacti(o);
+                    if (o.isletme) { if (IsletmeTeslimati.I != null) IsletmeTeslimati.I.Kacti(o); }
+                    else if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Kacti(o);
                     continue;
                 }
                 if (SupportManager.I.TryCallCustomer(o)) continue; // destek müşteriyi arayıp oyalar
@@ -765,7 +767,7 @@ namespace KuryeTycoon
         }
 
         /// <summary>Şu an yeni iş alabilecek boştaki (elinde paket olmayan) çevrimiçi kurye sayısı.</summary>
-        int IdleCourierCount()
+        public int IdleCourierCount()
         {
             int n = 0;
             foreach (var c in CourierManager.I.Couriers)
@@ -783,10 +785,11 @@ namespace KuryeTycoon
             for (int i = 0; i < Pending.Count; i++)
             {
                 var o = Pending[i];
-                int siparisTuru = o.ekspres ? 0 : o.kargo ? 2 : 1;
+                bool acilIsletme = o.isletme && o.deadlineAt - now < IsletmeTeslimati.AcilDk;   // işletme paketi: süresi daralınca öne
+                int siparisTuru = o.ekspres ? 0 : o.kargo && !acilIsletme ? 2 : 1;
                 if (siparisTuru != tur) continue;
                 if (o.holdUntil > now) continue;   // planlı: saati gelmedi
-                if (o.kargo && !idleSurplus && AktifBekleyen > 0) continue;   // kargo: önce bekleyen yemek/market siparişleri
+                if (o.kargo && !acilIsletme && !idleSurplus && AktifBekleyen > 0) continue;   // kargo: önce bekleyen yemek/market siparişleri
 
                 // 10 dk'dan uzun bekleyen ve fiyat yüzünden reddedilen sipariş: reddedenlere bir kez daha, daha esnek sorulur
                 if (!o.secondRound && o.priceDeclines > 0 && now - o.createdAt > 10f)
@@ -1085,6 +1088,50 @@ namespace KuryeTycoon
             return o;
         }
 
+        /// <summary>
+        /// İşletme teslimatı (IsletmeTeslimati): eczane, çiçekçi gibi bir iş ortağının paketi. Sepet ve komisyon yok; işletme sabit ücret
+        /// öder. Kargo gibi işaretlenir (atamada yemek siparişinin önüne geçmez, müşteri vazgeçmez, itibarı etkilemez) ama 90 dk içinde
+        /// teslim edilmeli; süresi daralınca normal sıraya alınır.
+        /// </summary>
+        public Order IsletmeSiparisi(Shop ortak, Vector2Int custTile, float kg, string urun, string not)
+        {
+            var map = CityMap.I;
+            var custDoor = map.GetDoor(custTile);
+            int dist = Mathf.Max(1, map.FindPath(ortak.door, custDoor).Count - 1);
+            int ucret = IsletmeTeslimati.Ucret(dist);
+            float now = GameClock.I.TotalMinutes;
+            var o = new Order
+            {
+                shop = ortak,
+                customerTile = custTile,
+                customerDoor = custDoor,
+                customerType = CustomerType.Normal,
+                addressIssue = RandomAddressIssue(),
+                basket = 0,
+                distance = dist,
+                weightKg = kg,
+                commissionIncome = 0,
+                deliveryFee = ucret,
+                feeBase = ucret,
+                createdAt = now,
+                items = new List<OrderItem> { new OrderItem { name = urun, qty = 1, unitPrice = 0, cat = 'N' } },
+                customerName = GameData.RandomName(),
+                stockCost = 0
+            };
+            o.SetAddress(custTile, custDoor);
+            o.customerNote = not;
+            o.noteTranslation = "";
+            o.noContact = Random.value < 0.3f;
+            o.kargo = true;
+            o.isletme = true;
+            o.readyAt = now + 4f;
+            o.deadlineAt = now + IsletmeTeslimati.TeslimSuresi;
+            o.marker = SpriteFactory.Create($"İşletme #{o.id}", markerRoot, true, ortak.def.color, CityMap.ToWorld(custTile), 0.4f, 15);
+            Pending.Add(o);
+            ortak.ordersTotal++;
+            return o;
+        }
+
         public void CompleteDelivery(Order o, Courier c)
         {
             float now = GameClock.I.TotalMinutes;
@@ -1134,7 +1181,8 @@ namespace KuryeTycoon
             o.rating = Mathf.Clamp(rating, 1f, 5f);
             if (!o.kargo) OrderHeat.RecordDelivery(o.customerTile, now - basAn);   // harita: teslimat süresi katmanı
             if (o.catering && KurumsalSiparisler.I != null) KurumsalSiparisler.I.Teslim(o, late);
-            if (o.kargo && KargoAnlasmasi.I != null) KargoAnlasmasi.I.Teslim(o, late);
+            if (o.isletme) { if (IsletmeTeslimati.I != null) IsletmeTeslimati.I.Teslim(o, late); }
+            else if (o.kargo && KargoAnlasmasi.I != null) KargoAnlasmasi.I.Teslim(o, late);
             DukkanKari.Record(o);
             RestoranReklam.SatisKaydet(o);   // reklam bedeli dükkanın satışından                                          // harita: dükkan kârlılığı katmanı
 

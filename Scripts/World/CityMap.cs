@@ -1345,6 +1345,15 @@ namespace KuryeTycoon
         }
 
         /// <summary>Kendi marketin (dark store) için açık bölgede boş bir dükkan karesi bulur; tile verilirse (kayıttan) orayı kullanır.</summary>
+        /// <summary>Açık bölgelerde boş bir dükkan yeri (rastgele; yoksa null). İşletme teslimatı ortakları için.</summary>
+        public Vector2Int? RastgeleBosDukkanYeri()
+        {
+            var bos = new List<Vector2Int>();
+            foreach (var t in shopTiles) if (!reserved.Contains(t) && IsUnlocked(t)) bos.Add(t);
+            if (bos.Count == 0) return null;
+            return bos[Random.Range(0, bos.Count)];
+        }
+
         public Shop AddOwnShop(ShopDef def, Vector2Int? at = null)
         {
             Vector2Int tile;

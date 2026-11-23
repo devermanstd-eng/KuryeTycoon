@@ -114,8 +114,8 @@ namespace KuryeTycoon
                 Color? renk;
                 bool kilitli = !map.IsUnlocked(s.tile);
                 if (kilitli) { durum = "Kilitli"; renk = U.Soluk; }
-                else if (s.exclusive) { durum = $"Münhasır · {s.satisfaction:0}/100"; renk = U.Iyi; }
-                else if (s.contracted) { durum = $"Sözleşmeli · {s.satisfaction:0}/100"; renk = s.satisfaction < 40f ? U.Uyari : U.Iyi; }
+                else if (s.exclusive) { durum = $"Münhasır · {DukkanSadakati.Ad(s)} · {s.satisfaction:0}/100"; renk = U.Iyi; }
+                else if (s.contracted) { durum = $"Sözleşmeli · {DukkanSadakati.Ad(s)} · {s.satisfaction:0}/100"; renk = s.satisfaction < 40f ? U.Uyari : U.Iyi; }
                 else if (GameClock.I.Day < s.resignBlockedUntil) { durum = "Ayrıldı"; renk = U.Kotu; }
                 else { durum = $"Sözleşme yok · {Ft(s.def.contractCost)}"; renk = null; }
                 y.AcilirBaslik(s.Name, durum, renk, ac, tik);
@@ -258,6 +258,13 @@ namespace KuryeTycoon
 
             Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);
             y.Cubuk("Memnuniyet", s.satisfaction / 100f, sc, $"{s.satisfaction:0}/100");
+            int sv = DukkanSadakati.Seviye(s);
+            y.Cubuk("Sadakat", s.sadakat / 100f, DukkanSadakatRengi(sv), $"{DukkanSadakati.Ad(s)} · {s.sadakat:0}/100");
+            int kalanGun = DukkanSadakati.SonrakineGun(s);
+            y.Kucuk($"Sadakat etkisi: {DukkanSadakati.EtkiMetni(sv)}. " +
+                    (sv >= 3 ? "En üst seviye." :
+                     kalanGun > 0 ? $"{DukkanSadakati.Adlar[sv + 1]} olmasına ~{kalanGun} gün (günde {DukkanSadakati.GunlukArtis(s):+0.0;−0.0} puan; memnuniyet ve münhasırlık hızlandırır)." :
+                     "Şu an artmıyor: memnuniyeti yükselt ya da münhasırlık öner."));
             y.Kucuk(RivalCompany.PerformanceText(s));
             y.Kucuk($"{Mutfak.Ozet(s)} · sepet {Ft(s.def.basketMin)}–{Ft(s.def.basketMax)} · " +
                     $"{GameData.KgText(s.def.kgMin)}–{GameData.KgText(s.def.kgMax)} · toplam {s.ordersTotal} sipariş");
@@ -286,9 +293,21 @@ namespace KuryeTycoon
                     "komisyonun 3 puan düşer ve sözleşme 6 ay uzar. Reddederse memnuniyeti biraz düşer ve 30 gün tekrar teklif edemezsin. " +
                     $"Kabul ihtimali yaklaşık %{rv.ExclusiveChance(shop) * 100f:0}.",
                     "Evet, teklif et", () => rv.OfferExclusive(shop)), rv.CanOfferExclusive(s), "kucuk-dg");
+            if (!s.exclusive)
+            {
+                long prim = DukkanSadakati.Prim(s);
+                y.Dugme($"Primli münhasırlık: {Ft(prim)} (şans %{rv.ExclusiveChance(s, true) * 100f:0})", () => AskConfirm("Primli münhasırlık",
+                        $"{shop.def.name} dükkanına münhasırlık karşılığında {Ft(prim)} imza primi teklif edilsin mi? Prim kabul ihtimalini " +
+                        $"%{rv.ExclusiveChance(shop) * 100f:0}'den %{rv.ExclusiveChance(shop, true) * 100f:0}'e çıkarır ve sadece dükkan kabul ederse ödenir. " +
+                        "Kabul ederse bütün rakipler çıkar, siparişler %15 artar, komisyonun 3 puan düşer ve sözleşme 6 ay uzar.",
+                        "Evet, primle teklif et", () => rv.OfferExclusive(shop, true)), rv.CanOfferExclusivePrim(s), "kucuk-dg");
+            }
             y.SatirBitir();
             if (clock.Day < s.negotiateCooldownUntil)
                 y.Kucuk($"Yeni teklif için {clock.DateOf(s.negotiateCooldownUntil)} tarihini bekle.");
         }
+
+        static Color DukkanSadakatRengi(int seviye) =>
+            seviye >= 3 ? new Color(0.95f, 0.75f, 0.3f) : seviye == 2 ? new Color(0.35f, 0.8f, 0.5f) : seviye == 1 ? new Color(0.45f, 0.7f, 1f) : new Color(0.6f, 0.62f, 0.68f);
     }
 }

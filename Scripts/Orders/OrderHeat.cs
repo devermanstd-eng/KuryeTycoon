@@ -31,6 +31,7 @@ namespace KuryeTycoon
             System.Array.Clear(delivered, 0, delivered.Length);
             System.Array.Clear(minutes, 0, minutes.Length);
             for (int i = 0; i < Days; i++) slotDay[i] = -1;
+            SaatAnalizi.Reset();
         }
 
         /// <summary>Bugünün yuvası (gün değiştiyse temizlenir).</summary>
@@ -55,6 +56,7 @@ namespace KuryeTycoon
             int slot = Slot(), i = CellOf(tile);
             delivered[slot, i]++;
             minutes[slot, i] += dk;
+            SaatAnalizi.Teslim(tile, dk);
         }
 
         /// <summary>Son 7 günde hücre başına ortalama teslimat süresi (dk) ve teslimat sayısı. Dönüş: toplam teslimat.</summary>
@@ -83,6 +85,7 @@ namespace KuryeTycoon
             int slot = Slot(), i = CellOf(tile);
             if (isLost) lost[slot, i]++;
             else orders[slot, i]++;
+            SaatAnalizi.Kaydet(tile, isLost);
         }
 
         /// <summary>Son 7 günün toplamı, hücre başına (dizi her çağrıda doldurulur). Dönüş: en büyük hücre değeri.</summary>

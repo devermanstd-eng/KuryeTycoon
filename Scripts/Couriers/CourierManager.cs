@@ -641,6 +641,7 @@ namespace KuryeTycoon
                 bool satIdle = c.onlineMinutesToday > 120f && worked == 0;
                 float saat = c.onlineMinutesToday / 60f;
                 long kazanc = c.earnedToday;
+                c.ortSaat = c.ortSaat <= 0f ? saat : c.ortSaat * 0.8f + saat * 0.2f;   // tam zamanlı mı (platform yasası)
                 c.NewDay(clock);
 
                 // --- Moral: her gece bir hedefe yaklaşır (Denge.MoralYaklasma) ---
@@ -652,7 +653,8 @@ namespace KuryeTycoon
 
                 // Çok mutsuz kurye bırakır: moral 0,2'de günde %5, 0,1'de %10
                 float birak = (Denge.BirakmaMoralSiniri - c.morale) * Denge.BirakmaOrani * KuryeOzellik.BirakmaCarpani(c)
-                              * (UpgradeManager.I != null ? UpgradeManager.I.AkademiAyartmaCarpani : 1f);
+                              * (UpgradeManager.I != null ? UpgradeManager.I.AkademiAyartmaCarpani : 1f)
+                              * (CrisisManager.CalisanMi(c) ? 0.5f : 1f);   // çalışan statüsündeki kurye işini kolay bırakmaz
                 if (birak > 0f && c.OrderCount == 0 && Random.value < birak)
                 {
                     Quit(c);

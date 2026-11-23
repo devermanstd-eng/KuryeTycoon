@@ -355,7 +355,9 @@ namespace KuryeTycoon
                 k.toplamIpucu = $"Bugüne kadar {c.deliveries} teslimat. Araçları: {c.VehiclesText}.";
 
                 // Kısa bilgi
-                U.Metin(k.meslek, $"{c.OccupationName} · bugün {c.OccupationStatus}" + (c.dayOff ? " · izin günü" : ""));
+                U.Metin(k.meslek, $"{c.OccupationName} · bugün {c.OccupationStatus}" + (c.dayOff ? " · izin günü" : "") +
+                                    (CrisisManager.CalisanMi(c) ? " · çalışan statüsü" : CrisisManager.YasaKararVerildi ? " · serbest" : "") +
+                                    (CrisisManager.TamZamanli(c) ? $" · günde ~{c.ortSaat:0.#} sa (tam zamanlı)" : ""));
                 k.meslekIpucu = c.occupation == Occupation.Ogrenci ? $"Ders programı: {Courier.ScheduleText(c.scheduleSeed, GameClock.I)}" : null;
                 U.Metin(k.sigorta, c.insured ? $"var · {(c.insuredViaCompany ? EconomyManager.I.Plan.name : "dışarıdan")} · {Ft(c.CurrentPremium)}/hafta"
                                              : "yok (kazada masrafını kendi öder, daha uzun süre çalışamaz)");

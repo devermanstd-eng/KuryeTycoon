@@ -88,6 +88,7 @@ namespace KuryeTycoon
             K("k_siparis3", "+%3 sipariş", BonusTip.Siparis, 0.03f, 120000, "reklam", 250, 260, 2, Icons.Kind.Orders);
             // Yeni iş kolları (aşağı)
             B("kargo", UpgradeKind.Kargo, null, 0, 160, 3, Icons.Kind.Car);
+            B("isletme", UpgradeKind.Isletme, null, 130, 310, 3, Icons.Kind.Basket);
             K("k_komisyon4", "+%2 komisyon", BonusTip.Komisyon, 0.02f, 300000, "kargo", 0, 290, 3, Icons.Kind.Coins);
         }
 

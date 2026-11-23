@@ -24,6 +24,7 @@ namespace KuryeTycoon
         public int contractStartDay;       // sözleşmenin başladığı gün (GameClock.Day)
         public int contractEndDay;         // yenileme günü (6 ayda bir)
         public bool exclusive;             // sadece seninle çalışıyor (rakip yok, daha çok sipariş, daha düşük oran)
+        public float sadakat;              // 0–100 dükkan sadakati (DukkanSadakati): zamanla artar, rakibe karşı tutar
         public int rivalMask;              // bu dükkanla çalışan rakip platformlar (bit i = RivalCompany.Rakipler[i])
         /// <summary>En az bir rakip platformla da çalışıyor (siparişler paylaşılır). true atanırsa ve rakip yoksa ilk rakip (Turbo Paket) eklenir.</summary>
         public bool rivalContracted
@@ -41,6 +42,7 @@ namespace KuryeTycoon
         public float perfOk, perfLate, perfCold, perfCancel, perfIncident;
         public bool own;                   // kendi marketin (dark store): komisyon yok, satışın tamamı senin, stok senin
         public bool kargo;                 // kargo deposu (KargoAnlasmasi): siparişleri kargo şirketi verir, sepet yok
+        public bool isletme;               // işletme teslimatı ortağı (IsletmeTeslimati); kargo da işaretli (sepetsiz, komisyonsuz)
         // Öncelikli hazırlık anlaşması (Mutfak): dükkan senin siparişlerini sıraya sokmadan hazırlar, karşılığında komisyonundan pay alır
         public bool oncelikli;
         public bool sponsorlu;             // bu gece uygulamada reklamı var (RestoranReklam; kayda girmez, her gece yeniden dağıtılır)
@@ -135,6 +137,7 @@ namespace KuryeTycoon
         public bool planli;            // planlı teslimat: müşteri daha sonraki bir saat aralığını seçti (HizmetSeviyeleri)
         public float holdUntil = -1f;  // bu ana kadar kuryeye atanmaz (planlı teslimat)
         public bool kargo;             // kargo paketi (KargoAnlasmasi): gün içinde, akşama kadar teslim
+        public bool isletme;           // işletme teslimatı (IsletmeTeslimati): kargo gibi atanır ama 1,5 saat içinde, süresi daralınca öne alınır
         public bool abone;             // abone siparişi (Abonelik): teslimat ücreti müşteriden alınmadı
         public int aboneUcreti;        // üyenin ödemediği teslimat ücreti (şirket karşıladı; atama kârı hesabında sayılır)
         public string noteTranslation = ""; // not Macarca ise Türkçesi ("Çevir")

@@ -5,7 +5,7 @@ namespace KuryeTycoon
     // Sıra kayıt uyumluluğu için sabit: yeni türler sona eklenir
     // Dinlenme = kurye avantaj programı, Bakim = anlaşmalı servisler, Hijyen = çanta kontrolü ve ekipman partneri (eski adlar kayıt uyumu için)
     // Yeni türler hep sona eklenir (kayıttaki seviye dizisi sıraya göre okunur)
-    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo, KargoBisikleti, PaketDolabi, Robot, Kargo, Akademi, Otomasyon }
+    public enum UpgradeKind { Platform, Dispatcher, Dinlenme, Bakim, Hijyen, Reklam, Uygulama, Ofis, Restoran, Adres, Hub, EFilo, KargoBisikleti, PaketDolabi, Robot, Kargo, Akademi, Otomasyon, Isletme }
 
     public class UpgradeDef
     {
@@ -284,6 +284,21 @@ namespace KuryeTycoon
                 effect = lv => lv == 0 ? "sadece yemek ve market" : $"günde ~{KargoAnlasmasi.GunlukPaket(lv)} paket",
                 reqDistrict = new[] { 2, 3, 4 },
                 extraLock = lv => lv == 3 ? Need(UpgradeKind.Ofis, 2) : "",
+                category = ExpenseCategory.Gelistirme,
+            },
+            new UpgradeDef
+            {
+                kind = UpgradeKind.Isletme, name = "İşletmelere teslimat",
+                summary = "Yeni iş kolu (Wolt Drive, Uber Direct gibi): eczane, çiçekçi, kitapçı, butik gibi işletmeler kendi müşterilerine " +
+                          "gidecek paketleri senin kuryelerinle gönderir. Komisyon yok: işletme teslimat başına sabit ücret öder " +
+                          $"({GameData.Ft(IsletmeTeslimati.Ucret(15))}, 3 km). Siparişler daha çok öğle ve akşam yoğunluğunun dışında gelir, " +
+                          "1,5 saat içinde teslim edilmeli; yemek siparişlerinin önüne geçmez, süresi daralınca öne alınır. " +
+                          "Geç kalırsan işletmenin memnuniyeti düşer, çok düşerse bir hafta sipariş vermez.",
+                costs = new[] { 800000, 2500000, 7000000 },
+                daily = new[] { 0, 4000, 9000, 16000 },
+                levelNames = new[] { "Yok", "3 iş ortağı", "6 iş ortağı", "10 iş ortağı" },
+                effect = lv => lv == 0 ? "sadece yemek, market ve kargo" : $"{IsletmeTeslimati.OrtakSayisi(lv)} iş ortağı · günde ~{IsletmeTeslimati.GunlukTahmin(lv)} teslimat",
+                reqDistrict = new[] { 2, 3, 4 },
                 category = ExpenseCategory.Gelistirme,
             },
             new UpgradeDef
