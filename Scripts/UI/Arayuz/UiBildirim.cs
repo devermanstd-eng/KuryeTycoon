@@ -92,8 +92,10 @@ namespace KuryeTycoon
         {
             float now = Time.unscaledTime;
             toasts.RemoveAll(t => now - t.born > t.Life);
-            U.Goster(bildirimKok, toasts.Count > 0);
-            if (toasts.Count == 0) { bildirimler.Esitle(toasts); return; }
+            // Gelişim ağacı açıkken anlık bildirimler gösterilmez (ağacın üstüne biniyordu); bildirim geçmişinde kalırlar
+            bool goster = toasts.Count > 0 && !AgacGorunur;
+            U.Goster(bildirimKok, goster);
+            if (!goster) { bildirimler.Esitle(toasts); return; }
 
             BildirimYeri(out float x, out float y, out float w);
             bildirimKok.style.left = x;
