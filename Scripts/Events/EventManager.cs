@@ -61,9 +61,18 @@ namespace KuryeTycoon
 
         void Start() { GameClock.I.OnNewDay += OnNewDay; }
 
+        /// <summary>
+        /// Doğruysa sıradaki kart açılmaz, bekler (Gelişim ağacı açıkken gün sonu raporu ve olay kartları ağacın üstüne çıkmasın;
+        /// ağaçtan çıkınca sırayla açılır). Arayüz ayarlar.
+        /// </summary>
+        public static System.Func<bool> Beklet;
+
+        /// <summary>Sırada bekleyen kart sayısı (açık olan hariç).</summary>
+        public int Bekleyen => queue.Count;
+
         void Update()
         {
-            if (Current == null && queue.Count > 0) Current = queue.Dequeue();
+            if (Current == null && queue.Count > 0 && !(Beklet != null && Beklet())) Current = queue.Dequeue();
             if (GameClock.I != null) GameClock.I.EventPause = Current != null;
         }
 
