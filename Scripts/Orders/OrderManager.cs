@@ -115,7 +115,7 @@ namespace KuryeTycoon
 
         /// <summary>Dükkanın şu anki talep ağırlığı (yoğunluk × saat çarpanı).</summary>
         static float ShopDemand(Shop s) =>
-            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s);
+            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s);
 
         /// <summary>Saat çarpanı; dükkan kapalıysa (ya da kapanışa 15 dk kaldıysa) 0. 24 saat açık yerlerde gece de biraz sipariş.</summary>
         static float CurveNow(Shop s)
@@ -161,7 +161,7 @@ namespace KuryeTycoon
 
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
-                         * Difficulty.OrderRate * Marka.SiparisCarpani * Marka.SehirSiparisCarpani * (1f + GelisimAgaci.Bonus(BonusTip.Siparis)) * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
+                         * Difficulty.OrderRate * Marka.SiparisCarpani * Marka.SehirSiparisCarpani * (1f + GelisimAgaci.Bonus(BonusTip.Siparis)) * (Abonelik.I != null ? Abonelik.I.SiparisCarpani : 1f) * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
                          * CrisisManager.DemandFactor
                          * (RivalCompany.I != null ? RivalCompany.I.ServiceDemandFactor : 1f);   // hızlı teslimat pazarı büyütür
             if (!CrisisManager.OrdersBlocked) spawnAcc += rate * dm;   // uygulama çöktüyse yeni sipariş gelmez
@@ -451,7 +451,9 @@ namespace KuryeTycoon
             // Ücret ~3,75 € (1500 Ft) iken müşterilerin ~%90'ı sipariş verir, 5 €'da ~%73, 6,25 €'da ~%57
             float accept = Mathf.Clamp(1.4f - (fee - quote.weather * 0.7f) / 3000f, 0.15f, 1f);
             if (RivalCompany.I != null) accept *= RivalCompany.I.PriceSensitivity; // rakip fiyat kırıyorsa
-            if (Random.value > accept)
+            // Abone: teslimat ücreti ödemediği için pahalı ücret yüzünden vazgeçmez
+            bool uye = Abonelik.I != null && Abonelik.I.AboneSiparisiMi();
+            if (!uye && Random.value > accept)
             {
                 lostToday++;
                 Telemetry.Add("Kaçan sipariş: teslimat ücreti pahalı");
@@ -487,6 +489,7 @@ namespace KuryeTycoon
             Addresses.RandomNote(out var note, out var noteTr);
             o.customerNote = note;
             o.noteTranslation = noteTr;
+            if (uye) Abonelik.I.UyeSiparisi(o);   // teslimat ücreti müşteriden alınmaz
             // Nakit ödeme: marketlerde daha sık. Müşteri yuvarlak banknot verir, para üstü hazırlanır.
             if (Random.value < (shop.def.isMarket ? cashChanceMarket : cashChanceFood))
             {
@@ -841,7 +844,7 @@ namespace KuryeTycoon
 
             int pay = EconomyManager.I.CourierPay(c, o.distance);
             int need = EconomyManager.I.RequiredAssignProfit(o);
-            if (o.CompanyIncome - pay < need)
+            if (o.CompanyIncome + o.aboneUcreti - pay < need)   // abone: teslimat ücretini üyelik karşılıyor
             {
                 EventManager.I.Notify(o.CompanyIncome - pay < 0
                     ? $"#{o.id} {c.ShortName}'a atanamadı: zararına iş olur ({Ft(o.CompanyIncome - pay)})."
@@ -973,9 +976,11 @@ namespace KuryeTycoon
             if (o.customerType == CustomerType.Zor) rating -= 0.7f;
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
             if (o.dolap) rating += 0.2f;
+            rating -= RestoranReklam.PuanCezasi;   // uygulama reklamla dolu
             o.rating = Mathf.Clamp(rating, 1f, 5f);
             OrderHeat.RecordDelivery(o.customerTile, now - o.createdAt);
             DukkanKari.Record(o);
+            RestoranReklam.SatisKaydet(o);   // reklam bedeli dükkanın satışından
             if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);
             EconomyManager.I.RegisterDelivery(o);
             MapFx.Delivered(o);
@@ -1125,11 +1130,13 @@ namespace KuryeTycoon
             rating += KuryeOzellik.PuanEki(c);   // güler yüzlü / kestirmeci
             if (o.ekspres && HizmetSeviyeleri.I != null) rating += HizmetSeviyeleri.I.Teslim(o, late);   // ekspres sözü tutuldu mu (geçse ücret iade)
             if (o.planli && late <= 0f) rating += 0.1f;   // tam seçtiği saatte geldi
+            if (!o.kargo) rating -= RestoranReklam.PuanCezasi;   // uygulama reklamla dolu: müşteri memnuniyeti biraz düşer
             o.rating = Mathf.Clamp(rating, 1f, 5f);
             if (!o.kargo) OrderHeat.RecordDelivery(o.customerTile, now - basAn);   // harita: teslimat süresi katmanı
             if (o.catering && KurumsalSiparisler.I != null) KurumsalSiparisler.I.Teslim(o, late);
             if (o.kargo && KargoAnlasmasi.I != null) KargoAnlasmasi.I.Teslim(o, late);
-            DukkanKari.Record(o);                                          // harita: dükkan kârlılığı katmanı
+            DukkanKari.Record(o);
+            RestoranReklam.SatisKaydet(o);   // reklam bedeli dükkanın satışından                                          // harita: dükkan kârlılığı katmanı
 
             RollTip(o, c, late);
             if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);

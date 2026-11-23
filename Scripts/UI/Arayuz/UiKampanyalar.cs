@@ -73,6 +73,40 @@ namespace KuryeTycoon
                 if (iptalSaat != null)
                     y.Kucuk($"Bugün iptaller: akşam (18–21) {aksamIptal}, öğle (11–14) {ogleIptal}.");
 
+                // Abonelik (Wolt+ benzeri aylık üyelik)
+                var ab = Abonelik.I;
+                if (ab != null)
+                {
+                    y.Bolum($"Abonelik: {ab.Ad}",
+                            $"Aylık üyelik. Üyeler {Ft(Abonelik.EnAzSepet)} ve üstü sepette teslimat ücreti ödemez (o ücreti şirket karşılar), daha sık sipariş verir ve pahalı " +
+                            "teslimat ücreti yüzünden vazgeçmez. Üyelik ücreti her gece gelir olarak yazılır. Ücret düşükse çok üye olur " +
+                            "ama teslimat ücretinden daha çok kaybedersin; yüksekse az üye olur. İtibar düşerse üyeler ayrılır.");
+                    if (!ab.kuruldu)
+                    {
+                        y.Kucuk($"Önce uygulamaya üyelik sistemi kurulmalı ({Ft(Abonelik.KurulumBedeli)}, bir kez).");
+                        y.Dugme($"Üyelik sistemini kur — {Ft(Abonelik.KurulumBedeli)}", () => ui.AskConfirm($"{ab.Ad} kurulsun mu?",
+                                $"Uygulamaya aylık üyelik eklenir: {Ft(Abonelik.KurulumBedeli)} bir kez. Varsayılan ücret aylık {Ft(ab.aylikUcret)}; " +
+                                $"sonra değiştirebilirsin. Serbest kasan {Ft(EconomyManager.I.FreeCash)}.",
+                                $"Evet, kur ({Ft(Abonelik.KurulumBedeli)})", () => ab.Kur()),
+                                EconomyManager.I.FreeCash >= Abonelik.KurulumBedeli, "kucuk-dg");
+                    }
+                    else
+                    {
+                        y.Onay($"{ab.Ad} açık", ab.acik, v => ab.Ac(v));
+                        if (ab.acik)
+                        {
+                            y.Kaydirici("Aylık ücret", ab.aylikUcret, Abonelik.EnAzUcret, Abonelik.EnFazlaUcret, Ft(ab.aylikUcret),
+                                        v => ab.aylikUcret = Mathf.Clamp(Mathf.RoundToInt(v / 10f) * 10, Abonelik.EnAzUcret, Abonelik.EnFazlaUcret));
+                            y.KV("Üye", $"{ab.Abone} (hedef {ab.Hedef:0}) · siparişlerin %{ab.AboneOrani * 100f:0}'i üyelerden");
+                            y.KV("Fiyat cazibesi", $"%{ab.Cazibe * 100f:0} · sipariş ×{ab.SiparisCarpani:0.00}");
+                            long net = ab.dunGelir - ab.dunKarsilanan;
+                            y.KV("Dün", $"üyelik {Ft(ab.dunGelir)} − karşılanan teslimat ücreti {Ft(ab.dunKarsilanan)} ({ab.dunSiparis} sipariş) = {(net >= 0 ? "+" : "−")}{Ft(System.Math.Abs(net))}",
+                                 net >= 0 ? (Color?)null : U.Kotu);
+                            y.Kucuk($"Bugün {ab.bugunSiparis} üye siparişi · toplam üyelik geliri {Ft(ab.toplamGelir)}.");
+                        }
+                    }
+                }
+
                 // Kötü hava
                 y.Bolum("Kötü hava boostu (otomatik)",
                         "Kötü havada siparişler artar ama bisiklet, scooter ve motor kuryeleri dışarı çıkmaya daha az isteklidir " +

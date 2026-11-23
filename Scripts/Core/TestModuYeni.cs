@@ -84,6 +84,35 @@ namespace KuryeTycoon
                 }
             }
 
+            // Abonelik: yeterince sipariş varsa kur; dün üyelik zarar ettirdiyse ücreti biraz artır
+            var ab = Abonelik.I;
+            if (ab != null)
+            {
+                float ortT = 0f; int nT = 0;
+                var hs = StatsHistory.I != null ? StatsHistory.I.Days : null;
+                if (hs != null) for (int i = Mathf.Max(0, hs.Count - 7); i < hs.Count; i++) { ortT += hs[i].deliveries; nT++; }
+                ortT = nT > 0 ? ortT / nT : 0f;
+                if (!ab.kuruldu && ortT >= 80f && Bos > Abonelik.KurulumBedeli * 3 && ab.Kur())
+                    Eylem("Abonelik", $"{ab.Ad} kuruldu ({Ft(Abonelik.KurulumBedeli)}) · neden: günde {ortT:0} teslimat, kasa rahat");
+                else if (ab.acik && ab.dunSiparis > 0 && ab.dunGelir < ab.dunKarsilanan && ab.aylikUcret < Abonelik.EnFazlaUcret)
+                {
+                    ab.aylikUcret = Mathf.Min(Abonelik.EnFazlaUcret, ab.aylikUcret + 100);
+                    Eylem("Abonelik", $"aylık ücret {Ft(ab.aylikUcret)} · neden: dün üyelik geliri {Ft(ab.dunGelir)} < karşılanan teslimat ücreti {Ft(ab.dunKarsilanan)}");
+                }
+            }
+
+            // Restoran reklamları: itibar iyiyse aç/artır, düşerse azalt
+            var rk = RestoranReklam.I;
+            if (rk != null && CityMap.I != null)
+            {
+                int soz = 0;
+                foreach (var sh in CityMap.I.Shops) if (sh.contracted && !sh.own && !sh.kargo) soz++;
+                float itb = CompanyProfile.Reputation;
+                if (rk.seviye > 0 && itb < 3.75f) { rk.SeviyeAyarla(rk.seviye - 1); Eylem("Reklam", $"restoran reklamı {RestoranReklam.SeviyeAdlari[rk.seviye]} · neden: itibar {itb:0.00} düştü"); }
+                else if (rk.seviye == 0 && soz >= 4 && itb >= 4.0f) { rk.SeviyeAyarla(1); Eylem("Reklam", $"restoran reklamı Az · neden: {soz} dükkan, itibar {itb:0.00}"); }
+                else if (rk.seviye == 1 && soz >= 8 && itb >= 4.2f) { rk.SeviyeAyarla(2); Eylem("Reklam", $"restoran reklamı Orta · neden: {soz} dükkan, itibar {itb:0.00}"); }
+            }
+
             // Gelişim ağacının küçük düğümleri: kasa rahatsa en ucuz açık düğüm (günde en fazla bir)
             if (!Biriktir)
             {

@@ -43,6 +43,7 @@ namespace KuryeTycoon
         public bool kargo;                 // kargo deposu (KargoAnlasmasi): siparişleri kargo şirketi verir, sepet yok
         // Öncelikli hazırlık anlaşması (Mutfak): dükkan senin siparişlerini sıraya sokmadan hazırlar, karşılığında komisyonundan pay alır
         public bool oncelikli;
+        public bool sponsorlu;             // bu gece uygulamada reklamı var (RestoranReklam; kayda girmez, her gece yeniden dağıtılır)
         public int oncelikDegisimGunu = -999;
 
         public string Name => def.name;
@@ -134,6 +135,8 @@ namespace KuryeTycoon
         public bool planli;            // planlı teslimat: müşteri daha sonraki bir saat aralığını seçti (HizmetSeviyeleri)
         public float holdUntil = -1f;  // bu ana kadar kuryeye atanmaz (planlı teslimat)
         public bool kargo;             // kargo paketi (KargoAnlasmasi): gün içinde, akşama kadar teslim
+        public bool abone;             // abone siparişi (Abonelik): teslimat ücreti müşteriden alınmadı
+        public int aboneUcreti;        // üyenin ödemediği teslimat ücreti (şirket karşıladı; atama kârı hesabında sayılır)
         public string noteTranslation = ""; // not Macarca ise Türkçesi ("Çevir")
         public bool markedLate;        // kurye "gecikme bildir"e bastı: müşteriye haber verildi, söz verilen süre +10 dk
         public bool shopPinged;        // destek dükkanı hızlandırması için aradı
