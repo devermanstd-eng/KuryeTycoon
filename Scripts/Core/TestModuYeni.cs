@@ -94,10 +94,15 @@ namespace KuryeTycoon
                 ortT = nT > 0 ? ortT / nT : 0f;
                 if (!ab.kuruldu && ortT >= 80f && Bos > Abonelik.KurulumBedeli * 3 && ab.Kur())
                     Eylem("Abonelik", $"{ab.Ad} kuruldu ({Ft(Abonelik.KurulumBedeli)}) · neden: günde {ortT:0} teslimat, kasa rahat");
-                else if (ab.acik && ab.dunSiparis > 0 && ab.dunGelir < ab.dunKarsilanan && ab.aylikUcret < Abonelik.EnFazlaUcret)
+                else if (ab.acik && ab.dunSiparis > 0 && ab.DunNetEtki < 0 && ab.aylikUcret < Abonelik.EnFazlaUcret)
                 {
                     ab.aylikUcret = Mathf.Min(Abonelik.EnFazlaUcret, ab.aylikUcret + 100);
-                    Eylem("Abonelik", $"aylık ücret {Ft(ab.aylikUcret)} · neden: dün üyelik geliri {Ft(ab.dunGelir)} < karşılanan teslimat ücreti {Ft(ab.dunKarsilanan)}");
+                    Eylem("Abonelik", $"aylık ücret {Ft(ab.aylikUcret)} · neden: dün üyelik geliri {Ft(ab.dunGelir)} + ek sipariş kârı {Ft(ab.dunEkKar)} < karşılanan teslimat ücreti {Ft(ab.dunKarsilanan)}");
+                }
+                else if (ab.acik && ab.dunSiparis > 0 && ab.DunNetEtki > ab.dunKarsilanan / 5 && ab.aylikUcret > 1490)
+                {
+                    ab.aylikUcret = Mathf.Max(1490, ab.aylikUcret - 100);
+                    Eylem("Abonelik", $"aylık ücret {Ft(ab.aylikUcret)} · neden: üyelik kârda (dün {Ft(ab.DunNetEtki)}), daha çok üye için ücret iniyor");
                 }
             }
 

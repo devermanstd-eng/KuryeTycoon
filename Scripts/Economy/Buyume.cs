@@ -36,7 +36,7 @@ namespace KuryeTycoon
             var h = StatsHistory.I != null ? StatsHistory.I.Days : null;
             if (h == null || h.Count == 0) return 0;
             double t = 0; int k = 0;
-            for (int i = Mathf.Max(0, h.Count - n); i < h.Count; i++) { t += h[i].net; k++; }
+            for (int i = Mathf.Max(0, h.Count - n); i < h.Count; i++) { t += h[i].IsletmeNet; k++; }
             return (long)(t / k);
         }
 
@@ -50,7 +50,7 @@ namespace KuryeTycoon
                 double a = 0, b = 0; int na = 0, nb = 0;
                 for (int i = h.Count - 1; i >= 0 && i >= h.Count - 7; i--)
                 {
-                    if (i >= h.Count - 3) { a += h[i].net; na++; } else { b += h[i].net; nb++; }
+                    if (i >= h.Count - 3) { a += h[i].IsletmeNet; na++; } else { b += h[i].IsletmeNet; nb++; }
                 }
                 if (na == 0 || nb == 0) return 0f;
                 double ortB = b / nb, ortA = a / na;

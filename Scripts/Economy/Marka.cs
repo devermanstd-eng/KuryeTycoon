@@ -141,7 +141,7 @@ namespace KuryeTycoon
                 if (e == null) return 0;
                 double net = 0; int n = 0;
                 var h = StatsHistory.I != null ? StatsHistory.I.Days : null;
-                if (h != null) for (int i = Mathf.Max(0, h.Count - 7); i < h.Count; i++) { net += h[i].net; n++; }
+                if (h != null) for (int i = Mathf.Max(0, h.Count - 7); i < h.Count; i++) { net += h[i].IsletmeNet; n++; }
                 long ort = n > 0 ? (long)(net / n) : 0;
                 long d = Math.Max(0L, ort) * 90 + Math.Max(0L, e.FreeCash);
                 if (CityMap.I != null)

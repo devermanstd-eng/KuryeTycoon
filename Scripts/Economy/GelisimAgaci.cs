@@ -147,7 +147,7 @@ namespace KuryeTycoon
         public static bool KucukAl(AgacDugum d)
         {
             if (KucukEngeli(d).Length > 0) return false;
-            if (!EconomyManager.I.TrySpend(d.bedel, $"Gelişim ağacı: {d.ad}", ExpenseCategory.Gelistirme)) return false;
+            if (!EconomyManager.I.TrySpendYatirim(d.bedel, $"Gelişim ağacı: {d.ad}", ExpenseCategory.Gelistirme)) return false;
             alinan.Add(d.id);
             EventManager.I.Notify($"Gelişim ağacı: {d.ad} alındı (kalıcı).");
             return true;

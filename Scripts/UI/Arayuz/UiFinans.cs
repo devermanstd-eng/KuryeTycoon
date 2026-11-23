@@ -116,7 +116,7 @@ namespace KuryeTycoon
                     ort = n > 0 ? ort / n : 0f;
                     int ilce = CityMap.I != null ? CityMap.I.UnlockLevel : 1;
                     int abone = Abonelik.I != null ? Abonelik.I.Abone : 0;
-                    y.Cubuk("Açık bölge", Mathf.Clamp01(ilce / (float)yt.HedefIlce), yt.IlceTamam(t) ? U.Iyi : U.Uyari, $"{ilce}/{yt.HedefIlce}");
+                    if (yt.IlceHedefiVar) y.Cubuk("Açık bölge", Mathf.Clamp01(ilce / (float)yt.HedefIlce), yt.IlceTamam(t) ? U.Iyi : U.Uyari, $"{ilce}/{yt.HedefIlce}");
                     y.Cubuk("Günlük teslimat", Mathf.Clamp01(ort / Mathf.Max(1, yt.HedefTeslimat)), yt.TeslimatTamam(t) ? U.Iyi : U.Uyari, $"{ort:0}/{yt.HedefTeslimat}");
                     if (yt.HedefAbone > 0) y.Cubuk("Abone", Mathf.Clamp01(abone / (float)yt.HedefAbone), yt.AboneTamam(t) ? U.Iyi : U.Uyari, $"{abone}/{yt.HedefAbone}");
                 }

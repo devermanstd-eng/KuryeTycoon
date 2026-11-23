@@ -151,7 +151,7 @@ namespace KuryeTycoon
         public bool Open()
         {
             if (IsOpen || LockReason != "") return false;
-            if (!EconomyManager.I.TrySpend(SizeCost[1], $"{StoreName} açılışı (raf, soğutucu, tadilat)", ExpenseCategory.Gelistirme)) return false;
+            if (!EconomyManager.I.TrySpendYatirim(SizeCost[1], $"{StoreName} açılışı (raf, soğutucu, tadilat)", ExpenseCategory.Gelistirme)) return false;
             var s = CityMap.I.AddOwnShop(MakeDef());
             if (s == null)
             {
@@ -174,7 +174,7 @@ namespace KuryeTycoon
         {
             if (!IsOpen || size >= 3) return false;
             long cost = SizeCost[size + 1];
-            if (!EconomyManager.I.TrySpend(cost, $"{StoreName}: {SizeNames[size + 1]}", ExpenseCategory.Gelistirme)) return false;
+            if (!EconomyManager.I.TrySpendYatirim(cost, $"{StoreName}: {SizeNames[size + 1]}", ExpenseCategory.Gelistirme)) return false;
             size++;
             UpdateWeight();
             EventManager.I.Notify($"{StoreName} büyüdü: {SizeNames[size]}. Daha çok stok, daha çok sipariş, {SizePickers[size]} toplayıcı.");

@@ -26,6 +26,8 @@ namespace KuryeTycoon
         public long loanPaid;       // aile borcuna ödenen (gider değil)
         public long depositNet;     // alınan − iade edilen depozito (gelir değil)
         public int deliveries;
+        public long sermaye;        // yatırımcıdan alınan sermaye (gelir değil, vergilenmez)
+        public long yatirimHarcama; // giderlerin içinde: tek seferlik alımlar (geliştirme, bölge, sözleşme, ağaç, mağaza)
 
         public long OtherExpenses
         {
@@ -52,7 +54,7 @@ namespace KuryeTycoon
             for (int i = 0; i < byCategory.Length; i++) byCategory[i] += o.byCategory[i];
             penalties += o.penalties; loanPaid += o.loanPaid; depositNet += o.depositNet;
             payoutsPaid += o.payoutsPaid; cashCollected += o.cashCollected; cashOrders += o.cashOrders;
-            deliveries += o.deliveries;
+            deliveries += o.deliveries; sermaye += o.sermaye; yatirimHarcama += o.yatirimHarcama;
         }
     }
 
@@ -318,6 +320,27 @@ namespace KuryeTycoon
             }
             Spend(amount, label, category);
             return true;
+        }
+
+        /// <summary>
+        /// Tek seferlik alım (geliştirme seviyesi, bölge, sözleşme, ağaç düğümü, mağaza): gider olarak yazılır ve vergiden düşer,
+        /// ama ayrıca işaretlenir; şirket değeri ve "ortalama kâr" göstergesi bunu saymaz (büyük alım değeri çökertmesin).
+        /// </summary>
+        public bool TrySpendYatirim(long amount, string label, ExpenseCategory category)
+        {
+            if (!TrySpend(amount, label, category)) return false;
+            Year.yatirimHarcama += amount;
+            Today.yatirimHarcama += amount;
+            return true;
+        }
+
+        /// <summary>Yatırımcıdan alınan sermaye: kasaya girer ama gelir değildir, vergilenmez, kâra yazılmaz.</summary>
+        public void AddSermaye(long amount, string label)
+        {
+            money += amount;
+            Year.sermaye += amount;
+            Today.sermaye += amount;
+            Log($"+{Ft(amount)} {label} (sermaye)");
         }
 
         public void Spend(long amount, string label, ExpenseCategory category = ExpenseCategory.Diger)
@@ -859,7 +882,10 @@ namespace KuryeTycoon
             if (s.deliveries > 0) sb.Append($" (paket başı {Ft(s.DeliveryProfit / s.deliveries)})");
             sb.Append($"\nNET KÂR: {Signed(s.Profit - s.penalties)}\n");
 
+            if (s.yatirimHarcama > 0) sb.Append($"(Giderlerin {Ft(s.yatirimHarcama)}'ı tek seferlik yatırım; işletme kârı {Signed(s.Profit - s.penalties + s.yatirimHarcama)})\n");
+
             // Kasa hareketi
+            if (s.sermaye > 0) sb.Append($"\nYatırımcıdan gelen sermaye: {Ft(s.sermaye)} (gelir değil, vergilenmez)");
             if (s.loanPaid > 0) sb.Append($"\nKredi taksiti ödenen: {Ft(s.loanPaid)}");
             if (s.payoutsPaid > 0) sb.Append($"\nKuryelerin hesabına yatan: {Ft(s.payoutsPaid)}");
             if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders}" + (s.cashCollected > 0 ? $" · kuryelerden tahsil edilen nakit {Ft(s.cashCollected)}" : ""));
@@ -1027,6 +1053,8 @@ namespace KuryeTycoon
                 sb.Append($"\nEn kötü gün: {worst.date} ({Signed(worst.net)}, {worst.deliveries} paket)");
             }
 
+            if (s.yatirimHarcama > 0) sb.Append($"\n\nTek seferlik yatırım harcaması: {Ft(s.yatirimHarcama)} (işletme kârı {Signed(s.Profit - s.penalties + s.yatirimHarcama)})");
+            if (s.sermaye > 0) sb.Append($"\nYatırımcıdan gelen sermaye: {Ft(s.sermaye)} (gelir değil)");
             if (s.loanPaid > 0) sb.Append($"\n\nKredi taksiti ödenen: {Ft(s.loanPaid)}");
             if (s.payoutsPaid > 0) sb.Append($"\nKuryelerin hesabına yatan: {Ft(s.payoutsPaid)}");
             if (s.cashOrders > 0) sb.Append($"\nNakit siparişler: {s.cashOrders}" + (Sade.NakitBorcu || s.cashCollected > 0 ? $" · tahsil edilen nakit {Ft(s.cashCollected)}" : ""));
