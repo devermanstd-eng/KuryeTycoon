@@ -111,6 +111,8 @@ namespace KuryeTycoon
             else if (EventManager.I.Current == null) HandleMenuKey();
             modalFree = EventManager.I.Current == null && !pauseMenuOpen && !ConfirmOpen && !BigCardOpen;
             if (modalFree) HandleKeys();
+            // Gelişim ağacı tam ekran: harita fareyi almaz, IMGUI (etiketler, uçan yazılar) ağacın üstüne çizilmez
+            if (AgacGorunur) return;
             if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
 
             // Ortada bir kutu (olay kartı, Esc menüsü, onay, büyük kurye kartı) açıksa IMGUI hiçbir şey çizmez. Otomatik testin ekran

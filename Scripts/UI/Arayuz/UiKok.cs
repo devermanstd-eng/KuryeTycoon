@@ -103,6 +103,7 @@ namespace KuryeTycoon
                 UiUstYenile(agir);
                 UiDockYenile(agir);
                 UiPencereYenile(agir);
+                UiAgacYenile();
                 UiHaritaYenile(agir);
                 UiOlaylarYenile(agir);
                 UiHedefYenile(agir);

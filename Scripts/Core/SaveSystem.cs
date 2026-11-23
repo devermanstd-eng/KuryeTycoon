@@ -191,6 +191,7 @@ namespace KuryeTycoon
         public GunPlaniSave gunPlani;          // grip dalgası (eski kayıtlarda yok)
         public int sehirNo;                    // Marka: oyunun şehri (0 = Nyíregyháza; eski kayıtlarda 0)
         public long kayitUtc;                  // kaydın gerçek zamanı (UTC tick): oyun kapalıyken kazanç için
+        public List<string> agacBonuslari;     // gelişim ağacında alınan küçük düğümler (eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -423,7 +424,8 @@ namespace KuryeTycoon
                 kargo = KargoAnlasmasi.I != null ? KargoAnlasmasi.I.Kaydet() : null,
                 gunPlani = GunPlani.I != null ? GunPlani.I.Kaydet() : null,
                 sehirNo = Marka.AktifSehir,
-                kayitUtc = System.DateTime.UtcNow.Ticks
+                kayitUtc = System.DateTime.UtcNow.Ticks,
+                agacBonuslari = GelisimAgaci.Kaydet()
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -488,6 +490,7 @@ namespace KuryeTycoon
             if (HizmetSeviyeleri.I != null) HizmetSeviyeleri.I.Yukle(d.hizmet);
             if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Yukle(d.kargo);
             if (GunPlani.I != null) GunPlani.I.Yukle(d.gunPlani);
+            GelisimAgaci.Yukle(d.agacBonuslari);
             CityMap.I.RefreshColors();
             if (d.gearStock != null)
                 for (int i = 0; i < cm.gearStock.Length && i < d.gearStock.Length; i++) cm.gearStock[i] = d.gearStock[i];

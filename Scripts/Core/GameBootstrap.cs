@@ -238,6 +238,7 @@ namespace KuryeTycoon
             Denge.Sifirla();
             Anlatici.Sifirla();
             Senaryo.Sifirla();
+            GelisimAgaci.Sifirla();
             // Marka: satılan şirket sayısı kadar büyük şehre geçilir (sadece Klasik oyunda)
             Marka.AktifSehir = Senaryo.Secili == Senaryo.Tur.Klasik ? Marka.SiradakiSehir : 0;
             EconomyManager.I.money = BaslangicKasasi(Difficulty.Level);

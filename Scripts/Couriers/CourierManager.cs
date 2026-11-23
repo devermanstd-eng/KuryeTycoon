@@ -613,6 +613,7 @@ namespace KuryeTycoon
             if (c.V.exposed && season == Season.Yaz && !c.Has(EquipmentKind.YazTisort)) hedef -= 0.06f;
             if (c.fatigue > 0.7f) hedef -= 0.05f;
             if (UpgradeManager.I != null) hedef += UpgradeManager.I.AkademiMoralEki;   // kurye akademisi: kendini değerli hisseder
+            hedef += GelisimAgaci.Bonus(BonusTip.Moral);                                // gelişim ağacı: küçük moral bonusu
             return Mathf.Clamp01(hedef);
         }
 
