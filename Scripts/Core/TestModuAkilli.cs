@@ -901,7 +901,15 @@ namespace KuryeTycoon
                                  (kilit.Length > 0 ? $"; {kilit}" : "") + ") için para biriktiriliyor. Bölge, sözleşme, market, diğer geliştirmeler ve erken borç ödemesi bekliyor.");
             }
             biriktiriyordu = biriktir;
-            if (biriktir) return;
+            if (biriktir)
+            {
+                // Gelir getiren ucuz alımlar birikimi bozmaz: işletme teslimatı (boş kuryeye komisyonsuz iş) ve otomasyon,
+                // bedeli boş paranın %15'ini geçmiyorsa. (24.11 testi: hesaplar 30 gün doluydu, ikisi de hiç alınmadı.)
+                if (son == null || clk.Day - sonAkilliGelistirmeGun < 3) return;
+                if (cm.Couriers.Count >= 12 && UcuzAl(UpgradeKind.Isletme, bos, "kurye hesapları dolu ama sakin saatlerde boş kurye var: işletme paketleri komisyonsuz gelir")) return;
+                if (cm.Couriers.Count >= 8 && UcuzAl(UpgradeKind.Otomasyon, bos, "günlük ayarları otomasyona bırak, oyun kapalıyken kazanç")) return;
+                return;
+            }
 
             if (son == null || clk.Day - sonAkilliGelistirmeGun < 3) return;
             long gelir = OrtalamaGelir(7);
@@ -918,6 +926,7 @@ namespace KuryeTycoon
             if (OrtMoral < 0.6f) adaylar.Add((UpgradeKind.Dinlenme, $"ort. moral {OrtMoral:0.00}"));
             // Otomasyon her gün iş görür ve kalıcıdır: sürekli geçerli adayların (dolap, merkez, robot) arkasında kalıp hiç alınmıyordu
             if (cm.Couriers.Count >= 8) adaylar.Add((UpgradeKind.Otomasyon, $"{cm.Couriers.Count} kurye: günlük ayarları otomasyona bırak, oyun kapalıyken kazanç"));
+            if (cm.Couriers.Count >= 12 && iptal < 0.08f) adaylar.Add((UpgradeKind.Isletme, $"kurye başı {kuryeBasi:0} teslimat: öğleden önce ve öğleden sonra boş kurye, işletme paketleri komisyonsuz gelir"));
             bool hesapBekleyen = up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0;
             if (iptal < 0.03f && kuryeBasi < 12f && cm.Couriers.Count >= 5 && YogunKayipOrani(3) < 0.02f && !hesapBekleyen)
                 adaylar.Add((UpgradeKind.Reklam, $"servis iyi, kurye başı {kuryeBasi:0} teslimat: talep lazım"));
@@ -932,7 +941,6 @@ namespace KuryeTycoon
             // Yeni iş kolu ve kurye akademisi
             if (OrtMoral < 0.55f && cm.Couriers.Count >= 10) adaylar.Add((UpgradeKind.Akademi, $"ort. moral {OrtMoral:0.00}, {cm.Couriers.Count} kurye: bırakma ve ayartılma riski"));
             if (cm.Couriers.Count >= 10 && iptal < 0.06f && kuryeBasi < 11f) adaylar.Add((UpgradeKind.Kargo, $"kurye başı {kuryeBasi:0} teslimat: sakin saatlerde boş kapasite var"));
-            if (cm.Couriers.Count >= 12 && iptal < 0.06f && kuryeBasi < 12f) adaylar.Add((UpgradeKind.Isletme, $"kurye başı {kuryeBasi:0} teslimat: öğleden önce ve öğleden sonra boş kurye, işletme paketleri komisyonsuz gelir"));
 
             foreach (var a in adaylar)
             {
@@ -943,6 +951,17 @@ namespace KuryeTycoon
                 if (gelir > 0 && ekGunluk > gelir * 0.08f) continue;   // günlük gideri gelire göre ağır
                 if (Al(a.k, bos, a.neden)) { sonAkilliGelistirmeGun = clk.Day; return; }
             }
+        }
+
+        /// <summary>Birikim sırasında: bedeli boş paranın %15'ini geçmeyen geliştirme.</summary>
+        bool UcuzAl(UpgradeKind k, long bos, string neden)
+        {
+            var up = UpgradeManager.I;
+            int bedel = up.NextCost(k);
+            if (bedel <= 0 || up.IsLocked(k) || bedel > bos * 0.15f) return false;
+            if (!Al(k, bos, neden + " (birikim sürerken ucuz alım)")) return false;
+            sonAkilliGelistirmeGun = GameClock.I.Day;
+            return true;
         }
 
         /// <summary>Geliştirmeyi alır: normalde boş paranın en fazla yarısı; darboğazı çözen alımda (tamami) boş paranın tamamı.</summary>

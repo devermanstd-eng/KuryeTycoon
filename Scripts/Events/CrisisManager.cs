@@ -116,14 +116,26 @@ namespace KuryeTycoon
             return Round1000(SerbestAylikUyum(n) * 0.4f * serbestPay);
         }
 
-        /// <summary>Serbest modelde aylık denetim cezası ihtimali: tam zamanlı kuryelerin payı arttıkça yükselir.</summary>
+        /// <summary>Serbest modelde aylık denetim cezası ihtimali: tam zamanlı kuryelerin payı arttıkça yükselir (%6 + pay × %24).</summary>
         public static float SerbestDenetimIhtimali()
         {
             int n = CourierManager.I != null ? CourierManager.I.Couriers.Count : 0;
-            return n > 0 ? 0.04f + 0.12f * TamZamanliSayisi() / (float)n : 0.04f;
+            return n > 0 ? 0.06f + 0.24f * TamZamanliSayisi() / (float)n : 0.06f;
         }
 
-        public static long DenetimCezasi() => Round1000(Mathf.Max(2000000f, AvgDailyIncome() * 1.5f));
+        /// <summary>Tam zamanlı serbest kurye başına geriye dönük sosyal katkı ve ceza (450 €).</summary>
+        public const long KuryeBasiCeza = 180000;
+
+        /// <summary>
+        /// Denetim cezası: tam zamanlı çalıştığı hâlde serbest tutulan her kurye için geriye dönük prim ve ceza (kişi başı 450 €),
+        /// en az 5 000 € ya da 1,5 günlük ortalama gelir. (24.11 testi: eski ceza ~7 290 € ve %12 ihtimalle serbest model ayda
+        /// ~7 900 €'ya geliyordu, karma ~19 600 €; seçim anlamsızdı.)
+        /// </summary>
+        public static long DenetimCezasi(int serbestTamZamanli = -1)
+        {
+            if (serbestTamZamanli < 0) serbestTamZamanli = TamZamanliSayisi();
+            return Round1000(Mathf.Max(Mathf.Max(2000000f, AvgDailyIncome() * 1.5f), serbestTamZamanli * (float)KuryeBasiCeza));
+        }
 
         /// <summary>
         /// Çalışan statüsünün işveren maliyeti: kuryelere ödenen hakedişin %28'i (Macaristan'da işveren sosyal katkısı %13
@@ -354,7 +366,7 @@ namespace KuryeTycoon
                 if (uyum > 0) EconomyManager.I.Spend(uyum, "Platform yasası: serbest kuryeler için hukuki uyum (karma model)", ExpenseCategory.Vergi);
                 if (n > 0 && aciktaKalan > 0 && Random.value < 0.12f * aciktaKalan / n * 3f)
                 {
-                    long fine = Round1000(DenetimCezasi() * 0.5f);
+                    long fine = Round1000(Mathf.Max(500000f, aciktaKalan * (float)KuryeBasiCeza));
                     EconomyManager.I.Spend(fine, "Çalışma denetimi cezası (tam zamanlı serbest kurye)", ExpenseCategory.Vergi);
                     EventManager.I.Push(new GameEvent("Çalışma denetimi: ceza",
                         $"Müfettişler {aciktaKalan} kuryenin bu ay tam zamanlı çalıştığı hâlde serbest kaldığını tespit etti. Ceza: {Ft(fine)}. " +
@@ -543,7 +555,7 @@ namespace KuryeTycoon
                 $"yarı zamanlılar serbest kalır (ayda {Ft(karmaAylik)} uyum gideri). Her ay başında yeni tam zamanlılar da çalışan olur. " +
                 "Çalışan kuryeler daha mutlu ve sadık; diğerleri eskisi gibi.\n" +
                 $"• Hepsi serbest: her ay {Ft(monthly)} hukuki uyum gideri ve her ay %{risk * 100f:0} ihtimalle ~{Ft(fine)} denetim cezası " +
-                "(tam zamanlı kurye çoğaldıkça risk artar).");
+                $"(tam zamanlı kurye çoğaldıkça risk ve ceza artar: serbest tutulan her tam zamanlı kurye için {Ft(KuryeBasiCeza)} geriye dönük prim ve ceza).");
             ev.Add($"Bütün kuryeleri çalışan statüsüne al (günde ~{Ft(daily)})", () =>
             {
                 lawStage = 2; employees = true; karma = false;

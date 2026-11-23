@@ -9,8 +9,9 @@ namespace KuryeTycoon
     ///  • Günlük artış: 0,9 + (memnuniyet − 60) × 0,03; münhasır dükkanda +0,5, rakiple de çalışan dükkanda −0,3.
     ///    Memnuniyet 70'te ~3 haftada Düzenli, ~6 haftada Sadık; münhasır ve memnun dükkan ~6 haftada Ortak olur.
     ///    Sözleşme bitince günde 2 puan düşer; dükkan rakibe giderse sadakatin %70'i kaybolur.
-    ///  • Etkiler (seviye başına): rakip teklifinde kalma ihtimali +4 puan, münhasırlık kabulü +6 puan, sipariş +%3.
-    ///    Sadık dükkan rakibin anlaşma teklifini %35, Ortak dükkan %70 ihtimalle geri çevirir.
+    ///  • Etkiler (seviye başına): rakip teklifinde kalma ihtimali +4 puan, münhasırlık kabulü +6 puan, sipariş +%2.
+    ///    Sadık dükkan rakibin anlaşma teklifini %20, Ortak dükkan %45 ihtimalle geri çevirir.
+    ///    (24.11 testi: sipariş +%3 ve %35/%70 ile pazar payı %62'ye çıktı, bant %45–55.)
     ///  • Primli münhasırlık: dükkana münhasırlık için tek seferlik prim ödersen (geçen ay + bu ayki sipariş × 300 Ft,
     ///    375–5 000 €) kabul ihtimali 30 puan artar. Prim sadece kabul ederse ödenir (gerçekte platformlar münhasır
     ///    restoranlara imza primi ya da pazarlama bütçesi verir).
@@ -42,12 +43,12 @@ namespace KuryeTycoon
         {
             if (s == null || !s.contracted) return 0f;
             int lv = Seviye(s);
-            return lv >= 3 ? 0.7f : lv == 2 ? 0.35f : 0f;
+            return lv >= 3 ? 0.45f : lv == 2 ? 0.2f : 0f;
         }
 
         /// <summary>Sipariş talebi çarpanı (dükkan seni öne çıkarır).</summary>
         public static float SiparisCarpani(Shop s) =>
-            s == null || !s.contracted || s.own || s.kargo ? 1f : 1f + 0.03f * Seviye(s);
+            s == null || !s.contracted || s.own || s.kargo ? 1f : 1f + 0.02f * Seviye(s);
 
         public static float GunlukArtis(Shop s)
         {
@@ -71,9 +72,9 @@ namespace KuryeTycoon
         public static string EtkiMetni(int lv)
         {
             if (lv <= 0) return "henüz ek etkisi yok";
-            string t = $"sipariş +%{3 * lv}, rakip teklifinde kalma +{4 * lv} puan, münhasırlık kabulü +{6 * lv} puan";
-            if (lv == 2) t += ", rakibin anlaşma teklifini %35 ihtimalle geri çevirir";
-            if (lv >= 3) t += ", rakibin anlaşma teklifini %70 ihtimalle geri çevirir";
+            string t = $"sipariş +%{2 * lv}, rakip teklifinde kalma +{4 * lv} puan, münhasırlık kabulü +{6 * lv} puan";
+            if (lv == 2) t += ", rakibin anlaşma teklifini %20 ihtimalle geri çevirir";
+            if (lv >= 3) t += ", rakibin anlaşma teklifini %45 ihtimalle geri çevirir";
             return t;
         }
 
