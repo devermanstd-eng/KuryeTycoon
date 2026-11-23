@@ -177,7 +177,7 @@ namespace KuryeTycoon
         /// <summary>Bu kuryeye bu mesafe için şu an ödenecek tutar (boost hariç).</summary>
         public int CourierPay(Courier c, int tiles) => PayFor(c.V, tiles);
 
-        public int ProfitIf(Order o, Courier c) => o.CompanyIncome - CourierPay(c, o.distance);
+        public int ProfitIf(Order o, Courier c) => o.CompanyIncome + o.aboneUcreti - CourierPay(c, o.distance);   // abone ücretini üyelik karşılar
 
         /// <summary>
         /// Bu ağırlığı taşıyabilen kuryeler arasında en pahalısının bu mesafe için ücreti.

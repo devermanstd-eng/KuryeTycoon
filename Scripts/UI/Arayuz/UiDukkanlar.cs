@@ -68,6 +68,31 @@ namespace KuryeTycoon
                     bool uy = filtreNo == 0 || (filtreNo == 1 && s.contracted) || (filtreNo == 2 && !s.contracted && !kilitli) || (filtreNo == 3 && kilitli);
                     if (uy) liste.Add(s);
                 }
+                // Restoranlardan reklam geliri (sponsorlu listeleme)
+                var rk = RestoranReklam.I;
+                if (rk != null)
+                {
+                    y.Bolum("Uygulamada öne çıkarma (restoran reklamları)",
+                            "Sözleşmeli dükkanlar uygulamada öne çıkmak için para öder; reklam alan dükkan daha çok sipariş alır. " +
+                            "Ama uygulama reklamla dolunca müşteri memnuniyeti düşer: her teslimatın puanı biraz azalır. " +
+                            "Reklamlar her gece yeniden dağıtılır, gelir o gece yazılır.");
+                    y.SatirBasla();
+                    for (int lv = 0; lv < RestoranReklam.SeviyeAdlari.Length; lv++)
+                    {
+                        int sec = lv;
+                        y.Dugme(lv == rk.seviye ? $"● {RestoranReklam.SeviyeAdlari[lv]}" : RestoranReklam.SeviyeAdlari[lv],
+                                () => rk.SeviyeAyarla(sec), lv != rk.seviye, "kucuk-dg");
+                    }
+                    y.SatirBitir();
+                    if (rk.seviye > 0)
+                    {
+                        y.KV("Tahmini günlük gelir", $"{Ft(rk.TahminiGelir(rk.seviye))} · reklamlı dükkan talebi +%{12 * rk.seviye}");
+                        y.KV("Müşteri memnuniyeti", $"her teslimat −{RestoranReklam.CezaOf(rk.seviye):0.00} yıldız", U.Uyari);
+                        y.Kucuk($"Dün {rk.dunSponsor} dükkan reklam aldı: {Ft(rk.dunGelir)}. Toplam reklam geliri {Ft(rk.toplamGelir)}.");
+                    }
+                    else y.Kucuk($"Kapalı. Az seviyede tahmini günlük gelir {Ft(rk.TahminiGelir(1))} (her teslimat −{RestoranReklam.CezaOf(1):0.00} yıldız).");
+                }
+
                 y.Bolum($"Dükkanlar ({liste.Count})");
                 if (liste.Count == 0) y.Kucuk("Bu filtrede dükkan yok.");
                 foreach (var s in liste)

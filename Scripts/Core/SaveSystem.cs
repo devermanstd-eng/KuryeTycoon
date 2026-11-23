@@ -192,6 +192,9 @@ namespace KuryeTycoon
         public int sehirNo;                    // Marka: oyunun şehri (0 = Nyíregyháza; eski kayıtlarda 0)
         public long kayitUtc;                  // kaydın gerçek zamanı (UTC tick): oyun kapalıyken kazanç için
         public List<string> agacBonuslari;     // gelişim ağacında alınan küçük düğümler (eski kayıtlarda yok)
+        public AbonelikSave abonelik;          // abonelik (eski kayıtlarda yok)
+        public RestoranReklamSave reklam;      // restoran reklamları (eski kayıtlarda yok)
+        public YatirimSave yatirim;            // yatırım turları (eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -425,7 +428,10 @@ namespace KuryeTycoon
                 gunPlani = GunPlani.I != null ? GunPlani.I.Kaydet() : null,
                 sehirNo = Marka.AktifSehir,
                 kayitUtc = System.DateTime.UtcNow.Ticks,
-                agacBonuslari = GelisimAgaci.Kaydet()
+                agacBonuslari = GelisimAgaci.Kaydet(),
+                abonelik = Abonelik.I != null ? Abonelik.I.Kaydet() : null,
+                reklam = RestoranReklam.I != null ? RestoranReklam.I.Kaydet() : null,
+                yatirim = Yatirim.I != null ? Yatirim.I.Kaydet() : null
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -491,6 +497,9 @@ namespace KuryeTycoon
             if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Yukle(d.kargo);
             if (GunPlani.I != null) GunPlani.I.Yukle(d.gunPlani);
             GelisimAgaci.Yukle(d.agacBonuslari);
+            if (Abonelik.I != null) Abonelik.I.Yukle(d.abonelik);
+            if (RestoranReklam.I != null) RestoranReklam.I.Yukle(d.reklam);
+            if (Yatirim.I != null) Yatirim.I.Yukle(d.yatirim);
             CityMap.I.RefreshColors();
             if (d.gearStock != null)
                 for (int i = 0; i < cm.gearStock.Length && i < d.gearStock.Length; i++) cm.gearStock[i] = d.gearStock[i];

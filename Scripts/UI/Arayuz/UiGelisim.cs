@@ -65,7 +65,7 @@ namespace KuryeTycoon
                 bSat = U.Dugme(bd, "", () =>
                 {
                     long deger = Marka.SirketDegeri;
-                    int p = Marka.PuanFor(deger);
+                    int p = Marka.PuanFor((long)(deger * Marka.Pay));
                     string sonraki = Marka.Sehirler[Mathf.Min(Marka.Veri.satilan + 1, Marka.Sehirler.Length - 1)];
                     ui.AskConfirm("Şirketi sat",
                         $"{CompanyProfile.Name} {Ft(deger)} değerle satılacak. Karşılığında {p} marka puanı kazanırsın. " +
@@ -140,7 +140,7 @@ namespace KuryeTycoon
                 U.Renk(bKar, ort < 0 ? U.Kotu : U.YaziRengi);
                 U.Metin(bCarpan, Buyume.CarpanAciklama);
                 long deger = Marka.SirketDegeri;
-                int puan = Marka.PuanFor(deger);
+                int puan = Marka.PuanFor((long)(deger * Marka.Pay));
                 U.Metin(bDeger, $"Şirketin değeri {Ft(deger)} · satarsan {puan} marka puanı (sonraki puan {Ft(Marka.SonrakiPuanDegeri(puan))} değerde)");
                 bool markaVar = Marka.Veri.satilan > 0 || Marka.Veri.puan > 0;
                 U.Metin(bMarka, (markaVar ? $"Marka: {Marka.Ozet}. " : "") +

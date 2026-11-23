@@ -1,0 +1,224 @@
+using UnityEngine;
+
+namespace KuryeTycoon
+{
+    [System.Serializable]
+    public class YatirimSave
+    {
+        public float pay = 1f;
+        public int tamamlanan, baski, ret;
+        public bool hedefAktif;
+        public int hedefBitis, sonTeklifGunu = -999;
+        public float kosul = 1f;
+        public long toplamYatirim;
+        public int teklifTur = -1;
+    }
+
+    /// <summary>
+    /// Yatırım turları (Şirket > Finans): gerçek teslimat girişimleri gibi tohum yatırım, sonra A, B ve C serisi.
+    ///  • Koşullar tutunca yatırımcı teklif kartı gelir: X para karşılığında şirketin %Y'si ve süreli büyüme hedefleri
+    ///    (açık bölge, günlük teslimat, abone). Kabul edersen para kasaya girer, kurucu payın küçülür.
+    ///  • Hedefleri süresinde tutturursan sonraki tur daha iyi koşullarla gelir (para ×1,25, pay daha az).
+    ///    Tutturamazsan yönetim kurulu baskısı: masrafları kısmak ya da payından vermek zorunda kalırsın; sonraki tur ucuzlar.
+    ///  • Payın şirket satışını (Marka) etkiler: satıştan alınan marka puanı, şirket değerinin sana düşen kısmından hesaplanır.
+    /// </summary>
+    public class Yatirim : MonoBehaviour
+    {
+        public static Yatirim I { get; private set; }
+
+        public class Tur
+        {
+            public string ad, yatirimci;
+            public long tutar;     // Ft
+            public float pay;      // yatırımcıya verilen oran
+            public int sure;       // hedef süresi (gün)
+            public int ilce, teslimat, abone;
+            public int enErkenGun, enAzTeslimat;   // teklifin gelmesi için
+        }
+
+        public static readonly Tur[] Turlar =
+        {
+            new Tur { ad = "Tohum yatırım", yatirimci = "Tisza Angels", tutar = 1600000, pay = 0.12f, sure = 60,
+                      ilce = 2, teslimat = 150, abone = 0, enErkenGun = 10, enAzTeslimat = 50 },
+            new Tur { ad = "A serisi", yatirimci = "Danube Ventures", tutar = 8000000, pay = 0.18f, sure = 90,
+                      ilce = 3, teslimat = 500, abone = 300, enErkenGun = 0, enAzTeslimat = 150 },
+            new Tur { ad = "B serisi", yatirimci = "Carpathia Capital", tutar = 32000000, pay = 0.20f, sure = 120,
+                      ilce = 4, teslimat = 1200, abone = 1500, enErkenGun = 0, enAzTeslimat = 450 },
+            new Tur { ad = "C serisi", yatirimci = "Euro Growth Partners", tutar = 100000000, pay = 0.20f, sure = 150,
+                      ilce = 5, teslimat = 2500, abone = 5000, enErkenGun = 0, enAzTeslimat = 1000 },
+        };
+
+        public float pay = 1f;            // kurucu (oyuncu) payı
+        public int tamamlanan;            // kabul edilen tur sayısı
+        public bool hedefAktif;
+        public int hedefBitis;            // GameClock.Day
+        public int baski, ret;
+        public int sonTeklifGunu = -999;
+        public float kosul = 1f;          // sonraki turun koşulları: 1 normal, 1,25 iyi, 0,7 kötü
+        public long toplamYatirim;
+        int teklifTur = -1;               // açık (cevap bekleyen) teklif
+
+        void Awake() { I = this; }
+
+        public void Init()
+        {
+            pay = 1f; tamamlanan = 0; hedefAktif = false; hedefBitis = 0; baski = ret = 0;
+            sonTeklifGunu = -999; kosul = 1f; toplamYatirim = 0; teklifTur = -1;
+            GameClock.I.OnNewDay += YeniGun;
+        }
+
+        public Tur AktifTur => tamamlanan > 0 && tamamlanan <= Turlar.Length ? Turlar[tamamlanan - 1] : null;
+        public Tur SiradakiTur => tamamlanan < Turlar.Length ? Turlar[tamamlanan] : null;
+
+        public long TeklifTutari(Tur t) => (long)(Mathf.Round(t.tutar * kosul / 100000f) * 100000f);
+        public float TeklifPayi(Tur t) => Mathf.Clamp(t.pay / Mathf.Sqrt(kosul), 0.05f, 0.35f);
+
+        static int Gun => GameClock.I != null ? GameClock.I.Day : 0;
+
+        static float OrtTeslimat
+        {
+            get
+            {
+                var h = StatsHistory.I != null ? StatsHistory.I.Days : null;
+                if (h == null || h.Count == 0) return 0f;
+                float t = 0f; int n = 0;
+                for (int i = Mathf.Max(0, h.Count - 7); i < h.Count; i++) { t += h[i].deliveries; n++; }
+                return t / n;
+            }
+        }
+
+        static int AcikIlce => CityMap.I != null ? CityMap.I.UnlockLevel : 1;
+        static int AboneSayisi => Abonelik.I != null ? Abonelik.I.Abone : 0;
+
+        public bool IlceTamam(Tur t) => AcikIlce >= t.ilce;
+        public bool TeslimatTamam(Tur t) => OrtTeslimat >= t.teslimat;
+        public bool AboneTamam(Tur t) => AboneSayisi >= t.abone;
+        public bool HedeflerTamam(Tur t) => IlceTamam(t) && TeslimatTamam(t) && AboneTamam(t);
+        public int KalanGun => hedefAktif ? Mathf.Max(0, hedefBitis - Gun) : 0;
+
+        public string HedefMetni(Tur t) =>
+            $"{t.ilce} açık bölge (şimdi {AcikIlce}) · günde {t.teslimat} teslimat (7 gün ort. {OrtTeslimat:0})" +
+            (t.abone > 0 ? $" · {t.abone} abone (şimdi {AboneSayisi})" : "");
+
+        void YeniGun()
+        {
+            var e = EventManager.I;
+            if (hedefAktif)
+            {
+                var t = AktifTur;
+                if (t != null && HedeflerTamam(t))
+                {
+                    hedefAktif = false;
+                    kosul = 1.25f;
+                    sonTeklifGunu = Gun;
+                    CompanyProfile.AddReputation(0.05f);
+                    e.Push(new GameEvent($"{t.ad}: hedefler tutturuldu",
+                        $"{t.yatirimci} memnun: {HedefMetni(t)}. Basında \"hızlı büyüyen girişim\" haberleri çıktı (itibar +0,05). " +
+                        (SiradakiTur != null ? $"Sıradaki tur ({SiradakiTur.ad}) daha iyi koşullarla gelecek." : "Son tur da tamam; artık şirketi satmayı düşünebilirsin."))
+                        .Ozet("Payın", $"%{pay * 100f:0}", 0));
+                }
+                else if (Gun > hedefBitis)
+                {
+                    hedefAktif = false;
+                    baski++;
+                    kosul = 0.7f;
+                    sonTeklifGunu = Gun;
+                    YonetimKurulu(t);
+                }
+                return;
+            }
+
+            if (teklifTur >= 0) return;   // cevap bekleyen teklif var
+            var s = SiradakiTur;
+            if (s == null) return;
+            int bekleme = tamamlanan == 0 && ret == 0 ? 0 : (ret > 0 ? 30 : 14);
+            if (Gun - sonTeklifGunu < bekleme) return;
+            if (GameClock.I.CompanyDay < s.enErkenGun || OrtTeslimat < s.enAzTeslimat) return;
+            Teklif(tamamlanan);
+        }
+
+        void Teklif(int no)
+        {
+            var t = Turlar[no];
+            teklifTur = no;
+            long tutar = TeklifTutari(t);
+            float p = TeklifPayi(t);
+            long degerleme = (long)(tutar / p);
+            string kosulYazi = kosul > 1.01f ? " Önceki hedefleri tutturduğun için koşullar iyi." : kosul < 0.99f ? " Önceki hedefler tutmadığı için koşullar ağır." : "";
+            EventManager.I.Push(new GameEvent($"Yatırımcı teklifi: {t.ad}",
+                    $"{t.yatirimci}, {Ft(tutar)} karşılığında şirketin %{p * 100f:0}'ini istiyor (şirket değerlemesi {Ft(degerleme)}).{kosulYazi}\n\n" +
+                    $"Şart: {t.sure} gün içinde {HedefMetni(t)}.\n" +
+                    $"Tutturursan sonraki tur daha iyi gelir; tutturamazsan yönetim kurulu baskısı başlar. " +
+                    $"Payın %{pay * 100f:0} → %{pay * (1f - p) * 100f:0} olur; şirketi satarken marka puanı sana düşen paydan hesaplanır.")
+                .Ozet("Yatırım", Ft(tutar), 1)
+                .Ozet("Verilen pay", $"%{p * 100f:0}", 3)
+                .Ozet("Süre", $"{t.sure} gün")
+                .Add("Kabul et", () => Kabul(no))
+                .Add("Reddet (bir ay sonra tekrar sorulur)", () => { teklifTur = -1; ret++; sonTeklifGunu = Gun; }));
+        }
+
+        void Kabul(int no)
+        {
+            var t = Turlar[no];
+            long tutar = TeklifTutari(t);
+            float p = TeklifPayi(t);
+            teklifTur = -1;
+            EconomyManager.I.AddIncome(tutar, $"Yatırım: {t.ad} ({t.yatirimci})");
+            toplamYatirim += tutar;
+            pay *= 1f - p;
+            tamamlanan = no + 1;
+            hedefAktif = true;
+            hedefBitis = Gun + t.sure;
+            kosul = 1f;
+            ret = 0;
+            EventManager.I.Notify($"{t.ad}: {Ft(tutar)} kasaya girdi. Payın %{pay * 100f:0}. Hedef {t.sure} gün: {HedefMetni(t)}.");
+        }
+
+        void YonetimKurulu(Tur t)
+        {
+            EventManager.I.Push(new GameEvent("Yönetim kurulu baskısı",
+                    $"{t?.ad} hedefleri süresinde tutmadı: {(t != null ? HedefMetni(t) : "")}. {t?.yatirimci} yönetim kurulunda hesap soruyor. " +
+                    "Sonraki yatırım turu daha ağır koşullarla gelecek. Şimdi bir taviz vermen gerekiyor.")
+                .Add("Masrafları kıs: yoğun saat primleri kapanır, kurye morali düşer", () =>
+                {
+                    var c = CampaignManager.I;
+                    if (c != null) { c.aksamPrimi = false; c.oglePrimi = false; }
+                    if (CourierManager.I != null) foreach (var k in CourierManager.I.Couriers) k.morale = Mathf.Clamp01(k.morale - 0.06f);
+                })
+                .Add("Kurucu payından %3 ver", () => pay = Mathf.Max(0.05f, pay - 0.03f)));
+        }
+
+        /// <summary>Finans ve ağaçta gösterilen kısa durum.</summary>
+        public string Durum
+        {
+            get
+            {
+                if (hedefAktif && AktifTur != null)
+                    return $"{AktifTur.ad} hedefi · {KalanGun} gün kaldı · {HedefMetni(AktifTur)}";
+                if (teklifTur >= 0) return $"{Turlar[teklifTur].ad} teklifi cevap bekliyor";
+                var s = SiradakiTur;
+                if (s == null) return "Bütün turlar tamam";
+                return $"Sıradaki: {s.ad} (günde {s.enAzTeslimat}+ teslimat" + (s.enErkenGun > 0 ? $", {s.enErkenGun}. günden sonra)" : ")");
+            }
+        }
+
+        static string Ft(long v) => GameData.Ft(v);
+
+        public YatirimSave Kaydet() => new YatirimSave
+        {
+            pay = pay, tamamlanan = tamamlanan, baski = baski, ret = ret, hedefAktif = hedefAktif, hedefBitis = hedefBitis,
+            sonTeklifGunu = sonTeklifGunu, kosul = kosul, toplamYatirim = toplamYatirim, teklifTur = teklifTur
+        };
+
+        public void Yukle(YatirimSave s)
+        {
+            if (s == null) return;
+            pay = Mathf.Clamp(s.pay, 0.05f, 1f);
+            tamamlanan = Mathf.Clamp(s.tamamlanan, 0, Turlar.Length);
+            baski = s.baski; ret = s.ret; hedefAktif = s.hedefAktif; hedefBitis = s.hedefBitis;
+            sonTeklifGunu = s.sonTeklifGunu; kosul = s.kosul <= 0f ? 1f : s.kosul; toplamYatirim = s.toplamYatirim;
+            // Kayıtta açık kalmış teklif kartı kaybolur (kartlar kayda girmez): teklifi yeniden sor
+            teklifTur = -1;
+        }
+    }
+}

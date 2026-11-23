@@ -281,7 +281,7 @@ namespace KuryeTycoon
         void AgacSatisSor()
         {
             long deger = Marka.SirketDegeri;
-            int p = Marka.PuanFor(deger);
+            int p = Marka.PuanFor((long)(deger * Marka.Pay));
             string sonraki = Marka.Sehirler[Mathf.Min(Marka.Veri.satilan + 1, Marka.Sehirler.Length - 1)];
             AskConfirm("Şirketi sat",
                 $"{CompanyProfile.Name} {Ft(deger)} değerle satılacak. Karşılığında {p} marka puanı kazanırsın. " +
@@ -699,8 +699,8 @@ namespace KuryeTycoon
                 U.Goster(agacBekleyen, bekleyen > 0);
                 if (bekleyen > 0) U.Metin(agacBekleyen, $"{bekleyen} kart bekliyor · çıkınca açılır");
                 long deger = Marka.SirketDegeri;
-                int puan = Marka.PuanFor(deger);
-                U.Metin(agacDeger, $"Şirketin değeri {Ft(deger)} · satarsan {puan} marka puanı (sonraki puan {Ft(Marka.SonrakiPuanDegeri(puan))} değerde)");
+                int puan = Marka.PuanFor((long)(deger * Marka.Pay));
+                U.Metin(agacDeger, $"Şirketin değeri {Ft(deger)}" + (Marka.Pay < 0.999f ? $" (payın %{Marka.Pay * 100f:0})" : "") + $" · satarsan {puan} marka puanı (sonraki puan {Ft(Marka.SonrakiPuanDegeri(puan))} değerde)");
                 string engel = Marka.SatisEngeli;
                 U.Goster(agacEngel, engel.Length > 0);
                 if (engel.Length > 0) U.Metin(agacEngel, $"Satış için: {engel}.");

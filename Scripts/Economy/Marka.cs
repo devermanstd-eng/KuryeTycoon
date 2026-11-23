@@ -154,6 +154,10 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Kurucu payı (yatırım turlarında küçülür). Satış puanı şirket değerinin sana düşen kısmından.</summary>
+        public static float Pay => Yatirim.I != null ? Yatirim.I.pay : 1f;
+        public static long PayinDegeri => (long)(SirketDegeri * Pay);
+
         public static int PuanFor(long deger) => deger <= 0 ? 0 : Mathf.FloorToInt(Mathf.Sqrt(deger / (float)PuanBirimi));
 
         /// <summary>Bir sonraki puan için gereken değer.</summary>
@@ -168,7 +172,7 @@ namespace KuryeTycoon
                 if (Senaryo.Secili != Senaryo.Tur.Klasik) return "sadece Klasik oyunda";
                 var c = GameClock.I;
                 if (c != null && c.CompanyDay < EnErkenSatisGunu) return $"şirket en az {EnErkenSatisGunu} günlük olmalı ({c.CompanyDay}. gün)";
-                if (PuanFor(SirketDegeri) < 1) return $"şirketin değeri en az {GameData.Ft(PuanBirimi)} olmalı";
+                if (PuanFor(PayinDegeri) < 1) return Pay < 0.999f ? $"payının değeri en az {GameData.Ft(PuanBirimi)} olmalı" : $"şirketin değeri en az {GameData.Ft(PuanBirimi)} olmalı";
                 return "";
             }
         }
@@ -178,7 +182,7 @@ namespace KuryeTycoon
         {
             if (SatisEngeli.Length > 0) return 0;
             long deger = SirketDegeri;
-            int p = PuanFor(deger);
+            int p = PuanFor((long)(deger * Pay));
             var v = Veri;
             v.puan += p;
             v.toplamPuan += p;

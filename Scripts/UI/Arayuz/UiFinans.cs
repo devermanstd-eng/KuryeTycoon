@@ -92,7 +92,36 @@ namespace KuryeTycoon
                 y.Bolum("Bugün ve dün", "Teslimat kârı = komisyon + teslimat ücreti − kurye ödemeleri − boost. Net kâr = teslimat kârı − diğer giderler + diğer gelirler.");
                 DonemTablosu(e.Today, "Bugün", dun, "Dün");
                 Kredi(e);
+                YatirimBolumu();
                 IsletmeGiderleriBolumu(e);
+            }
+
+            /// <summary>Yatırım turları (Yatirim.cs): pay, aktif hedef ve ilerleme.</summary>
+            void YatirimBolumu()
+            {
+                var yt = Yatirim.I;
+                if (yt == null) return;
+                y.Bolum("Yatırım turları",
+                        "Şirket büyüyünce yatırımcılar teklif getirir: para karşılığında şirketin bir payı ve süreli büyüme hedefleri. " +
+                        "Hedefi tutturursan sonraki tur daha iyi gelir; tutturamazsan yönetim kurulu baskısı başlar ve sonraki tur ucuzlar. " +
+                        "Şirketi satınca marka puanı, şirket değerinin sana düşen payından hesaplanır.");
+                y.KV("Kurucu payın", $"%{yt.pay * 100f:0}" + (yt.toplamYatirim > 0 ? $" · alınan yatırım {Ft(yt.toplamYatirim)}" : ""));
+                if (yt.hedefAktif && yt.AktifTur != null)
+                {
+                    var t = yt.AktifTur;
+                    y.KV($"{t.ad} hedefi", $"{yt.KalanGun} gün kaldı", yt.KalanGun < 10 ? U.Uyari : (Color?)null);
+                    var h = StatsHistory.I != null ? StatsHistory.I.Days : null;
+                    float ort = 0f; int n = 0;
+                    if (h != null) for (int i = Mathf.Max(0, h.Count - 7); i < h.Count; i++) { ort += h[i].deliveries; n++; }
+                    ort = n > 0 ? ort / n : 0f;
+                    int ilce = CityMap.I != null ? CityMap.I.UnlockLevel : 1;
+                    int abone = Abonelik.I != null ? Abonelik.I.Abone : 0;
+                    y.Cubuk("Açık bölge", Mathf.Clamp01(ilce / (float)t.ilce), yt.IlceTamam(t) ? U.Iyi : U.Uyari, $"{ilce}/{t.ilce}");
+                    y.Cubuk("Günlük teslimat", Mathf.Clamp01(ort / t.teslimat), yt.TeslimatTamam(t) ? U.Iyi : U.Uyari, $"{ort:0}/{t.teslimat}");
+                    if (t.abone > 0) y.Cubuk("Abone", Mathf.Clamp01(abone / (float)t.abone), yt.AboneTamam(t) ? U.Iyi : U.Uyari, $"{abone}/{t.abone}");
+                }
+                else y.Kucuk(yt.Durum + ".");
+                if (yt.baski > 0) y.Uyari($"Yönetim kurulu baskısı: {yt.baski} kez hedef tutmadı.");
             }
 
             void Kredi(EconomyManager e)
