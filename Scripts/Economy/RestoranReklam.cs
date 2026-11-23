@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace KuryeTycoon
@@ -12,8 +13,9 @@ namespace KuryeTycoon
     /// <summary>
     /// Restoranlardan reklam geliri (İşletme > Dükkanlar): sözleşmeli dükkanlar uygulamada öne çıkmak (sponsorlu listeleme)
     /// için para öder. Gerçekte platformların önemli bir gelir kalemi.
-    ///  • Seviye: Yok / Az / Orta / Yoğun. Seviye arttıkça daha çok dükkan reklam alır ve her biri daha çok öder
-    ///    (günlük 3,75 € × seviye çarpanı × dükkanın büyüklüğü). Her gece yeniden dağıtılır, gelir o gece yazılır.
+    ///  • Seviye: Yok / Az / Orta / Yoğun. Seviye arttıkça daha çok dükkan reklam alır (%30 / %50 / %70) ve satışının daha
+    ///    büyük kısmını öder (%2,5 / %4 / %6; gerçekte de reklamlar satışa göre faturalanır). Reklamlar her gece dağıtılır,
+    ///    reklamlı dükkanın o günkü satışı üzerinden ertesi gece gelir yazılır.
     ///  • Reklam alan dükkan daha çok sipariş alır (seviye başına +%12 talep).
     ///  • Bedeli müşteri memnuniyeti: uygulama reklamla dolunca her teslimatın puanı biraz düşer
     ///    (Az −0,03 · Orta −0,07 · Yoğun −0,12 yıldız). Fazla reklam satarsan itibar düşer, az satarsan para masada kalır.
@@ -23,10 +25,11 @@ namespace KuryeTycoon
         public static RestoranReklam I { get; private set; }
 
         public static readonly string[] SeviyeAdlari = { "Yok", "Az", "Orta", "Yoğun" };
-        static readonly float[] GelirCarpani = { 0f, 1f, 2.2f, 3.6f };
+        static readonly float[] SatisPayi = { 0f, 0.025f, 0.04f, 0.06f };
         static readonly float[] Ceza = { 0f, 0.03f, 0.07f, 0.12f };
         static readonly float[] Oran = { 0f, 0.3f, 0.5f, 0.7f };
-        public const long TabanUcret = 1500;   // dükkan başı günlük (Ft), seviye ve büyüklükle çarpılır
+        readonly Dictionary<Shop, long> satis = new Dictionary<Shop, long>();
+        readonly Dictionary<Shop, long> dunSatis = new Dictionary<Shop, long>();
 
         public int seviye;
         public long toplamGelir, dunGelir;
@@ -39,6 +42,7 @@ namespace KuryeTycoon
             seviye = 0;
             toplamGelir = dunGelir = 0;
             dunSponsor = 0;
+            satis.Clear(); dunSatis.Clear();
             GameClock.I.OnNewDay += YeniGun;
         }
 
@@ -52,13 +56,26 @@ namespace KuryeTycoon
 
         static float Buyukluk(Shop s) => 1f + Mathf.Min(2f, (s.monthOrders + s.lastMonthOrders) / 300f);
 
-        /// <summary>Bu seviyede yaklaşık günlük gelir (tahmin: dükkanların reklam alma oranıyla).</summary>
+        /// <summary>Teslim edilen siparişin sepeti dükkanın bugünkü satışına yazılır (reklam bedeli bunun yüzdesi).</summary>
+        public static void SatisKaydet(Order o)
+        {
+            if (I == null || o == null || o.shop == null || o.shop.own || o.shop.kargo) return;
+            I.satis.TryGetValue(o.shop, out long v);
+            I.satis[o.shop] = v + o.basket;
+        }
+
+        /// <summary>Bu seviyede yaklaşık günlük gelir (dünkü satışlar × reklam alma oranı × satış payı).</summary>
         public long TahminiGelir(int lv)
         {
             if (CityMap.I == null || lv <= 0) return 0;
             float t = 0f;
             foreach (var s in CityMap.I.Shops)
-                if (s.contracted && !s.own && !s.kargo) t += TabanUcret * GelirCarpani[lv] * Buyukluk(s) * Oran[lv];
+            {
+                if (!s.contracted || s.own || s.kargo) continue;
+                dunSatis.TryGetValue(s, out long v);
+                if (v == 0) satis.TryGetValue(s, out v);
+                t += v * SatisPayi[lv] * Oran[lv];
+            }
             return (long)t;
         }
 
@@ -90,11 +107,20 @@ namespace KuryeTycoon
         {
             dunGelir = 0;
             dunSponsor = 0;
-            int n = Dagit();
-            if (seviye <= 0 || n == 0) return;
-            long gelir = 0;
-            foreach (var s in CityMap.I.Shops)
-                if (s.sponsorlu) gelir += (long)(TabanUcret * GelirCarpani[seviye] * Buyukluk(s));
+            // Önce bugün reklamı olan dükkanlardan bugünkü satışlarının payı alınır, sonra yarının reklamları dağıtılır
+            long gelir = 0; int n = 0;
+            if (seviye > 0 && CityMap.I != null)
+                foreach (var s in CityMap.I.Shops)
+                {
+                    if (!s.sponsorlu) continue;
+                    satis.TryGetValue(s, out long v);
+                    gelir += (long)(v * SatisPayi[seviye]);
+                    n++;
+                }
+            dunSatis.Clear();
+            foreach (var kv in satis) dunSatis[kv.Key] = kv.Value;
+            satis.Clear();
+            Dagit();
             gelir = (gelir / 100) * 100;
             if (gelir <= 0) return;
             EconomyManager.I.AddIncome(gelir, $"Restoran reklamları ({n} dükkan)");
@@ -102,6 +128,8 @@ namespace KuryeTycoon
             dunSponsor = n;
             toplamGelir += gelir;
         }
+
+        public static float SatisPayiOf(int lv) => SatisPayi[Mathf.Clamp(lv, 0, 3)];
 
         public RestoranReklamSave Kaydet() => new RestoranReklamSave { seviye = seviye, toplamGelir = toplamGelir };
 

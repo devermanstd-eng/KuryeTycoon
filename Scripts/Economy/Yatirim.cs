@@ -12,6 +12,7 @@ namespace KuryeTycoon
         public float kosul = 1f;
         public long toplamYatirim;
         public int teklifTur = -1;
+        public int hedefIlce, hedefTeslimat, hedefAbone;
     }
 
     /// <summary>
@@ -57,6 +58,8 @@ namespace KuryeTycoon
         public float kosul = 1f;          // sonraki turun koşulları: 1 normal, 1,25 iyi, 0,7 kötü
         public long toplamYatirim;
         int teklifTur = -1;               // açık (cevap bekleyen) teklif
+        // Teklif anında sabitlenen hedefler: turun tabanı ya da şirketin o anki hâlinin üstü (hazır tutan hedef olmasın)
+        public int hedefIlce, hedefTeslimat, hedefAbone;
 
         void Awake() { I = this; }
 
@@ -64,6 +67,7 @@ namespace KuryeTycoon
         {
             pay = 1f; tamamlanan = 0; hedefAktif = false; hedefBitis = 0; baski = ret = 0;
             sonTeklifGunu = -999; kosul = 1f; toplamYatirim = 0; teklifTur = -1;
+            hedefIlce = hedefTeslimat = hedefAbone = 0;
             GameClock.I.OnNewDay += YeniGun;
         }
 
@@ -90,15 +94,28 @@ namespace KuryeTycoon
         static int AcikIlce => CityMap.I != null ? CityMap.I.UnlockLevel : 1;
         static int AboneSayisi => Abonelik.I != null ? Abonelik.I.Abone : 0;
 
-        public bool IlceTamam(Tur t) => AcikIlce >= t.ilce;
-        public bool TeslimatTamam(Tur t) => OrtTeslimat >= t.teslimat;
-        public bool AboneTamam(Tur t) => AboneSayisi >= t.abone;
+        /// <summary>Teklif anındaki hedefler: turun tabanı, şirket zaten oradaysa daha yukarısı (bölge +1, teslimat ×1,6, abone ×2).</summary>
+        void HedefleriBelirle(Tur t)
+        {
+            int maxIlce = CityMap.I != null ? CityMap.I.MaxLevel : 5;
+            hedefIlce = Mathf.Min(maxIlce, Mathf.Max(t.ilce, AcikIlce + 1));
+            hedefTeslimat = Mathf.Max(t.teslimat, Mathf.RoundToInt(OrtTeslimat * 1.6f / 10f) * 10);
+            hedefAbone = t.abone > 0 ? Mathf.Max(t.abone, Mathf.RoundToInt(AboneSayisi * 2f / 10f) * 10) : 0;
+        }
+
+        public int HedefIlce => hedefIlce > 0 ? hedefIlce : (AktifTur != null ? AktifTur.ilce : 1);
+        public int HedefTeslimat => hedefTeslimat > 0 ? hedefTeslimat : (AktifTur != null ? AktifTur.teslimat : 0);
+        public int HedefAbone => hedefAbone;
+
+        public bool IlceTamam(Tur t) => AcikIlce >= HedefIlce;
+        public bool TeslimatTamam(Tur t) => OrtTeslimat >= HedefTeslimat;
+        public bool AboneTamam(Tur t) => AboneSayisi >= HedefAbone;
         public bool HedeflerTamam(Tur t) => IlceTamam(t) && TeslimatTamam(t) && AboneTamam(t);
         public int KalanGun => hedefAktif ? Mathf.Max(0, hedefBitis - Gun) : 0;
 
         public string HedefMetni(Tur t) =>
-            $"{t.ilce} açık bölge (şimdi {AcikIlce}) · günde {t.teslimat} teslimat (7 gün ort. {OrtTeslimat:0})" +
-            (t.abone > 0 ? $" · {t.abone} abone (şimdi {AboneSayisi})" : "");
+            $"{HedefIlce} açık bölge (şimdi {AcikIlce}) · günde {HedefTeslimat} teslimat (7 gün ort. {OrtTeslimat:0})" +
+            (HedefAbone > 0 ? $" · {HedefAbone} abone (şimdi {AboneSayisi})" : "");
 
         void YeniGun()
         {
@@ -141,12 +158,13 @@ namespace KuryeTycoon
         {
             var t = Turlar[no];
             teklifTur = no;
+            HedefleriBelirle(t);
             long tutar = TeklifTutari(t);
             float p = TeklifPayi(t);
             long degerleme = (long)(tutar / p);
             string kosulYazi = kosul > 1.01f ? " Önceki hedefleri tutturduğun için koşullar iyi." : kosul < 0.99f ? " Önceki hedefler tutmadığı için koşullar ağır." : "";
             EventManager.I.Push(new GameEvent($"Yatırımcı teklifi: {t.ad}",
-                    $"{t.yatirimci}, {Ft(tutar)} karşılığında şirketin %{p * 100f:0}'ini istiyor (şirket değerlemesi {Ft(degerleme)}).{kosulYazi}\n\n" +
+                    $"{t.yatirimci}, {Ft(tutar)} karşılığında şirketin %{p * 100f:0} payını istiyor (şirket değerlemesi {Ft(degerleme)}).{kosulYazi}\n\n" +
                     $"Şart: {t.sure} gün içinde {HedefMetni(t)}.\n" +
                     $"Tutturursan sonraki tur daha iyi gelir; tutturamazsan yönetim kurulu baskısı başlar. " +
                     $"Payın %{pay * 100f:0} → %{pay * (1f - p) * 100f:0} olur; şirketi satarken marka puanı sana düşen paydan hesaplanır.")
@@ -207,7 +225,8 @@ namespace KuryeTycoon
         public YatirimSave Kaydet() => new YatirimSave
         {
             pay = pay, tamamlanan = tamamlanan, baski = baski, ret = ret, hedefAktif = hedefAktif, hedefBitis = hedefBitis,
-            sonTeklifGunu = sonTeklifGunu, kosul = kosul, toplamYatirim = toplamYatirim, teklifTur = teklifTur
+            sonTeklifGunu = sonTeklifGunu, kosul = kosul, toplamYatirim = toplamYatirim, teklifTur = teklifTur,
+            hedefIlce = hedefIlce, hedefTeslimat = hedefTeslimat, hedefAbone = hedefAbone
         };
 
         public void Yukle(YatirimSave s)
@@ -216,6 +235,7 @@ namespace KuryeTycoon
             pay = Mathf.Clamp(s.pay, 0.05f, 1f);
             tamamlanan = Mathf.Clamp(s.tamamlanan, 0, Turlar.Length);
             baski = s.baski; ret = s.ret; hedefAktif = s.hedefAktif; hedefBitis = s.hedefBitis;
+            hedefIlce = s.hedefIlce; hedefTeslimat = s.hedefTeslimat; hedefAbone = s.hedefAbone;
             sonTeklifGunu = s.sonTeklifGunu; kosul = s.kosul <= 0f ? 1f : s.kosul; toplamYatirim = s.toplamYatirim;
             // Kayıtta açık kalmış teklif kartı kaybolur (kartlar kayda girmez): teklifi yeniden sor
             teklifTur = -1;

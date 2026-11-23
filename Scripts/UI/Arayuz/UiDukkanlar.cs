@@ -73,7 +73,7 @@ namespace KuryeTycoon
                 if (rk != null)
                 {
                     y.Bolum("Uygulamada öne çıkarma (restoran reklamları)",
-                            "Sözleşmeli dükkanlar uygulamada öne çıkmak için para öder; reklam alan dükkan daha çok sipariş alır. " +
+                            "Sözleşmeli dükkanlar uygulamada öne çıkmak için satışlarının bir yüzdesini öder (Az %2,5 · Orta %4 · Yoğun %6); reklam alan dükkan daha çok sipariş alır. " +
                             "Ama uygulama reklamla dolunca müşteri memnuniyeti düşer: her teslimatın puanı biraz azalır. " +
                             "Reklamlar her gece yeniden dağıtılır, gelir o gece yazılır.");
                     y.SatirBasla();

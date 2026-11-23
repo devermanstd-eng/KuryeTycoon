@@ -15,7 +15,8 @@ namespace KuryeTycoon
     /// <summary>
     /// Abonelik (İşletme > Kampanya): Wolt+ benzeri aylık üyelik. Şirketin adıyla "&lt;Şirket&gt;+".
     ///  • Kurulum bir kez 1 000 € (uygulamaya üyelik sistemi). Sonra istediğin zaman açıp kapatırsın; kapatınca üyeler gider.
-    ///  • Üyeler teslimat ücreti ödemez (o ücreti şirket karşılar) ve daha sık sipariş verir: abone oranı × %35 daha çok sipariş.
+    ///  • Üyeler 4 000 Ft ve üstü sepette teslimat ücreti ödemez (o ücreti şirket karşılar) ve daha sık sipariş verir:
+    ///    abone oranı × %35 daha çok sipariş. Bir üye ayda ~2 sipariş verir.
     ///    Teslimat ücreti pahalı diye vazgeçmezler.
     ///  • Üyelik ücreti her gün (aylık ücret / 30) × abone sayısı olarak gelir yazılır.
     ///  • Abone hedefi = son 7 günün günlük teslimatı × 6 × fiyat cazibesi × itibar etkisi; abone sayısı her gün hedefe
@@ -27,6 +28,8 @@ namespace KuryeTycoon
 
         public const long KurulumBedeli = 400000;      // 1 000 €
         public const int EnAzUcret = 400, EnFazlaUcret = 2500;
+        /// <summary>Ücretsiz teslimat için en az sepet (Wolt+ gibi): altındaki siparişte üye de teslimat ücreti öder.</summary>
+        public const int EnAzSepet = 4000;
 
         public bool kuruldu;      // kurulum bedeli ödendi
         public bool acik;
@@ -84,7 +87,8 @@ namespace KuryeTycoon
             get
             {
                 float ort = OrtTeslimat;
-                return acik && ort > 1f ? Mathf.Clamp(abone / (ort * 10f), 0f, 0.6f) : 0f;
+                // Bir üye ayda ~2 sipariş verir (abone / 15 sipariş/gün)
+                return acik && ort > 1f ? Mathf.Clamp(abone / (ort * 15f), 0f, 0.6f) : 0f;
             }
         }
 
@@ -97,6 +101,7 @@ namespace KuryeTycoon
         /// <summary>Üye siparişi: teslimat ücreti müşteriden alınmaz.</summary>
         public void UyeSiparisi(Order o)
         {
+            if (o.basket < EnAzSepet) return;   // küçük sepet: üye de olsa ücret öder
             o.abone = true;
             o.aboneUcreti = o.deliveryFee;
             o.deliveryFee = 0;

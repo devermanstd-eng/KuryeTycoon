@@ -78,7 +78,7 @@ namespace KuryeTycoon
                 if (ab != null)
                 {
                     y.Bolum($"Abonelik: {ab.Ad}",
-                            "Aylık üyelik. Üyeler teslimat ücreti ödemez (o ücreti şirket karşılar), daha sık sipariş verir ve pahalı " +
+                            $"Aylık üyelik. Üyeler {Ft(Abonelik.EnAzSepet)} ve üstü sepette teslimat ücreti ödemez (o ücreti şirket karşılar), daha sık sipariş verir ve pahalı " +
                             "teslimat ücreti yüzünden vazgeçmez. Üyelik ücreti her gece gelir olarak yazılır. Ücret düşükse çok üye olur " +
                             "ama teslimat ücretinden daha çok kaybedersin; yüksekse az üye olur. İtibar düşerse üyeler ayrılır.");
                     if (!ab.kuruldu)

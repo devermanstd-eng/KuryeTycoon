@@ -980,6 +980,7 @@ namespace KuryeTycoon
             o.rating = Mathf.Clamp(rating, 1f, 5f);
             OrderHeat.RecordDelivery(o.customerTile, now - o.createdAt);
             DukkanKari.Record(o);
+            RestoranReklam.SatisKaydet(o);   // reklam bedeli dükkanın satışından
             if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);
             EconomyManager.I.RegisterDelivery(o);
             MapFx.Delivered(o);
@@ -1134,7 +1135,8 @@ namespace KuryeTycoon
             if (!o.kargo) OrderHeat.RecordDelivery(o.customerTile, now - basAn);   // harita: teslimat süresi katmanı
             if (o.catering && KurumsalSiparisler.I != null) KurumsalSiparisler.I.Teslim(o, late);
             if (o.kargo && KargoAnlasmasi.I != null) KargoAnlasmasi.I.Teslim(o, late);
-            DukkanKari.Record(o);                                          // harita: dükkan kârlılığı katmanı
+            DukkanKari.Record(o);
+            RestoranReklam.SatisKaydet(o);   // reklam bedeli dükkanın satışından                                          // harita: dükkan kârlılığı katmanı
 
             RollTip(o, c, late);
             if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);

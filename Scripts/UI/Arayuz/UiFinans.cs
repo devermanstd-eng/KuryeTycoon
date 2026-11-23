@@ -116,9 +116,9 @@ namespace KuryeTycoon
                     ort = n > 0 ? ort / n : 0f;
                     int ilce = CityMap.I != null ? CityMap.I.UnlockLevel : 1;
                     int abone = Abonelik.I != null ? Abonelik.I.Abone : 0;
-                    y.Cubuk("Açık bölge", Mathf.Clamp01(ilce / (float)t.ilce), yt.IlceTamam(t) ? U.Iyi : U.Uyari, $"{ilce}/{t.ilce}");
-                    y.Cubuk("Günlük teslimat", Mathf.Clamp01(ort / t.teslimat), yt.TeslimatTamam(t) ? U.Iyi : U.Uyari, $"{ort:0}/{t.teslimat}");
-                    if (t.abone > 0) y.Cubuk("Abone", Mathf.Clamp01(abone / (float)t.abone), yt.AboneTamam(t) ? U.Iyi : U.Uyari, $"{abone}/{t.abone}");
+                    y.Cubuk("Açık bölge", Mathf.Clamp01(ilce / (float)yt.HedefIlce), yt.IlceTamam(t) ? U.Iyi : U.Uyari, $"{ilce}/{yt.HedefIlce}");
+                    y.Cubuk("Günlük teslimat", Mathf.Clamp01(ort / Mathf.Max(1, yt.HedefTeslimat)), yt.TeslimatTamam(t) ? U.Iyi : U.Uyari, $"{ort:0}/{yt.HedefTeslimat}");
+                    if (yt.HedefAbone > 0) y.Cubuk("Abone", Mathf.Clamp01(abone / (float)yt.HedefAbone), yt.AboneTamam(t) ? U.Iyi : U.Uyari, $"{abone}/{yt.HedefAbone}");
                 }
                 else y.Kucuk(yt.Durum + ".");
                 if (yt.baski > 0) y.Uyari($"Yönetim kurulu baskısı: {yt.baski} kez hedef tutmadı.");
