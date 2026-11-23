@@ -26,6 +26,12 @@ namespace KuryeTycoon
                 public Button yukselt, kucult;
             }
 
+            /// <summary>Gelişim sekmesi = gelişim ağacı (tam ekran). Bu kart listesi ağacın altında kalır.</summary>
+            public override void Acildi()
+            {
+                ui.agacAcik = true;
+            }
+
             protected override void Kur()
             {
                 var bilgi = U.El(kok, "bilgi-kutusu");

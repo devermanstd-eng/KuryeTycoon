@@ -821,7 +821,8 @@ namespace KuryeTycoon
                           $"bölge sadakati:{(sadakat.Length > 0 ? sadakat : " kayıp yok")}");
             sb.AppendLine($"Büyüme: komisyon çarpanı ×{Buyume.KomisyonCarpani:0.00} ({Buyume.KartTasSayisi} büyük taş) · 7 gün ort. kâr {GameData.Ft(Buyume.OrtalamaNet(7))} · " +
                           $"şirket değeri {GameData.Ft(Marka.SirketDegeri)} ({Marka.PuanFor(Marka.SirketDegeri)} marka puanı) · " +
-                          $"otomasyon seviye {Otomasyon.Seviye} ({(Otomasyon.I != null ? Otomasyon.I.toplamIslem : 0)} işlem)");
+                          $"otomasyon seviye {Otomasyon.Seviye} ({(Otomasyon.I != null ? Otomasyon.I.toplamIslem : 0)} işlem) · " +
+                          $"ağaçta {GelisimAgaci.AlinanSayisi} küçük düğüm (komisyon +%{GelisimAgaci.Bonus(BonusTip.Komisyon) * 100f:0}, sipariş +%{GelisimAgaci.Bonus(BonusTip.Siparis) * 100f:0})");
         }
 
         string Ozet(List<string> kilitli)

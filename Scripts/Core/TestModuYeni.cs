@@ -84,6 +84,16 @@ namespace KuryeTycoon
                 }
             }
 
+            // Gelişim ağacının küçük düğümleri: kasa rahatsa en ucuz açık düğüm (günde en fazla bir)
+            if (!Biriktir)
+            {
+                AgacDugum en = null;
+                foreach (var d in GelisimAgaci.Dugumler)
+                    if (!d.buyuk && GelisimAgaci.KucukEngeli(d).Length == 0 && (en == null || d.bedel < en.bedel)) en = d;
+                if (en != null && Bos > en.bedel * 5 && GelisimAgaci.KucukAl(en))
+                    Eylem("Gelişim", $"ağaçta {en.ad} alındı ({Ft(en.bedel)}) · neden: kasa rahat, kalıcı bonus");
+            }
+
             // Görmezden gelinen fiyat savaşının bölge kaybı: kasa rahatsa geri kazan
             var rv = RivalCompany.I;
             if (rv != null && !Biriktir)

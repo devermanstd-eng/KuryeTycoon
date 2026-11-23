@@ -161,7 +161,7 @@ namespace KuryeTycoon
 
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
-                         * Difficulty.OrderRate * Marka.SiparisCarpani * Marka.SehirSiparisCarpani * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
+                         * Difficulty.OrderRate * Marka.SiparisCarpani * Marka.SehirSiparisCarpani * (1f + GelisimAgaci.Bonus(BonusTip.Siparis)) * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
                          * CrisisManager.DemandFactor
                          * (RivalCompany.I != null ? RivalCompany.I.ServiceDemandFactor : 1f);   // hızlı teslimat pazarı büyütür
             if (!CrisisManager.OrdersBlocked) spawnAcc += rate * dm;   // uygulama çöktüyse yeni sipariş gelmez

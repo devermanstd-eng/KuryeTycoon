@@ -453,6 +453,8 @@ namespace KuryeTycoon
             if (dist > 0 && CityMap.I.UnlockLevel < dist) return $"önce \"{CityMap.DistrictNames[dist]}\" bölgesini aç";
             int off = d.ReqOffice(next);
             if (off > 0 && Level(UpgradeKind.Ofis) < off) return $"önce merkez ofisi büyüt ({Def(UpgradeKind.Ofis).levelNames[off]})";
+            string agac = GelisimAgaci.UstKilidi(k, next);   // gelişim ağacı: ilk seviye ancak üst düğüm alınınca
+            if (agac.Length > 0) return agac;
             if (d.extraLock != null) return d.extraLock(next) ?? "";
             return "";
         }
@@ -573,8 +575,9 @@ namespace KuryeTycoon
         public float DirtMultiplier => DirtAt(Level(UpgradeKind.Hijyen));
         public float HygieneCleanBonus => CleanAt(Level(UpgradeKind.Hijyen));
         public float OrderRateMultiplier => OrdersAt(Level(UpgradeKind.Reklam));
-        public float ApplicationMultiplier => AdAppsAt(Level(UpgradeKind.Reklam)) * OfficeAppsAt(Level(UpgradeKind.Ofis)) * FleetAppsAt(Level(UpgradeKind.EFilo));
-        public float SpeedMultiplier => new[] { 1f, 1.05f, 1.08f, 1.12f }[Level(UpgradeKind.Uygulama)];
+        public float ApplicationMultiplier => AdAppsAt(Level(UpgradeKind.Reklam)) * OfficeAppsAt(Level(UpgradeKind.Ofis)) * FleetAppsAt(Level(UpgradeKind.EFilo))
+                                             * (1f + GelisimAgaci.Bonus(BonusTip.Basvuru));
+        public float SpeedMultiplier => new[] { 1f, 1.05f, 1.08f, 1.12f }[Level(UpgradeKind.Uygulama)] * (1f + GelisimAgaci.Bonus(BonusTip.Hiz));
         public float OfferThresholdMultiplier => new[] { 1f, 0.9f, 0.85f, 0.8f }[Level(UpgradeKind.Uygulama)];
         public bool SmartDispatch => Level(UpgradeKind.Dispatcher) >= 1;
         public float ApplicationFleetMultiplier => FleetAppsAt(Level(UpgradeKind.EFilo));

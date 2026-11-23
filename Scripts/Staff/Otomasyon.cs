@@ -19,7 +19,7 @@ namespace KuryeTycoon
 
         /// <summary>Oyun kapalıyken kazancın verimi: gerçek saat başına ortalama günlük net kârın bu kadarı.</summary>
         public static float Verim(int lv) => VerimTablo[Mathf.Clamp(lv, 0, 3)];
-        public static float SaatSiniri(int lv) => SaatTablo[Mathf.Clamp(lv, 0, 3)];
+        public static float SaatSiniri(int lv) => SaatTablo[Mathf.Clamp(lv, 0, 3)] + GelisimAgaci.Bonus(BonusTip.SenYokken);
 
         public static int Seviye => UpgradeManager.I != null ? UpgradeManager.I.Level(UpgradeKind.Otomasyon) : 0;
 
