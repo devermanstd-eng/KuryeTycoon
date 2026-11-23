@@ -489,7 +489,7 @@ namespace KuryeTycoon
             Addresses.RandomNote(out var note, out var noteTr);
             o.customerNote = note;
             o.noteTranslation = noteTr;
-            if (uye) Abonelik.I.UyeSiparisi(o);   // teslimat ücreti müşteriden alınmaz
+            if (uye) Abonelik.I.UyeSiparisi(o, quote.basePart + quote.kmPart);   // taban + km ücreti müşteriden alınmaz (en fazla 2,50 €)
             // Nakit ödeme: marketlerde daha sık. Müşteri yuvarlak banknot verir, para üstü hazırlanır.
             if (Random.value < (shop.def.isMarket ? cashChanceMarket : cashChanceFood))
             {

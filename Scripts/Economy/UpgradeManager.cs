@@ -77,7 +77,8 @@ namespace KuryeTycoon
                 // 5 810 € + Kurumsal 9 745 € ≈ 15 500 €, günde ~1 000 € birikirken. Yeşil Tepe de 1,2 M → 0,9 M (CityMap.UnlockCost).
                 // 20.11 120 günlük test (2 şehir): 32, 45 ve 60 hesapta paket 21–28 gün dolu kaldı (hedef ≤13), 60'ta 44–46 gün.
                 // Şehir 900 → 675 bin, Metropol 900 → 675 bin, Kurumsal+ 4,5 → 3 M (bölgeler de ucuzladı: CityMap.UnlockCost).
-                costs = new[] { 80000, 200000, 450000, 675000, 675000, 1300000, 3000000, 20000000, 40000000, 70000000, 120000000 },
+                // 23.11 48 günlük test: 80 hesap 14 gün dolu kaldı (Büyük şehir 50 000 € birikirken); 20 M → 14 M.
+                costs = new[] { 80000, 200000, 450000, 675000, 675000, 1300000, 3000000, 14000000, 40000000, 70000000, 120000000 },
                 daily = new[] { 0, 1500, 3000, 5000, 8000, 12000, 17000, 24000, 34000, 46000, 62000, 85000 },
                 levelNames = new[] { "Başlangıç", "Büyüme", "Profesyonel", "Bölgesel", "Şehir", "Metropol", "Kurumsal", "Kurumsal+",
                                      "Büyük şehir", "Büyük şehir+", "Bölge lideri", "Pazar lideri" },
@@ -478,7 +479,7 @@ namespace KuryeTycoon
             var d = Def(k);
             int lv = Level(k);
             if (lv >= d.MaxLevel || IsLocked(k)) return false;
-            if (!EconomyManager.I.TrySpend(NextCost(k), $"Geliştirme: {d.name} → {d.levelNames[lv + 1]}", ExpenseCategory.Gelistirme)) return false;
+            if (!EconomyManager.I.TrySpendYatirim(NextCost(k), $"Geliştirme: {d.name} → {d.levelNames[lv + 1]}", ExpenseCategory.Gelistirme)) return false;
             levels[(int)k] = lv + 1;
             int dailyNow = d.DailyAt(lv + 1);
             EventManager.I.Notify($"{d.name} tamamlandı: {d.LevelText(lv + 1)}" + (dailyNow > 0 ? $" (günlük gider {Ft(dailyNow)})." : "."));

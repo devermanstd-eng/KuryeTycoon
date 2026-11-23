@@ -1474,7 +1474,7 @@ namespace KuryeTycoon
         {
             if (UnlockLevel >= MaxLevel) return false;
             long cost = BolgeBedeli(UnlockLevel + 1);
-            if (!EconomyManager.I.TrySpend(cost, $"Yeni bölge: {DistrictNames[UnlockLevel + 1]}", ExpenseCategory.Bolge)) return false;
+            if (!EconomyManager.I.TrySpendYatirim(cost, $"Yeni bölge: {DistrictNames[UnlockLevel + 1]}", ExpenseCategory.Bolge)) return false;
             UnlockLevel++;
             RefreshColors();
             EventManager.I.Notify($"{DistrictNames[UnlockLevel]} açıldı! Yeni dükkanlarla sözleşme yapabilirsin.");
@@ -1489,7 +1489,7 @@ namespace KuryeTycoon
                 EventManager.I.Notify($"{s.Name} şimdilik yeni sözleşme istemiyor ({GameClock.I.DateOf(s.resignBlockedUntil)} tarihinden sonra dene).");
                 return false;
             }
-            if (!EconomyManager.I.TrySpend(s.def.contractCost, $"Sözleşme: {s.Name}", ExpenseCategory.Sozlesme)) return false;
+            if (!EconomyManager.I.TrySpendYatirim(s.def.contractCost, $"Sözleşme: {s.Name}", ExpenseCategory.Sozlesme)) return false;
             s.contracted = true;
             s.contractStartDay = GameClock.I.Day;
             s.contractEndDay = GameClock.I.Day + (RivalCompany.I != null ? RivalCompany.I.contractDays : 182);

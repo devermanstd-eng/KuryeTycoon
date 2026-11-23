@@ -40,6 +40,11 @@ namespace KuryeTycoon
         public int yogunKacan;         // lost içinde: kuryeler yetişmediği için "yoğun" görüp vazgeçen
         public int hesapTavani;        // gün sonu kurye hesabı sınırı (platform paketi)
         public int hesapBekleyen;      // gün sonu kayıtta hesap bekleyen aday
+        public long yatirim;           // net içinde: tek seferlik alımlar (geliştirme, bölge, sözleşme…)
+        public long sermaye;           // yatırımcıdan gelen sermaye (net'e dahil değil)
+
+        /// <summary>İşletme kârı: tek seferlik alımlar hariç net (şirket değeri ve kâr göstergesi bunu kullanır).</summary>
+        public long IsletmeNet => net + yatirim;
     }
 
     /// <summary>
@@ -104,7 +109,9 @@ namespace KuryeTycoon
                 tehdit = RivalCompany.I != null ? RivalCompany.I.TehditSeviyesi : 0,
                 yogunKacan = om != null ? om.yogunKacanToday : 0,
                 hesapTavani = UpgradeManager.I != null ? UpgradeManager.I.CourierCap : 0,
-                hesapBekleyen = KayitSistemi.I != null ? KayitSistemi.I.HesapBekleyen : 0
+                hesapBekleyen = KayitSistemi.I != null ? KayitSistemi.I.HesapBekleyen : 0,
+                yatirim = s.yatirimHarcama,
+                sermaye = s.sermaye
             };
             Telemetry.ResetDay();
             Days.Add(d);

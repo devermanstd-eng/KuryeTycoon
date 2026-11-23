@@ -15,6 +15,7 @@ namespace KuryeTycoon
         public long payoutsPaid, cashCollected, loanPaid, depositNet;
         public int cashOrders, deliveries;
         public long[] byCategory;
+        public long sermaye, yatirimHarcama;
     }
 
     [System.Serializable]
@@ -362,7 +363,8 @@ namespace KuryeTycoon
                 boosts = s.boosts, rewards = s.rewards, penalties = s.penalties, payoutsPaid = s.payoutsPaid,
                 cashCollected = s.cashCollected, loanPaid = s.loanPaid, depositNet = s.depositNet,
                 cashOrders = s.cashOrders, deliveries = s.deliveries,
-                byCategory = (long[])s.byCategory.Clone()
+                byCategory = (long[])s.byCategory.Clone(),
+                sermaye = s.sermaye, yatirimHarcama = s.yatirimHarcama
             };
         }
 
@@ -374,6 +376,7 @@ namespace KuryeTycoon
             s.boosts = d.boosts; s.rewards = d.rewards; s.penalties = d.penalties; s.payoutsPaid = d.payoutsPaid;
             s.cashCollected = d.cashCollected; s.loanPaid = d.loanPaid; s.depositNet = d.depositNet;
             s.cashOrders = d.cashOrders; s.deliveries = d.deliveries;
+            s.sermaye = d.sermaye; s.yatirimHarcama = d.yatirimHarcama;
             if (d.byCategory != null)
                 System.Array.Copy(d.byCategory, s.byCategory, Mathf.Min(d.byCategory.Length, s.byCategory.Length));
             return s;

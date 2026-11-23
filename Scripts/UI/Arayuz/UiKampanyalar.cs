@@ -99,8 +99,8 @@ namespace KuryeTycoon
                                         v => ab.aylikUcret = Mathf.Clamp(Mathf.RoundToInt(v / 10f) * 10, Abonelik.EnAzUcret, Abonelik.EnFazlaUcret));
                             y.KV("Üye", $"{ab.Abone} (hedef {ab.Hedef:0}) · siparişlerin %{ab.AboneOrani * 100f:0}'i üyelerden");
                             y.KV("Fiyat cazibesi", $"%{ab.Cazibe * 100f:0} · sipariş ×{ab.SiparisCarpani:0.00}");
-                            long net = ab.dunGelir - ab.dunKarsilanan;
-                            y.KV("Dün", $"üyelik {Ft(ab.dunGelir)} − karşılanan teslimat ücreti {Ft(ab.dunKarsilanan)} ({ab.dunSiparis} sipariş) = {(net >= 0 ? "+" : "−")}{Ft(System.Math.Abs(net))}",
+                            long net = ab.DunNetEtki;
+                            y.KV("Dün", $"üyelik {Ft(ab.dunGelir)} + ek sipariş kârı {Ft(ab.dunEkKar)} − karşılanan teslimat ücreti {Ft(ab.dunKarsilanan)} ({ab.dunSiparis} sipariş) = {(net >= 0 ? "+" : "−")}{Ft(System.Math.Abs(net))}",
                                  net >= 0 ? (Color?)null : U.Kotu);
                             y.Kucuk($"Bugün {ab.bugunSiparis} üye siparişi · toplam üyelik geliri {Ft(ab.toplamGelir)}.");
                         }

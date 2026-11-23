@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-23 u24 (yatırım turları, abonelik, restoran reklam geliri)";
+        public const string CodeVersion = "2026-11-23 u26 (bot: platform paketinin ön koşulunu hesaplar dolunca hemen alır)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
@@ -226,13 +226,18 @@ namespace KuryeTycoon
                 if (fixedDaily > avgIncome * 0.5f) warn.Add($"Sabit günlük gider ({Ft(fixedDaily)}) günlük gelirin yarısından fazla ({Ft(avgIncome)})");
             }
 
+            // Aranan bekleyen sipariş: planlı olup saati gelmemiş ve kargo paketleri sayılmaz (onlar bilerek bekler)
+            float simdi = GameClock.I.TotalMinutes;
+            int aranan = 0;
+            foreach (var o in om.Pending) if (!o.kargo && o.holdUntil <= simdi) aranan++;
+
             // Kuryeler
             foreach (var c in CourierManager.I.Couriers)
             {
                 if (c.morale < 0.3f) warn.Add($"Kurye morali düşük: {c.courierName} ({c.morale:0.00})");
                 if (c.fatigue > 0.85f) warn.Add($"Kurye çok yorgun: {c.courierName} ({c.fatigue:0.00})");
                 if (c.hygiene < Courier.HygieneLimit) warn.Add($"Kurye çantası kirli: {c.courierName} ({c.hygiene:0.00})");
-                if (c.IsOnline && c.State == CourierState.Bosta && c.OrderCount == 0 && om.Pending.Count > 3)
+                if (c.IsOnline && c.State == CourierState.Bosta && c.OrderCount == 0 && aranan > 3)
                     warn.Add($"Bekleyen sipariş varken boşta kurye: {c.courierName} ({c.V.name}) — atama / kâr eşiği?");
             }
             if (CourierManager.I.Couriers.Count == 0) warn.Add("Hiç kurye yok");
@@ -248,7 +253,11 @@ namespace KuryeTycoon
             // Siparişler
             float now = GameClock.I.TotalMinutes;
             foreach (var o in om.Pending)
-                if (now - o.createdAt > om.pendingTimeout * 0.8f) warn.Add($"Bekleyen sipariş iptale yakın: #{o.id} {o.shop.Name} ({now - o.createdAt:0} dk)");
+            {
+                if (o.kargo) continue;   // kargo: akşama kadar teslim, beklemesi normal
+                float bas = Mathf.Max(o.createdAt, o.holdUntil);   // planlı: saati gelince aranmaya başlar
+                if (now - bas > om.pendingTimeout * 0.8f) warn.Add($"Bekleyen sipariş iptale yakın: #{o.id} {o.shop.Name} ({now - bas:0} dk)");
+            }
             foreach (var o in om.Active)
                 if (now - o.createdAt > 150f) warn.Add($"Sipariş çok uzun süredir yolda: #{o.id} {o.shop.Name} ({now - o.createdAt:0} dk, durum {o.status})");
 
@@ -332,7 +341,9 @@ namespace KuryeTycoon
             for (int h = 0; h < 24; h++) if (om.cancelledByHour[h] > 0) hours.Add($"{h:00}:00={om.cancelledByHour[h]}");
             if (hours.Count > 0) sb.AppendLine("Bugünkü iptaller saat saat: " + string.Join(", ", hours));
             foreach (var o in om.Pending)
-                sb.AppendLine($"  bekliyor #{o.id} {o.shop.Name} · {now - o.createdAt:0} dk · {GameData.KmText(o.distance)} · gelir {Ft(o.CompanyIncome)} · red {o.priceDeclines}/{o.rejectedBy.Count}");
+                sb.AppendLine($"  bekliyor #{o.id} {o.shop.Name} · {now - o.createdAt:0} dk · {GameData.KmText(o.distance)} · gelir {Ft(o.CompanyIncome)} · red {o.priceDeclines}/{o.rejectedBy.Count}" +
+                              (o.holdUntil > now ? $" · planlı, {o.holdUntil - now:0} dk sonra aranacak" : o.planli ? " · planlı" : "") +
+                              (o.kargo ? " · kargo" : "") + (o.ekspres ? " · ekspres" : "") + (o.abone ? " · abone" : ""));
             foreach (var o in om.Active)
                 sb.AppendLine($"  yolda #{o.id} {o.shop.Name} · {o.status} · {now - o.createdAt:0} dk · kurye {(o.courier != null ? o.courier.courierName : "-")}");
         }

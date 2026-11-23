@@ -15,8 +15,10 @@ namespace KuryeTycoon
     /// <summary>
     /// Abonelik (İşletme > Kampanya): Wolt+ benzeri aylık üyelik. Şirketin adıyla "&lt;Şirket&gt;+".
     ///  • Kurulum bir kez 1 000 € (uygulamaya üyelik sistemi). Sonra istediğin zaman açıp kapatırsın; kapatınca üyeler gider.
-    ///  • Üyeler 4 000 Ft ve üstü sepette teslimat ücreti ödemez (o ücreti şirket karşılar) ve daha sık sipariş verir:
-    ///    abone oranı × %35 daha çok sipariş. Bir üye ayda ~2 sipariş verir.
+    ///  • Üyeler 4 000 Ft ve üstü sepette teslimat ücretinin taban + km kısmını ödemez (en fazla 1 000 Ft; şirket karşılar).
+    ///    Kötü hava ücreti ve kurye ücretini karşılamak için eklenen ek ücret üyeden de alınır (Wolt+ gibi).
+    ///  • Bir üye ayda ~4 sipariş verir; bunların ~%30'u üyelik olmasa gelmeyecek ek siparişlerdir
+    ///    (sipariş çarpanı 1 + 0,3 × abone oranı). Ek siparişlerin komisyonu "ek sipariş kârı" olarak üyeliğe yazılır.
     ///    Teslimat ücreti pahalı diye vazgeçmezler.
     ///  • Üyelik ücreti her gün (aylık ücret / 30) × abone sayısı olarak gelir yazılır.
     ///  • Abone hedefi = son 7 günün günlük teslimatı × 6 × fiyat cazibesi × itibar etkisi; abone sayısı her gün hedefe
@@ -30,6 +32,12 @@ namespace KuryeTycoon
         public const int EnAzUcret = 400, EnFazlaUcret = 2500;
         /// <summary>Ücretsiz teslimat için en az sepet (Wolt+ gibi): altındaki siparişte üye de teslimat ücreti öder.</summary>
         public const int EnAzSepet = 4000;
+        /// <summary>Üye siparişinde şirketin karşıladığı teslimat ücreti en fazla bu kadar (2,50 €); fazlası üyeden alınır.</summary>
+        public const int EnFazlaKarsilanan = 1000;
+        /// <summary>Üye siparişlerinin ne kadarı üyelik sayesinde gelen ek sipariş.</summary>
+        public const float EkSiparisPayi = 0.3f;
+        /// <summary>Bir üyenin günlük sipariş sayısı (ayda ~4).</summary>
+        public const float UyeGunlukSiparis = 4f / 30f;
 
         public bool kuruldu;      // kurulum bedeli ödendi
         public bool acik;
@@ -38,6 +46,10 @@ namespace KuryeTycoon
         public long toplamGelir, dunGelir;
         public int bugunSiparis, dunSiparis, toplamSiparis;
         public long bugunKarsilanan, dunKarsilanan;   // üyelerin ödemediği teslimat ücretleri (şirket karşıladı)
+        public long bugunEkKar, dunEkKar;             // üyelik sayesinde gelen ek siparişlerin tahmini komisyon kârı
+
+        /// <summary>Dünkü net etki: üyelik geliri + ek sipariş kârı − karşılanan teslimat ücreti.</summary>
+        public long DunNetEtki => dunGelir + dunEkKar - dunKarsilanan;
 
         void Awake() { I = this; }
 
@@ -49,6 +61,7 @@ namespace KuryeTycoon
             toplamGelir = dunGelir = 0;
             bugunSiparis = dunSiparis = toplamSiparis = 0;
             bugunKarsilanan = dunKarsilanan = 0;
+            bugunEkKar = dunEkKar = 0;
             GameClock.I.OnNewDay += YeniGun;
         }
 
@@ -87,33 +100,37 @@ namespace KuryeTycoon
             get
             {
                 float ort = OrtTeslimat;
-                // Bir üye ayda ~2 sipariş verir (abone / 15 sipariş/gün)
-                return acik && ort > 1f ? Mathf.Clamp(abone / (ort * 15f), 0f, 0.6f) : 0f;
+                // Bir üye ayda ~4 sipariş verir (abone × 4/30 sipariş/gün)
+                return acik && ort > 1f ? Mathf.Clamp(abone * UyeGunlukSiparis / ort, 0f, 0.6f) : 0f;
             }
         }
 
-        public float SiparisCarpani => 1f + 0.35f * AboneOrani;
+        public float SiparisCarpani => 1f + EkSiparisPayi * AboneOrani;
 
         public bool AboneSiparisiMi() => acik && Random.value < AboneOrani;
 
         public long GunlukGelirTahmini => (long)(abone * aylikUcret / 30f);
 
         /// <summary>Üye siparişi: teslimat ücreti müşteriden alınmaz.</summary>
-        public void UyeSiparisi(Order o)
+        /// <param name="ucretsizKisim">Teslimat ücretinin taban + km kısmı (kötü hava ve ek ücret hariç).</param>
+        public void UyeSiparisi(Order o, int ucretsizKisim)
         {
+            // Ek sipariş kârı: üye siparişlerinin bir kısmı üyelik olmasa gelmezdi (küçük sepettekiler de sayılır)
+            bugunEkKar += Mathf.RoundToInt(o.commissionIncome * EkSiparisPayi);
             if (o.basket < EnAzSepet) return;   // küçük sepet: üye de olsa ücret öder
+            int karsilanan = Mathf.Clamp(Mathf.Min(ucretsizKisim, EnFazlaKarsilanan), 0, o.deliveryFee);
             o.abone = true;
-            o.aboneUcreti = o.deliveryFee;
-            o.deliveryFee = 0;
+            o.aboneUcreti = karsilanan;
+            o.deliveryFee -= karsilanan;
             bugunSiparis++;
             toplamSiparis++;
-            bugunKarsilanan += o.aboneUcreti;
+            bugunKarsilanan += karsilanan;
         }
 
         public bool Kur()
         {
             if (kuruldu) return true;
-            if (!EconomyManager.I.TrySpend(KurulumBedeli, $"{Ad} üyelik sistemi kurulumu", ExpenseCategory.Gelistirme)) return false;
+            if (!EconomyManager.I.TrySpendYatirim(KurulumBedeli, $"{Ad} üyelik sistemi kurulumu", ExpenseCategory.Gelistirme)) return false;
             kuruldu = true;
             acik = true;
             EventManager.I.Notify($"{Ad} üyeliği başladı: aylık {GameData.Ft(aylikUcret)}. Üyeler teslimat ücreti ödemez ve daha sık sipariş verir.");
@@ -137,6 +154,7 @@ namespace KuryeTycoon
         {
             dunSiparis = bugunSiparis; bugunSiparis = 0;
             dunKarsilanan = bugunKarsilanan; bugunKarsilanan = 0;
+            dunEkKar = bugunEkKar; bugunEkKar = 0;
             dunGelir = 0;
             if (!acik) return;
             float hedef = Hedef;

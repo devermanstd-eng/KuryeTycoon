@@ -870,6 +870,16 @@ namespace KuryeTycoon
             else if (up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0 && IptalOrani(2) > 0.03f &&
                      Al(UpgradeKind.Platform, bos, "kurye hesapları dolu, iptaller sürüyor")) return;
 
+            // Hesaplar doluyken sıradaki paketin ön koşulunu (ofis, dağıtım merkezi, dispeçer) hemen al: ucuzdur ve paket gelince beklemez.
+            // (23.11 testi: 100 hesap paketi "Kat ofisi" istiyordu; ofis darboğaz görülene kadar alınmadı, 80 hesap 19 gün dolu kaldı.)
+            if (up.CourierCapFull && up.NextCost(UpgradeKind.Platform) > 0)
+            {
+                string kilit = up.LockReason(UpgradeKind.Platform);
+                foreach (var on in new[] { UpgradeKind.Ofis, UpgradeKind.Hub, UpgradeKind.Dispatcher })
+                    if (kilit.ToLowerInvariant().Contains(UpgradeManager.Def(on).name.ToLowerInvariant()) &&
+                        Al(on, BosDar, $"kurye hesapları dolu ({up.CourierCap}); sıradaki platform paketi için {kilit}", true)) return;
+            }
+
             bool biriktir = Biriktir;
             if (biriktir && !biriktiriyordu)
             {
@@ -894,6 +904,8 @@ namespace KuryeTycoon
             if (son.avgPickupWait > 12f) adaylar.Add((UpgradeKind.Restoran, $"dükkanda bekleme {son.avgPickupWait:0.0} dk"));
             if (dunAdres >= 3) adaylar.Add((UpgradeKind.Adres, $"dün {dunAdres} adres/evde yok sorunu"));
             if (OrtMoral < 0.6f) adaylar.Add((UpgradeKind.Dinlenme, $"ort. moral {OrtMoral:0.00}"));
+            // Otomasyon her gün iş görür ve kalıcıdır: sürekli geçerli adayların (dolap, merkez, robot) arkasında kalıp hiç alınmıyordu
+            if (cm.Couriers.Count >= 8) adaylar.Add((UpgradeKind.Otomasyon, $"{cm.Couriers.Count} kurye: günlük ayarları otomasyona bırak, oyun kapalıyken kazanç"));
             bool hesapBekleyen = up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0;
             if (iptal < 0.03f && kuryeBasi < 12f && cm.Couriers.Count >= 5 && YogunKayipOrani(3) < 0.02f && !hesapBekleyen)
                 adaylar.Add((UpgradeKind.Reklam, $"servis iyi, kurye başı {kuryeBasi:0} teslimat: talep lazım"));
@@ -908,7 +920,6 @@ namespace KuryeTycoon
             // Yeni iş kolu ve kurye akademisi
             if (OrtMoral < 0.55f && cm.Couriers.Count >= 10) adaylar.Add((UpgradeKind.Akademi, $"ort. moral {OrtMoral:0.00}, {cm.Couriers.Count} kurye: bırakma ve ayartılma riski"));
             if (cm.Couriers.Count >= 10 && iptal < 0.06f && kuryeBasi < 11f) adaylar.Add((UpgradeKind.Kargo, $"kurye başı {kuryeBasi:0} teslimat: sakin saatlerde boş kapasite var"));
-            if (cm.Couriers.Count >= 8) adaylar.Add((UpgradeKind.Otomasyon, $"{cm.Couriers.Count} kurye: günlük ayarları otomasyona bırak, oyun kapalıyken kazanç"));
 
             foreach (var a in adaylar)
             {

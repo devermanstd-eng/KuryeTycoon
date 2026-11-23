@@ -98,23 +98,27 @@ namespace KuryeTycoon
         void HedefleriBelirle(Tur t)
         {
             int maxIlce = CityMap.I != null ? CityMap.I.MaxLevel : 5;
-            hedefIlce = Mathf.Min(maxIlce, Mathf.Max(t.ilce, AcikIlce + 1));
+            // Bütün bölgeler zaten açıksa bölge hedefi konmaz (-1): baştan tutmuş bir şart anlamsız
+            hedefIlce = AcikIlce >= maxIlce ? -1 : Mathf.Min(maxIlce, Mathf.Max(t.ilce, AcikIlce + 1));
             hedefTeslimat = Mathf.Max(t.teslimat, Mathf.RoundToInt(OrtTeslimat * 1.6f / 10f) * 10);
             hedefAbone = t.abone > 0 ? Mathf.Max(t.abone, Mathf.RoundToInt(AboneSayisi * 2f / 10f) * 10) : 0;
         }
 
-        public int HedefIlce => hedefIlce > 0 ? hedefIlce : (AktifTur != null ? AktifTur.ilce : 1);
+        /// <summary>Bu turda bölge hedefi var mı (bütün bölgeler açıkken teklif geldiyse yok).</summary>
+        public bool IlceHedefiVar => hedefIlce >= 0;
+        public int HedefIlce => hedefIlce > 0 ? hedefIlce : hedefIlce < 0 ? AcikIlce : (AktifTur != null ? AktifTur.ilce : 1);
         public int HedefTeslimat => hedefTeslimat > 0 ? hedefTeslimat : (AktifTur != null ? AktifTur.teslimat : 0);
         public int HedefAbone => hedefAbone;
 
-        public bool IlceTamam(Tur t) => AcikIlce >= HedefIlce;
+        public bool IlceTamam(Tur t) => !IlceHedefiVar || AcikIlce >= HedefIlce;
         public bool TeslimatTamam(Tur t) => OrtTeslimat >= HedefTeslimat;
         public bool AboneTamam(Tur t) => AboneSayisi >= HedefAbone;
         public bool HedeflerTamam(Tur t) => IlceTamam(t) && TeslimatTamam(t) && AboneTamam(t);
         public int KalanGun => hedefAktif ? Mathf.Max(0, hedefBitis - Gun) : 0;
 
         public string HedefMetni(Tur t) =>
-            $"{HedefIlce} açık bölge (şimdi {AcikIlce}) · günde {HedefTeslimat} teslimat (7 gün ort. {OrtTeslimat:0})" +
+            (IlceHedefiVar ? $"{HedefIlce} açık bölge (şimdi {AcikIlce}) · " : "") +
+            $"günde {HedefTeslimat} teslimat (7 gün ort. {OrtTeslimat:0})" +
             (HedefAbone > 0 ? $" · {HedefAbone} abone (şimdi {AboneSayisi})" : "");
 
         void YeniGun()
@@ -181,7 +185,7 @@ namespace KuryeTycoon
             long tutar = TeklifTutari(t);
             float p = TeklifPayi(t);
             teklifTur = -1;
-            EconomyManager.I.AddIncome(tutar, $"Yatırım: {t.ad} ({t.yatirimci})");
+            EconomyManager.I.AddSermaye(tutar, $"Yatırım: {t.ad} ({t.yatirimci})");
             toplamYatirim += tutar;
             pay *= 1f - p;
             tamamlanan = no + 1;
