@@ -19,7 +19,7 @@ namespace KuryeTycoon
     {
         bool agacAcik;
         VisualElement agacPerde, agacTuval, agacCizgi, agacEfekt, agacBilgi, agacBar, agacBarDolgu;
-        Label agacDeger, agacEngel;
+        Label agacDeger, agacEngel, agacBekleyen;
         Button agacSat;
         Label agacKasa, agacKar, agacCarpan, agacMarka, agacBilgiAd, agacBilgiDeger, agacBilgiAcik, agacBilgiSeviye, agacBarYazi, agacBilgiAlt;
         float agacZoom = 0.85f;
@@ -103,6 +103,7 @@ namespace KuryeTycoon
             agacPerde = new VisualElement();
             uiKok.Insert(uiKok.IndexOf(katPencere) + 1, agacPerde);
             agacPerde.name = "gelisim-agaci";
+            EventManager.Beklet = () => AgacGorunur;   // ağaç açıkken kartlar (gün sonu raporu, olaylar) sırada bekler
             Mutlak(agacPerde, 0, 0, -1, -1);
             agacPerde.style.right = 0; agacPerde.style.bottom = 0;
             agacPerde.style.backgroundColor = AgPerde;
@@ -172,6 +173,16 @@ namespace KuryeTycoon
             Cerceve(baslik, 0, Color.clear, 28);
             baslik.style.paddingLeft = 28; baslik.style.paddingRight = 28; baslik.style.paddingTop = 8; baslik.style.paddingBottom = 8;
             baslik.style.marginRight = 12;
+            // Bekleyen kartlar: ağaçtan çıkınca açılır
+            agacBekleyen = U.Kalin(ust, "");
+            agacBekleyen.style.fontSize = 13;
+            agacBekleyen.style.color = AgRenk(28, 32, 40, 255);
+            agacBekleyen.style.backgroundColor = AgRenk(255, 180, 84, 255);
+            Cerceve(agacBekleyen, 0, Color.clear, 14);
+            agacBekleyen.style.paddingLeft = 12; agacBekleyen.style.paddingRight = 12; agacBekleyen.style.paddingTop = 5; agacBekleyen.style.paddingBottom = 5;
+            agacBekleyen.style.marginRight = 12;
+            Ipucu(agacBekleyen, "Gün sonu raporu ve olay kartları ağaç açıkken bekler; ağaçtan çıkınca sırayla açılır.");
+
             // Aynı menünün diğer sekmeleri (Finans, Grafik): ağaç tam ekran olduğu için sekmeler burada
             var grup = MenuGroups[GroupIndexOf(Tab.Gelistirmeler)];
             for (int i = 0; i < grup.tabs.Length; i++)
@@ -684,6 +695,9 @@ namespace KuryeTycoon
                 U.Metin(agacKar, (ort >= 0 ? "+" : "−") + Ft(System.Math.Abs(ort)) + "/gün");
                 U.Metin(agacCarpan, $"×{Buyume.KomisyonCarpani:0.00}");
                 U.Metin(agacMarka, $"{Marka.Veri.puan} marka");
+                int bekleyen = EventManager.I != null ? EventManager.I.Bekleyen : 0;
+                U.Goster(agacBekleyen, bekleyen > 0);
+                if (bekleyen > 0) U.Metin(agacBekleyen, $"{bekleyen} kart bekliyor · çıkınca açılır");
                 long deger = Marka.SirketDegeri;
                 int puan = Marka.PuanFor(deger);
                 U.Metin(agacDeger, $"Şirketin değeri {Ft(deger)} · satarsan {puan} marka puanı (sonraki puan {Ft(Marka.SonrakiPuanDegeri(puan))} değerde)");
