@@ -870,6 +870,16 @@ namespace KuryeTycoon
             else if (up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0 && IptalOrani(2) > 0.03f &&
                      Al(UpgradeKind.Platform, bos, "kurye hesapları dolu, iptaller sürüyor")) return;
 
+            // Hesaplar doluyken sıradaki paketin ön koşulunu (ofis, dağıtım merkezi, dispeçer) hemen al: ucuzdur ve paket gelince beklemez.
+            // (23.11 testi: 100 hesap paketi "Kat ofisi" istiyordu; ofis darboğaz görülene kadar alınmadı, 80 hesap 19 gün dolu kaldı.)
+            if (up.CourierCapFull && up.NextCost(UpgradeKind.Platform) > 0)
+            {
+                string kilit = up.LockReason(UpgradeKind.Platform);
+                foreach (var on in new[] { UpgradeKind.Ofis, UpgradeKind.Hub, UpgradeKind.Dispatcher })
+                    if (kilit.ToLowerInvariant().Contains(UpgradeManager.Def(on).name.ToLowerInvariant()) &&
+                        Al(on, BosDar, $"kurye hesapları dolu ({up.CourierCap}); sıradaki platform paketi için {kilit}", true)) return;
+            }
+
             bool biriktir = Biriktir;
             if (biriktir && !biriktiriyordu)
             {
