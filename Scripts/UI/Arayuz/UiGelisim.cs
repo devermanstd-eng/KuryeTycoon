@@ -26,16 +26,14 @@ namespace KuryeTycoon
                 public Button yukselt, kucult;
             }
 
-            /// <summary>Gelişim açılınca ağaç ekranı gelir (otomatik testte gelmez: ekran görüntüleri haritayı göstersin).</summary>
+            /// <summary>Gelişim sekmesi = gelişim ağacı (tam ekran). Bu kart listesi ağacın altında kalır.</summary>
             public override void Acildi()
             {
-                if (!TestModu.Aktif) ui.agacAcik = true;
+                ui.agacAcik = true;
             }
 
             protected override void Kur()
             {
-                var agacDug = U.Dugme(kok, "Gelişim ağacını aç", () => ui.agacAcik = true, "vurgu");
-                agacDug.style.marginBottom = 10;
                 var bilgi = U.El(kok, "bilgi-kutusu");
                 var s1 = U.El(bilgi, "satir");
                 kasa = U.Kalin(U.El(s1, "kolon", "esnek"), "", "buyuk");

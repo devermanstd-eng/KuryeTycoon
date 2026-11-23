@@ -5,8 +5,8 @@ using UnityEngine.UIElements;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// Gelişim ağacı ekranı (UI Toolkit, tam ekran, pencere katmanında). Gelişim sekmesi açılınca gelir; "Liste" ile eski kart
-    /// listesine dönülür. Ortadan dışa yayılan ağaç (GelisimAgaci): sürükle = kaydır, tekerlek = yakınlaştır, üstüne gel = bilgi
+    /// Gelişim ağacı ekranı (UI Toolkit, tam ekran, pencere katmanının üstünde kendi katmanı). Gelişim sekmesi = bu ekran; üstte aynı
+    /// menünün sekmeleri (Finans, Grafik), solda şirket değeri ve satış. Ortadan dışa yayılan ağaç (GelisimAgaci): sürükle = kaydır, tekerlek = yakınlaştır, üstüne gel = bilgi
     /// kutusu, tıkla = yükselt. Efektler:
     ///  • alınabilir düğüm yavaşça nabız gibi atar · en üst seviye yeşil hale ile parlar
     ///  • satın alınca düğüm büyüyüp söner, halka yayılır, parçacıklar saçılır, merkezden düğüme ışık akar, ses çalar
@@ -19,6 +19,8 @@ namespace KuryeTycoon
     {
         bool agacAcik;
         VisualElement agacPerde, agacTuval, agacCizgi, agacEfekt, agacBilgi, agacBar, agacBarDolgu;
+        Label agacDeger, agacEngel;
+        Button agacSat;
         Label agacKasa, agacKar, agacCarpan, agacMarka, agacBilgiAd, agacBilgiDeger, agacBilgiAcik, agacBilgiSeviye, agacBarYazi, agacBilgiAlt;
         float agacZoom = 0.85f;
         Vector2 agacKay;
@@ -96,7 +98,10 @@ namespace KuryeTycoon
 
         void UiAgacKur()
         {
-            agacPerde = U.El(katPencere);
+            // Kendi katmanı: pencere katmanının hemen üstü, üst katmanın (olay kartı, onay) altı. Pencere katmanı onay açıkken
+            // soluklaşıyor (SetEnabled); ağaç ondan etkilenmesin, arkası hiç görünmesin.
+            agacPerde = new VisualElement();
+            uiKok.Insert(uiKok.IndexOf(katPencere) + 1, agacPerde);
             agacPerde.name = "gelisim-agaci";
             Mutlak(agacPerde, 0, 0, -1, -1);
             agacPerde.style.right = 0; agacPerde.style.bottom = 0;
@@ -140,6 +145,20 @@ namespace KuryeTycoon
             agacCarpan = AgacKaynak(kay, Icons.Kind.Bolt);
             agacMarka = AgacKaynak(kay, Icons.Kind.Star);
 
+            // Şirket değeri ve satış (prestij)
+            var deg = U.El(kay);
+            deg.style.marginTop = 8;
+            deg.style.width = 300;
+            deg.style.paddingLeft = 14; deg.style.paddingRight = 14; deg.style.paddingTop = 10; deg.style.paddingBottom = 12;
+            deg.style.backgroundColor = AgRenk(34, 27, 43, 235);
+            Cerceve(deg, 1, AgRenk(74, 58, 92, 255), 12);
+            agacDeger = U.Yazi(deg, "", "kucuk");
+            agacDeger.style.color = AgBeyaz; agacDeger.style.whiteSpace = WhiteSpace.Normal;
+            agacEngel = U.Yazi(deg, "", "minik");
+            agacEngel.style.color = U.Uyari; agacEngel.style.whiteSpace = WhiteSpace.Normal; agacEngel.style.marginTop = 4;
+            agacSat = U.Dugme(deg, "", AgacSatisSor, "ilk");
+            agacSat.style.marginTop = 8;
+
             // Sağ üst: başlık, liste, kapat
             var ust = U.Gecirgen(agacPerde);
             ust.style.position = Position.Absolute;
@@ -153,11 +172,17 @@ namespace KuryeTycoon
             Cerceve(baslik, 0, Color.clear, 28);
             baslik.style.paddingLeft = 28; baslik.style.paddingRight = 28; baslik.style.paddingTop = 8; baslik.style.paddingBottom = 8;
             baslik.style.marginRight = 12;
-            var liste = U.Dugme(ust, "Liste", () => agacAcik = false, "kucuk-dg");
-            liste.style.marginRight = 8;
-            Ipucu(liste, "Eski kart listesine dön (Gelişim penceresi)");
+            // Aynı menünün diğer sekmeleri (Finans, Grafik): ağaç tam ekran olduğu için sekmeler burada
+            var grup = MenuGroups[GroupIndexOf(Tab.Gelistirmeler)];
+            for (int i = 0; i < grup.tabs.Length; i++)
+            {
+                var t = grup.tabs[i];
+                if (t == Tab.Gelistirmeler) continue;
+                var sd = U.Dugme(ust, grup.tabLabels[i], () => { agacAcik = false; SelectSubTab(t); }, "kucuk-dg");
+                sd.style.marginRight = 8;
+            }
             var kapat = U.Dugme(ust, "Kapat", () => { agacAcik = false; panelOpen = false; }, "kucuk-dg");
-            Ipucu(kapat, "Ağacı ve Gelişim penceresini kapat");
+            Ipucu(kapat, "Gelişimi kapat");
 
             // Sol alt: gösterim
             var gos = U.Gecirgen(agacPerde);
@@ -240,6 +265,22 @@ namespace KuryeTycoon
                 agacKay = m - q * agacZoom;
                 e.StopPropagation();
             });
+        }
+
+        void AgacSatisSor()
+        {
+            long deger = Marka.SirketDegeri;
+            int p = Marka.PuanFor(deger);
+            string sonraki = Marka.Sehirler[Mathf.Min(Marka.Veri.satilan + 1, Marka.Sehirler.Length - 1)];
+            AskConfirm("Şirketi sat",
+                $"{CompanyProfile.Name} {Ft(deger)} değerle satılacak. Karşılığında {p} marka puanı kazanırsın. " +
+                $"Bu oyun biter ve kaydı silinir; {sonraki} şehrinde yeni bir şirketle baştan başlarsın. Marka puanlarını kurulum ekranında " +
+                "kalıcı geliştirmelere harcarsın. Ayrıca her satılan şirket komisyon gelirini kalıcı olarak %5 artırır.",
+                "Evet, sat ve yeni şehre geç", () =>
+                {
+                    int alinan = Marka.Sat();
+                    if (alinan > 0) deferred = () => GameBootstrap.Restart();
+                });
         }
 
         Label AgacKaynak(VisualElement ust, Icons.Kind k)
@@ -616,6 +657,8 @@ namespace KuryeTycoon
             }
             if (agacPerde == null) UiAgacKur();
             U.Goster(agacPerde, true);
+            // Ortada bir kutu (onay, olay kartı) açıkken ağaç tıklanmaz ama soluklaşmaz
+            agacPerde.pickingMode = UiSerbest ? PickingMode.Position : PickingMode.Ignore;
             float t = Time.unscaledTime;
 
             // İlk açılışta ağacı ortala
@@ -641,6 +684,14 @@ namespace KuryeTycoon
                 U.Metin(agacKar, (ort >= 0 ? "+" : "−") + Ft(System.Math.Abs(ort)) + "/gün");
                 U.Metin(agacCarpan, $"×{Buyume.KomisyonCarpani:0.00}");
                 U.Metin(agacMarka, $"{Marka.Veri.puan} marka");
+                long deger = Marka.SirketDegeri;
+                int puan = Marka.PuanFor(deger);
+                U.Metin(agacDeger, $"Şirketin değeri {Ft(deger)} · satarsan {puan} marka puanı (sonraki puan {Ft(Marka.SonrakiPuanDegeri(puan))} değerde)");
+                string engel = Marka.SatisEngeli;
+                U.Goster(agacEngel, engel.Length > 0);
+                if (engel.Length > 0) U.Metin(agacEngel, $"Satış için: {engel}.");
+                U.Goster(agacSat, engel.Length == 0);
+                if (engel.Length == 0) U.Metin(agacSat, $"Şirketi sat ve yeni şehre geç — {puan} puan");
             }
             else AgacBarYaz();
 
