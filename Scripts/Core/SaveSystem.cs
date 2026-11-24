@@ -203,8 +203,6 @@ namespace KuryeTycoon
         public ArGeSave arge;                  // Ar-Ge (eski kayıtlarda yok)
         public KutlamaSave kutlama;            // seri ve rekorlar (eski kayıtlarda yok)
         public BolgeSave bolge;                // bölge müdürleri (eski kayıtlarda yok)
-        public HikayeSave hikaye;              // hikâye bölümünün mesajları (eski kayıtlarda yok)
-        public int holdingSonGun = -1;         // holding temettüsünün son ödendiği gün
     }
 
     // =====================================================================
@@ -449,9 +447,7 @@ namespace KuryeTycoon
                 mutfak = SanalMutfak.I != null ? SanalMutfak.I.Kaydet() : null,
                 arge = ArGe.I != null ? ArGe.I.Kaydet() : null,
                 kutlama = Kutlama.I != null ? Kutlama.I.Kaydet() : null,
-                bolge = BolgeMudurleri.I != null ? BolgeMudurleri.I.Kaydet() : null,
-                hikaye = Hikaye.I != null ? Hikaye.I.Kaydet() : null,
-                holdingSonGun = Holding.I != null ? Holding.I.sonGun : -1
+                bolge = BolgeMudurleri.I != null ? BolgeMudurleri.I.Kaydet() : null
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -568,8 +564,6 @@ namespace KuryeTycoon
             if (StatsHistory.I != null) StatsHistory.I.Restore(d.history);
             if (Kutlama.I != null) Kutlama.I.Yukle(d.kutlama);   // geçmişten sonra: eski kayıtta rekorlar geçmişten çıkar
             if (BolgeMudurleri.I != null) BolgeMudurleri.I.Yukle(d.bolge);
-            if (Hikaye.I != null) Hikaye.I.Yukle(d.hikaye);
-            if (Holding.I != null) Holding.I.sonGun = d.holdingSonGun;
             if (Milestones.I != null) Milestones.I.Restore(d.milestoneIds, d.milestoneDates);
             if (d.feed != null) EventManager.I.Feed.AddRange(d.feed);
             if (Guide.I != null) Guide.I.RestoreSave(d.guide);

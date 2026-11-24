@@ -177,16 +177,12 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>
-        /// Şirketi satar: puan kalıcı dosyaya yazılır, bu kayıt yuvası silinir (aynı şirket ikinci kez satılamasın).
-        /// puanOrani: holdinge katarken puanın yarısı (Holding.HoldingeKat); en az 1 puan.
-        /// </summary>
-        public static int Sat(float puanOrani = 1f)
+        /// <summary>Şirketi satar: puan kalıcı dosyaya yazılır, bu kayıt yuvası silinir (aynı şirket ikinci kez satılamasın).</summary>
+        public static int Sat()
         {
             if (SatisEngeli.Length > 0) return 0;
             long deger = SirketDegeri;
             int p = PuanFor((long)(deger * Pay));
-            if (puanOrani < 1f) p = Mathf.Max(1, Mathf.FloorToInt(p * puanOrani));
             var v = Veri;
             v.puan += p;
             v.toplamPuan += p;
@@ -196,15 +192,6 @@ namespace KuryeTycoon
             Kaydet();
             SaveSystem.DeleteSlot(SaveSystem.Slot);
             return p;
-        }
-
-        /// <summary>Hikâye bölümü gibi ödüllerden gelen marka puanı.</summary>
-        public static void PuanEkle(int p)
-        {
-            if (p <= 0 || !Etkin) return;
-            Veri.puan += p;
-            Veri.toplamPuan += p;
-            Kaydet();
         }
 
         public static string Ozet =>

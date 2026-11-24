@@ -4,8 +4,6 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Yeni sekmeler (UI Toolkit, Yazici ile):
-    ///  • Hedefler > Hikâye: bu şehrin bölümü, hedefleri ve bütün bölümlerin durumu (Hikaye).
-    ///  • Şirket > Holding: iştirakler, temettü, yönetime yatırım; şirketi holdinge katma (Holding).
     ///  • İşletme > Bölgeler: bölge müdürleri, adaylar ve atama (BolgeMudurleri).
     ///  • Ekip > Efsaneler: rütbeler, efsane kuryeler ve koleksiyon (KuryeKariyer).
     /// Hepsi yarım saniyede bir yenilenir.
@@ -27,109 +25,6 @@ namespace KuryeTycoon
                 y.Bitir();
             }
             protected abstract void Yaz();
-        }
-
-        // ================================================================== Hikâye
-
-        class UiHikaye : UiYaziciSekme
-        {
-            protected override void Yaz()
-            {
-                var b = Hikaye.Aktif;
-                y.Yazi("Her şehir bir bölüm: üç hedefi tamamla, Kovács Viktor'u ve Turbo Grup'u geride bırak.");
-                y.Yardim($"Bölüm bitince +{Hikaye.BolumOdulu} marka puanı (her bölüm bir kez). Sonra şirketi satıp ya da holdinge katıp sonraki şehre geçersin. " +
-                         "Bölümü bitirmeden satarsan o bölüm yarım kalır. Budapeşte son bölüm.");
-                if (!Hikaye.Etkin)
-                {
-                    y.Uyari(TestModu.Aktif ? "Otomatik testte hikâye kapalı." : "Hikâye sadece Klasik oyunda. Bu senaryoda bölüm hedefleri sayılmaz.");
-                }
-                var h = Hikaye.I;
-                int tamam = Hikaye.TamamHedef(b);
-                y.KutularBasla();
-                y.Kutu("Bölüm", $"{Hikaye.BolumNo + 1} / 7", Marka.SehirAdi, UITheme.Accent);
-                y.Kutu("Hedefler", $"{tamam} / {b.hedefler.Length}", h != null && h.bitti ? "bölüm bitti" : "bu şehirde", tamam == b.hedefler.Length ? U.Iyi : (Color?)null);
-                y.Kutu("Biten bölümler", $"{Hikaye.TamamSayisi} / 7", Hikaye.Veri.final ? "final görüldü" : "bütün oyunlar");
-                y.KutularBitir();
-
-                y.KartBasla();
-                y.Baslik(b.baslik);
-                y.Kucuk(Hikaye.Yaz(b.giris));
-                foreach (var hd in b.hedefler)
-                {
-                    bool ok = hd.tamam();
-                    y.KV((ok ? "✓ " : "") + hd.ad, hd.durum(), ok ? U.Iyi : (Color?)null);
-                }
-                if (h != null && h.bitti) y.Not(Hikaye.Yaz(b.bitis));
-                y.KartBitir();
-
-                y.Bolum("Bütün bölümler");
-                for (int i = 0; i < Hikaye.Bolumler.Length; i++)
-                {
-                    var bb = Hikaye.Bolumler[i];
-                    bool bitti = Hikaye.Veri.tamam[i];
-                    string durum = bitti ? "tamamlandı" : i == Hikaye.BolumNo ? "şimdi" : i < Hikaye.BolumNo ? "yarım kaldı" : "kilitli";
-                    y.Noktali($"{bb.baslik} — {durum}", bitti ? U.Iyi : i == Hikaye.BolumNo ? (Color)UITheme.Accent : U.Soluk);
-                }
-            }
-        }
-
-        // ================================================================== Holding
-
-        class UiHolding : UiYaziciSekme
-        {
-            protected override void Yaz()
-            {
-                var v = Holding.Veri;
-                y.Yazi("Şirketini satmak yerine holdinge katabilirsin: kapanmaz, sonraki bütün oyunlarında her sabah temettü gönderir.");
-                y.Yardim($"Holdinge katınca marka puanının yarısını alırsın ve yine sonraki şehirde baştan başlarsın. Temettü = son 7 günün ortalama " +
-                         $"kârının %{Holding.TemettuOrani * 100f:0}'i × payın (en az {Ft(Holding.EnAzTemettu)}/gün); sermaye olarak girer, işletme kârına sayılmaz. " +
-                         "Yönetime yatırımla her iştirakin temettüsü artar. Her iştirak sipariş +%2 (en fazla +%12). Otomatik testte kapalı.");
-                y.KutularBasla();
-                y.Kutu("Holding", Holding.Unvan, $"{Holding.IstirakSayisi} iştirak", UITheme.Accent);
-                y.Kutu("Günlük temettü", Ft(Holding.GunlukToplam), $"toplam ödenen {Ft(v.toplamTemettu)}", Holding.GunlukToplam > 0 ? U.Iyi : (Color?)null);
-                y.Kutu("Sinerji", $"sipariş +%{(Holding.SiparisCarpani - 1f) * 100f:0}", $"iştiraklerin değeri {Ft(Holding.ToplamDeger)}");
-                y.KutularBitir();
-
-                y.Bolum("Bu şirket");
-                y.KartBasla();
-                y.Baslik($"{CompanyProfile.Name} ({Marka.SehirAdi})");
-                string engel = Marka.SatisEngeli;
-                y.KV("Holdinge katılırsa", $"günlük {Ft(Holding.OlasiTemettu)} temettü · {Holding.OlasiPuan} marka puanı");
-                y.KV("Satılırsa", $"{Marka.PuanFor(Marka.PayinDegeri)} marka puanı");
-                if (engel.Length > 0) y.Uyari($"Şimdilik olmaz: {engel}.");
-                else
-                {
-                    string sonraki = Marka.Sehirler[Mathf.Min(Marka.Veri.satilan + 1, Marka.Sehirler.Length - 1)];
-                    y.Dugme($"Holdinge kat ve {sonraki} şehrine geç", () => ui.AskConfirm("Holdinge kat",
-                        $"{CompanyProfile.Name} holdingine katılacak: her sabah {Ft(Holding.OlasiTemettu)} temettü gönderecek, {Holding.OlasiPuan} marka puanı alacaksın " +
-                        $"(satsaydın {Marka.PuanFor(Marka.PayinDegeri)}). Bu oyun biter ve kaydı silinir; {sonraki} şehrinde yeni bir şirketle başlarsın.",
-                        "Evet, holdinge kat", () =>
-                        {
-                            int p = Holding.HoldingeKat();
-                            if (p > 0) ui.deferred = () => GameBootstrap.Restart();
-                        }), true, "kucuk-dg");
-                }
-                y.KartBitir();
-
-                y.Bolum("İştirakler");
-                if (v.istirakler.Count == 0) y.Kucuk("Henüz iştirak yok. İlk şirketini holdinge kattığında burada görünür.");
-                foreach (var i in v.istirakler)
-                {
-                    var ii = i;
-                    y.KartBasla();
-                    y.Baslik($"{i.ad} · {i.sehir}");
-                    y.KV("Günlük temettü", $"{Ft(Holding.Temettu(i))} (yönetim seviyesi {i.seviye}/{Holding.MaksSeviye})", U.Iyi);
-                    y.KV("Katıldığındaki değer", Ft(i.deger));
-                    y.KV("Ödediği temettü", $"{Ft(i.odenen)} · yatırdığın {Ft(i.yatirilan)}");
-                    if (i.seviye < Holding.MaksSeviye)
-                    {
-                        long bedel = Holding.YatirimBedeli(i);
-                        y.Dugme($"Yönetime yatır ({Ft(bedel)}) → günlük {Ft(i.temettu + i.temettu * (i.seviye + 1) / 2)}", () => Holding.Yatir(ii),
-                                EconomyManager.I != null && EconomyManager.I.FreeCash >= bedel, "kucuk-dg");
-                    }
-                    y.KartBitir();
-                }
-            }
         }
 
         // ================================================================== Bölge müdürleri

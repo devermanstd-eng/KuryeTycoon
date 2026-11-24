@@ -236,10 +236,6 @@ namespace KuryeTycoon
             Sayi("EFSANE_HEPSI", E, "Efsaneler ligi", "Altı efsane kuryenin hepsini koleksiyona kat (oyunlar arası).", () => KuryeKariyer.KoleksiyonSayisi, KuryeKariyer.EfsaneSayisi);
             Sayi("MUDUR_1", D, "Bölge müdürü", "Bir bölgeye müdür ata.", () => BolgeMudurleri.I != null ? BolgeMudurleri.I.Mudurler.Count : 0, 1);
             Sayi("MUDUR_5", D, "Bütün şehir yönetimde", "Beş bölgenin hepsine müdür ata.", () => BolgeMudurleri.I != null ? BolgeMudurleri.I.Mudurler.Count : 0, 5);
-            Sayi("HOLDING_1", S, "Holding", "Bir şirketini holdinge kat.", () => Holding.IstirakSayisi, 1);
-            Sayi("HOLDING_3", S, "Büyük holding", "Üç şirketin holdinginde.", () => Holding.IstirakSayisi, 3);
-            Sayi("HIKAYE_1", S, "İlk bölüm", "Hikâyenin bir bölümünü bitir.", () => Hikaye.TamamSayisi, 1);
-            B("HIKAYE_FINAL", S, "Viktor'u yenmek", "Hikâyenin final bölümünü (Budapeşte) bitir.", () => Hikaye.Veri.final);
         }
     }
 }
