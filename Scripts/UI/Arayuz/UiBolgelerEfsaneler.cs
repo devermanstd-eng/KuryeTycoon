@@ -87,7 +87,7 @@ namespace KuryeTycoon
 
                 y.Bolum("Adaylar");
                 for (int u = 0; u < BolgeMudurleri.UzmanlikAdlari.Length; u++)
-                    y.KV(BolgeMudurleri.UzmanlikAdlari[u], BolgeMudurleri.UzmanlikAciklamalari[u]);
+                    y.Kucuk($"{BolgeMudurleri.UzmanlikAdlari[u]} uzmanı: {BolgeMudurleri.UzmanlikAciklamalari[u]}");
                 if (bm.Adaylar.Count == 0) y.Kucuk("Aday yok. Ara: 3 aday gelir (ücretsiz).");
                 y.Dugme(bm.AdayYenilenebilir ? "Aday ara" : "Aday ara (3 günde bir)", () => bm.AdaylariYenile(), bm.AdayYenilenebilir, "kucuk-dg");
             }
