@@ -677,6 +677,7 @@ namespace KuryeTycoon
 
         Material organikOrnek;
         readonly List<Vector2> koyNoktalari = new List<Vector2>();
+        readonly List<Vector2> banliyoEvleri = new List<Vector2>();   // çayır çimi bu noktalara girmez
 
         /// <summary>Organik şehir: yol ağı ve nehir tek parça mesh (merkez ofisin karesine bağlı: hiç kararmaz).</summary>
         void OrganikYollarKur(CityMap map)
@@ -1006,6 +1007,7 @@ namespace KuryeTycoon
                 BanliyoKur(map, rng, packTreesOk);
                 KoyleriKur(map, rng, packTreesOk);
                 KirOrman.Kur(root, map, organikOrnek, koyNoktalari, 2026);
+                Cim.Kur(root, map, banliyoEvleri);
             }
             int sira = 0;
             bool extras = UsePack && countryExtras != null && countryExtras.Length > 0;
@@ -1055,12 +1057,14 @@ namespace KuryeTycoon
             int w = CityMap.Width, h = CityMap.Height;
             float B = CityMap.Banliyo;
             var dolu = new HashSet<Vector2Int>();
+            banliyoEvleri.Clear();
 
             void Ev(Vector2 p, float aci)
             {
                 var t = new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y));
                 if (CityMap.KirNehirYakin(p, 0.7f)) return;
                 if (!dolu.Add(t)) return;
+                banliyoEvleri.Add(p);
                 // Banliyö: uzun köy evleri, çiftlikler, bağ evleri çoğunlukta; arada aile evleri ve eski evler
                 double z0 = rng.NextDouble();
                 var bh = z0 < 0.65 ? BolgeHavuzu("banliyo") : z0 < 0.92 ? BolgeHavuzu("ev") : null;

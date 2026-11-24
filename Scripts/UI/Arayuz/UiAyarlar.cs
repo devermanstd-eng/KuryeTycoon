@@ -185,6 +185,7 @@ namespace KuryeTycoon
                 string fps = GrafikOlcer.I != null && GrafikOlcer.I.Fps > 0f ? $" · şu an ~{GrafikOlcer.I.Fps:0} FPS" : "";
                 string oto = GrafikKalitesi.Ayar == GrafikKalitesi.Otomatik ? $"Otomatik → {GrafikKalitesi.Adlar[GrafikKalitesi.Seviye]}" : GrafikKalitesi.Adlar[GrafikKalitesi.Seviye];
                 y.Kucuk(Gorsel3D.Active ? $"Geçerli: {oto}{fps}" : $"3D ışık kapalı (eski düz görünüm){fps}");
+                y.Onay("Çayır çimi: yakından bakınca rüzgârla dalgalanan çimen ve kır çiçekleri (kapatmak performansı artırır)", Cim.Acik, v => Cim.Acik = v);
                 y.Onay("Gerçek ışık ve gölge (3D). Kapatınca eski düz görünüm; oyunu yeniden başlatınca uygulanır", Gorsel3D.Enabled, v => Gorsel3D.Enabled = v);
 
                 y.Bolum("Harita");
