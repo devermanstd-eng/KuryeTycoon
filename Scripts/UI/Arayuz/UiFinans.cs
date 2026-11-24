@@ -106,6 +106,8 @@ namespace KuryeTycoon
                         "Hedefi tutturursan sonraki tur daha iyi gelir; tutturamazsan yönetim kurulu baskısı başlar ve sonraki tur ucuzlar. " +
                         "Şirketi satınca marka puanı, şirket değerinin sana düşen payından hesaplanır.");
                 y.KV("Kurucu payın", $"%{yt.pay * 100f:0}" + (yt.toplamYatirim > 0 ? $" · alınan yatırım {Ft(yt.toplamYatirim)}" : ""));
+                if (yt.tamamlanan > 0)
+                    y.KV("Yatırımcı temettüsü", $"bugün {Ft(yt.BugunTemettu)} · toplam {Ft(yt.ToplamTemettu)}");   // dünkü faaliyet kârından, Yatirim.Temettu
                 if (yt.hedefAktif && yt.AktifTur != null)
                 {
                     var t = yt.AktifTur;

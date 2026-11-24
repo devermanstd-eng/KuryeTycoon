@@ -417,6 +417,16 @@ namespace KuryeTycoon
         /// <summary>Pazar payın bu eşiğin üstüne çıktıkça rakipler saldırganlaşır (3 rakipte %35).</summary>
         float SaldirganlikEsigi => Mathf.Clamp(0.5f - 0.05f * Rakipler.Count, 0.3f, 0.45f);
 
+        /// <summary>Oyuncunun pazar payı bunun üstündeyse rakipler "hakimiyet tepkisi" verir (bkz. HakimiyetGucu).</summary>
+        public const float HakimiyetEsigi = 0.55f;
+
+        /// <summary>
+        /// 0 (pay ≤ %55) → 1 (pay ≥ %65). 24.11 (u30, 5 şehir × 120 gün): oyuncu 30–90. gün arasında %58–72'ye çıkıyor, rakipler
+        /// saldırı seviyesindeyken bile yetişemiyordu. Bu güçle rakipler daha sık ve erken yatırım alır, haftada daha çok kurye
+        /// ekler, oyuncunun dükkanlarına daha çok teklif yapar, her hafta hamle yapar ve fiyat savaşı / kurye ayartmayı seçer.
+        /// </summary>
+        public float HakimiyetGucu => AktifRakip == 0 ? 0f : Mathf.Clamp01((MarketShare - HakimiyetEsigi) / 0.10f);
+
         // ================================================================ memnuniyet
 
         /// <summary>Bir günde teslimat sorunlarından kaybedilebilecek en fazla memnuniyet.</summary>
@@ -667,6 +677,7 @@ namespace KuryeTycoon
 
             float esik = SaldirganlikEsigi;
             int seviye = TehditSeviyesi;
+            float hakimiyet = HakimiyetGucu;
             TehditSeviyesiniDuyur(seviye);
             SatisTeklifi();   // zayıflayan bir platform satılık olabilir
             for (int i = 0; i < Rakipler.Count; i++)
@@ -683,12 +694,16 @@ namespace KuryeTycoon
                 // Yatırım turu: pazar payın eşiği geçince rakip yatırımcı arar (saldırıdayken daha sık ve daha erken)
                 if (seviye >= 1 && r.aggression > 0.3f && Day >= r.fundingCooldownUntil && myDeliveriesLastWeek >= 600 &&
                     Random.value < (seviye >= 2 ? 0.5f : 0.2f)) FundingRound(r);
+                // Hakimiyet tepkisi: pay %55'i geçince karşı yatırım (teslimat şartı yok, bekleme 45 yerine ~21 gün)
+                else if (hakimiyet > 0f && Day >= r.fundingCooldownUntil - 24 && Random.value < 0.4f + 0.5f * hakimiyet) FundingRound(r);
 
                 // Büyüme: para varsa kurye alır (saldırganken ve hızlı büyüyen platformda daha hızlı), kaliteye yatırım yapar
-                int maxCouriers = Mathf.Min(160, Mathf.RoundToInt((30 + 30 * r.fundingRounds) * (0.7f + 0.4f * r.buyume)));
+                int maxCouriers = Mathf.Min(160 + Mathf.RoundToInt(60f * hakimiyet),
+                    Mathf.RoundToInt((30 + 30 * r.fundingRounds + 40f * hakimiyet) * (0.7f + 0.4f * r.buyume)));
                 if (r.money > 1000000 && r.couriers < maxCouriers)
                 {
-                    int add = Mathf.Min((int)((r.money - 1000000) / 400000), Mathf.RoundToInt((r.aggression > 0.5f ? 8 : 3) * r.buyume));
+                    int haftalik = Mathf.RoundToInt(((r.aggression > 0.5f ? 8 : 3) + 10f * hakimiyet) * r.buyume);
+                    int add = Mathf.Min((int)((r.money - 1000000) / 400000), haftalik);
                     add = Mathf.Max(1, Mathf.Min(add, maxCouriers - r.couriers));
                     r.couriers += add; r.money -= add * 400000L;
                 }
@@ -703,6 +718,7 @@ namespace KuryeTycoon
                 float anlasmaSansi = (seviye >= 2 ? 0.7f : seviye == 1 ? 0.45f : 0.25f) * r.buyume;
                 int anlasma = Random.value < anlasmaSansi ? 1 : 0;
                 if (seviye >= 2 && r.fundingRounds > 0 && Random.value < 0.5f) anlasma++;
+                if (hakimiyet > 0f && Random.value < 0.5f + 0.5f * hakimiyet) anlasma++;   // oyuncunun dükkanlarına ek teklif
                 for (int a = 0; a < anlasma; a++) YeniDukkanAnlasmasi(i, seviye);
             }
 
@@ -711,12 +727,13 @@ namespace KuryeTycoon
             // Hamle sıklığı pazar payına bağlı (sakin ×0,5, tetikte ×1, saldırıda ×1,4 ve ikinci bir hamle şansı).
             // İlk iki hafta hamle yok: pay o zaman birkaç dükkanın siparişinden hesaplanıyor, çok oynak.
             float moveChance = (0.2f + 0.55f * maxAgg) * (1f + 0.2f * (Rakipler.Count - 1)) * (seviye >= 2 ? 1.4f : seviye == 1 ? 1f : 0.5f);
+            if (hakimiyet > 0f) moveChance = Mathf.Max(moveChance, 0.9f + 0.1f * hakimiyet);
             if (AktifRakip == 0) return;   // bütün rakipler satın alındı: hamle ve kurye ayartma yok
             if (GameClock.I.CompanyDay >= 14 && Random.value < Mathf.Min(0.95f, moveChance))
             {
                 int ilk = Sec();
                 RivalMove(ilk);
-                if (seviye >= 2 && AktifRakip > 1 && Random.value < 0.5f)
+                if (seviye >= 2 && AktifRakip > 1 && Random.value < 0.5f + 0.5f * hakimiyet)
                 {
                     int ikinci = Sec();
                     if (ikinci != ilk) RivalMove(ikinci);
@@ -803,6 +820,9 @@ namespace KuryeTycoon
             var r = Rakipler[i];
             // Kişiliğe göre hamle: ucuz platform fiyat savaşı, kaliteli platform dükkan avı sever
             float wShop = 0.4f + 0.3f * r.kaliteEgilimi, wCourier = 0.25f, wWar = 0.15f + 0.45f * r.fiyatEgilimi, wAd = 0.2f;
+            // Hakimiyet tepkisinde fiyat savaşı ve kurye ayartma öne çıkar, reklam geri planda
+            float h = HakimiyetGucu;
+            wWar *= 1f + 1.5f * h; wCourier *= 1f + h; wAd *= 1f - 0.5f * h;
             float x = Random.value * (wShop + wCourier + wWar + wAd);
             // Dükkan, kurye ve fiyat savaşı hamleleri önce duyulur (sağ üstte durum kartı), birkaç gün sonra gerçekleşir
             if (x < wShop && TehditHazirla(i, TehditTur.Dukkan)) return;
