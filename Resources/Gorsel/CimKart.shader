@@ -1,6 +1,6 @@
 // Kurye Tycoon · gerçekçi çim kartları (deneme, Ayarlar > Grafik > "Gerçekçi çim"). Çizen: Scripts/World/Cim.cs
 //  • Doku: Resources/Gorsel/CimKart.png (4 × 2 hücre: uzun ot, kısa çim, tohumlu ot, kuru ot, eğrelti, üç kır çiçeği)
-//  • Öbek: birbirini kesen 3 dikey kart (yıldız) + 1 eğik kart; köşe rengi a = yükseklik (0 kök, 1 uç)
+//  • Öbek: çapraz 2 dikey kart + iki yana yatık 2 kart; köşe rengi a = yükseklik (0 kök, 1 uç)
 //  • Saydamlık kesme + kapsama yumuşatma (MSAA varsa kenarlar pürüzsüz); uzakta dokunun mipmap'i incelmesin diye alfa keskinleştirilir
 //  • Rüzgâr, mevsim tonu, kar ve ışık KuryeTycoon/Cim ile aynı parametrelerle
 Shader "KuryeTycoon/CimKart"
@@ -145,20 +145,21 @@ Shader "KuryeTycoon/CimKart"
                 float3 renk = tex.rgb;
                 float yesillik = saturate((tex.g - max(tex.r, tex.b)) * 6.0);           // çiçek taçlarını etkileme
                 float3 mevsim = _Uc.rgb / float3(0.50, 0.70, 0.27);                     // taze yeşile göre oran
-                renk = lerp(renk, renk * mevsim, yesillik * 0.45);
+                renk = lerp(renk, renk * mevsim, yesillik * 0.3);
                 float lum = dot(renk, float3(0.3, 0.59, 0.11));
-                renk = lerp(renk, lum * _Kuru.rgb * 1.55, kuru * 0.35 * yesillik);
+                renk = lerp(renk, lum * _Kuru.rgb * 1.55, kuru * 0.25 * yesillik);
+                renk *= 1.18;   // doku sRGB'de koyu çizildi; oyun ışığında canlı yeşil görünsün
                 renk *= 0.9 + 0.2 * Hs(i.kok * 91.7);
                 renk = lerp(renk, float3(0.92, 0.94, 0.97), _Kar * smoothstep(0.3, 1.0, t) * 0.85);
 
                 float3 n = normalize(i.normalWS) * (on ? 1.0 : -1.0);
-                float3 N = normalize(lerp(n, float3(0, 0, -1), 0.55));
+                float3 N = normalize(lerp(n, float3(0, 0, -1), 0.75));
                 Light L = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 float atten = L.shadowAttenuation * L.distanceAttenuation;
                 float ndl = dot(N, L.direction) * 0.5 + 0.5;
                 float3 Vd = normalize(GetWorldSpaceViewDir(i.positionWS));
                 float gecis = pow(saturate(dot(Vd, -L.direction)), 3.0) * 0.6 * t;
-                float ao = lerp(0.55, 1.0, t);
+                float ao = lerp(0.7, 1.0, t);
                 half3 c = renk * (SampleSH(N) * 0.9 * ao + L.color * atten * (ndl * 0.95 * ao + gecis));
                 c = MixFog(c, i.fog);
                 return half4(c, saturate(a));

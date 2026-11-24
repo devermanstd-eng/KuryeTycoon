@@ -125,23 +125,38 @@ namespace KuryeTycoon
             }
         }
 
+        bool[,] yolSu, binaKare;
+
+        /// <summary>Karenin çim ağırlığı (zemin deseni: çimen / bahçe 1, sert zemin 0). Yol ve su karelerinde -1.</summary>
         float SehirAgirligi(int x, int y)
         {
             int W = CityMap.Width, H = CityMap.Height;
             if (sehirAgirlik == null)
             {
-                sehirAgirlik = new float[W, H];
+                sehirAgirlik = new float[W, H]; yolSu = new bool[W, H]; binaKare = new bool[W, H];
                 var binalar = City3D.I != null ? City3D.I.BuildingHeights : null;
                 for (int i = 0; i < W; i++)
                     for (int j = 0; j < H; j++)
                     {
-                        float a = OrganikZemin.CimAgirligi(i, j);
-                        if (a > 0f && (CityMap.RoadAt(i, j) || CityMap.WaterAt(i, j))) a = 0f;
-                        if (a > 0f && binalar != null && binalar.ContainsKey(new Vector2Int(i, j))) a = 0f;
-                        sehirAgirlik[i, j] = a;
+                        yolSu[i, j] = CityMap.RoadAt(i, j) || CityMap.WaterAt(i, j);
+                        binaKare[i, j] = binalar != null && binalar.ContainsKey(new Vector2Int(i, j));
+                        sehirAgirlik[i, j] = yolSu[i, j] ? -1f : OrganikZemin.CimAgirligi(i, j);
                     }
             }
-            return x >= 0 && y >= 0 && x < W && y < H ? sehirAgirlik[x, y] : 0f;
+            x = Mathf.Clamp(x, 0, W - 1); y = Mathf.Clamp(y, 0, H - 1);
+            return sehirAgirlik[x, y];
+        }
+
+        /// <summary>Zemin dokusundaki gibi dört komşu kare arasında yumuşak geçiş (çim kare sınırında düz çizgiyle bitmesin).
+        /// Yol / su komşusu kendi karesinin ağırlığını alır: yol kenarına kadar tam yoğunluk.</summary>
+        float YumusakAgirlik(Vector2 p, float kendi)
+        {
+            int W = CityMap.Width, H = CityMap.Height;
+            float gx = Mathf.Clamp(p.x, 0f, W - 1.0001f), gy = Mathf.Clamp(p.y, 0f, H - 1.0001f);
+            int ix = Mathf.FloorToInt(gx), iy = Mathf.FloorToInt(gy);
+            float fx = Mathf.SmoothStep(0f, 1f, gx - ix), fy = Mathf.SmoothStep(0f, 1f, gy - iy);
+            float A(int i, int j) { float a = SehirAgirligi(i, j); return a < 0f ? kendi : a; }
+            return Mathf.Lerp(Mathf.Lerp(A(ix, iy), A(ix + 1, iy), fx), Mathf.Lerp(A(ix, iy + 1), A(ix + 1, iy + 1), fx), fy);
         }
 
         /// <summary>Noktadaki çim yoğunluğu (0–1) ve zemin yüksekliği. kir: kırda mı (çiçek daha çok).</summary>
@@ -153,8 +168,12 @@ namespace KuryeTycoon
             if (!kir)
             {
                 int tx = Mathf.RoundToInt(p.x), ty = Mathf.RoundToInt(p.y);
-                yogun = SehirAgirligi(tx, ty);
-                if (yogun <= 0f) return false;
+                float kendi = SehirAgirligi(tx, ty);
+                if (kendi < 0f) return false;                                     // yol, köprü, su
+                // Binalı karede yalnız binanın oturduğu orta kısım boş kalır; bahçe ve çevresi çimli
+                if (binaKare[Mathf.Clamp(tx, 0, W - 1), Mathf.Clamp(ty, 0, H - 1)] && Mathf.Max(Mathf.Abs(p.x - tx), Mathf.Abs(p.y - ty)) < 0.4f) return false;
+                yogun = YumusakAgirlik(p, kendi);
+                if (yogun <= 0.05f) return false;
                 if (Arazi.NehirCukur(p.x, p.y) > 0.12f) return false;
                 z = Arazi.Z(p.x, p.y) - 0.0006f;
                 return true;
@@ -579,7 +598,7 @@ namespace KuryeTycoon
 
         // ------------------------------------------------------------------ gerçekçi kartlar (deneme)
 
-        /// <summary>Dokulu çim öbeği: 3 dikey kart yıldız gibi kesişir (60°), 4. kart dışa eğik. hucreler: her kartın atlas hücresi
+        /// <summary>Dokulu çim öbeği: 2 dikey kart çapraz kesişir, 2 kart iki yana ~40° yatık. hucreler: her kartın atlas hücresi
         /// (0–7; 4 × 2 ızgara). en: kartın yarı genişliği (yerel birim; ~0,9 → öbek ~1,8 m genişliğinde). Yerel ölçü: yarıçap 1, boy 1 (yukarı −Z), Cim örnek ölçeğiyle büyür.</summary>
         static Mesh KartObegi(int tohum, int[] hucreler, float en)
         {
@@ -590,10 +609,10 @@ namespace KuryeTycoon
             {
                 int h = hucreler[k];
                 float u0 = (h % 4) / 4f, u1 = u0 + 0.25f, v0 = h < 4 ? 0.5f : 0f, v1 = v0 + 0.5f;   // PNG üst satırı = v 0,5–1
-                float a = donus + (k < 3 ? k * Mathf.PI / 3f : R(r) * Mathf.PI * 2f);
+                float a = donus + (k < 2 ? k * Mathf.PI / 2f : (k - 2) * Mathf.PI + 0.8f + R(r) * 0.6f);
                 var yan = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
                 var ileri = new Vector3(-yan.y, yan.x, 0f);
-                float egik = k < 3 ? (R(r) - 0.5f) * 0.25f : 0.55f;         // 4. kart dışa yatık (tepeden bakınca da dolu görünsün)
+                float egik = k < 2 ? (R(r) - 0.5f) * 0.25f : 0.85f;         // 3. ve 4. kart iki yana yatık (tepeden bakınca da dolu görünsün)
                 var kayma = new Vector3(R(r) - 0.5f, R(r) - 0.5f, 0f) * 0.25f;
                 float w = en * (0.85f + R(r) * 0.3f), boy = 1.35f + R(r) * 0.3f;
                 var ust = Yukari * boy + ileri * (egik * boy);
