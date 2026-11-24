@@ -501,7 +501,7 @@ namespace KuryeTycoon
             menus = new Dictionary<string, Item[]>
             {
                 { "Burger Queen", Parse(BurgerQueen) },
-                { "Döner Kral", Parse(DonerKral) },
+                { "Kebab King", Parse(DonerKral) },
                 { "Starbocks", Parse(Starbocks) },
                 { "Sparx Express", Parse(SparxExpress) },
                 { "Market 24", Parse(Concat(SparxExpress, Market24Extras), 1.12f) },     // gece açık market: biraz pahalı
@@ -511,16 +511,16 @@ namespace KuryeTycoon
                 { "KFG", Parse(KFG) },
                 { "Sushi Samurai", Parse(SushiSamurai) },
                 { "Fish & Ships", Parse(FishAndShips) },
-                { "Otogar Büfe", Parse(OtogarBufe) },
+                { "Station Snack Bar", Parse(OtogarBufe) },
                 { "Villa Gourmet", Parse(VillaGourmet) },
                 { "BioSparx", Parse(BioSparx) },
             };
             // 24 saat açık yerler: gece fiyatı biraz yüksek
-            Register("Non-Stop Gyros", "Döner Kral", 1.08f);
-            menus["Merkez Eczanesi"] = Parse(Patika);
-            Register("Çarşı Eczanesi", "Merkez Eczanesi", 1.03f);
-            Register("Liman Nöbetçi Eczanesi", "Merkez Eczanesi", 1.08f);   // nöbetçi eczane: gece de açık
-            foreach (var b in new[] { "7/24 Bakkal", "Köşe Bakkal", "Gece Gündüz Market", "Mini Bakkal", "Liman 24", "Köy Bakkalı" })
+            Register("Non-Stop Gyros", "Kebab King", 1.08f);
+            menus["Central Pharmacy"] = Parse(Patika);
+            Register("High Street Pharmacy", "Central Pharmacy", 1.03f);
+            Register("Harbour Night Pharmacy", "Central Pharmacy", 1.08f);   // nöbetçi eczane: gece de açık
+            foreach (var b in new[] { "24/7 Corner Store", "Corner Shop", "Day & Night Market", "Mini Mart", "Harbour 24", "Village Store" })
                 Register(b, "Market 24", 1.02f);
         }
 

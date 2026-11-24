@@ -252,7 +252,7 @@ for y, x in zip(*np.nonzero(kenarSu)):
     if zone[y, x] in "ME" and (x + y * 3) % 5 == 0:
         zone[y, x] = "W"
 
-# Semtler: merkez çevresi 1; nehrin güneybatısı 4 (Batı Liman); kuzeybatı 5 (Yeşil Tepe); kuzeydoğu 3; doğu/güneydoğu 2
+# Semtler: merkez çevresi 1; nehrin güneybatısı 4 (West Harbour); kuzeybatı 5 (Green Hill); kuzeydoğu 3; doğu/güneydoğu 2
 nehirY = {}
 for x in range(W):
     ys = np.nonzero(su[:, x])[0]

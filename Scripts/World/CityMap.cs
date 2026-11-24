@@ -17,11 +17,11 @@ namespace KuryeTycoon
 
     /// <summary>
     /// Izgara şehir: her 4 karede bir yol (bazı blokların içinden ara sokak geçer, köşelerdeki bloklar kır). Bölgeler para ile açılır. Bir kare = yaklaşık 200 metre.
-    ///  • Beş bölge: Merkez Mahalle (başlangıç, ortada), Doğu İlçesi, Sanayi &amp; Kampüs (doğuda),
-    ///    Batı Liman (batıda: liman, otogar) ve Yeşil Tepe (kuzeyde, bütün şehir boyunca villalar).
-    ///  • Şehrin ortasından (y = 13–15) Kuğu Nehri geçer; karşıya sadece 5 köprüden geçilir.
+    ///  • Beş bölge: Downtown (başlangıç, ortada), East Side, Sanayi &amp; Kampüs (doğuda),
+    ///    West Harbour (batıda: liman, otogar) ve Green Hill (kuzeyde, bütün şehir boyunca villalar).
+    ///  • Şehrin ortasından (y = 13–15) Swan River geçer; karşıya sadece 5 köprüden geçilir.
     ///  • Her blok bir türdedir: eski şehir, kule bloklar, bahçeli evler, çarşı, AVM, kampüs, sanayi, park, meydan.
-    ///  • Merkez ofis Merkez Mahalle'nin ortasındaki Saat Kulesi Meydanı'nda.
+    ///  • Merkez ofis Downtown'un ortasındaki Clock Tower Square'de.
     ///  • Haritanın dışı kır: tarlalar, ormanlar, çiftlikler; nehir ve bazı yollar şehrin dışına devam eder (süs).
     /// Düzen sabittir (rastgele değil): adresler, kat sayıları ve 3D şehir her oyunda aynıdır.
     /// </summary>
@@ -37,21 +37,21 @@ namespace KuryeTycoon
         /// <summary>Organik şehir (gerçek harita planından, eğri ve çapraz sokaklar) açık mı?</summary>
         public static bool Organik => SehirPlani.Aktif;
 
-        // Yeşil Tepe 1,2 M → 0,9 M (16.11 akşam). 21.11: Batı Liman 750 → 600 bin, Yeşil Tepe 900 → 720 bin: 120 günlük testte
+        // Green Hill 1,2 M → 0,9 M (16.11 akşam). 21.11: West Harbour 750 → 600 bin, Green Hill 900 → 720 bin: 120 günlük testte
         // 39–44. ve 63–64. günde açılıyordu; 32 ve 45 hesaplık paketler bu bölgeleri beklerken 10–12 gün dolu kalıyordu.
         public static readonly long[] UnlockCost = { 0, 0, 150000, 400000, 600000, 720000 };
-        public static readonly string[] DistrictNames = { "", "Merkez Mahalle", "Doğu İlçesi", "Sanayi & Kampüs", "Batı Liman", "Yeşil Tepe" };
+        public static readonly string[] DistrictNames = { "", "Downtown", "East Side", "Industry & Campus", "West Harbour", "Green Hill" };
 
         /// <summary>Karenin bölgesi (1–5). Bölge sınırındaki yol, açılış sırası önce gelen bölgeye aittir.</summary>
         public static int RegionOf(int x, int y)
         {
             if (Organik) return SehirPlani.Bolge(x, y);
             if (!InCity(x, y)) return 1;   // kır: kilit yok (karartılmaz, üstünde bina da yok)
-            if (y >= 25) return 5;      // Yeşil Tepe: kuzey şerit
-            if (x < 12) return 4;       // Batı Liman
-            if (x <= 24) return 1;      // Merkez Mahalle
-            if (x <= 36) return 2;      // Doğu İlçesi
-            return 3;                   // Sanayi & Kampüs
+            if (y >= 25) return 5;      // Green Hill: kuzey şerit
+            if (x < 12) return 4;       // West Harbour
+            if (x <= 24) return 1;      // Downtown
+            if (x <= 36) return 2;      // East Side
+            return 3;                   // Industry & Campus
         }
         public static int RegionOf(Vector2Int t) => RegionOf(t.x, t.y);
         public static string DistrictOf(Vector2Int t) => DistrictNames[RegionOf(t)];
@@ -64,28 +64,28 @@ namespace KuryeTycoon
         public const int RailFromX = 37;
         public const float RiverY = RiverBlockY * Block + Block / 2f;   // nehrin ortası (14)
 
-        public static Vector2Int PlazaCenter => Organik ? SehirPlani.Meydan : new Vector2Int(18, 6);      // Saat Kulesi Meydanı (çeşme)
-        public static Vector2Int BelediyeCenter => Organik ? SehirPlani.Belediye : new Vector2Int(22, 6);   // Belediye Parkı (anıt)
-        public static Vector2Int OtogarCenter => Organik ? SehirPlani.Otogar : new Vector2Int(6, 6);      // Otogar (Batı Liman)
+        public static Vector2Int PlazaCenter => Organik ? SehirPlani.Meydan : new Vector2Int(18, 6);      // Clock Tower Square (çeşme)
+        public static Vector2Int BelediyeCenter => Organik ? SehirPlani.Belediye : new Vector2Int(22, 6);   // City Park (anıt)
+        public static Vector2Int OtogarCenter => Organik ? SehirPlani.Otogar : new Vector2Int(6, 6);      // Otogar (West Harbour)
 
         /// <summary>
         /// Blok türleri: her satır bir blok sırası (by = 0 güney … 7 kuzey), her harf bir blok (bx = 0 batı … 11 doğu).
         /// O eski şehir · H kule bloklar · E bahçeli ev · M çarşı · A AVM/otogar · C kampüs · W sanayi/liman · P park · Z meydan · R nehir
         /// . kır (şehir dışı: yol yok, orman ve çayır; şehrin sınırı girintili çıkıntılı olsun diye)
-        /// Sütunlar: bx 0–2 Batı Liman · 3–5 Merkez · 6–8 Doğu · 9–11 Sanayi; by 6–7 Yeşil Tepe.
+        /// Sütunlar: bx 0–2 West Harbour · 3–5 Merkez · 6–8 Doğu · 9–11 Sanayi; by 6–7 Green Hill.
         /// </summary>
         // Büyük nehir şehri gibi: merkez nehrin iki yakasında bitişik nizam, avlulu yoğun bloklar ve kuleler;
         // dışa doğru çarşı (karışık), en dışta müstakil ev mahalleleri; sanayi ve liman doğuda.
         static readonly string[] Layout =
         {
-            ".EEOOMMEEACC",   // by 0  dış güney: bahçeli evler, eski şehrin ucu, Tepe AVM, kampüs
-            "WAMOZPOMMEAE",   // by 1  (otogar, meydan + HQ, Belediye Parkı, Narlı Plaza AVM)
-            "WMOOHOOPMMEE",   // by 2  güney yakası: yoğun merkez, Nehir Parkı
-            "RRRRRRRRRRRR",   // by 3  Kuğu Nehri
+            ".EEOOMMEEACC",   // by 0  dış güney: bahçeli evler, eski şehrin ucu, Hilltop Mall, kampüs
+            "WAMOZPOMMEAE",   // by 1  (otogar, meydan + HQ, City Park, Northgate Mall)
+            "WMOOHOOPMMEE",   // by 2  güney yakası: yoğun merkez, Riverside Park
+            "RRRRRRRRRRRR",   // by 3  Swan River
             "MMOOHHOOMMWW",   // by 4  kuzey yakası: yoğun merkez, doğuda sanayi
             ".EMOHHMMEWWW",   // by 5  kule bloklar, dışa doğru çarşı ve evler (tren yolu sanayide)
-            ".EEEEPEEEEE.",   // by 6  Yeşil Tepe: müstakil evler
-            "..EEEPEEEE..",   // by 7  Yeşil Tepe
+            ".EEEEPEEEEE.",   // by 6  Green Hill: müstakil evler
+            "..EEEPEEEE..",   // by 7  Green Hill
         };
 
         /// <summary>
@@ -144,9 +144,9 @@ namespace KuryeTycoon
             if (organikLm != null) return organikLm;
             var l = new List<Landmark>
             {
-                new Landmark("Saat Kulesi Meydanı", (Vector2)PlazaCenter + new Vector2(0f, 1.15f), new Color(1f, 0.92f, 0.75f)),
-                new Landmark("Belediye Parkı", BelediyeCenter, new Color(0.70f, 1f, 0.70f)),
-                new Landmark("Otogar", OtogarCenter, new Color(1f, 0.92f, 0.60f)),
+                new Landmark("Clock Tower Square", (Vector2)PlazaCenter + new Vector2(0f, 1.15f), new Color(1f, 0.92f, 0.75f)),
+                new Landmark("City Park", BelediyeCenter, new Color(0.70f, 1f, 0.70f)),
+                new Landmark("Bus Station", OtogarCenter, new Color(1f, 0.92f, 0.60f)),
             };
             // Nehir adı: suyun üç ayrı yerinde
             var su = new List<Vector2Int>();
@@ -155,7 +155,7 @@ namespace KuryeTycoon
                     if (SehirPlani.SuVar(x, y) && SehirPlani.SuVar(x + 1, y) && SehirPlani.SuVar(x - 1, y)) su.Add(new Vector2Int(x, y));
             if (su.Count > 0)
                 for (int i = 0; i < 3; i++)
-                    l.Add(new Landmark("Kuğu Nehri", su[(su.Count - 1) * (i * 2 + 1) / 6], new Color(0.65f, 0.85f, 1f)));
+                    l.Add(new Landmark("Swan River", su[(su.Count - 1) * (i * 2 + 1) / 6], new Color(0.65f, 0.85f, 1f)));
             // Semt adları: her semtin yapı karelerinin ortası
             var top = new Vector2[6];
             var say = new int[6];
@@ -176,23 +176,23 @@ namespace KuryeTycoon
 
         static readonly Landmark[] IzgaraLandmarks =
         {
-            new Landmark("Eski Şehir",           new Vector2(14f, 2f),    new Color(1f, 0.86f, 0.70f)),
-            new Landmark("Saat Kulesi Meydanı",      new Vector2(18f, 7.15f), new Color(1f, 0.92f, 0.75f)),
-            new Landmark("Belediye Parkı",       new Vector2(22f, 6f),    new Color(0.70f, 1f, 0.70f)),
-            new Landmark("Kuğu Nehri",                new Vector2(4f, RiverY), new Color(0.65f, 0.85f, 1f)),
-            new Landmark("Kuğu Nehri",                new Vector2(28f, RiverY), new Color(0.65f, 0.85f, 1f)),
-            new Landmark("Kuğu Nehri",                new Vector2(40f, RiverY), new Color(0.65f, 0.85f, 1f)),
-            new Landmark("Kule Bloklar",         new Vector2(18f, 20f),   new Color(1f, 0.80f, 0.85f)),
-            new Landmark("Bahçeli Evler",        new Vector2(30f, 2f),    new Color(0.85f, 1f, 0.80f)),
-            new Landmark("Nehir Parkı",          new Vector2(30f, 10f),   new Color(0.70f, 1f, 0.70f)),
-            new Landmark("Tepe AVM",             new Vector2(38f, 2f),    new Color(1f, 0.85f, 0.60f)),
-            new Landmark("Narlı Plaza AVM",       new Vector2(42f, 6f),    new Color(1f, 0.85f, 0.60f)),
-            new Landmark("Kampüs",               new Vector2(44f, 2f),    new Color(1f, 0.95f, 0.70f)),
-            new Landmark("Sanayi & Lojistik",    new Vector2(42f, 18f),   new Color(0.80f, 0.92f, 0.90f)),
-            new Landmark("Kuğu Limanı",         new Vector2(2f, 10f),    new Color(0.75f, 0.90f, 1f)),
-            new Landmark("Otogar",               new Vector2(6f, 6f),     new Color(1f, 0.92f, 0.60f)),
-            new Landmark("Batı Yakası",          new Vector2(6f, 20f),    new Color(1f, 0.90f, 0.80f)),
-            new Landmark("Yeşil Tepe Villaları", new Vector2(24f, 28f),   new Color(0.80f, 1f, 0.75f)),
+            new Landmark("Old Town",           new Vector2(14f, 2f),    new Color(1f, 0.86f, 0.70f)),
+            new Landmark("Clock Tower Square",      new Vector2(18f, 7.15f), new Color(1f, 0.92f, 0.75f)),
+            new Landmark("City Park",       new Vector2(22f, 6f),    new Color(0.70f, 1f, 0.70f)),
+            new Landmark("Swan River",                new Vector2(4f, RiverY), new Color(0.65f, 0.85f, 1f)),
+            new Landmark("Swan River",                new Vector2(28f, RiverY), new Color(0.65f, 0.85f, 1f)),
+            new Landmark("Swan River",                new Vector2(40f, RiverY), new Color(0.65f, 0.85f, 1f)),
+            new Landmark("Tower Blocks",         new Vector2(18f, 20f),   new Color(1f, 0.80f, 0.85f)),
+            new Landmark("Garden Homes",        new Vector2(30f, 2f),    new Color(0.85f, 1f, 0.80f)),
+            new Landmark("Riverside Park",          new Vector2(30f, 10f),   new Color(0.70f, 1f, 0.70f)),
+            new Landmark("Hilltop Mall",             new Vector2(38f, 2f),    new Color(1f, 0.85f, 0.60f)),
+            new Landmark("Northgate Mall",       new Vector2(42f, 6f),    new Color(1f, 0.85f, 0.60f)),
+            new Landmark("Campus",               new Vector2(44f, 2f),    new Color(1f, 0.95f, 0.70f)),
+            new Landmark("Industry & Logistics",    new Vector2(42f, 18f),   new Color(0.80f, 0.92f, 0.90f)),
+            new Landmark("Swan Harbour",         new Vector2(2f, 10f),    new Color(0.75f, 0.90f, 1f)),
+            new Landmark("Bus Station",               new Vector2(6f, 6f),     new Color(1f, 0.92f, 0.60f)),
+            new Landmark("West Bank",          new Vector2(6f, 20f),    new Color(1f, 0.90f, 0.80f)),
+            new Landmark("Green Hill Villas", new Vector2(24f, 28f),   new Color(0.80f, 1f, 0.75f)),
         };
 
         static bool InRiverRows(int y) => y > RiverBlockY * Block && y < (RiverBlockY + 1) * Block;
@@ -1008,7 +1008,7 @@ namespace KuryeTycoon
             BuildCountryside();
             BuildDecor();
 
-            // Merkez ofis: Merkez Mahalle'nin ortasındaki meydanda, güneydeki yola bakar
+            // Merkez ofis: Downtown'un ortasındaki meydanda, güneydeki yola bakar
             HQTile = Organik ? OrganikMerkezOfis() : new Vector2Int(PlazaCenter.x, PlazaCenter.y - 1);
             HQDoor = GetDoor(HQTile);
             for (int x = PlazaCenter.x - 1; x <= PlazaCenter.x + 1; x++)
@@ -1073,9 +1073,9 @@ namespace KuryeTycoon
                     var mid = (pa + pb) / 2f;
                     float len = Vector2.Distance(pa, pb) + 0.25f;
                     float ang = Mathf.Atan2(pb.y - pa.y, pb.x - pa.x) * Mathf.Rad2Deg;
-                    var bank = Deco("Kuğu Nehri kıyısı", countryRoot, false, RiverBankColor, mid, new Vector2(len, 3.9f), -9, false);
+                    var bank = Deco("Swan River kıyısı", countryRoot, false, RiverBankColor, mid, new Vector2(len, 3.9f), -9, false);
                     bank.transform.rotation = Quaternion.Euler(0f, 0f, ang);
-                    var water = Deco("Kuğu Nehri", countryRoot, false, WaterColor, mid, new Vector2(len, 3f), -8, false);
+                    var water = Deco("Swan River", countryRoot, false, WaterColor, mid, new Vector2(len, 3f), -8, false);
                     water.transform.rotation = Quaternion.Euler(0f, 0f, ang);
                 }
             // Organik: nehrin şehir dışındaki kolları (2D düz harita görünümü)
@@ -1087,9 +1087,9 @@ namespace KuryeTycoon
                         var mid = (pa + pb) / 2f;
                         float len = Vector2.Distance(pa, pb) + 0.3f;
                         float ang = Mathf.Atan2(pb.y - pa.y, pb.x - pa.x) * Mathf.Rad2Deg;
-                        var bank = Deco("Kuğu Nehri kıyısı", countryRoot, false, RiverBankColor, mid, new Vector2(len, kol.G[k] + 0.9f), -9, false);
+                        var bank = Deco("Swan River kıyısı", countryRoot, false, RiverBankColor, mid, new Vector2(len, kol.G[k] + 0.9f), -9, false);
                         bank.transform.rotation = Quaternion.Euler(0f, 0f, ang);
-                        var water = Deco("Kuğu Nehri", countryRoot, false, WaterColor, mid, new Vector2(len, kol.G[k]), -8, false);
+                        var water = Deco("Swan River", countryRoot, false, WaterColor, mid, new Vector2(len, kol.G[k]), -8, false);
                         water.transform.rotation = Quaternion.Euler(0f, 0f, ang);
                     }
             foreach (var r in CountryRoads)
@@ -1171,7 +1171,7 @@ namespace KuryeTycoon
                         }
                         if (z == Zone.Park && IsBlockCenter(x, y))
                         {
-                            // Park ortası: Belediye Parkı'nda anıt, diğerlerinde gölet
+                            // Park ortası: City Park'ta anıt, diğerlerinde gölet
                             if (new Vector2Int(x, y) == BelediyeCenter) Deco("Anıt", roofRoot, false, new Color(0.85f, 0.83f, 0.78f), p, new Vector2(0.22f, 0.22f), 1);
                             else Deco("Gölet", roofRoot, true, WaterColor, p, new Vector2(0.6f, 0.45f), 1);
                         }
@@ -1473,9 +1473,9 @@ namespace KuryeTycoon
 
         /// <summary>
         /// Bölgenin açılış bedeli: şirket büyüdükçe artar (Denge.Olcekle), ama platform paketi gibi çarpanın yarısıyla: bölge,
-        /// sıradaki kurye paketinin ön koşulu. 16.11 testinde tam çarpanla Batı Liman 4 220 €, Yeşil Tepe 8 620 € tuttu; paketle
+        /// sıradaki kurye paketinin ön koşulu. 16.11 testinde tam çarpanla West Harbour 4 220 €, Green Hill 8 620 € tuttu; paketle
         /// birlikte 32 ve 45 kuryede 17–18 gün beklendi (hedef 10–13). Yarım çarpanla 32'de 11 güne indi, 45'te 18'de kaldı:
-        /// Yeşil Tepe 0,9 M'ye indi (16.11 akşam).
+        /// Green Hill 0,9 M'ye indi (16.11 akşam).
         /// </summary>
         public static long BolgeBedeli(int seviye) => Denge.Olcekle(UnlockCost[Mathf.Clamp(seviye, 0, UnlockCost.Length - 1)], 0.5f);
 

@@ -42,8 +42,8 @@ namespace KuryeTycoon
     /// <summary>
     /// Şehir hayatı:
     ///  • Takvim: Noel (24–26 Aralık), Yılbaşı gecesi, 1 Ocak, Sevgililer Günü, Black Friday, sınav haftaları (öğrenciler az sipariş verir, gece çok).
-    ///  • Her hafta rastgele 1–2 etkinlik: maç akşamı (evde maç izleyenler pizza/burger söyler), Saat Kulesi Meydanı'nda konser,
-    ///    Belediye Parkı'nda sokak festivali (siparişlerin bir kısmı etkinlik alanından gelir). Etkinlik sabah duyurulur, haritada işaretlenir.
+    ///  • Her hafta rastgele 1–2 etkinlik: maç akşamı (evde maç izleyenler pizza/burger söyler), Clock Tower Square'de konser,
+    ///    City Park'ta sokak festivali (siparişlerin bir kısmı etkinlik alanından gelir). Etkinlik sabah duyurulur, haritada işaretlenir.
     ///  • Erken oyun ipucu: akşam yoğunluğundan önce kurye azsa "kurye al" uyarısı.
     /// </summary>
     public class CityEvents : MonoBehaviour
@@ -238,7 +238,7 @@ namespace KuryeTycoon
                 case 1: // Konser
                 {
                     int dow = Random.value < 0.5f ? 4 : 5;
-                    Add(new CityEvent { title = "Saat Kulesi Meydanı'nda konser", day = weekStart + dow, fromHour = 19, toHour = 23.5f,
+                    Add(new CityEvent { title = "Clock Tower Square'de konser", day = weekStart + dow, fromHour = 19, toHour = 23.5f,
                         demand = 1.12f, spotX = CityMap.PlazaCenter.x, spotY = CityMap.PlazaCenter.y, spotRadius = 5, spotShare = 0.35f,
                         desc = "Meydanda açık hava konseri: çevredeki evlere ve ofislere sipariş yağıyor, meydanın etrafı kalabalık (trafik yavaş)." });
                     break;
@@ -246,7 +246,7 @@ namespace KuryeTycoon
                 case 2: // Sokak festivali
                 {
                     int dow = Random.value < 0.5f ? 5 : 6;
-                    Add(new CityEvent { title = "Belediye Parkı sokak festivali", day = weekStart + dow, fromHour = 11, toHour = 20,
+                    Add(new CityEvent { title = "City Park sokak festivali", day = weekStart + dow, fromHour = 11, toHour = 20,
                         demand = 1.08f, food = 1.1f, spotX = CityMap.BelediyeCenter.x, spotY = CityMap.BelediyeCenter.y, spotRadius = 6, spotShare = 0.3f,
                         desc = "Gün boyu festival: parkın çevresinden çok sipariş gelir. Dükkanlar da kalabalık." });
                     break;

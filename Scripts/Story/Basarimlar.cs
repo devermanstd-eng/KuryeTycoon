@@ -226,7 +226,7 @@ namespace KuryeTycoon
             Sayi("YIL_1", S, "Bir yıl", "Şirketini bir yıl ayakta tut.", () => GameClock.I != null ? GameClock.I.CompanyDay : 0, 365);
             Sayi("SATIS_1", S, "Exit", "İlk şirketini sat ve yeni şehre geç.", () => Marka.Veri.satilan, 1);
             Sayi("SATIS_3", S, "Seri girişimci", "Üç şirket sat.", () => Marka.Veri.satilan, 3);
-            B("BUDAPESTE", S, "Başkent", "Başkent'te şirket kur.", () => Marka.AktifSehir >= Marka.Sehirler.Length - 1);
+            B("BUDAPESTE", S, "Başkent", "Son şehir Kingsport'ta şirket kur.", () => Marka.AktifSehir >= Marka.Sehirler.Length - 1);
 
             Sayi("SERI_100", K, "Saat gibi", "Art arda 100 zamanında teslimat.", () => Kutlama.I != null ? Kutlama.I.enIyiSeri : 0, 100);
             Sayi("SERI_500", K, "Durdurulamaz", "Art arda 500 zamanında teslimat.", () => Kutlama.I != null ? Kutlama.I.enIyiSeri : 0, 500);

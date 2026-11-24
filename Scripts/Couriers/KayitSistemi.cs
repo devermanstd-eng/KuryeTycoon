@@ -133,7 +133,7 @@ namespace KuryeTycoon
         {
             Adaylar.Clear();
             for (int i = 0; i < 4; i++) { acik[i] = true; bekleme[i] = 0; }
-            // Oyunun başı: Turbo Paket'ten eski vardiya arkadaşların seninle gelmek istiyor. Belgeleri hazır, ilk gün
+            // Oyunun başı: TurboDrop'tan eski vardiya arkadaşların seninle gelmek istiyor. Belgeleri hazır, ilk gün
             // hesapları açılır (şirket boş kurye kadrosuyla başlayıp ilk günleri iptallerle geçirmesin). Birkaçı da süreçte.
             for (int i = 0; i < 7; i++)
             {

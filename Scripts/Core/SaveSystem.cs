@@ -191,7 +191,7 @@ namespace KuryeTycoon
         public HizmetSave hizmet;              // ekspres ve planlı teslimat (eski kayıtlarda yok)
         public KargoSave kargo;                // kargo deposu ve sayıları (eski kayıtlarda yok)
         public GunPlaniSave gunPlani;          // grip dalgası (eski kayıtlarda yok)
-        public int sehirNo;                    // Marka: oyunun şehri (0 = Narlıkent; eski kayıtlarda 0)
+        public int sehirNo;                    // Marka: oyunun şehri (0 = Northbrook; eski kayıtlarda 0)
         public long kayitUtc;                  // kaydın gerçek zamanı (UTC tick): oyun kapalıyken kazanç için
         public List<string> agacBonuslari;     // gelişim ağacında alınan küçük düğümler (eski kayıtlarda yok)
         public AbonelikSave abonelik;          // abonelik (eski kayıtlarda yok)

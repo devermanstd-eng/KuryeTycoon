@@ -26,7 +26,7 @@ namespace KuryeTycoon
         public bool exclusive;             // sadece seninle çalışıyor (rakip yok, daha çok sipariş, daha düşük oran)
         public float sadakat;              // 0–100 dükkan sadakati (DukkanSadakati): zamanla artar, rakibe karşı tutar
         public int rivalMask;              // bu dükkanla çalışan rakip platformlar (bit i = RivalCompany.Rakipler[i])
-        /// <summary>En az bir rakip platformla da çalışıyor (siparişler paylaşılır). true atanırsa ve rakip yoksa ilk rakip (Turbo Paket) eklenir.</summary>
+        /// <summary>En az bir rakip platformla da çalışıyor (siparişler paylaşılır). true atanırsa ve rakip yoksa ilk rakip (TurboDrop) eklenir.</summary>
         public bool rivalContracted
         {
             get => rivalMask != 0;
@@ -154,7 +154,7 @@ namespace KuryeTycoon
         {
             get
             {
-                // "Esra Aydın" → "A. Esra" (uygulamada soyadının baş harfi + ad)
+                // "Ruby Walker" → "W. Ruby" (uygulamada soyadının baş harfi + ad)
                 var parts = customerName.Split(' ');
                 if (parts.Length < 2 || parts[1].Length == 0) return customerName;
                 return $"{parts[1][0]}. {parts[0]}";

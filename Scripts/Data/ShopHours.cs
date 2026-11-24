@@ -26,13 +26,13 @@ namespace KuryeTycoon
             { "Burger Queen",   Nonstop },
             { "McDanold's",     Nonstop },
             { "Non-Stop Gyros", Nonstop },
-            { "Döner Kral",     H(10, 26, 10, 28) },     // 10:00–02:00, hafta sonu 04:00'e kadar
+            { "Kebab King",     H(10, 26, 10, 28) },     // 10:00–02:00, hafta sonu 04:00'e kadar
             { "Starbocks",      H(7, 21, 8, 20) },
             { "Pizza Hat",      H(11, 23, 11, 24) },
             { "KFG",            H(10, 23, 10, 25) },     // hafta sonu 01:00'e kadar
             { "Sushi Samurai",  H(11, 22, 12, 22) },
             { "Fish & Ships",   H(11, 22, 11, 22) },
-            { "Otogar Büfe",    H(5, 23, 6, 23) },
+            { "Station Snack Bar",    H(5, 23, 6, 23) },
             { "Villa Gourmet",  H(12, 23, 12, 24) },
             // Market
             { "Sparx Express",  H(6, 21, 7, 19) },
@@ -42,16 +42,16 @@ namespace KuryeTycoon
             { KargoAnlasmasi.DepoAdi, H(8, 19, 8, 14) },  // kargo deposu (pazar kapalı ama tablo hafta sonunu tek tutuyor)
             // Bakkal: 24 saat
             { "Market 24",      Nonstop },
-            { "7/24 Bakkal",   Nonstop },
-            { "Köşe Bakkal",  Nonstop },
-            { "Gece Gündüz Market",  Nonstop },
-            { "Mini Bakkal",       Nonstop },
-            { "Liman 24", Nonstop },
-            { "Köy Bakkalı",       Nonstop },
+            { "24/7 Corner Store",   Nonstop },
+            { "Corner Shop",  Nonstop },
+            { "Day & Night Market",  Nonstop },
+            { "Mini Mart",       Nonstop },
+            { "Harbour 24", Nonstop },
+            { "Village Store",       Nonstop },
             // Eczane (patika): hafta içi 8–20, cumartesi 8–14; nöbetçi eczane 24 saat
-            { "Merkez Eczanesi", H(8, 20, 8, 14) },
-            { "Çarşı Eczanesi",    H(8, 20, 8, 14) },
-            { "Liman Nöbetçi Eczanesi", Nonstop },
+            { "Central Pharmacy", H(8, 20, 8, 14) },
+            { "High Street Pharmacy",    H(8, 20, 8, 14) },
+            { "Harbour Night Pharmacy", Nonstop },
         };
 
         /// <summary>Yeni bir dükkanın saatleri (ör. sanal mutfak markaları).</summary>

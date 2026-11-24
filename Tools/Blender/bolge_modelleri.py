@@ -3244,7 +3244,7 @@ def don_saksi(rnd):
 
 
 def don_ilan_sutunu(rnd):
-    """İlan sütunu (hirdetőoszlop): yeşil döküm kaide ve kubbeli şapka, etrafında renkli afişler."""
+    """İlan sütunu: yeşil döküm kaide ve kubbeli şapka, etrafında renkli afişler."""
     g = G("ilan_sutunu")
     yesil = M("Demir", rnd.choice(("#2f4f3a", "#3a3d42")))
     dsil(g, 0, 0, 0, 0.35, 0.72, 14, yesil)

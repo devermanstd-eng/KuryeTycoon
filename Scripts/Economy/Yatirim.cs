@@ -39,11 +39,11 @@ namespace KuryeTycoon
 
         public static readonly Tur[] Turlar =
         {
-            new Tur { ad = "Tohum yatırım", yatirimci = "Kuğu Angels", tutar = 1600000, pay = 0.12f, sure = 60,
+            new Tur { ad = "Tohum yatırım", yatirimci = "Swan Angels", tutar = 1600000, pay = 0.12f, sure = 60,
                       ilce = 2, teslimat = 150, abone = 0, enErkenGun = 10, enAzTeslimat = 50 },
-            new Tur { ad = "A serisi", yatirimci = "Danube Ventures", tutar = 8000000, pay = 0.18f, sure = 90,
+            new Tur { ad = "A serisi", yatirimci = "Northwind Ventures", tutar = 8000000, pay = 0.18f, sure = 90,
                       ilce = 3, teslimat = 500, abone = 300, enErkenGun = 0, enAzTeslimat = 150 },
-            new Tur { ad = "B serisi", yatirimci = "Carpathia Capital", tutar = 32000000, pay = 0.20f, sure = 120,
+            new Tur { ad = "B serisi", yatirimci = "Summit Capital", tutar = 32000000, pay = 0.20f, sure = 120,
                       ilce = 4, teslimat = 1200, abone = 1500, enErkenGun = 0, enAzTeslimat = 450 },
             new Tur { ad = "C serisi", yatirimci = "Euro Growth Partners", tutar = 100000000, pay = 0.20f, sure = 150,
                       ilce = 5, teslimat = 2500, abone = 5000, enErkenGun = 0, enAzTeslimat = 1000 },

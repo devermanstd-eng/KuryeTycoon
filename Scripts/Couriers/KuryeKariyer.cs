@@ -63,7 +63,7 @@ namespace KuryeTycoon
 
         // ------------------------------------------------------------------ efsaneler
 
-        public static readonly string[] EfsaneLakaplari = { "Gece Kralı", "Saat Gibi", "Yağmur Ustası", "Mahallenin Sevgilisi", "Demir Bacak", "Eski Toprak" };
+        public static readonly string[] EfsaneLakaplari = { "Night Owl", "Clockwork", "Rainmaker", "Local Hero", "Iron Legs", "Old Hand" };
 
         public static readonly string[] EfsaneAciklamalari =
         {

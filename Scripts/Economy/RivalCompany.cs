@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    /// <summary>Türkçe ek yardımcıları (rakip adlarında ünlü uyumu: Turbo Paket'in, Şimşek Yemek'nın, Panda Kurye'a...).</summary>
+    /// <summary>Türkçe ek yardımcıları (rakip adlarında ünlü uyumu: TurboDrop'un, Flash Eats'in, Panda Courier'a...).</summary>
     public static class TurkceEk
     {
         static char SonUnlu(string s)
@@ -28,7 +28,7 @@ namespace KuryeTycoon
             return "aáeéıiíoóöőuúüű".IndexOf(char.ToLowerInvariant(s[s.Length - 1])) >= 0;
         }
 
-        /// <summary>Tamlayan eki: "Turbo Paket'in", "Şimşek Yemek'nın".</summary>
+        /// <summary>Tamlayan eki: "TurboDrop'un", "Flash Eats'in".</summary>
         public static string In(string ad)
         {
             char u = SonUnlu(ad);
@@ -36,7 +36,7 @@ namespace KuryeTycoon
             return ad + "'" + (UnluyleBiter(ad) ? "n" : "") + e;
         }
 
-        /// <summary>Yönelme eki: "Turbo Paket'e", "Şimşek Yemek'ya".</summary>
+        /// <summary>Yönelme eki: "TurboDrop'a", "Flash Eats'e".</summary>
         public static string A(string ad)
         {
             char u = SonUnlu(ad);
@@ -49,7 +49,7 @@ namespace KuryeTycoon
     [System.Serializable]
     public class Rakip
     {
-        public string ad = "Turbo Paket";
+        public string ad = "TurboDrop";
         public string kisa = "Turbo";
         public Color renk = new Color(0.62f, 0.32f, 0.85f);
 
@@ -83,9 +83,9 @@ namespace KuryeTycoon
     /// Rakip kurye platformları (tamamen yapay zekâ) ve dükkanlarla sözleşme ilişkileri.
     ///
     /// Rakipler (3 platform):
-    ///  • Turbo Paket: şehrin en eski ve en büyük platformu (oyuncunun eski işvereni). Dengeli.
-    ///  • Panda Kurye: az ama iyi kuryeli, yüksek itibarlı; kaliteye yatırım yapar, iyi dükkanlara göz diker.
-    ///  • Şimşek Yemek: ucuz ve hızlı büyüyen yeni girişim; sık fiyat savaşı açar, itibarı düşük.
+    ///  • TurboDrop: şehrin en eski ve en büyük platformu (oyuncunun eski işvereni). Dengeli.
+    ///  • Panda Courier: az ama iyi kuryeli, yüksek itibarlı; kaliteye yatırım yapar, iyi dükkanlara göz diker.
+    ///  • Flash Eats: ucuz ve hızlı büyüyen yeni girişim; sık fiyat savaşı açar, itibarı düşük.
     ///  • Her birinin kendi itibarı, kurye sayısı, parası ve sözleşmeli dükkanları var; her hafta büyümeye çalışırlar.
     ///  • Bir dükkanla birden çok platform çalışabilir: müşteriler itibar, kurye sayısı ve hıza göre paylaşılır.
     ///    Münhasır dükkanlarda rakip yoktur.
@@ -107,13 +107,13 @@ namespace KuryeTycoon
 
         static List<Rakip> Varsayilanlar() => new List<Rakip>
         {
-            new Rakip { ad = "Turbo Paket", kisa = "Turbo", renk = new Color(0.62f, 0.32f, 0.85f),
+            new Rakip { ad = "TurboDrop", kisa = "Turbo", renk = new Color(0.62f, 0.32f, 0.85f),
                         buyume = 1f, fiyatEgilimi = 0.5f, kaliteEgilimi = 0.5f, saldirganlik = 1f,
                         reputation = 3.4f, couriers = 7, money = 1500000 },
-            new Rakip { ad = "Panda Kurye", kisa = "Panda", renk = new Color(0.93f, 0.27f, 0.55f),
+            new Rakip { ad = "Panda Courier", kisa = "Panda", renk = new Color(0.93f, 0.27f, 0.55f),
                         buyume = 0.7f, fiyatEgilimi = 0.2f, kaliteEgilimi = 0.9f, saldirganlik = 0.75f,
                         reputation = 3.8f, couriers = 4, money = 1200000, quality = 0.15f },
-            new Rakip { ad = "Şimşek Yemek", kisa = "Şimşek", renk = new Color(0.96f, 0.76f, 0.12f),
+            new Rakip { ad = "Flash Eats", kisa = "Flash", renk = new Color(0.96f, 0.76f, 0.12f),
                         buyume = 1.35f, fiyatEgilimi = 1f, kaliteEgilimi = 0.2f, saldirganlik = 1.25f,
                         reputation = 3.0f, couriers = 3, money = 900000 },
         };
@@ -169,7 +169,7 @@ namespace KuryeTycoon
         public static bool Var(Shop s, int i) => (s.rivalMask & (1 << i)) != 0;
         public static void Ekle(Shop s, int i) => s.rivalMask |= 1 << i;
 
-        /// <summary>Dükkanla çalışan rakiplerin adları ("Turbo Paket, Şimşek Yemek").</summary>
+        /// <summary>Dükkanla çalışan rakiplerin adları ("TurboDrop, Flash Eats").</summary>
         public string DukkanRakipleri(Shop s)
         {
             var l = new List<string>();
@@ -289,7 +289,7 @@ namespace KuryeTycoon
             }
             else
             {
-                // Eski kayıt (tek rakip): onun bilgileri Turbo Paket'e, diğer iki platform şehre yeni giriyor
+                // Eski kayıt (tek rakip): onun bilgileri TurboDrop'a, diğer iki platform şehre yeni giriyor
                 Rakipler.AddRange(defs);
                 var t = Rakipler[0];
                 t.reputation = s.reputation; t.couriers = s.couriers; t.money = s.money;

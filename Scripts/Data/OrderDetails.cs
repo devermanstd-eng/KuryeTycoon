@@ -24,10 +24,10 @@ namespace KuryeTycoon
     public static class Addresses
     {
         static readonly string[] AvenueNames =
-            { "Çınar", "Lale", "Akasya", "Ihlamur", "Menekşe", "Zambak", "Defne", "Manolya", "Yasemin",
-              "Kestane", "Meşe", "Söğüt", "Nergis" };
+            { "Oak", "Maple", "Elm", "Willow", "Cedar", "Birch", "Pine", "Chestnut", "Ash",
+              "Holly", "Laurel", "Hazel", "Linden" };
         static readonly string[] StreetNames =
-            { "Barış", "Huzur", "Bahar", "Güneş", "Yıldız", "Pınar", "Bağlar", "Gelincik", "Papatya" };
+            { "Rose", "Lily", "Daisy", "Primrose", "Violet", "Ivy", "Heather", "Poppy", "Bluebell" };
 
         public static bool IsAvenue(Vector2Int road) =>
             CityMap.Organik ? SehirPlani.Genis(SehirPlani.YolNo(road.x, road.y))
@@ -39,10 +39,10 @@ namespace KuryeTycoon
             {
                 // Organik şehirde her yol çizgisinin kendi adı: geniş olanlar cadde, diğerleri sokak
                 int no = Mathf.Max(0, SehirPlani.YolNo(road.x, road.y));
-                return SehirPlani.Genis(no) ? AvenueNames[no % AvenueNames.Length] + " Caddesi" : StreetNames[no % StreetNames.Length] + " Sokak";
+                return SehirPlani.Genis(no) ? AvenueNames[no % AvenueNames.Length] + " Avenue" : StreetNames[no % StreetNames.Length] + " Street";
             }
-            if (IsAvenue(road)) return AvenueNames[(road.x / CityMap.Block) % AvenueNames.Length] + " Caddesi";
-            return StreetNames[(road.y / CityMap.Block) % StreetNames.Length] + " Sokak";
+            if (IsAvenue(road)) return AvenueNames[(road.x / CityMap.Block) % AvenueNames.Length] + " Avenue";
+            return StreetNames[(road.y / CityMap.Block) % StreetNames.Length] + " Street";
         }
 
         /// <summary>Kapı numarası: yol boyunca sıra, yolun bir tarafı tek, diğer tarafı çift.</summary>
@@ -55,7 +55,7 @@ namespace KuryeTycoon
         static System.Random TileRng(Vector2Int t) => new System.Random(t.x * 73856093 ^ t.y * 19349663 ^ 0x5bd1e995);
 
         /// <summary>
-        /// Kat sayısı: blok türünün aralığında, şehir merkezine (Saat Kulesi Meydanı) yakınlığa göre.
+        /// Kat sayısı: blok türünün aralığında, şehir merkezine (Clock Tower Square) yakınlığa göre.
         /// Merkezde yüksek binalar, dışa doğru boy düşer (referanstaki silüet); küçük rastgele sapma da var.
         /// </summary>
         public static int Floors(Vector2Int t)

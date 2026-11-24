@@ -26,9 +26,9 @@ namespace KuryeTycoon
     /// </summary>
     public static class Marka
     {
-        public static readonly string[] Sehirler = { "Narlıkent", "Gümüşvadi", "Demirkale", "Güneşkıyı", "Bağlıca", "Sanayikent", "Başkent" };
+        public static readonly string[] Sehirler = { "Northbrook", "Silverdale", "Ironhold", "Sunport", "Vineford", "Millbridge", "Kingsport" };
         public static readonly string[] PostaKodlari = { "11400", "21400", "31400", "41400", "51400", "61400", "71400" };
-        public static readonly string[] Takimlar = { "Narlıkent Spor", "Gümüşvadi FK", "Demirkale Demirspor", "Güneşkıyı SK", "Bağlıca Bağspor", "Sanayikent Çarkspor", "Başkent Yıldızları" };
+        public static readonly string[] Takimlar = { "Northbrook FC", "Silverdale United", "Ironhold Athletic", "Sunport Rovers", "Vineford Town", "Millbridge City", "Kingsport Stars" };
 
         public static readonly string[] PerkAdlari = { "Sermaye", "Tanınmış marka", "Kurye ağı", "Pazarlık gücü", "Deneyimli yönetim", "Hazır sistemler" };
         public static readonly int[] PerkMaks = { 5, 5, 5, 5, 5, 3 };

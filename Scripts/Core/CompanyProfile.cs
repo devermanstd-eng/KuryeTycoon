@@ -5,7 +5,7 @@ namespace KuryeTycoon
     /// <summary>Oyuncunun şirketi: adı, renk paleti ve itibarı.</summary>
     public static class CompanyProfile
     {
-        public static string Name = "Hızlı Kurye";
+        public static string Name = "Swift Courier";
         public static Color Primary = new Color(0.0f, 0.62f, 0.87f);
         public static Color Secondary = Color.white;
         /// <summary>1–5 arası müşteri puanı ortalaması. Sipariş sayısını etkiler.</summary>
@@ -13,7 +13,7 @@ namespace KuryeTycoon
 
         public static void ResetDefaults()
         {
-            Name = "Hızlı Kurye";
+            Name = "Swift Courier";
             Primary = new Color(0.0f, 0.62f, 0.87f);
             Secondary = Color.white;
             Reputation = 3.5f;

@@ -37,7 +37,7 @@ namespace KuryeTycoon
         System.Action deferred; // listeleri değiştiren işlemler bir sonraki Update'te yapılır
 
         // Kurulum ekranı
-        string companyName = "Hızlı Kurye";
+        string companyName = "Swift Courier";
         Color primary, secondary;
         int editingColor;
 

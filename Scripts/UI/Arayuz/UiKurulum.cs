@@ -264,7 +264,7 @@ namespace KuryeTycoon
             Difficulty.LastChoice = setupDifficulty;
             Senaryo.Secili = (Senaryo.Tur)setupSenaryo;
             Anlatici.Secili = (Anlatici.Tur)setupAnlatici;
-            CompanyProfile.Name = string.IsNullOrEmpty(companyName.Trim()) ? "Hızlı Kurye" : companyName.Trim();
+            CompanyProfile.Name = string.IsNullOrEmpty(companyName.Trim()) ? "Swift Courier" : companyName.Trim();
             CompanyProfile.Primary = primary;
             CompanyProfile.Secondary = secondary;
             if (newGameSlot >= 0) SaveSystem.Slot = newGameSlot;

@@ -166,7 +166,7 @@ namespace KuryeTycoon
             }
             try
             {
-                CompanyProfile.Name = string.IsNullOrEmpty(d.companyName) ? "Hızlı Kurye" : d.companyName;
+                CompanyProfile.Name = string.IsNullOrEmpty(d.companyName) ? "Swift Courier" : d.companyName;
                 CompanyProfile.Primary = d.primary;
                 CompanyProfile.Secondary = d.secondary;
                 Itibar.Yukle(d.itibarToplam, d.itibarAdet, d.itibarGun, d.itibarOlay, Mathf.Clamp(d.reputation, 1f, 5f));
