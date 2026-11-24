@@ -69,10 +69,7 @@ namespace KuryeTycoon
             c.meshler[Cicek1] = CicekObegi(53);
             c.meshler[Cicek2] = CicekObegi(67);
             if (banliyoEvleri != null)
-                foreach (var p in banliyoEvleri)
-                    for (int dx = -1; dx <= 1; dx++)
-                        for (int dy = -1; dy <= 1; dy++)
-                            if (Mathf.Abs(dx) + Mathf.Abs(dy) <= 1) c.kirDolu.Add(new Vector2Int(Mathf.RoundToInt(p.x) + dx, Mathf.RoundToInt(p.y) + dy));
+                foreach (var p in banliyoEvleri) c.kirDolu.Add(new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y)));
         }
 
         void Awake() { I = this; }
@@ -135,7 +132,7 @@ namespace KuryeTycoon
             if (kirDolu.Contains(new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y)))) return false;
             // Çayır lekeleri: kimi yer gür, kimi yer seyrek (Manor Lords'taki gibi düzensiz)
             float leke = Mathf.PerlinNoise(p.x * 0.11f + 13.7f, p.y * 0.11f + 41.2f) * 0.7f + Mathf.PerlinNoise(p.x * 0.45f + 2.2f, p.y * 0.45f + 7.9f) * 0.3f;
-            yogun = Mathf.Lerp(0.35f, 1f, Mathf.SmoothStep(0.25f, 0.7f, leke));
+            yogun = Mathf.Lerp(0.55f, 1f, Mathf.SmoothStep(0.25f, 0.7f, leke));
             z = KirZeminZ - Arazi.Tepe(p.x, p.y);
             return true;
         }
