@@ -22,11 +22,12 @@ namespace KuryeTycoon
     /// markaların, tek bir mutfakta pişer. Dark store'un yemek versiyonu.
     ///  • Kurulum 1 600 000 Ft (Doğu İlçesi açıkken, şirketin 10. gününden sonra); ilk marka (Kurye Burger) dahil.
     ///    Diğer markalar 500 000 Ft: Bowl &amp; Co (sağlıklı kase), Nonna Pizza, Tatlı Kutusu.
-    ///  • Komisyon yok: sepetin tamamı senin. Malzeme sepetin %32'si (teslimde gider). Kira + enerji günde 12 000 Ft,
-    ///    marka başı aşçı günde 16 000 Ft.
-    ///  • Menü geliştirme (2. seviye 300 000, 3. seviye 900 000 Ft): talep ×1,25 / ×1,5, müşteri puanı +0,1 / +0,2.
-    ///  • Popülerlik (0,3–1,5): yeni marka 0,6 ile başlar; her gün ağızdan ağıza biraz artar (1,0'a kadar), iyi puan (4,3 üstü)
-    ///    yükseltir, kötü puan düşürür. Talep = 0,55 × menü × popülerlik.
+    ///  • Komisyon yok: sepetin tamamı senin. Malzeme + ambalaj sepetin %38'i (teslimde gider). Kira + enerji günde 12 000 Ft,
+    ///    marka başı aşçı günde 20 000 Ft.
+    ///  • Menü geliştirme (2. seviye 300 000, 3. seviye 900 000 Ft): talep ×1,2 / ×1,4, müşteri puanı +0,1 / +0,2.
+    ///  • Popülerlik (0,3–1,2): yeni marka 0,6 ile başlar; her gün ağızdan ağıza biraz artar (1,0'a kadar), iyi puan (4,3 üstü)
+    ///    yükseltir, kötü puan düşürür. Talep = 0,25 × menü × popülerlik (rakiple paylaşılmaz; ortalama restoran ~1,0 × payın).
+    ///    (24.11 120 günlük testi: 0,55 / %32 / 16 000 Ft ile mutfak bütün teslimatın %27'sini alıyordu.)
     ///  • Açık 10:00–23:00 (hafta sonu 24:00). Haritada mutfağın kartında bütün markalar görünür.
     /// </summary>
     public class SanalMutfak : MonoBehaviour
@@ -35,10 +36,11 @@ namespace KuryeTycoon
 
         public const long KurulumBedeli = 1600000, MarkaBedeli = 500000;
         public static readonly long[] MenuBedeli = { 0, 0, 300000, 900000 };   // seviye 2 ve 3'e çıkmak
-        public const long GunlukKira = 12000, AsciGunluk = 16000;
-        public const float GidaOrani = 0.32f;
+        public const long GunlukKira = 12000, AsciGunluk = 20000;
+        public const float GidaOrani = 0.38f;     // malzeme + ambalaj
+        public const float TemelTalep = 0.25f, EnFazlaPopulerlik = 1.2f;
         public const int GerekliBolge = 2, EnErkenGun = 10;
-        static readonly float[] MenuTalep = { 0f, 1f, 1.25f, 1.5f };
+        static readonly float[] MenuTalep = { 0f, 1f, 1.2f, 1.4f };
 
         public class MarkaTanim
         {
@@ -196,7 +198,7 @@ namespace KuryeTycoon
             return true;
         }
 
-        void AgirlikGuncelle(MarkaDurum m) => m.shop.def.weight = 0.55f * MenuTalep[Mathf.Clamp(m.menu, 1, 3)] * m.populerlik;
+        void AgirlikGuncelle(MarkaDurum m) => m.shop.def.weight = TemelTalep * MenuTalep[Mathf.Clamp(m.menu, 1, 3)] * m.populerlik;
 
         // ------------------------------------------------------------------ akış
 
@@ -243,7 +245,7 @@ namespace KuryeTycoon
             toplamSatis += o.basket; toplamMalzeme += malzeme; toplamSiparis++;
             if (m == null) return;
             m.siparis++; m.bugunSiparis++; m.bugunSatis += o.basket;
-            m.populerlik = Mathf.Clamp(m.populerlik + (o.rating - 4.3f) * 0.01f, 0.3f, 1.5f);
+            m.populerlik = Mathf.Clamp(m.populerlik + (o.rating - 4.3f) * 0.01f, 0.3f, EnFazlaPopulerlik);
             AgirlikGuncelle(m);
         }
 

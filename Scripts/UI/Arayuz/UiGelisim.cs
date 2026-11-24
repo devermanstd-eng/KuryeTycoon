@@ -283,7 +283,7 @@ namespace KuryeTycoon
                         U.Metin(sezonSayi, $"{se.BugunkuTeslimat} / {se.hedefTeslimat} teslimat · {se.KalanGun} gün");
                         sezonCubuk.Ayarla(v, v >= 1f ? U.Iyi : UITheme.Accent);
                         U.Goster(sezonCubuk.kok, true);
-                        U.Metin(sezonAlt, $"İptal + kaçan en fazla %{SezonEtkinlikleri.EnFazlaKayip * 100f:0}. Ödül: para, itibar, kalıcı +%1 komisyon" +
+                        U.Metin(sezonAlt, $"İptal + kaçan en fazla %{se.kayipSiniri * 100f:0}. Ödül: para, itibar, kalıcı +%1 komisyon" +
                                           (gercek ? " (×1,5)" : "") + (se.kampanya ? " · kampanya yayında" : "") + (se.prim ? " · kurye primi" : "") + ".");
                     }
                     else

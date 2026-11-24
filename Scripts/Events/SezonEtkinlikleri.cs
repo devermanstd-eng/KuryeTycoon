@@ -9,6 +9,7 @@ namespace KuryeTycoon
     {
         public string aktifId = "";
         public int aktifBas, aktifBit, hedefTeslimat;
+        public float kayipSiniri = 0.15f;
         public long basTeslimat;
         public bool hedefli, kampanya, prim, duyuruId;
         public string duyurulanId = "";
@@ -22,7 +23,8 @@ namespace KuryeTycoon
     /// okula dönüş, Black Friday haftası, Noel alışverişi (advent), yılbaşı. Teslimat platformlarının gerçekte en yoğun günleri.
     ///  • Talep: her gün belli saatlerde CityEvents'e etkinlik yazar (yemek / market / bütün siparişler çarpanı, bazen meydanda alan).
     ///    İşletme teslimatı ortakları da etkilenir (Anneler Günü çiçekçi ×4, Black Friday elektronik ×3...).
-    ///  • Hedef: etkinlik boyunca son 7 günün ortalamasının biraz üstünde teslimat ve en fazla %8 iptal + kaçan. Tutarsan ödül:
+    ///  • Hedef: etkinlik boyunca son 7 günün ortalaması kadar (kısa etkinlikte %5 fazla) teslimat ve iptal + kaçan oranı son 14 günün
+    ///    oranından en fazla 6 puan yüksek (%12–25). Tutarsan ödül:
     ///    para (7 gün ort. işletme kârı × gün × 0,4, en az 400 €), itibar +0,05 ve kalıcı komisyon +%1 (en fazla +%10).
     ///    Oyunun ilk haftasında başlayan etkinliğin hedefi yok (sadece talep etkisi).
     ///  • Hazırlık: 3 gün önce kart: etkinlik kampanyası (talep +%12, bedel 0,5 günlük gelir), kurye primi (ilk 7 gün ücret +%8,
@@ -49,6 +51,7 @@ namespace KuryeTycoon
         // Durum
         public Sezon Aktif { get; private set; }
         public int aktifBas, aktifBit, hedefTeslimat;
+        public float kayipSiniri = 0.15f;   // bu etkinlikte izin verilen iptal + kaçan oranı
         public long basTeslimat;
         public bool hedefli, kampanya, prim;
         Sezon duyurulan;
@@ -56,7 +59,21 @@ namespace KuryeTycoon
         public int tamamlanan, kacirilan;
         readonly HashSet<string> bitenler = new HashSet<string>();
 
-        public const float KampanyaTalep = 1.12f, EnFazlaKayip = 0.08f;
+        public const float KampanyaTalep = 1.12f;
+
+        /// <summary>
+        /// İzin verilen iptal + kaçan: son 14 günün oranı + 6 puan (yoğun günde kayıp artar), %12–%25 arası.
+        /// (24.11 testi: sabit %8 sınırıyla dört etkinliğin hiçbiri tutmadı; oyunda normal gün zaten ~%13, etkinlik günü %20–40.)
+        /// </summary>
+        static float KayipSiniriHesapla()
+        {
+            var h = StatsHistory.I != null ? StatsHistory.I.Days : null;
+            if (h == null || h.Count == 0) return 0.15f;
+            long t = 0, k = 0;
+            for (int i = Mathf.Max(0, h.Count - 14); i < h.Count; i++) { t += h[i].deliveries; k += h[i].cancelled + h[i].lost; }
+            float oran = t + k > 0 ? k / (float)(t + k) : 0.1f;
+            return Mathf.Clamp(oran + 0.06f, 0.12f, 0.25f);
+        }
 
         void Awake()
         {
@@ -179,7 +196,7 @@ namespace KuryeTycoon
             bool gercek = GercekTakvimde(s);
             var ev = new GameEvent($"Yaklaşan etkinlik: {s.ad}",
                 $"{s.ad} 3 gün sonra başlıyor ({GameClock.I.DateOf(b)}, {s.gun} gün). {s.aciklama}\n\n" +
-                "Etkinlik boyunca hedef: son haftanın ortalamasının biraz üstünde teslimat ve en fazla %8 iptal + kaçan sipariş. " +
+                "Etkinlik boyunca hedef: son haftanın ortalaması kadar teslimat ve iptal + kaçan siparişin her zamankinden en fazla 6 puan fazla olması. " +
                 "Tutarsan para ödülü, itibar ve kalıcı +%1 komisyon." +
                 (gercek ? "\n\nGerçek takvimde de şu an bu dönemdesin: ödül ×1,5." : ""));
             ev.Add($"Etkinlik kampanyası yap (−{GameData.Ft(bedel)}, talep +%12)", () => Hazirlik(true, false, bedel));
@@ -207,12 +224,13 @@ namespace KuryeTycoon
             float ort = Ort7Teslimat();
             int gunEtkin = s.gun;
             hedefTeslimat = Mathf.Max(30 * gunEtkin, Mathf.RoundToInt(ort * gunEtkin * s.hedefCarpani));
+            kayipSiniri = KayipSiniriHesapla();
             if (prim && CrisisManager.I != null)
                 CrisisManager.I.AddEffect(new CrisisEffect { id = "sezon_prim", title = $"{s.ad}: kurye primi", pay = 1.08f, online = 1.15f }, Mathf.Min(7, s.gun));
             Telemetry.Add("Sezon: başladı");
             EventManager.I.Push(new GameEvent($"Etkinlik başladı: {s.ad}",
                 $"{s.aciklama}\n\n" + (hedefli
-                    ? $"Hedef: {s.gun} günde {hedefTeslimat} teslimat ve en fazla %{EnFazlaKayip * 100f:0} iptal + kaçan. Hedefler > Haftalık'ta ilerlemesi görünür." +
+                    ? $"Hedef: {s.gun} günde {hedefTeslimat} teslimat ve en fazla %{kayipSiniri * 100f:0} iptal + kaçan. Hedefler > Haftalık'ta ilerlemesi görünür." +
                       (kampanya ? " Etkinlik kampanyası yayında (talep +%12)." : "") + (prim ? " Kurye primi verildi." : "")
                     : "Şirket yeni kurulduğu için bu etkinliğin hedefi yok; sadece talep değişir.")));
         }
@@ -234,7 +252,7 @@ namespace KuryeTycoon
             bool kamp = kampanya;
             kampanya = prim = false;
             if (!hedefli) return;
-            bool tuttu = teslim >= hedefTeslimat && oran <= EnFazlaKayip;
+            bool tuttu = teslim >= hedefTeslimat && oran <= kayipSiniri;
             if (tuttu)
             {
                 tamamlanan++;
@@ -251,7 +269,7 @@ namespace KuryeTycoon
             {
                 kacirilan++;
                 Telemetry.Add("Sezon: hedef tutmadı");
-                EventManager.I.Notify($"{s.ad} bitti: hedef tutmadı ({teslim}/{hedefTeslimat} teslimat, iptal + kaçan %{oran * 100f:0.#}, sınır %{EnFazlaKayip * 100f:0}).");
+                EventManager.I.Notify($"{s.ad} bitti: hedef tutmadı ({teslim}/{hedefTeslimat} teslimat, iptal + kaçan %{oran * 100f:0.#}, sınır %{kayipSiniri * 100f:0}).");
             }
         }
 
@@ -261,7 +279,7 @@ namespace KuryeTycoon
         {
             var s = new SezonSave
             {
-                aktifId = Aktif != null ? Aktif.id : "", aktifBas = aktifBas, aktifBit = aktifBit, hedefTeslimat = hedefTeslimat,
+                aktifId = Aktif != null ? Aktif.id : "", aktifBas = aktifBas, aktifBit = aktifBit, hedefTeslimat = hedefTeslimat, kayipSiniri = kayipSiniri,
                 basTeslimat = basTeslimat, hedefli = hedefli, kampanya = kampanya, prim = prim,
                 duyurulanId = duyurulan != null ? duyurulan.id : "", duyurulanBas = duyurulanBas,
                 tamamlanan = tamamlanan, kacirilan = kacirilan
@@ -274,7 +292,7 @@ namespace KuryeTycoon
         {
             if (s == null) return;
             Aktif = Sezonlar.Find(x => x.id == s.aktifId);
-            aktifBas = s.aktifBas; aktifBit = s.aktifBit; hedefTeslimat = s.hedefTeslimat; basTeslimat = s.basTeslimat;
+            aktifBas = s.aktifBas; aktifBit = s.aktifBit; hedefTeslimat = s.hedefTeslimat; basTeslimat = s.basTeslimat; kayipSiniri = s.kayipSiniri;
             hedefli = s.hedefli; kampanya = s.kampanya; prim = s.prim;
             duyurulan = Sezonlar.Find(x => x.id == s.duyurulanId); duyurulanBas = s.duyurulanBas;
             tamamlanan = s.tamamlanan; kacirilan = s.kacirilan;
@@ -315,7 +333,7 @@ namespace KuryeTycoon
         {
             Sezonlar.Add(new Sezon
             {
-                id = "ramazan", ad = "Ramazan", gun = 30, hedefCarpani = 1.03f,
+                id = "ramazan", ad = "Ramazan", gun = 30, hedefCarpani = 1f,
                 aciklama = "Şehirdeki Müslüman aileler ve üniversitenin uluslararası öğrencileri oruç tutuyor: iftar saatinde döner, pide ve tatlı siparişleri, gece sahur siparişleri artar.",
                 bas = y => { int doy = 49 - 11 * (y - 1); while (doy <= 0) doy += GameClock.DaysPerYear; return (y - 1) * GameClock.DaysPerYear + doy; },
                 gunluk = (g, i) =>
@@ -327,7 +345,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "paskalya", ad = "Paskalya (Húsvét)", gun = 3, hedefCarpani = 1.1f,
+                id = "paskalya", ad = "Paskalya (Húsvét)", gun = 3, hedefCarpani = 1f,
                 aciklama = "Macaristan'da büyük bayram: cumartesi jambon, yumurta ve tatlı alışverişi, pazar aile sofrası, pazartesi (Húsvéthétfő) tatil ve dışarıdan yemek.",
                 bas = y => Abs(y, 4, 4),
                 gunluk = (g, i) =>
@@ -341,7 +359,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "anneler", ad = "Anneler Günü", gun = 1, hedefCarpani = 1.2f,
+                id = "anneler", ad = "Anneler Günü", gun = 1, hedefCarpani = 1.05f,
                 aciklama = "Mayısın ilk pazarı: kahvaltı ve brunch siparişleri, çiçek ve hediye paketleri (işletme teslimatında çiçekçi ×4).",
                 bas = y => IlkGun(y, 5, 1, 7, 6),
                 gunluk = (g, i) => Etk(g, "Anneler Günü brunch'ı", 9f, 14f, yemek: 1.3f, aciklama: "Annelere kahvaltı ve tatlı."),
@@ -350,7 +368,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "kupafinali", ad = "Kupa finali", gun = 1, hedefCarpani = 1.25f,
+                id = "kupafinali", ad = "Kupa finali", gun = 1, hedefCarpani = 1.05f,
                 aciklama = "Mayıs sonu büyük final akşamı: bütün şehir ekran başında, pizza, burger ve atıştırmalık.",
                 bas = y => IlkGun(y, 5, 25, 31, 5),
                 gunluk = (g, i) => Etk(g, "Kupa finali", 19.5f, 23.5f, yemek: 1.6f, market: 1.2f, aciklama: "Final maçı: başlama düdüğünden önce sipariş yağar."),
@@ -358,7 +376,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "turnuva", ad = "Yaz futbol turnuvası", gun = 32, hedefCarpani = 1.05f,
+                id = "turnuva", ad = "Yaz futbol turnuvası", gun = 32, hedefCarpani = 1f,
                 aciklama = "Dünya Kupası / Avrupa Şampiyonası ayı: iki günde bir akşam maçı, Macaristan oynadığı akşamlar çok yoğun.",
                 bas = y => Abs(y, 6, 11),
                 gunluk = (g, i) =>
@@ -370,7 +388,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "szentistvan", ad = "Szent István günü", gun = 1, hedefCarpani = 1.2f,
+                id = "szentistvan", ad = "Szent István günü", gun = 1, hedefCarpani = 1.05f,
                 aciklama = "20 Ağustos, millî bayram: akşam havai fişek, meydanda kalabalık, sokak yemekleri.",
                 bas = y => Abs(y, 8, 20),
                 gunluk = (g, i) => Etk(g, "Havai fişek akşamı", 17f, 23.5f, hepsi: 1.25f, aciklama: "Meydanda kutlama: çevresinden çok sipariş.", meydan: true),
@@ -378,7 +396,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "okul", ad = "Okula dönüş", gun = 7, hedefCarpani = 1.08f,
+                id = "okul", ad = "Okula dönüş", gun = 7, hedefCarpani = 1f,
                 aciklama = "Eylülün ilk haftası: okul ve üniversite açılıyor; sabah ve akşam market, kırtasiye ve kitap paketleri.",
                 bas = y => Abs(y, 9, 1),
                 gunluk = (g, i) =>
@@ -391,7 +409,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "blackfriday", ad = "Black Friday haftası", gun = 5, hedefCarpani = 1.15f,
+                id = "blackfriday", ad = "Black Friday haftası", gun = 5, hedefCarpani = 1.05f,
                 aciklama = "Perşembeden Cyber Monday'e indirim haftası: market sepetleri büyük, elektronik ve giyim paketleri (işletme teslimatında ×2–3).",
                 bas = y => IlkGun(y, 11, 23, 29, 4) - 1,
                 gunluk = (g, i) =>
@@ -403,7 +421,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "advent", ad = "Noel alışverişi (advent)", gun = 23, hedefCarpani = 1.05f,
+                id = "advent", ad = "Noel alışverişi (advent)", gun = 23, hedefCarpani = 1f,
                 aciklama = "Aralığın ilk üç haftası: akşamları hediye ve market alışverişi, Noel pazarı. İşletme teslimatında hediye paketleri ×1,6.",
                 bas = y => Abs(y, 12, 1),
                 gunluk = (g, i) => Etk(g, "Noel alışverişi", 16f, 21f, market: 1.1f, yemek: 1.05f, aciklama: "Hediye ve Noel hazırlığı."),
@@ -412,7 +430,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "yilbasi", ad = "Yılbaşı (Szilveszter)", gun = 2, hedefCarpani = 1.2f,
+                id = "yilbasi", ad = "Yılbaşı (Szilveszter)", gun = 2, hedefCarpani = 1.05f,
                 aciklama = "Yılbaşı gecesi parti hazırlığı ve 1 Ocak öğleden sonrası akşamdan kalma şehir: yılın en yoğun iki günü.",
                 bas = y => Abs(y, 12, 31),
                 gunluk = null,   // talep etkisi zaten şehir takviminde (CityEvents)

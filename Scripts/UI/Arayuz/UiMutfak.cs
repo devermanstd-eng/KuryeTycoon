@@ -56,7 +56,7 @@ namespace KuryeTycoon
                 {
                     y.KartBasla();
                     y.Baslik($"{m.T.ad} · {m.T.tur}");
-                    y.Cubuk("Popülerlik", Mathf.Clamp01(m.populerlik / 1.5f), m.populerlik >= 1f ? U.Iyi : m.populerlik >= 0.6f ? UITheme.Accent : U.Uyari, $"{m.populerlik:0.00}");
+                    y.Cubuk("Popülerlik", Mathf.Clamp01(m.populerlik / SanalMutfak.EnFazlaPopulerlik), m.populerlik >= 1f ? U.Iyi : m.populerlik >= 0.6f ? UITheme.Accent : U.Uyari, $"{m.populerlik:0.00}");
                     y.Kucuk($"Menü {m.menu}/3 · bugün {m.bugunSiparis} sipariş ({Ft(m.bugunSatis)}) · toplam {m.siparis} · puan +{0.1f * (m.menu - 1):0.0}");
                     var mm = m;
                     if (m.menu < 3)
