@@ -57,14 +57,14 @@ namespace KuryeTycoon
         static readonly Dictionary<string, string> ShopModel = new Dictionary<string, string>
         {
             { "Burger Queen", "FastFood_burger_queen" }, { "McDanold's", "FastFood_mcdanolds" },
-            { "Szpar Express", "Market_szpar_express" }, { "Market 24", "Market_market_24" }, { "InterSzpar", "Market_interszpar" },
+            { "Sparx Express", "Market_szpar_express" }, { "Market 24", "Market_market_24" }, { "InterSparx", "Market_interszpar" },
             // Altı dükkanlı binalar (Blender: MODEL = "dukkan")
             { "Döner Kral", "Dukkan_doner_kral" }, { "Starbocks", "Dukkan_starbocks" }, { "Pizza Hat", "Dukkan_pizza_hat" },
             { "KFG", "Dukkan_kfg" }, { "Sushi Samurai", "Dukkan_sushi_samurai" }, { "Fish & Ships", "Dukkan_fish_ships" },
-            { "Otogar Büfé", "Dukkan_otogar_bufe" }, { "Villa Gourmet", "Dukkan_villa_gourmet" }, { "Non-Stop Gyros", "Dukkan_nonstop_gyros" },
-            { "BioSzpar", "Dukkan_bioszpar" }, { "ABC Non-Stop", "Dukkan_abc_nonstop" }, { "Sarok Kisbolt", "Dukkan_sarok_kisbolt" },
-            { "Éjjel-Nappali", "Dukkan_ejjel_nappali" }, { "Mini ABC", "Dukkan_mini_abc" }, { "Kikötő Non-Stop", "Dukkan_kikoto_nonstop" },
-            { "Falu ABC", "Dukkan_falu_abc" },
+            { "Otogar Büfe", "Dukkan_otogar_bufe" }, { "Villa Gourmet", "Dukkan_villa_gourmet" }, { "Non-Stop Gyros", "Dukkan_nonstop_gyros" },
+            { "BioSparx", "Dukkan_bioszpar" }, { "7/24 Bakkal", "Dukkan_abc_nonstop" }, { "Köşe Bakkal", "Dukkan_sarok_kisbolt" },
+            { "Gece Gündüz Market", "Dukkan_ejjel_nappali" }, { "Mini Bakkal", "Dukkan_mini_abc" }, { "Liman 24", "Dukkan_kikoto_nonstop" },
+            { "Köy Bakkalı", "Dukkan_falu_abc" },
         };
         public static int OwnBuildingCount { get { LoadPack(); return ownAll.Length; } }
         // Kendi park parçalarımız (Resources/SehirPaketi/Parklar): park kareleri, göl, anıt, meydan çeşmesi

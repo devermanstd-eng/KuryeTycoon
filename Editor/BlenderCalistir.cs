@@ -31,11 +31,15 @@ namespace KuryeTycoon.EditorTools
         [MenuItem("Kurye Tycoon/Blender/Bölge modellerini ve donatıları üret")]
         static void Bolgeler() => Calistir("bolge_modelleri.py");
 
+        /// <summary>Yazılı tabelası olan binalar (dükkânlar, marketler, katalog: büro, sanayi, kamu). Tabela metni değişince yeter.</summary>
+        [MenuItem("Kurye Tycoon/Blender/Tabelalı binaları üret (dükkân, market, katalog)")]
+        static void Tabelalar() => Calistir("calistir_tabela.py");
+
         [MenuItem("Kurye Tycoon/Blender/Londra blokları üret")]
         static void Bloklar() => Calistir("calistir_blok.py");
 
         /// <summary>
-        /// Stilize varlıklar (kurye, bisiklet, kargo bisikleti, paket dolabı, ağaçlar, sokak lambası, Budapeşte binaları)
+        /// Stilize varlıklar (kurye, bisiklet, kargo bisikleti, paket dolabı, ağaçlar, sokak lambası, Başkent binaları)
         /// → Art/Stilize; bitince "Stilize Prefabları Kur" malzemeleri ve Prefabs/Stilize'yi kurar.
         /// </summary>
         [MenuItem("Kurye Tycoon/Blender/Stilize varlıkları üret")]

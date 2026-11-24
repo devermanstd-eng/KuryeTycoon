@@ -24,7 +24,7 @@ namespace KuryeTycoon
     /// <summary>
     /// Başarımlar (Hedefler > Başarımlar): oyunlar arası kalıcı (marka gibi persistentDataPath/basarimlar.json), şirket satılsa da
     /// silinmez. Saniyede bir kontrol edilir; açılınca bildirim gelir. Incremental oyunlarda oyuncuyu geri getiren uzun vadeli
-    /// hedefler: 100 000 teslimat, 1 milyon € şirket değeri, Budapeşte, kusursuz gün...
+    /// hedefler: 100 000 teslimat, 1 milyon € şirket değeri, Başkent, kusursuz gün...
     ///  • Otomatik testte dosyaya yazılmaz ve Steam'e gitmez (sadece o test için bellekte sayılır, özette görünür).
     ///  • Steam: proje Steamworks.NET ile kurulup Scripting Define Symbols'a KURYE_STEAM eklenince her başarım aynı kimlikle
     ///    SteamUserStats.SetAchievement ile açılır (Steamworks panelinde aynı kimlikler tanımlanmalı; liste KURULUM.md'de).
@@ -226,7 +226,7 @@ namespace KuryeTycoon
             Sayi("YIL_1", S, "Bir yıl", "Şirketini bir yıl ayakta tut.", () => GameClock.I != null ? GameClock.I.CompanyDay : 0, 365);
             Sayi("SATIS_1", S, "Exit", "İlk şirketini sat ve yeni şehre geç.", () => Marka.Veri.satilan, 1);
             Sayi("SATIS_3", S, "Seri girişimci", "Üç şirket sat.", () => Marka.Veri.satilan, 3);
-            B("BUDAPESTE", S, "Başkent", "Budapeşte'de şirket kur.", () => Marka.AktifSehir >= Marka.Sehirler.Length - 1);
+            B("BUDAPESTE", S, "Başkent", "Başkent'te şirket kur.", () => Marka.AktifSehir >= Marka.Sehirler.Length - 1);
 
             Sayi("SERI_100", K, "Saat gibi", "Art arda 100 zamanında teslimat.", () => Kutlama.I != null ? Kutlama.I.enIyiSeri : 0, 100);
             Sayi("SERI_500", K, "Durdurulamaz", "Art arda 500 zamanında teslimat.", () => Kutlama.I != null ? Kutlama.I.enIyiSeri : 0, 500);

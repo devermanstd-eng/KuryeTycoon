@@ -614,7 +614,7 @@ namespace KuryeTycoon
             if (CityEvents.I != null)
             {
                 var e = CityEvents.I.ActiveNow;
-                if (e != null && (e.title.Contains("Noel") || e.title.Contains("Szenteste") || e.title.Contains("Yılbaşı"))) holiday = 3f;
+                if (e != null && (e.title.Contains("Noel") || e.title.Contains("Yılbaşı"))) holiday = 3f;
             }
 
             float pShop = (o.shop.def.isMarket ? 0.020f : 0.008f) * (lastHour ? 2.5f : 1f) * (night ? 1.5f : 1f) * holiday;

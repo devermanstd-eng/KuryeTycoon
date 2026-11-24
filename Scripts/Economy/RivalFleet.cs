@@ -4,7 +4,7 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// Rakip platformların (Turbo Paket, Panda Futár, Villám Kaja) kuryelerini haritada gösterir. Sadece görseldir: oyun ekonomisi
+    /// Rakip platformların (Turbo Paket, Panda Kurye, Şimşek Yemek) kuryelerini haritada gösterir. Sadece görseldir: oyun ekonomisi
     /// RivalCompany'de hesaplanır. Kurye sayısı rakiplerin toplam kurye sayısını ve saati (gece az, gündüz çok) izler;
     /// her rakip kurye sayısı oranında görünür ve kendi renginde çizilir.
     /// Her kurye kendi platformunun çalıştığı dükkanlardan birine gider, bekler, şehirde bir binaya teslim eder, tekrarlar.

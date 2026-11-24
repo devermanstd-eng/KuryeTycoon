@@ -1421,9 +1421,9 @@ MARKALAR = {
     # Oyundaki parodi markalar (Data/GameData.cs). Logolar özgün, gerçek markalara ait öğe yok.
     "burger_queen": dict(ad="BURGER QUEEN", ana="#f07326", ikinci="#7a3e2a", yazi="#fff3e0", duvar="#efe2c8", alt="#7a3e2a"),
     "mcdanolds": dict(ad="McDanold's", ana="#f2c51a", ikinci="#3b3f45", yazi="#2b2b2b", duvar="#3b3f45", alt="#2f3237"),
-    "szpar_express": dict(ad="SZPAR EXPRESS", ana="#279e4d", ikinci="#1d7a3a", yazi="#ffffff", duvar="#ece6da", alt="#9a9387"),
+    "szpar_express": dict(ad="SPARX EXPRESS", ana="#279e4d", ikinci="#1d7a3a", yazi="#ffffff", duvar="#ece6da", alt="#9a9387"),
     "market_24": dict(ad="MARKET 24", ana="#3f73e6", ikinci="#2a52a8", yazi="#ffffff", duvar="#f1e4c8", alt="#b8b0a3"),
-    "interszpar": dict(ad="INTERSZPAR", ana="#d91f2e", ikinci="#a3141f", yazi="#ffffff", duvar="#d9dadc", alt="#8f9296"),
+    "interszpar": dict(ad="INTERSPARX", ana="#d91f2e", ikinci="#a3141f", yazi="#ffffff", duvar="#d9dadc", alt="#8f9296"),
 }
 
 
@@ -1851,7 +1851,7 @@ def market(rnd, tip):
         kutu(g, x0 + W - 2.6, x0 + W - 0.4, fy - 1.9, fy - 1.0, z0 + 0.14, z0 + 1.0, r["ikinci"], atla=("zn",))
         for k in range(3):
             alisveris_arabasi(g, x0 + W - 2.2 + k * 0.7, fy - 1.45, r, r["ana"])
-        direk_tabela(g, 1.4, 1.2, 3.2, 2.6, 1.1, r, "SZPAR", ikon=None)
+        direk_tabela(g, 1.4, 1.2, 3.2, 2.6, 1.1, r, "SPARX", ikon=None)
         lamba(g, PW - 1.0, 1.0, r)
         agac(g, PW - 0.9, PD - 1.0, r, rnd)
         agac(g, 0.9, PD - 1.2, r, rnd)
@@ -3489,23 +3489,23 @@ DUKKANLAR = {
     "kfg":            ("KFG", _hex(0.70, 0.15, 0.10), "yemek"),
     "sushi_samurai":  ("Sushi Samurai", "#2b2d31", "restoran"),
     "fish_ships":     ("Fish & Ships", _hex(0.20, 0.55, 0.75), "yemek"),
-    "otogar_bufe":    ("Otogar Büfé", _hex(0.90, 0.62, 0.15), "yemek"),
+    "otogar_bufe":    ("Otogar Büfe", _hex(0.90, 0.62, 0.15), "yemek"),
     "villa_gourmet":  ("Villa Gourmet", _hex(0.55, 0.25, 0.45), "restoran"),
     "nonstop_gyros":  ("Non-Stop Gyros", _hex(0.90, 0.35, 0.25), "yemek"),
-    "bioszpar":       ("BioSzpar", _hex(0.45, 0.70, 0.25), "market"),
-    "abc_nonstop":    ("ABC Non-Stop", _hex(0.30, 0.55, 0.85), "market"),
-    "sarok_kisbolt":  ("Sarok Kisbolt", _hex(0.55, 0.45, 0.80), "market"),
-    "ejjel_nappali":  ("Éjjel-Nappali", _hex(0.25, 0.65, 0.70), "market"),
-    "mini_abc":       ("Mini ABC", _hex(0.65, 0.55, 0.30), "market"),
-    "kikoto_nonstop": ("Kikötő Non-Stop", _hex(0.20, 0.45, 0.65), "market"),
-    "falu_abc":       ("Falu ABC", _hex(0.50, 0.65, 0.35), "market"),
-    # Şehir dokusu için genel dükkanlar (Macar şehir havası)
-    "genel_pekseg":   ("PÉKSÉG", "#b5703a", "kafe"),
-    "genel_virag":    ("VIRÁG", "#d0608a", "cicek"),
-    "genel_konyv":    ("KÖNYV", "#3f5f7a", "kitap"),
-    "genel_patika":   ("PATIKA", "#3f9a5a", "eczane"),
-    "genel_kavezo":   ("KÁVÉZÓ", "#7a4a2e", "kafe"),
-    "genel_sajt":     ("SAJT", "#d9a83a", "kitap"),
+    "bioszpar":       ("BioSparx", _hex(0.45, 0.70, 0.25), "market"),
+    "abc_nonstop":    ("7/24 Bakkal", _hex(0.30, 0.55, 0.85), "market"),
+    "sarok_kisbolt":  ("Köşe Bakkal", _hex(0.55, 0.45, 0.80), "market"),
+    "ejjel_nappali":  ("Gece Gündüz Market", _hex(0.25, 0.65, 0.70), "market"),
+    "mini_abc":       ("Mini Bakkal", _hex(0.65, 0.55, 0.30), "market"),
+    "kikoto_nonstop": ("Liman 24", _hex(0.20, 0.45, 0.65), "market"),
+    "falu_abc":       ("Köy Bakkalı", _hex(0.50, 0.65, 0.35), "market"),
+    # Şehir dokusu için genel dükkanlar
+    "genel_pekseg":   ("FIRIN", "#b5703a", "kafe"),
+    "genel_virag":    ("ÇİÇEKÇİ", "#d0608a", "cicek"),
+    "genel_konyv":    ("KİTAP", "#3f5f7a", "kitap"),
+    "genel_patika":   ("ECZANE", "#3f9a5a", "eczane"),
+    "genel_kavezo":   ("KAHVE", "#7a4a2e", "kafe"),
+    "genel_sajt":     ("PEYNİR", "#d9a83a", "kitap"),
 }
 
 # Londra: sarı (stock) ve kırmızı tuğla, beyaz sıva, birkaç pastel
@@ -4571,7 +4571,7 @@ def buro(rnd, tip):
         kutu(g, tx - 1.6, tx + 1.6, fy - 0.4, fy + 2.8, z0, Ht + 6.0, r["duvar"], atla=("zn",))
         tfc = Cephe((tx - 1.6, fy - 0.4, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0))
         ckutu(g, tfc, 0.8, 2.4, 0, 0.06, z0 + 0.6, z0 + 3.2, r["kapi"])
-        tabela(g, tfc, 1.6, z0 + 3.6, 2.8, 0.45, 0.08, r, "TŐZSDE", renk=r["koyu"], oran=0.62)
+        tabela(g, tfc, 1.6, z0 + 3.6, 2.8, 0.45, 0.08, r, "BORSA", renk=r["koyu"], oran=0.62)
         saat(g, tfc, 1.6, Ht + 3.6, 1.0, r)
         for fc2 in (Cephe((tx + 1.6, fy - 0.4, 0.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)), Cephe((tx - 1.6, fy + 2.8, 0.0), (0.0, -1.0, 0.0), (-1.0, 0.0, 0.0))):
             saat(g, fc2, 1.6, Ht + 3.6, 1.0, r)
@@ -4606,7 +4606,7 @@ def buro(rnd, tip):
                     u = (k + 0.5) * L / int(L / 1.5)
                     ckutu(g, fc, u - 0.04, u + 0.04, 0, 0.05, zz + 1.0, zz + 2.4, r["cerceve"])
         duz_cati_ust(g, x0, x1, fy, by, Ht, r, rnd, r["beton"], klima=3)
-        tabela(g, on, W / 2, z1 - 0.2, 6.0, 0.55, 0.12, r, "IRODAHÁZ", renk=r["koyu"], oran=0.6)
+        tabela(g, on, W / 2, z1 - 0.2, 6.0, 0.55, 0.12, r, "İŞ MERKEZİ", renk=r["koyu"], oran=0.6)
     agac(g, 0.8, 1.2, r, rnd, boy=1.3, rr=0.7)
     if CIZGI:
         kabuk(g, CIZGI_KALINLIK * olcek(g))
@@ -4635,7 +4635,7 @@ def sanayi(rnd, tip):
                 ckutu(g, fc, u - 0.04, u + 0.04, 0, 0.05, z0 + 1.6, z0 + 4.8, r["cerceve"])
                 ckutu(g, fc, u - 0.9, u + 0.9, 0, 0.12, z0 + 4.8, z0 + 5.1, r["suslu"])
         ckutu(g, on, 2.0, 5.0, 0, 0.06, z0, z0 + 3.8, M("Kepenk", "#6f7a84"))
-        tabela(g, on, W * 0.65, H - 0.5, 5.0, 0.6, 0.08, r, "GYÁR", renk=r["suslu"], yazi_renk=r["koyu"], oran=0.6)
+        tabela(g, on, W * 0.65, H - 0.5, 5.0, 0.6, 0.08, r, "FABRİKA", renk=r["suslu"], yazi_renk=r["koyu"], oran=0.6)
         # Testere dişi çatı (kuzeye bakan camlı dişler)
         n = 4
         t = D / n
@@ -4677,7 +4677,7 @@ def sanayi(rnd, tip):
             ckutu(g, on, u - 1.6, u + 1.6, 0, 1.2, z0, z0 + 1.0, r["beton"])
             ckutu(g, on, u - 1.6, u + 1.6, 0, 1.4, z0 + 4.8, z0 + 5.0, r["sari"])
         besik_cati(g, "x", x0, x1, fy, by, H, {**r, "duvar": r["duvar"]}, sacak=0.3, yan_sacak=0.2)
-        tabela(g, on, W / 2, H - 0.5, 6.0, 0.7, 0.1, r, "RAKTÁR", renk=r["ana"], oran=0.6)
+        tabela(g, on, W / 2, H - 0.5, 6.0, 0.7, 0.1, r, "DEPO", renk=r["ana"], oran=0.6)
         for i in range(2):                                                     # tır dorsesi
             x = 3.0 + i * 8.4
             kutu(g, x, x + 2.4, 0.4, 3.9, z0 + 0.6, z0 + 3.6, rnd.choice([r["beyaz"], r["kirmizi"], r["mavi"]]))
@@ -4721,7 +4721,7 @@ def sanayi(rnd, tip):
         kutu(g, x0, x1, fy, by, z0, H, r["duvar"], atla=("zn",))
         on, sag, sol, arka = cepheler(x0, x1, fy, by)
         ckutu(g, on, -0.05, W + 0.05, 0, 0.15, H - 1.0, H, r["ana"])
-        tabela(g, on, W / 2, H - 0.5, 7.0, 0.8, 0.18, r, "AUTÓSZERVIZ", renk=r["ana"], oran=0.55)
+        tabela(g, on, W / 2, H - 0.5, 7.0, 0.8, 0.18, r, "OTO SERVİS", renk=r["ana"], oran=0.55)
         for i in range(3):
             u = 2.2 + i * 4.2
             ckutu(g, on, u - 1.6, u + 1.6, 0, 0.06, z0, z0 + 3.4, M("Kepenk", "#8f949a"))
@@ -4806,12 +4806,12 @@ def sanayi(rnd, tip):
 # ---------- KAMU
 
 KAMU = {
-    "polis": ("RENDŐRSÉG", "#f4f0e6", "#5b5d63", "#2f5fa8"),
-    "itfaiye": ("TŰZOLTÓSÁG", "#a8503a", "#5b5d63", "#c8302a"),
-    "hastane": ("KÓRHÁZ", "#f6f3ec", "#8f949a", "#c8302a"),
-    "okul": ("ISKOLA", "#b8634a", "#c0573a", "#3f73e6"),
-    "kutuphane": ("KÖNYVTÁR", "#ece6da", "#6f9a8a", "#3a3d42"),
-    "belediye": ("VÁROSHÁZA", "#efdf9e", "#5b5d63", "#3a3d42"),
+    "polis": ("POLİS", "#f4f0e6", "#5b5d63", "#2f5fa8"),
+    "itfaiye": ("İTFAİYE", "#a8503a", "#5b5d63", "#c8302a"),
+    "hastane": ("HASTANE", "#f6f3ec", "#8f949a", "#c8302a"),
+    "okul": ("OKUL", "#b8634a", "#c0573a", "#3f73e6"),
+    "kutuphane": ("KÜTÜPHANE", "#ece6da", "#6f9a8a", "#3a3d42"),
+    "belediye": ("BELEDİYE", "#efdf9e", "#5b5d63", "#3a3d42"),
     "postane": ("POSTA", "#f2c14a", "#5b5d63", "#c8302a"),
 }
 

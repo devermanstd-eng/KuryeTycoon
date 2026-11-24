@@ -20,7 +20,6 @@ namespace KuryeTycoon
             readonly List<string> havaAdlari = new List<string>();
             readonly List<WeatherKind> havalar = new List<WeatherKind>();
             static readonly string[] Acilar = { "0°", "90°", "180°", "270°" };
-            static readonly string[] ParaBirimleri = { "Forint (Ft)", "Euro (€)" };
             static readonly string[] KarakterModlari = { "Işıklı", "Düz renk", "Kapalı (daire)" };
             static readonly string[] AracRenkModlari = { "Karışık (her kurye kendi rengi)", "Şirket rengi", "Tek fabrika rengi" };
 
@@ -69,7 +68,7 @@ namespace KuryeTycoon
                 y.Kucuk("Arayüz boyutu");
                 y.Secim(UiSizeNames, UiSizeSetting, v => UiSizeSetting = v);
                 y.Onay("Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", PushMapSetting, v => PushMapSetting = v);
-                y.Onay("Haritada teslimat kârını göster (uçan \"+350 Ft\" yazıları)", ShowPopsSetting, v => ShowPopsSetting = v);
+                y.Onay("Haritada teslimat kârını göster (uçan \"+0,88 €\" yazıları)", ShowPopsSetting, v => ShowPopsSetting = v);
                 y.Onay("Sesler (teslimat, bildirim, kilometre taşı)", GameSounds.Enabled, v => GameSounds.Enabled = v);
                 if (GameSounds.Enabled)
                 {
@@ -95,10 +94,6 @@ namespace KuryeTycoon
                 y.Onay("Her gece gün sonu raporunu göster (oyun duraklar)", e.showDailyReport, v => e.showDailyReport = v);
                 y.Onay("Her Pazar gecesi haftalık raporu göster", e.showWeeklyReport, v => e.showWeeklyReport = v);
 
-                y.Bolum("Para birimi", $"Sadece gösterim değişir, oyun dengesi aynı kalır (1 € = {GameData.FtPerEuro:0} Ft). " +
-                                       "Seçim kaydedilir. Daha önce yazılmış bildirim ve hesap kayıtları yazıldıkları birimde kalır.");
-                y.Secim(ParaBirimleri, GameData.DisplayCurrency == Currency.Euro ? 1 : 0,
-                        v => GameData.SetCurrency(v == 1 ? Currency.Euro : Currency.Forint));
             }
 
             // ------------------------------------------------------------------ Ekonomi

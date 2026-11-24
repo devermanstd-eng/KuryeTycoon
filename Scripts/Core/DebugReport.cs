@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-24 u31 (bölge müdürleri, kurye rütbeleri ve efsaneler, seri ve rekor kutlamaları)";
+        public const string CodeVersion = "2026-11-24 u32 (yabancı ülke isimleri kaldırıldı: şehir, dükkan, kişi, menü, tabela; harita yazıları pencere üstüne çıkmıyor)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 

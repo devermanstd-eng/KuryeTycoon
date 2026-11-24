@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace KuryeTycoon
 {
-    /// <summary>Türkçe ek yardımcıları (rakip adlarında ünlü uyumu: Turbo Paket'in, Villám Kaja'nın, Panda Futár'a...).</summary>
+    /// <summary>Türkçe ek yardımcıları (rakip adlarında ünlü uyumu: Turbo Paket'in, Şimşek Yemek'nın, Panda Kurye'a...).</summary>
     public static class TurkceEk
     {
         static char SonUnlu(string s)
@@ -28,7 +28,7 @@ namespace KuryeTycoon
             return "aáeéıiíoóöőuúüű".IndexOf(char.ToLowerInvariant(s[s.Length - 1])) >= 0;
         }
 
-        /// <summary>Tamlayan eki: "Turbo Paket'in", "Villám Kaja'nın".</summary>
+        /// <summary>Tamlayan eki: "Turbo Paket'in", "Şimşek Yemek'nın".</summary>
         public static string In(string ad)
         {
             char u = SonUnlu(ad);
@@ -36,7 +36,7 @@ namespace KuryeTycoon
             return ad + "'" + (UnluyleBiter(ad) ? "n" : "") + e;
         }
 
-        /// <summary>Yönelme eki: "Turbo Paket'e", "Villám Kaja'ya".</summary>
+        /// <summary>Yönelme eki: "Turbo Paket'e", "Şimşek Yemek'ya".</summary>
         public static string A(string ad)
         {
             char u = SonUnlu(ad);
@@ -84,8 +84,8 @@ namespace KuryeTycoon
     ///
     /// Rakipler (3 platform):
     ///  • Turbo Paket: şehrin en eski ve en büyük platformu (oyuncunun eski işvereni). Dengeli.
-    ///  • Panda Futár: az ama iyi kuryeli, yüksek itibarlı; kaliteye yatırım yapar, iyi dükkanlara göz diker.
-    ///  • Villám Kaja: ucuz ve hızlı büyüyen yeni girişim; sık fiyat savaşı açar, itibarı düşük.
+    ///  • Panda Kurye: az ama iyi kuryeli, yüksek itibarlı; kaliteye yatırım yapar, iyi dükkanlara göz diker.
+    ///  • Şimşek Yemek: ucuz ve hızlı büyüyen yeni girişim; sık fiyat savaşı açar, itibarı düşük.
     ///  • Her birinin kendi itibarı, kurye sayısı, parası ve sözleşmeli dükkanları var; her hafta büyümeye çalışırlar.
     ///  • Bir dükkanla birden çok platform çalışabilir: müşteriler itibar, kurye sayısı ve hıza göre paylaşılır.
     ///    Münhasır dükkanlarda rakip yoktur.
@@ -110,10 +110,10 @@ namespace KuryeTycoon
             new Rakip { ad = "Turbo Paket", kisa = "Turbo", renk = new Color(0.62f, 0.32f, 0.85f),
                         buyume = 1f, fiyatEgilimi = 0.5f, kaliteEgilimi = 0.5f, saldirganlik = 1f,
                         reputation = 3.4f, couriers = 7, money = 1500000 },
-            new Rakip { ad = "Panda Futár", kisa = "Panda", renk = new Color(0.93f, 0.27f, 0.55f),
+            new Rakip { ad = "Panda Kurye", kisa = "Panda", renk = new Color(0.93f, 0.27f, 0.55f),
                         buyume = 0.7f, fiyatEgilimi = 0.2f, kaliteEgilimi = 0.9f, saldirganlik = 0.75f,
                         reputation = 3.8f, couriers = 4, money = 1200000, quality = 0.15f },
-            new Rakip { ad = "Villám Kaja", kisa = "Villám", renk = new Color(0.96f, 0.76f, 0.12f),
+            new Rakip { ad = "Şimşek Yemek", kisa = "Şimşek", renk = new Color(0.96f, 0.76f, 0.12f),
                         buyume = 1.35f, fiyatEgilimi = 1f, kaliteEgilimi = 0.2f, saldirganlik = 1.25f,
                         reputation = 3.0f, couriers = 3, money = 900000 },
         };
@@ -169,7 +169,7 @@ namespace KuryeTycoon
         public static bool Var(Shop s, int i) => (s.rivalMask & (1 << i)) != 0;
         public static void Ekle(Shop s, int i) => s.rivalMask |= 1 << i;
 
-        /// <summary>Dükkanla çalışan rakiplerin adları ("Turbo Paket, Villám Kaja").</summary>
+        /// <summary>Dükkanla çalışan rakiplerin adları ("Turbo Paket, Şimşek Yemek").</summary>
         public string DukkanRakipleri(Shop s)
         {
             var l = new List<string>();

@@ -98,7 +98,7 @@ namespace KuryeTycoon
             if (su.v.Count > 0)
             {
                 var suMat = SuMalzemesi();
-                sonuc.Add(Nesne("Tisza (organik)", parent, su, suMat != null ? suMat : Malzeme("OrganikSu", SuRenk), golgeAl: false));
+                sonuc.Add(Nesne("Kuğu Nehri (organik)", parent, su, suMat != null ? suMat : Malzeme("OrganikSu", SuRenk), golgeAl: false));
             }
             KirNehirKur(parent, sonuc);
             return sonuc;
@@ -147,8 +147,8 @@ namespace KuryeTycoon
             }
             if (su.v.Count == 0) return;
             var suMat = SuMalzemesi();
-            sonuc.Add(Nesne("Tisza · şehir dışı", parent, su, suMat != null ? suMat : Malzeme("OrganikSu", SuRenk), golgeAl: false));
-            if (kum.v.Count > 0) sonuc.Add(Nesne("Tisza kıyısı · şehir dışı", parent, kum, Malzeme("OrganikKum", KumRenk)));
+            sonuc.Add(Nesne("Kuğu Nehri · şehir dışı", parent, su, suMat != null ? suMat : Malzeme("OrganikSu", SuRenk), golgeAl: false));
+            if (kum.v.Count > 0) sonuc.Add(Nesne("Kuğu Nehri kıyısı · şehir dışı", parent, kum, Malzeme("OrganikKum", KumRenk)));
 
             // Köprüler: kır yolu × nehir kolu kesişimleri
             var kopruler = new GameObject("Kır köprüleri").transform;

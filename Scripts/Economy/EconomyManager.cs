@@ -1157,9 +1157,9 @@ namespace KuryeTycoon
             }
             else if (roll < 40)
             {
-                // KDV/ÁFA farkı: itiraz edilebilir
+                // KDV farkı: itiraz edilebilir
                 long due = Round1000(Mathf.Max(4000f, Year.fees * Random.Range(0.01f, 0.03f)));
-                EventManager.I.Push(new GameEvent("KDV (ÁFA) farkı",
+                EventManager.I.Push(new GameEvent("KDV farkı",
                         $"Vergi dairesi teslimat ücretlerindeki KDV hesabında fark buldu ve {Ft(due)} ek ödeme istiyor.")
                     .Add($"Öde (−{Ft(due)})", () => PayFee(due, "KDV farkı"))
                     .Add("İtiraz et (%50 iptal, %50 ise 1,5 katı ödersin)", () =>

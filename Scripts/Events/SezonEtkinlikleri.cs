@@ -19,7 +19,7 @@ namespace KuryeTycoon
     }
 
     /// <summary>
-    /// Sezonluk etkinlikler (oyun takvimiyle): Ramazan, Paskalya, Anneler Günü, kupa finali, yaz turnuvası, Szent István günü,
+    /// Sezonluk etkinlikler (oyun takvimiyle): Ramazan, Paskalya, Anneler Günü, kupa finali, yaz turnuvası, Şehir Günü,
     /// okula dönüş, Black Friday haftası, Noel alışverişi (advent), yılbaşı. Teslimat platformlarının gerçekte en yoğun günleri.
     ///  • Talep: her gün belli saatlerde CityEvents'e etkinlik yazar (yemek / market / bütün siparişler çarpanı, bazen meydanda alan).
     ///    İşletme teslimatı ortakları da etkilenir (Anneler Günü çiçekçi ×4, Black Friday elektronik ×3...).
@@ -345,12 +345,12 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "paskalya", ad = "Paskalya (Húsvét)", gun = 3, hedefCarpani = 1f,
-                aciklama = "Macaristan'da büyük bayram: cumartesi jambon, yumurta ve tatlı alışverişi, pazar aile sofrası, pazartesi (Húsvéthétfő) tatil ve dışarıdan yemek.",
+                id = "paskalya", ad = "Paskalya", gun = 3, hedefCarpani = 1f,
+                aciklama = "Şehrin Hristiyan ailelerinde büyük bayram: cumartesi jambon, yumurta ve tatlı alışverişi, pazar aile sofrası, pazartesi tatil ve dışarıdan yemek.",
                 bas = y => Abs(y, 4, 4),
                 gunluk = (g, i) =>
                 {
-                    if (i == 0) Etk(g, "Paskalya alışverişi", 8f, 18f, market: 1.35f, aciklama: "Jambon, yumurta, kalács: market siparişleri çok yüksek.");
+                    if (i == 0) Etk(g, "Paskalya alışverişi", 8f, 18f, market: 1.35f, aciklama: "Jambon, yumurta, paskalya çöreği: market siparişleri çok yüksek.");
                     if (i == 1) Etk(g, "Paskalya sofrası", 11f, 16f, hepsi: 0.8f, aciklama: "Aileler sofrada: öğlen sipariş az.");
                     if (i == 2) Etk(g, "Paskalya pazartesisi", 12f, 21f, yemek: 1.25f, aciklama: "Resmî tatil, kimse yemek yapmak istemiyor.");
                 },
@@ -377,19 +377,19 @@ namespace KuryeTycoon
             Sezonlar.Add(new Sezon
             {
                 id = "turnuva", ad = "Yaz futbol turnuvası", gun = 32, hedefCarpani = 1f,
-                aciklama = "Dünya Kupası / Avrupa Şampiyonası ayı: iki günde bir akşam maçı, Macaristan oynadığı akşamlar çok yoğun.",
+                aciklama = "Dünya Kupası / Avrupa Şampiyonası ayı: iki günde bir akşam maçı, milli takımın oynadığı akşamlar çok yoğun.",
                 bas = y => Abs(y, 6, 11),
                 gunluk = (g, i) =>
                 {
-                    if (i % 6 == 2) Etk(g, "Macaristan maçı", 19f, 23.5f, yemek: 1.7f, market: 1.25f, aciklama: "Milli maç: şehir evde ya da sokakta, sipariş patlıyor.", meydan: true);
+                    if (i % 6 == 2) Etk(g, "Milli maç", 19f, 23.5f, yemek: 1.7f, market: 1.25f, aciklama: "Milli maç: şehir evde ya da sokakta, sipariş patlıyor.", meydan: true);
                     else if (i % 2 == 0) Etk(g, "Turnuva maçı", 17.5f, 23f, yemek: 1.35f, aciklama: "Akşam maçı: pizza ve burger.");
                 },
                 gercek = t => Arada(t, 6, 11, 7, 12)
             });
             Sezonlar.Add(new Sezon
             {
-                id = "szentistvan", ad = "Szent István günü", gun = 1, hedefCarpani = 1.05f,
-                aciklama = "20 Ağustos, millî bayram: akşam havai fişek, meydanda kalabalık, sokak yemekleri.",
+                id = "szentistvan", ad = "Şehir Günü", gun = 1, hedefCarpani = 1.05f,
+                aciklama = "20 Ağustos, şehrin kuruluş günü: akşam havai fişek, meydanda kalabalık, sokak yemekleri.",
                 bas = y => Abs(y, 8, 20),
                 gunluk = (g, i) => Etk(g, "Havai fişek akşamı", 17f, 23.5f, hepsi: 1.25f, aciklama: "Meydanda kutlama: çevresinden çok sipariş.", meydan: true),
                 gercek = t => t.Month == 8 && t.Day == 20
@@ -430,7 +430,7 @@ namespace KuryeTycoon
             });
             Sezonlar.Add(new Sezon
             {
-                id = "yilbasi", ad = "Yılbaşı (Szilveszter)", gun = 2, hedefCarpani = 1.05f,
+                id = "yilbasi", ad = "Yılbaşı", gun = 2, hedefCarpani = 1.05f,
                 aciklama = "Yılbaşı gecesi parti hazırlığı ve 1 Ocak öğleden sonrası akşamdan kalma şehir: yılın en yoğun iki günü.",
                 bas = y => Abs(y, 12, 31),
                 gunluk = null,   // talep etkisi zaten şehir takviminde (CityEvents)

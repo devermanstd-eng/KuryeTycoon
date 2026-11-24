@@ -141,7 +141,7 @@ namespace KuryeTycoon
         public bool isletme;           // işletme teslimatı (IsletmeTeslimati): kargo gibi atanır ama 1,5 saat içinde, süresi daralınca öne alınır
         public bool abone;             // abone siparişi (Abonelik): teslimat ücreti müşteriden alınmadı
         public int aboneUcreti;        // üyenin ödemediği teslimat ücreti (şirket karşıladı; atama kârı hesabında sayılır)
-        public string noteTranslation = ""; // not Macarca ise Türkçesi ("Çevir")
+        public string noteTranslation = ""; // not yabancı dildeyse Türkçesi ("Çevir")
         public bool markedLate;        // kurye "gecikme bildir"e bastı: müşteriye haber verildi, söz verilen süre +10 dk
         public bool shopPinged;        // destek dükkanı hızlandırması için aradı
         public float assignedAt = -1f; // kuryeye atandığı an (hata ayıklama: atama bekleme süresi)
@@ -154,7 +154,7 @@ namespace KuryeTycoon
         {
             get
             {
-                // "Tímea Nagy" → "N. Tímea" (uygulamada soyadının baş harfi + ad)
+                // "Esra Aydın" → "A. Esra" (uygulamada soyadının baş harfi + ad)
                 var parts = customerName.Split(' ');
                 if (parts.Length < 2 || parts[1].Length == 0) return customerName;
                 return $"{parts[1][0]}. {parts[0]}";

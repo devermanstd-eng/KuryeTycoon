@@ -5,7 +5,7 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Gece / gündüz döngüsü (sadece görüntü):
-    ///  • Gün doğumu ve batımı mevsime göre değişir (Nyíregyháza: Aralık'ta ~07:30–15:50, Haziran'da ~04:45–20:45).
+    ///  • Gün doğumu ve batımı mevsime göre değişir (Narlıkent: Aralık'ta ~07:30–15:50, Haziran'da ~04:45–20:45).
     ///  • Şafakta pembe, akşamüstü turuncu ışık; gece şehir kararır (lacivert ton).
     ///  • Akşam binaların pencerelerinde ışıklar yanar (gece ilerledikçe azalır), kavşaklarda ve yollarda sokak lambaları yanar.
     /// WeatherFx'in kaydının (Ciz2D.Hava) başında çizilir: arayüzün altında, yağmur/karın altında kalır.

@@ -39,7 +39,7 @@ namespace KuryeTycoon
 
         public static readonly Tur[] Turlar =
         {
-            new Tur { ad = "Tohum yatırım", yatirimci = "Tisza Angels", tutar = 1600000, pay = 0.12f, sure = 60,
+            new Tur { ad = "Tohum yatırım", yatirimci = "Kuğu Angels", tutar = 1600000, pay = 0.12f, sure = 60,
                       ilce = 2, teslimat = 150, abone = 0, enErkenGun = 10, enAzTeslimat = 50 },
             new Tur { ad = "A serisi", yatirimci = "Danube Ventures", tutar = 8000000, pay = 0.18f, sure = 90,
                       ilce = 3, teslimat = 500, abone = 300, enErkenGun = 0, enAzTeslimat = 150 },

@@ -123,7 +123,9 @@ namespace KuryeTycoon
             // IMGUI'de yalnızca haritanın üstündekiler kaldı (etiketler, uçan yazılar, seçili bina işareti, lejant, şehir olayı,
             // "?" balonu); bütün arayüz UI Toolkit'te. Harita üstü çizimler harita alanına kırpılır: UI Toolkit'in altına taşmasın.
             GUI.enabled = modalFree;
-            var haritaAlani = new Rect(MapLeftGui, TopBar, Mathf.Max(0f, sw - MapLeftGui), Mathf.Max(0f, sh - TopBar));
+            // Pencere açıkken harita sağa kaymasa da (Ayarlar > pencere haritayı kapatmasın: kapalı) etiketler pencerenin üstüne çıkmasın
+            float haritaSol = Mathf.Max(MapLeftGui, panelOpen ? WindowRect(sh).xMax : 0f);
+            var haritaAlani = new Rect(haritaSol, TopBar, Mathf.Max(0f, sw - haritaSol), Mathf.Max(0f, sh - TopBar));
             GUI.BeginClip(haritaAlani, -haritaAlani.position, Vector2.zero, false);
             if (!Ciz2D.UitkCiziyor && Event.current.type == EventType.Repaint) Ciz2D.Isi.Oynat();   // harita katmanı: normalde UI Toolkit'te, arayüzün altında
             DrawWorldLabels();

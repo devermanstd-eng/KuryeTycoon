@@ -45,16 +45,16 @@ namespace KuryeTycoon
 
         static readonly OrtakTuru[] Turler =
         {
-            new OrtakTuru { ad = "Patika Eczanesi", urun = "Eczane paketi (reçetesiz ilaç, bakım ürünü)", not = "Eczane: kapıda teslim, kimlik sorulmaz.", renk = new Color(0.3f, 0.75f, 0.5f), gunluk = 9f, kgMin = 0.2f, kgMax = 2f },
-            new OrtakTuru { ad = "Rózsa Çiçekçi", urun = "Çiçek buketi", not = "Çiçek: dik taşıyın, ezilmesin. Kart içinde.", renk = new Color(0.95f, 0.45f, 0.6f), gunluk = 6f, kgMin = 0.5f, kgMax = 3f },
-            new OrtakTuru { ad = "Lapozó Kitabevi", urun = "Kitap paketi", not = "Kitap: yağmurda ıslanmasın.", renk = new Color(0.55f, 0.45f, 0.8f), gunluk = 4f, kgMin = 0.4f, kgMax = 3f },
-            new OrtakTuru { ad = "Tech Sarok", urun = "Elektronik aksesuar", not = "Elektronik: kapıda imza.", renk = new Color(0.35f, 0.55f, 0.85f), gunluk = 5f, kgMin = 0.2f, kgMax = 4f },
-            new OrtakTuru { ad = "Divat Butik", urun = "Giyim paketi", not = "Butik: denemek için 10 dk bekleyebilirsiniz.", renk = new Color(0.85f, 0.6f, 0.35f), gunluk = 4f, kgMin = 0.3f, kgMax = 2.5f },
-            new OrtakTuru { ad = "Mancs Pet Shop", urun = "Evcil hayvan maması", not = "Pet shop: ağır olabilir.", renk = new Color(0.7f, 0.55f, 0.35f), gunluk = 5f, kgMin = 1f, kgMax = 12f },
-            new OrtakTuru { ad = "Tiszta Kuru Temizleme", urun = "Temizlenmiş kıyafet (askıda)", not = "Kuru temizleme: askıyı katlamayın.", renk = new Color(0.5f, 0.75f, 0.85f), gunluk = 4f, kgMin = 0.5f, kgMax = 3f },
-            new OrtakTuru { ad = "Optika Plusz", urun = "Gözlük ve lens", not = "Optik: kırılacak eşya.", renk = new Color(0.6f, 0.65f, 0.7f), gunluk = 3f, kgMin = 0.1f, kgMax = 0.6f },
-            new OrtakTuru { ad = "Sport Pont", urun = "Spor malzemesi", not = "Spor mağazası: büyük kutu olabilir.", renk = new Color(0.9f, 0.35f, 0.3f), gunluk = 4f, kgMin = 0.5f, kgMax = 9f },
-            new OrtakTuru { ad = "Papír Kırtasiye", urun = "Kırtasiye ve ofis malzemesi", not = "Kırtasiye: ofise teslim, resepsiyona bırakılabilir.", renk = new Color(0.8f, 0.75f, 0.35f), gunluk = 5f, kgMin = 0.3f, kgMax = 6f },
+            new OrtakTuru { ad = "Şifa Eczanesi", urun = "Eczane paketi (reçetesiz ilaç, bakım ürünü)", not = "Eczane: kapıda teslim, kimlik sorulmaz.", renk = new Color(0.3f, 0.75f, 0.5f), gunluk = 9f, kgMin = 0.2f, kgMax = 2f },
+            new OrtakTuru { ad = "Gül Çiçekçilik", urun = "Çiçek buketi", not = "Çiçek: dik taşıyın, ezilmesin. Kart içinde.", renk = new Color(0.95f, 0.45f, 0.6f), gunluk = 6f, kgMin = 0.5f, kgMax = 3f },
+            new OrtakTuru { ad = "Sayfa Kitabevi", urun = "Kitap paketi", not = "Kitap: yağmurda ıslanmasın.", renk = new Color(0.55f, 0.45f, 0.8f), gunluk = 4f, kgMin = 0.4f, kgMax = 3f },
+            new OrtakTuru { ad = "Tech Köşe", urun = "Elektronik aksesuar", not = "Elektronik: kapıda imza.", renk = new Color(0.35f, 0.55f, 0.85f), gunluk = 5f, kgMin = 0.2f, kgMax = 4f },
+            new OrtakTuru { ad = "Moda Butik", urun = "Giyim paketi", not = "Butik: denemek için 10 dk bekleyebilirsiniz.", renk = new Color(0.85f, 0.6f, 0.35f), gunluk = 4f, kgMin = 0.3f, kgMax = 2.5f },
+            new OrtakTuru { ad = "Pati Pet Shop", urun = "Evcil hayvan maması", not = "Pet shop: ağır olabilir.", renk = new Color(0.7f, 0.55f, 0.35f), gunluk = 5f, kgMin = 1f, kgMax = 12f },
+            new OrtakTuru { ad = "Pırıl Kuru Temizleme", urun = "Temizlenmiş kıyafet (askıda)", not = "Kuru temizleme: askıyı katlamayın.", renk = new Color(0.5f, 0.75f, 0.85f), gunluk = 4f, kgMin = 0.5f, kgMax = 3f },
+            new OrtakTuru { ad = "Optik Plus", urun = "Gözlük ve lens", not = "Optik: kırılacak eşya.", renk = new Color(0.6f, 0.65f, 0.7f), gunluk = 3f, kgMin = 0.1f, kgMax = 0.6f },
+            new OrtakTuru { ad = "Spor Noktası", urun = "Spor malzemesi", not = "Spor mağazası: büyük kutu olabilir.", renk = new Color(0.9f, 0.35f, 0.3f), gunluk = 4f, kgMin = 0.5f, kgMax = 9f },
+            new OrtakTuru { ad = "Kağıt Kırtasiye", urun = "Kırtasiye ve ofis malzemesi", not = "Kırtasiye: ofise teslim, resepsiyona bırakılabilir.", renk = new Color(0.8f, 0.75f, 0.35f), gunluk = 5f, kgMin = 0.3f, kgMax = 6f },
         };
 
         static readonly float[] SaatAgirligi =

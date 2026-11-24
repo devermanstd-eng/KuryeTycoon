@@ -20,7 +20,7 @@ namespace KuryeTycoon
 
     /// <summary>
     /// Hikaye: Yıllarca Turbo Paket'te kuryelik yaptın. Platformun her ay biraz daha düşen paket ücretinden bıkıp
-    /// kendi kurye şirketini kurmaya karar verdin ve Duna Bank'tan 1 000 000 Ft girişimci kredisi aldın.
+    /// kendi kurye şirketini kurmaya karar verdin ve Kuzey Bank'tan 1 000 000 Ft girişimci kredisi aldın.
     /// Kredi faiziyle birlikte Mart–Temmuz arası 5 taksitle geri ödenir (süre baskısı).
     /// Taksit kaçırırsan kredi notun düşer; not biterse banka krediyi geri çağırır ve şirket kapanır.
     /// Erken veya kısmi ödeme yapılabilir. Kredi ödemesi gider değildir, vergiden düşülmez.
@@ -30,10 +30,10 @@ namespace KuryeTycoon
     {
         public static FamilyLoan I { get; private set; }
 
-        public const string Banka = "Duna Bank";
-        public const string Temsilci = "Kovács Réka";
+        public const string Banka = "Kuzey Bank";
+        public const string Temsilci = "Merve Arslan";
         public const string EskiSirket = "Turbo Paket";
-        public const string EskiArkadas = "Bence";
+        public const string EskiArkadas = "Burak";
 
         [Header("Kredi")]
         public long principal = 1000000;          // çekilen kredi (başlangıç kasası)

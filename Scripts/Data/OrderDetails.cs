@@ -24,10 +24,10 @@ namespace KuryeTycoon
     public static class Addresses
     {
         static readonly string[] AvenueNames =
-            { "Kossuth", "Petőfi", "Rákóczi", "Széchenyi", "Dózsa György", "Arany János", "Bethlen", "Jókai", "Vörösmarty",
-              "Andrássy", "Deák Ferenc", "Batthyány", "Mátyás Király" };
+            { "Çınar", "Lale", "Akasya", "Ihlamur", "Menekşe", "Zambak", "Defne", "Manolya", "Yasemin",
+              "Kestane", "Meşe", "Söğüt", "Nergis" };
         static readonly string[] StreetNames =
-            { "Kölcsey", "Ady Endre", "Hunyadi", "Madách", "Bocskai", "Szent István", "Kazinczy", "Bartók Béla", "Erkel Ferenc" };
+            { "Barış", "Huzur", "Bahar", "Güneş", "Yıldız", "Pınar", "Bağlar", "Gelincik", "Papatya" };
 
         public static bool IsAvenue(Vector2Int road) =>
             CityMap.Organik ? SehirPlani.Genis(SehirPlani.YolNo(road.x, road.y))
@@ -55,7 +55,7 @@ namespace KuryeTycoon
         static System.Random TileRng(Vector2Int t) => new System.Random(t.x * 73856093 ^ t.y * 19349663 ^ 0x5bd1e995);
 
         /// <summary>
-        /// Kat sayısı: blok türünün aralığında, şehir merkezine (Kossuth Meydanı) yakınlığa göre.
+        /// Kat sayısı: blok türünün aralığında, şehir merkezine (Saat Kulesi Meydanı) yakınlığa göre.
         /// Merkezde yüksek binalar, dışa doğru boy düşer (referanstaki silüet); küçük rastgele sapma da var.
         /// </summary>
         public static int Floors(Vector2Int t)
@@ -94,29 +94,29 @@ namespace KuryeTycoon
 
         public static string RandomNote() => CustomerNotes[Random.Range(0, CustomerNotes.Length)];
 
-        // Macar müşterilerin notları (kurye uygulamasında "Çevir" ile Türkçesi görünür)
-        static readonly string[,] HungarianNotes =
+        // Yabancı müşterilerin İngilizce notları (kurye uygulamasında "Çevir" ile Türkçesi görünür)
+        static readonly string[,] ForeignNotes =
         {
-            { "A kaputelefon nem működik, kérem hívjon fel!", "Kapı zili çalışmıyor, lütfen beni arayın!" },
-            { "Kérem, hagyja az ajtó előtt.", "Lütfen kapının önüne bırakın." },
-            { "Csengessen kétszer!", "İki kez zile basın!" },
-            { "A lift nem működik, bocsánat!", "Asansör çalışmıyor, kusura bakmayın!" },
-            { "Az udvarban a második lépcsőház.", "Avludaki ikinci merdiven girişi." },
-            { "Kutya van, de nem harap.", "Köpek var ama ısırmaz." },
-            { "Hívjon, ha ideért, lemegyek.", "Gelince arayın, aşağı inerim." },
-            { "A kapukód a kaputelefon mellett van.", "Kapı kodu interkomun yanında yazıyor." },
-            { "Köszönöm szépen, jó munkát!", "Çok teşekkürler, iyi çalışmalar!" },
+            { "The intercom is broken, please call me!", "Kapı zili çalışmıyor, lütfen beni arayın!" },
+            { "Please leave it at the door.", "Lütfen kapının önüne bırakın." },
+            { "Ring the bell twice!", "İki kez zile basın!" },
+            { "The lift is out of order, sorry!", "Asansör çalışmıyor, kusura bakmayın!" },
+            { "Second staircase in the courtyard.", "Avludaki ikinci merdiven girişi." },
+            { "There is a dog, but it doesn't bite.", "Köpek var ama ısırmaz." },
+            { "Call me when you arrive, I'll come down.", "Gelince arayın, aşağı inerim." },
+            { "The door code is next to the intercom.", "Kapı kodu interkomun yanında yazıyor." },
+            { "Thank you so much, have a good shift!", "Çok teşekkürler, iyi çalışmalar!" },
         };
 
-        /// <summary>Müşteri notu: çoğu Türkçe, bazıları Macarca (çevirisiyle).</summary>
+        /// <summary>Müşteri notu: çoğu Türkçe, bazıları İngilizce (çevirisiyle).</summary>
         public static void RandomNote(out string note, out string translation)
         {
             translation = "";
             if (Random.value < 0.3f)
             {
-                int i = Random.Range(0, HungarianNotes.GetLength(0));
-                note = HungarianNotes[i, 0];
-                translation = HungarianNotes[i, 1];
+                int i = Random.Range(0, ForeignNotes.GetLength(0));
+                note = ForeignNotes[i, 0];
+                translation = ForeignNotes[i, 1];
                 return;
             }
             note = RandomNote();

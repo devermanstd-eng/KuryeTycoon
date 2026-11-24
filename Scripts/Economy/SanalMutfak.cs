@@ -67,7 +67,7 @@ namespace KuryeTycoon
             new MarkaTanim { ad = "Tatlı Kutusu", tur = "tatlı ve kahve", renk = new Color(0.9f, 0.55f, 0.75f), sicak = false, sepetMin = 2200, sepetMax = 5500, satirlar = new[]
             {
                 "Latte|890|K", "Cappuccino|850|K", "Flat white|990|K", "Buzlu karamel latte|1190|K", "Sıcak çikolata|990|K", "Ev yapımı limonata|790|K",
-                "Kürtőskalács (tarçınlı)|1290|T", "Dobos torta dilimi|1390|T", "Somlói galuska|1490|T", "San Sebastian cheesecake|1590|T",
+                "Baca keki (tarçınlı)|1290|T", "Karamelli pasta dilimi|1390|T", "Kat kat pandispanya|1490|T", "San Sebastian cheesecake|1590|T",
                 "Tiramisu|1390|T", "Brownie|890|T", "Lotus cheesecake|1490|T", "Baklava (4 dilim)|1690|T",
                 "Kurabiye (3)|690|Y", "Kruvasan|590|Y", "Çikolatalı muffin|690|Y", "Makaron (6)|1490|Y"
             }},
