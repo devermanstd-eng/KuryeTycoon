@@ -1,0 +1,15 @@
+Tugla_Kirmizi 2.0
+Tugla_Kahve 2.0
+Tugla_Sari 2.0
+Tas_Kirec 3.0
+Tas_Koyu 3.0
+Siva_Krem 3.0
+Siva_Beyaz 3.0
+Beton 4.0
+Metal_Antrasit 2.0
+Metal_Bakir 2.0
+Kiremit_Kirmizi 2.0
+Arduvaz 2.0
+Cati_Membran 6.0
+Kaldirim 2.0
+Ahsap_Koyu 1.0

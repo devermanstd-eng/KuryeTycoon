@@ -42,6 +42,11 @@ namespace KuryeTycoon.EditorTools
         /// Stilize varlıklar (kurye, bisiklet, kargo bisikleti, paket dolabı, ağaçlar, sokak lambası, Başkent binaları)
         /// → Art/Stilize; bitince "Stilize Prefabları Kur" malzemeleri ve Prefabs/Stilize'yi kurar.
         /// </summary>
+        /// <summary>Gerçekçi yapılar (Tools/Blender/gercekci_yapilar.py): dokulu model + dört açıdan render
+        /// (proje kökünde Onizleme/Gercekci) + Modeller/Gercekci/*.fbx. Oyuna henüz bağlı değil; önizleme onaylanınca bağlanır.</summary>
+        [MenuItem("Kurye Tycoon/Blender/Gerçekçi yapı önizlemesi")]
+        static void Gercekci() => Calistir("gercekci_yapilar.py", null);
+
         [MenuItem("Kurye Tycoon/Blender/Stilize varlıkları üret")]
         static void Stilize() => Calistir("varlik_uretici.py", StilizeVarlikKurucu.MenuYolu);
 
