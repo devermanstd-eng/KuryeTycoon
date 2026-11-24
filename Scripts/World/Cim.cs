@@ -30,6 +30,15 @@ namespace KuryeTycoon
             set { ayarCache = value ? 1 : 0; PlayerPrefs.SetInt(AyarKey, ayarCache); PlayerPrefs.Save(); }
         }
 
+        const string GercekciKey = "KuryeTycoon.CimGercekci";
+        static int gercekciCache = -1;
+        /// <summary>Deneme: stilize yaprak geometrisi yerine dokulu çim kartları (Resources/Gorsel/CimKart.png + KuryeTycoon/CimKart).</summary>
+        public static bool Gercekci
+        {
+            get { if (gercekciCache < 0) gercekciCache = PlayerPrefs.GetInt(GercekciKey, 0); return gercekciCache == 1; }
+            set { gercekciCache = value ? 1 : 0; PlayerPrefs.SetInt(GercekciKey, gercekciCache); PlayerPrefs.Save(); }
+        }
+
         // Dünya: 1 kare = 10 m, −Z yukarı. Öbek mesh'i yarıçap 1, boy 1 (yerel −Z); örnek ölçeği aşağıda.
         const float OlcekXY = 0.1f;            // leke yarıçapı ~1 m (bir lekede 28–36 yaprak); lekeler üst üste biner, boşluk kalmaz
         const float BoyMin = 0.045f, BoyMax = 0.075f;   // 45–75 cm; uzun ot alanında ×1,6'ya kadar (bel boyu), şehirde ×0,6
@@ -39,8 +48,10 @@ namespace KuryeTycoon
 
         const int Kisa = 0, Uzun = 1, Tohum = 2, Egr = 3, Cicek0 = 4, TurSayisi = 7;   // 4–6: üç çiçek karışımı
 
-        Mesh[] meshler;
-        Material malzeme;
+        Mesh[] meshler, kartMeshler;
+        Material malzeme, kartMalzeme;
+        Mesh[] Meshler => Gercekci && kartMalzeme != null ? kartMeshler : meshler;
+        Material Malzeme => Gercekci && kartMalzeme != null ? kartMalzeme : malzeme;
         CityMap map;
         float[,] sehirAgirlik;                 // şehir karesinin çim ağırlığı (0–1), bir kez hesaplanır
         readonly HashSet<Vector2Int> kirDolu = new HashSet<Vector2Int>();   // banliyö evleri
@@ -70,6 +81,24 @@ namespace KuryeTycoon
             c.meshler[Cicek0] = CicekliCim(41, new[] { new[] { Mor, Sari }, new[] { Mavi, Beyaz }, new[] { Beyaz, Sari } });       // mor, peygamber çiçeği, papatya
             c.meshler[Cicek0 + 1] = CicekliCim(53, new[] { new[] { Kirmizi, Koyu }, new[] { Beyaz, Sari }, new[] { Mor, Sari } }); // gelincik
             c.meshler[Cicek0 + 2] = CicekliCim(67, new[] { new[] { Sari, Sari }, new[] { Pembe, Beyaz }, new[] { Beyaz, Sari } }); // düğün çiçeği, yonca
+            // Gerçekçi kartlar (deneme): atlas hücreleri 0 uzun ot · 1 kısa çim · 2 tohumlu · 3 kuru ot · 4 eğrelti · 5–7 çiçek
+            var ksh = Shader.Find("KuryeTycoon/CimKart");
+            var atlas = Resources.Load<Texture2D>("Gorsel/CimKart");
+            if (ksh != null && atlas != null)
+            {
+                atlas.wrapMode = TextureWrapMode.Clamp;
+                atlas.mipMapBias = -0.6f;   // uzakta yapraklar incelip kaybolmasın
+                c.kartMalzeme = new Material(ksh) { name = "CimKart", enableInstancing = true, mainTexture = atlas };
+                c.kartMeshler = new Mesh[TurSayisi];
+                c.kartMeshler[Kisa] = KartObegi(111, new[] { 1, 1, 3, 1 }, 0.85f);
+                c.kartMeshler[Uzun] = KartObegi(123, new[] { 0, 0, 3, 0 }, 1f);
+                c.kartMeshler[Tohum] = KartObegi(137, new[] { 2, 0, 2, 3 }, 1f);
+                c.kartMeshler[Egr] = KartObegi(147, new[] { 4, 4, 4, 4 }, 0.9f);
+                c.kartMeshler[Cicek0] = KartObegi(141, new[] { 5, 1, 5, 1 }, 0.85f);
+                c.kartMeshler[Cicek0 + 1] = KartObegi(153, new[] { 6, 1, 6, 1 }, 0.85f);
+                c.kartMeshler[Cicek0 + 2] = KartObegi(167, new[] { 7, 1, 7, 1 }, 0.85f);
+            }
+            else Debug.LogWarning("Kurye Tycoon: gerçekçi çim (CimKart) gölgelendiricisi ya da dokusu yok; stilize çim kullanılır.");
             if (banliyoEvleri != null)
                 foreach (var p in banliyoEvleri) c.kirDolu.Add(new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y)));
         }
@@ -79,7 +108,9 @@ namespace KuryeTycoon
         {
             if (I == this) I = null;
             if (meshler != null) foreach (var m in meshler) if (m != null) Destroy(m);
+            if (kartMeshler != null) foreach (var m in kartMeshler) if (m != null) Destroy(m);
             if (malzeme != null) Destroy(malzeme);
+            if (kartMalzeme != null) Destroy(kartMalzeme);
         }
 
         // ------------------------------------------------------------------ yerleşim
@@ -267,7 +298,7 @@ namespace KuryeTycoon
         }
 
         void Ciz(int tur, int n) =>
-            Graphics.DrawMeshInstanced(meshler[tur], 0, malzeme, tampon, n, null, ShadowCastingMode.Off, true, gameObject.layer);
+            Graphics.DrawMeshInstanced(Meshler[tur], 0, Malzeme, tampon, n, null, ShadowCastingMode.Off, true, gameObject.layer);
 
         // ------------------------------------------------------------------ mevsim ve rüzgâr
 
@@ -284,6 +315,9 @@ namespace KuryeTycoon
         };
         static readonly float[] KuruOran = { 0.1f, 0.22f, 0.6f, 0.55f, 0.4f };
         static readonly float[] Cicekler = { 1f, 0.75f, 0.35f, 0.15f, 0f };
+
+        static readonly string[] RenkAdlari = { "_Uc", "_Taban" };
+        static readonly string[] SayiAdlari = { "_KuruOran", "_Kar", "_RuzgarGuc", "_RuzgarHiz", "_Gorunum" };
 
         float CicekMevsimi { get; set; } = 1f;
         float sonMevsim = -999f;
@@ -325,6 +359,13 @@ namespace KuryeTycoon
                 malzeme.SetVector("_RuzgarYon", new Vector4(Mathf.Cos(aci), Mathf.Sin(aci), 0f, 0f));
             }
             malzeme.SetFloat("_Gorunum", gorunum);
+            if (kartMalzeme != null && Gercekci)
+            {
+                // Kart gölgelendiricisi aynı mevsim / rüzgâr / kar ayarlarını kullanır
+                foreach (var ad in RenkAdlari) kartMalzeme.SetColor(ad, malzeme.GetColor(ad));
+                foreach (var ad in SayiAdlari) kartMalzeme.SetFloat(ad, malzeme.GetFloat(ad));
+                kartMalzeme.SetVector("_RuzgarYon", malzeme.GetVector("_RuzgarYon"));
+            }
         }
 
         // ------------------------------------------------------------------ mesh üretimi
@@ -534,6 +575,37 @@ namespace KuryeTycoon
                 y.CicekBasi(r, uc, Mathf.Lerp(0.05f, 0.08f, R(r)), 5 + r.Next(2), p[0], p[1]);
             }
             return y.Mesh("Cim_cicekli");
+        }
+
+        // ------------------------------------------------------------------ gerçekçi kartlar (deneme)
+
+        /// <summary>Dokulu çim öbeği: 3 dikey kart yıldız gibi kesişir (60°), 4. kart dışa eğik. hucreler: her kartın atlas hücresi
+        /// (0–7; 4 × 2 ızgara). en: kartın yarı genişliği (yerel birim; ~0,9 → öbek ~1,8 m genişliğinde). Yerel ölçü: yarıçap 1, boy 1 (yukarı −Z), Cim örnek ölçeğiyle büyür.</summary>
+        static Mesh KartObegi(int tohum, int[] hucreler, float en)
+        {
+            var r = new System.Random(tohum);
+            var y = new Yapici();
+            float donus = R(r) * Mathf.PI;
+            for (int k = 0; k < 4; k++)
+            {
+                int h = hucreler[k];
+                float u0 = (h % 4) / 4f, u1 = u0 + 0.25f, v0 = h < 4 ? 0.5f : 0f, v1 = v0 + 0.5f;   // PNG üst satırı = v 0,5–1
+                float a = donus + (k < 3 ? k * Mathf.PI / 3f : R(r) * Mathf.PI * 2f);
+                var yan = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+                var ileri = new Vector3(-yan.y, yan.x, 0f);
+                float egik = k < 3 ? (R(r) - 0.5f) * 0.25f : 0.55f;         // 4. kart dışa yatık (tepeden bakınca da dolu görünsün)
+                var kayma = new Vector3(R(r) - 0.5f, R(r) - 0.5f, 0f) * 0.25f;
+                float w = en * (0.85f + R(r) * 0.3f), boy = 1.35f + R(r) * 0.3f;
+                var ust = Yukari * boy + ileri * (egik * boy);
+                var nr = (ileri * 0.4f + Yukari * 0.6f).normalized;
+                int q0 = y.Kose(kayma - yan * w, nr, Color.white, 0f, 0f, 0f);
+                int q1 = y.Kose(kayma + yan * w, nr, Color.white, 0f, 0f, 0f);
+                int q2 = y.Kose(kayma + yan * w + ust, nr, Color.white, 1f, 0f, 0f);
+                int q3 = y.Kose(kayma - yan * w + ust, nr, Color.white, 1f, 0f, 0f);
+                y.uv[q0] = new Vector2(u0, v0); y.uv[q1] = new Vector2(u1, v0); y.uv[q2] = new Vector2(u1, v1); y.uv[q3] = new Vector2(u0, v1);
+                y.Ucgen(q0, q1, q2); y.Ucgen(q0, q2, q3);
+            }
+            return y.Mesh("CimKart");
         }
     }
 }
