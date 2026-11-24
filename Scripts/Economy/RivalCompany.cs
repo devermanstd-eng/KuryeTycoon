@@ -1044,6 +1044,14 @@ namespace KuryeTycoon
             int ri = TeklifVeren(s);
             var r = Rakipler[ri];
             float offer = s.Commission - Mathf.Lerp(0.015f, 0.03f, r.fiyatEgilimi);
+            // Bölgenin müdürü varsa kart açılmaz: müdür ya mevcut şartlarla tutar ya da teklife eşitler
+            if (BolgeMudurleri.I != null && BolgeMudurleri.I.YenilemeyiUstlen(s, r.ad, out bool eslestir))
+            {
+                if (eslestir) s.commissionBonus -= s.Commission - offer;
+                Renew(s);
+                AddSatisfaction(s, eslestir ? 5f : 2f);
+                return;
+            }
             var ev = new GameEvent("Sözleşme yenileme: rakip teklifi",
                 $"{s.Name} ile sözleşmen bitti. {r.ad} dükkana {Pct(offer)} komisyonla teklif verdi " +
                 $"(senin oranın {Pct(s.Commission)}, memnuniyet {s.satisfaction:0}/100).");

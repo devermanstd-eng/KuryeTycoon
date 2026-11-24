@@ -330,7 +330,16 @@ namespace KuryeTycoon
                     break;
             }
             c.note = GameData.ApplicationNote(c.occupation, c.level);
+            int efsane = KuryeKariyer.EfsaneZari();   // çok nadir: lakaplı, tek güçlü yetenekli efsane kurye
+            if (efsane >= 0) KuryeKariyer.EfsaneYap(c, efsane);
             return a;
+        }
+
+        /// <summary>Süreçte bu efsaneden bir aday var mı (aynı efsane iki kez gelmesin).</summary>
+        public bool AdayVarMi(int efsane)
+        {
+            foreach (var a in Adaylar) if (a.aday != null && a.aday.efsane == efsane) return true;
+            return false;
         }
 
         void YeniKayit()
@@ -387,6 +396,7 @@ namespace KuryeTycoon
             }
             if (a.tur == KayitTuru.Tavsiye || a.tur == KayitTuru.EskiKurye) p *= 0.5f;
             p *= 1f - 0.15f * yeniBonus;
+            if (a.aday != null && a.aday.efsane >= 0) p *= 0.1f;   // efsane kurye neredeyse hiç vazgeçmez
             return p;
         }
 

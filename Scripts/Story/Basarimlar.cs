@@ -146,6 +146,11 @@ namespace KuryeTycoon
             return n;
         }
 
+        static int UstaSayisi
+        {
+            get { int n = 0; if (CourierManager.I != null) foreach (var c in CourierManager.I.Couriers) if (KuryeKariyer.Rutbe(c.level) >= 3) n++; return n; }
+        }
+
         static int KucukDugumToplam
         {
             get { int n = 0; foreach (var d in GelisimAgaci.Dugumler) if (!d.buyuk && d.id != GelisimAgaci.Merkez) n++; return n; }
@@ -222,6 +227,19 @@ namespace KuryeTycoon
             Sayi("SATIS_1", S, "Exit", "İlk şirketini sat ve yeni şehre geç.", () => Marka.Veri.satilan, 1);
             Sayi("SATIS_3", S, "Seri girişimci", "Üç şirket sat.", () => Marka.Veri.satilan, 3);
             B("BUDAPESTE", S, "Başkent", "Budapeşte'de şirket kur.", () => Marka.AktifSehir >= Marka.Sehirler.Length - 1);
+
+            Sayi("SERI_100", K, "Saat gibi", "Art arda 100 zamanında teslimat.", () => Kutlama.I != null ? Kutlama.I.enIyiSeri : 0, 100);
+            Sayi("SERI_500", K, "Durdurulamaz", "Art arda 500 zamanında teslimat.", () => Kutlama.I != null ? Kutlama.I.enIyiSeri : 0, 500);
+            Sayi("REKOR_10", P, "Rekor üstüne rekor", "Tek şirkette 10 rekor gün (net kârda).", () => Kutlama.I != null ? Kutlama.I.rekorSayisi : 0, 10);
+            Sayi("USTA_10", E, "Ustalar ekibi", "Ekipte Usta ya da daha üst rütbede 10 kurye.", () => UstaSayisi, 10);
+            Sayi("EFSANE_1", E, "Efsaneyle tanış", "Bir efsane kuryeyi ekibine al.", () => KuryeKariyer.KoleksiyonSayisi, 1);
+            Sayi("EFSANE_HEPSI", E, "Efsaneler ligi", "Altı efsane kuryenin hepsini koleksiyona kat (oyunlar arası).", () => KuryeKariyer.KoleksiyonSayisi, KuryeKariyer.EfsaneSayisi);
+            Sayi("MUDUR_1", D, "Bölge müdürü", "Bir bölgeye müdür ata.", () => BolgeMudurleri.I != null ? BolgeMudurleri.I.Mudurler.Count : 0, 1);
+            Sayi("MUDUR_5", D, "Bütün şehir yönetimde", "Beş bölgenin hepsine müdür ata.", () => BolgeMudurleri.I != null ? BolgeMudurleri.I.Mudurler.Count : 0, 5);
+            Sayi("HOLDING_1", S, "Holding", "Bir şirketini holdinge kat.", () => Holding.IstirakSayisi, 1);
+            Sayi("HOLDING_3", S, "Büyük holding", "Üç şirketin holdinginde.", () => Holding.IstirakSayisi, 3);
+            Sayi("HIKAYE_1", S, "İlk bölüm", "Hikâyenin bir bölümünü bitir.", () => Hikaye.TamamSayisi, 1);
+            B("HIKAYE_FINAL", S, "Viktor'u yenmek", "Hikâyenin final bölümünü (Budapeşte) bitir.", () => Hikaye.Veri.final);
         }
     }
 }

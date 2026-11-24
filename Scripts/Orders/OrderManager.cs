@@ -115,7 +115,7 @@ namespace KuryeTycoon
 
         /// <summary>Dükkanın şu anki talep ağırlığı (yoğunluk × saat çarpanı).</summary>
         static float ShopDemand(Shop s) =>
-            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s) * DukkanSadakati.SiparisCarpani(s);
+            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s) * DukkanSadakati.SiparisCarpani(s) * BolgeMudurleri.TalepCarpani(s);
 
         /// <summary>Saat çarpanı; dükkan kapalıysa (ya da kapanışa 15 dk kaldıysa) 0. 24 saat açık yerlerde gece de biraz sipariş.</summary>
         static float CurveNow(Shop s)
@@ -162,7 +162,7 @@ namespace KuryeTycoon
 
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
-                         * Difficulty.OrderRate * Marka.SiparisCarpani * Marka.SehirSiparisCarpani * (1f + GelisimAgaci.Bonus(BonusTip.Siparis)) * (Abonelik.I != null ? Abonelik.I.SiparisCarpani : 1f) * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
+                         * Difficulty.OrderRate * Marka.SiparisCarpani * Marka.SehirSiparisCarpani * Holding.SiparisCarpani * (1f + GelisimAgaci.Bonus(BonusTip.Siparis)) * (Abonelik.I != null ? Abonelik.I.SiparisCarpani : 1f) * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
                          * CrisisManager.DemandFactor * SezonEtkinlikleri.TalepCarpani
                          * (RivalCompany.I != null ? RivalCompany.I.ServiceDemandFactor : 1f);   // hızlı teslimat pazarı büyütür
             if (!CrisisManager.OrdersBlocked) spawnAcc += rate * dm;   // uygulama çöktüyse yeni sipariş gelmez
@@ -990,7 +990,7 @@ namespace KuryeTycoon
             RestoranReklam.SatisKaydet(o);   // reklam bedeli dükkanın satışından
             if (RivalCompany.I != null) RivalCompany.I.OnDelivered(o, late);
             EconomyManager.I.RegisterDelivery(o);
-            MapFx.Delivered(o);
+            MapFx.Delivered(o, late);
             Itibar.Puan(o.rating);
             if (o.marker != null) Destroy(o.marker.gameObject);
             Pending.Remove(o);
@@ -1197,7 +1197,7 @@ namespace KuryeTycoon
             if (KayitSistemi.I != null) KayitSistemi.I.OnDelivered(c, o.rating);   // kurye puanı, yeni kurye bonusu, tavsiye primi
 
             EconomyManager.I.RegisterDelivery(o);
-            MapFx.Delivered(o);   // haritada "+350 Ft" ve teslimat sesi
+            MapFx.Delivered(o, late);   // haritada "+350 Ft" ve teslimat sesi
             Itibar.Puan(o.rating);   // itibar: son 14 günün puan ortalaması
             // Çok kötü puan canını sıkar (iyi puan artık moral eklemez). Eşik 3'ten 2,5'e indi: geç teslim cezası sertleşti, kurye moralini
             // eskisi kadar etkilesin (eskiden 20 dk'dan fazla gecikme, şimdi ~17 dk; yoksa yoğunlukta moral sarmalı başlayabilirdi).

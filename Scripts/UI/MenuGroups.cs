@@ -24,24 +24,24 @@ namespace KuryeTycoon
         static readonly MenuGroupDef[] MenuGroups =
         {
             new MenuGroupDef { label = "Siparişler", title = "Siparişler", icon = Icons.Kind.Orders, tabs = new[] { Tab.Siparisler }, tabLabels = new[] { "Siparişler" } },
-            new MenuGroupDef { label = "Hedefler", title = "Hedefler", icon = Icons.Kind.Flag, tabs = new[] { Tab.Hedefler, Tab.Basarimlar }, tabLabels = new[] { "Haftalık", "Başarımlar" } },
+            new MenuGroupDef { label = "Hedefler", title = "Hedefler", icon = Icons.Kind.Flag, tabs = new[] { Tab.Hedefler, Tab.Hikaye, Tab.Basarimlar }, tabLabels = new[] { "Haftalık", "Hikâye", "Başarımlar" } },
             new MenuGroupDef
             {
                 label = "Ekip", title = "Ekip", icon = Icons.Kind.Couriers,
-                tabs = new[] { Tab.Kuryeler, Tab.IseAlim, Tab.Ekipman, Tab.Destek },
-                tabLabels = new[] { "Kuryeler", "Kayıtlar", "Ekipman", "Destek" }
+                tabs = new[] { Tab.Kuryeler, Tab.IseAlim, Tab.Ekipman, Tab.Destek, Tab.Efsaneler },
+                tabLabels = new[] { "Kuryeler", "Kayıtlar", "Ekipman", "Destek", "Efsaneler" }
             },
             new MenuGroupDef
             {
                 label = "İşletme", title = "İşletme", icon = Icons.Kind.Shops,
-                tabs = new[] { Tab.Dukkanlar, Tab.Market, Tab.Mutfak, Tab.Kampanyalar },
-                tabLabels = new[] { "Dükkanlar", "Market", "Mutfak", "Kampanya" }
+                tabs = new[] { Tab.Dukkanlar, Tab.Bolgeler, Tab.Market, Tab.Mutfak, Tab.Kampanyalar },
+                tabLabels = new[] { "Dükkanlar", "Bölgeler", "Market", "Mutfak", "Kampanya" }
             },
             new MenuGroupDef
             {
                 label = "Şirket", title = "Şirket", icon = Icons.Kind.Finance,
-                tabs = new[] { Tab.Finans, Tab.Gelistirmeler, Tab.ArGe, Tab.Istatistik, Tab.Analitik },
-                tabLabels = new[] { "Finans", "Gelişim", "Ar-Ge", "Grafik", "Analitik" }
+                tabs = new[] { Tab.Finans, Tab.Gelistirmeler, Tab.ArGe, Tab.Holding, Tab.Istatistik, Tab.Analitik },
+                tabLabels = new[] { "Finans", "Gelişim", "Ar-Ge", "Holding", "Grafik", "Analitik" }
             },
             new MenuGroupDef { label = "Ayarlar", title = "Ayarlar", icon = Icons.Kind.Settings, tabs = new[] { Tab.Ayarlar }, tabLabels = new[] { "Ayarlar" } },
         };

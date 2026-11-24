@@ -48,6 +48,7 @@ namespace KuryeTycoon
         public int deliveriesToday;
         public int level = 1;
         public float xp;
+        public int efsane = -1;                // efsane kurye türü (KuryeKariyer.EfsaneLakaplari), −1 sıradan
         public int unavailableDays;
         public long totalEarned;
         public long tipsTotal;             // müşterilerden aldığı bahşişler (tamamen kendisinin)
@@ -247,6 +248,7 @@ namespace KuryeTycoon
             tidiness = c.tidiness;
             pickiness = c.pickiness;
             level = c.level;
+            efsane = c.efsane;
             insured = c.insured;
             savings = c.savings;
             ownedVehicles.Add(c.vehicle);
@@ -1407,12 +1409,13 @@ namespace KuryeTycoon
 
         void AddXp()
         {
-            xp += 1f;
+            xp += KuryeKariyer.TecrubeCarpani(this);
             if (xp >= level * 10f)
             {
                 xp = 0f;
+                int eski = level;
                 level++;
-                EventManager.I.Notify($"{courierName} tecrübe kazandı (tecrübe {level}): artık daha hızlı.");
+                KuryeKariyer.SeviyeAtladi(this, eski);   // haritada altın "★ 5", rütbe değiştiyse bildirim
             }
         }
 

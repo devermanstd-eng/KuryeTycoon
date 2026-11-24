@@ -92,6 +92,10 @@ namespace KuryeTycoon
             Make<SezonEtkinlikleri>("Sezon Etkinlikleri");
             Make<SanalMutfak>("Sanal Mutfak");
             Make<ArGe>("Ar-Ge");
+            Make<Kutlama>("Kutlamalar");
+            Make<BolgeMudurleri>("Bölge Müdürleri");
+            Make<Holding>("Holding");
+            Make<Hikaye>("Hikâye");
             Make<Otomasyon>("Otomasyon");
             Make<DebugReport>("Hata Ayıklama");
             Make<UpgradeManager>("Geliştirmeler");
@@ -205,6 +209,10 @@ namespace KuryeTycoon
                 SezonEtkinlikleri.I.Init();
                 SanalMutfak.I.Init();
                 ArGe.I.Init();
+                Kutlama.I.Init();
+                BolgeMudurleri.I.Init();
+                Holding.I.Init();
+                Hikaye.I.Init();
                 FamilyLoan.I.principal = d.loan != null && d.loan.principal > 0 ? d.loan.principal : familyLoanAmount;
                 FamilyLoan.I.InitRestored(d.loan);
                 SaveSystem.ApplyAfterInit(d);
@@ -288,6 +296,10 @@ namespace KuryeTycoon
             SezonEtkinlikleri.I.Init();
             SanalMutfak.I.Init();
             ArGe.I.Init();
+            Kutlama.I.Init();
+            BolgeMudurleri.I.Init();
+            Holding.I.Init();
+            Hikaye.I.Init();
             long borc = Senaryo.AileBorcu(System.Math.Max(familyLoanTotal, familyLoanAmount));
             if (borc <= 0) FamilyLoan.I.BorcsuzBasla();   // serbest mod
             else

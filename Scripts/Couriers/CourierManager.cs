@@ -22,6 +22,7 @@ namespace KuryeTycoon
         public float tidiness;
         public float pickiness;
         public List<int> ozellikler = new List<int>();   // kalıcı özellikler (KuryeOzellik)
+        public int efsane = -1;        // efsane kurye türü (KuryeKariyer), −1 sıradan
         public int level = 1;
         public bool insured;           // kendi parasıyla sigortalı
         public long savings;           // birikimi
@@ -215,6 +216,7 @@ namespace KuryeTycoon
             if (UpgradeManager.I != null && UpgradeManager.I.AkademiMoralEki > 0f)
                 courier.morale = Mathf.Min(1f, courier.morale + UpgradeManager.I.AkademiMoralEki * 1.5f);
             Couriers.Add(courier);
+            KuryeKariyer.IseAlindi(courier);   // efsaneyse koleksiyona yazılır
             return courier;
         }
 
