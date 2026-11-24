@@ -245,7 +245,7 @@ namespace KuryeTycoon
         static bool fontTried;
 
         /// <summary>
-        /// Arayüz yazı tipi: oyunla gelen Inter (Resources/Fonts, SIL OFL lisanslı; Türkçe ve Macarca harflerin hepsi var),
+        /// Arayüz yazı tipi: oyunla gelen Inter (Resources/Fonts, SIL OFL lisanslı; Türkçe ve Avrupa dillerinin bütün harfleri var),
         /// böylece Mac'te ve Windows'ta aynı görünür. Bulunamazsa sistemin modern yazı tipi (Segoe UI, Helvetica Neue / SF).
         /// </summary>
         public static Font UIFont

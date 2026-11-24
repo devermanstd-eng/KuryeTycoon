@@ -43,7 +43,7 @@ namespace KuryeTycoon
     /// kaydolur ve bir süreçten geçer; her aşamada bir kısmı vazgeçer. Oyuncu kişileri tek tek seçmez, kuralları belirler.
     ///
     ///  Aşamalar: Kayıt formu → Belge yükleme → Kontrol → Ekipman alma → hesap açılır → ilk hafta.
-    ///  Aday türleri: bireysel (egyéni vállalkozó), okul kooperatifi (öğrenci, belgesi hızlı), çalışma izinli (çok çalışır,
+    ///  Aday türleri: bireysel (şahıs şirketi), okul kooperatifi (öğrenci, belgesi hızlı), çalışma izinli (çok çalışır,
     ///   kontrolü uzun), tavsiyeyle gelen (az vazgeçer, tavsiye edene prim), geri dönen eski kurye (kontrolü kısa, tecrübeli).
     ///  Oyuncunun düğmeleri:
     ///   • Kayıt araç türüne göre açık/kapalı: kapalıyken gelenler bekleme listesine yazılır, açınca saatte bir sürece girer.
@@ -111,7 +111,7 @@ namespace KuryeTycoon
                 case KayitTuru.CalismaIzinli: return "Çalışma izinli";
                 case KayitTuru.Tavsiye: return "Tavsiyeyle";
                 case KayitTuru.EskiKurye: return "Geri dönen kurye";
-                default: return "Bireysel (egyéni vállalkozó)";
+                default: return "Bireysel (şahıs şirketi)";
             }
         }
 
@@ -123,7 +123,7 @@ namespace KuryeTycoon
                 case KayitTuru.CalismaIzinli: return "AB dışından, çalışma izniyle: çok çalışır ve az seçicidir, ama izin kontrolü uzun sürer.";
                 case KayitTuru.Tavsiye: return "Bir kuryenin arkadaşı: süreçte daha az vazgeçer. 30 teslimata ulaşınca tavsiye edene prim ödenir.";
                 case KayitTuru.EskiKurye: return "Daha önce kuryelik yapmış: belgesi sistemde, kontrolü yarı sürede biter, tecrübeli başlar.";
-                default: return "Kendi vergi numarasıyla çalışan serbest kurye (egyéni vállalkozó).";
+                default: return "Kendi vergi numarasıyla çalışan serbest kurye (şahıs şirketi).";
             }
         }
 
@@ -133,7 +133,7 @@ namespace KuryeTycoon
         {
             Adaylar.Clear();
             for (int i = 0; i < 4; i++) { acik[i] = true; bekleme[i] = 0; }
-            // Oyunun başı: Turbo Paket'ten eski vardiya arkadaşların seninle gelmek istiyor. Belgeleri hazır, ilk gün
+            // Oyunun başı: TurboDrop'tan eski vardiya arkadaşların seninle gelmek istiyor. Belgeleri hazır, ilk gün
             // hesapları açılır (şirket boş kurye kadrosuyla başlayıp ilk günleri iptallerle geçirmesin). Birkaçı da süreçte.
             for (int i = 0; i < 7; i++)
             {
@@ -330,7 +330,16 @@ namespace KuryeTycoon
                     break;
             }
             c.note = GameData.ApplicationNote(c.occupation, c.level);
+            int efsane = KuryeKariyer.EfsaneZari();   // çok nadir: lakaplı, tek güçlü yetenekli efsane kurye
+            if (efsane >= 0) KuryeKariyer.EfsaneYap(c, efsane);
             return a;
+        }
+
+        /// <summary>Süreçte bu efsaneden bir aday var mı (aynı efsane iki kez gelmesin).</summary>
+        public bool AdayVarMi(int efsane)
+        {
+            foreach (var a in Adaylar) if (a.aday != null && a.aday.efsane == efsane) return true;
+            return false;
         }
 
         void YeniKayit()
@@ -387,6 +396,7 @@ namespace KuryeTycoon
             }
             if (a.tur == KayitTuru.Tavsiye || a.tur == KayitTuru.EskiKurye) p *= 0.5f;
             p *= 1f - 0.15f * yeniBonus;
+            if (a.aday != null && a.aday.efsane >= 0) p *= 0.1f;   // efsane kurye neredeyse hiç vazgeçmez
             return p;
         }
 

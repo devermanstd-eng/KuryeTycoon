@@ -8,7 +8,7 @@ kapsül, top), sıcak renkli, mürekkep dış çizgili ve bütün renkleri tek o
   2. Teslimat araçları: bisiklet ve geç oyun kargo bisikleti (önde yük kasası); tekerler ve pedal ayrı obje (Unity'de döndürülür).
      Ölçü gerçek (metre): Erman'ın VW Polo'su (3,75 m) ile aynı ölçekte.
   3. Şehir donatıları: paket dolabı (şirket renginde yan paneller), iki ağaç (yuvarlak, kavak), sokak lambası (camı ayrı "Isik")
-  4. Budapeşte tarzı binalar (14 m arsaya): bérház (okra, altta dükkânlar), köşe binası (pembe, bakır külahlı kule),
+  4. Başkent tarzı binalar (14 m arsaya): bérház (okra, altta dükkânlar), köşe binası (pembe, bakır külahlı kule),
      dükkân binası (adaçayı, beşik çatı), apartman (sarı, arduvaz mansart çatı). Camlar ayrı "Cam" / "Vitrin" malzemesinde (gece yanar).
 
 Çalıştırma (hepsi aynı çıktıyı verir):
@@ -74,7 +74,7 @@ PALET = [
     ("kabuk", "#7a5238"), ("toprak", "#8a6446"), ("cicek1", "#e2725f"), ("cicek2", "#f2b84b"),
     ("direk", "#3f4e4a"), ("direk_acik", "#5f716b"), ("saksi", "#c8744a"), ("yesil_isik", "#7ccf7a"),
     ("kirmizi", "#d65a46"), ("tahta", "#9a6a44"), ("beyaz", "#f7f1e6"), ("gri", "#8c8680"),
-    # Budapeşte binaları: pastel / toprak cepheler, taş, kiremit, arduvaz, bakır patina
+    # Başkent binaları: pastel / toprak cepheler, taş, kiremit, arduvaz, bakır patina
     ("tas", "#d8ccb2"), ("tas_koyu", "#a8987c"), ("okra", "#d9a55e"), ("okra_acik", "#e6bf80"),
     ("pembe", "#dea294"), ("pembe_acik", "#ecbcae"), ("adacayi", "#9fb48a"), ("sari", "#e9cf86"),
     ("kiremit", "#b85a3c"), ("kiremit_koyu", "#93412e"), ("arduvaz", "#5b6470"), ("bakir", "#6ea592"),
@@ -700,7 +700,7 @@ def kargo_bisikleti():
     return g
 
 
-# ------------------------------------------------------------------ 4. Budapeşte tarzı binalar
+# ------------------------------------------------------------------ 4. Başkent tarzı binalar
 # Arsa 14 m (City3D'de bir kare ≈ 0,97 ölçekle): taban en fazla ~13,6 × 13 m, önü −Y, taban z = 0, arsa levhası yok.
 # Pencere camları "Cam", vitrinler "Vitrin" düz malzemesinde: gündüz cam rengi, gece oyun (GeceIsiklari) yakar.
 
@@ -953,7 +953,7 @@ def bina_dukkan():
 
 
 def bina_apartman():
-    """Beş katlı apartman: açık Budapeşte sarısı, taş rustik zemin kat, Fransız balkonları, arduvaz mansart çatı ve çatı pencereleri."""
+    """Beş katlı apartman: açık Başkent sarısı, taş rustik zemin kat, Fransız balkonları, arduvaz mansart çatı ve çatı pencereleri."""
     g = Govde("Bina_Apartman")
     k = 4.0
     W, D, ZK, KAT, NK = 13.4, 12.4, 4.2, 3.3, 4

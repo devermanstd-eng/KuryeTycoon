@@ -366,7 +366,7 @@ namespace KuryeTycoon
         /// (+ çeyreğin son 10 gününde geçici vergi). Normal yedek 5 günlük gider ve 21 gün içindeki taksiti ayırıyor; 15.11 testinde
         /// 45 hesaplık paket için 3 500 € fazladan bekletiyordu (kasa 32 kuryede günde ~400 € büyüyordu).
         /// Taksit penceresi 7 günden 4 güne indi: bot taksiti vadeden 3 gün önce kasadan öder; 15.11 (a3) testinde 6 gün sonraki
-        /// 1 295 €'luk taksit yüzünden Batı Liman 2–3 gün geç açıldı (32 kuryede 14 gün, hedef 10–13).
+        /// 1 295 €'luk taksit yüzünden West Harbour 2–3 gün geç açıldı (32 kuryede 14 gün, hedef 10–13).
         /// </summary>
         long InceRezerv()
         {

@@ -4,7 +4,7 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// Rakip platformların (Turbo Paket, Panda Futár, Villám Kaja) kuryelerini haritada gösterir. Sadece görseldir: oyun ekonomisi
+    /// Rakip platformların (TurboDrop, Panda Courier, Flash Eats) kuryelerini haritada gösterir. Sadece görseldir: oyun ekonomisi
     /// RivalCompany'de hesaplanır. Kurye sayısı rakiplerin toplam kurye sayısını ve saati (gece az, gündüz çok) izler;
     /// her rakip kurye sayısı oranında görünür ve kendi renginde çizilir.
     /// Her kurye kendi platformunun çalıştığı dükkanlardan birine gider, bekler, şehirde bir binaya teslim eder, tekrarlar.
@@ -13,7 +13,7 @@ namespace KuryeTycoon
     {
         public static RivalFleet I { get; private set; }
 
-        public static readonly Color RivalColor = new Color(0.62f, 0.32f, 0.85f);   // eski: tek rakip rengi (Turbo Paket)
+        public static readonly Color RivalColor = new Color(0.62f, 0.32f, 0.85f);   // eski: tek rakip rengi (TurboDrop)
         public int maxVisible = 30;
 
         public readonly List<RivalCourierAgent> Agents = new List<RivalCourierAgent>();

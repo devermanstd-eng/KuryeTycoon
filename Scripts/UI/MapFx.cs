@@ -23,12 +23,15 @@ namespace KuryeTycoon
 
         public static readonly Color Good = new Color(0.45f, 0.95f, 0.55f);
         public static readonly Color Bad = new Color(1f, 0.42f, 0.38f);
+        /// <summary>Büyük kâr, seri, seviye atlama (Kutlama, KuryeKariyer).</summary>
+        public static readonly Color Altin = new Color(1f, 0.82f, 0.25f);
 
-        public static void Delivered(Order o)
+        public static void Delivered(Order o, float late = 0f)
         {
             if (o == null) return;
             int p = o.Profit;
-            Add(o.customerTile, p >= 0 ? "+" + GameData.Ft(p) : GameData.Ft(p), p >= 0 ? Good : Bad);
+            bool buyuk = Kutlama.Teslim(o, late);   // seri sayacı; ortalamanın 3 katı kâr altın renkte uçar
+            Add(o.customerTile, p >= 0 ? "+" + GameData.Ft(p) : GameData.Ft(p), p < 0 ? Bad : buyuk ? Altin : Good);
             GameSounds.Play(Sfx.Teslimat);
         }
 
@@ -36,7 +39,11 @@ namespace KuryeTycoon
         {
             if (o == null) return;
             Add(o.customerTile, "İptal", Bad);
+            Kutlama.Iptal(o);   // seriyi bozar
         }
+
+        /// <summary>Özel uçan yazı (seri, seviye atlama...).</summary>
+        public static void Ozel(Vector2Int tile, string text, Color color) => Add(tile, text, color);
 
         static void Add(Vector2Int tile, string text, Color color)
         {

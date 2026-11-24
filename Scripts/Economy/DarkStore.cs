@@ -95,7 +95,7 @@ namespace KuryeTycoon
                 isMarket = true,
                 kgMin = 1.5f, kgMax = 16f
             };
-            Menus.Register(StoreName, "Szpar Express", 0.98f);   // zincir marketten biraz ucuz
+            Menus.Register(StoreName, "Sparx Express", 0.98f);   // zincir marketten biraz ucuz
             return def;
         }
 

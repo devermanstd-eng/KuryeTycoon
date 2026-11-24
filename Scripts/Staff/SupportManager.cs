@@ -91,7 +91,7 @@ namespace KuryeTycoon
         static readonly string[] Notes =
         {
             "Daha önce bir çağrı merkezinde çalıştım.",
-            "Üç dil konuşuyorum: Türkçe, Macarca, İngilizce.",
+            "Üç dil konuşuyorum: Türkçe, İngilizce, Almanca.",
             "Sabırlıyımdır, zor müşterilerle iyi anlaşırım.",
             "İlk işim olacak ama çok hızlı öğrenirim.",
             "Eskiden kuryeydim, kuryelerin dilinden anlarım.",

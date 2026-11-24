@@ -79,7 +79,7 @@ namespace KuryeTycoon
         // ------------------------------------------------------------------ sanal mutfak ve Ar-Ge
 
         /// <summary>
-        /// Sanal mutfak: Doğu İlçesi açık, en az 15 kurye ve boş para kurulumun 4 katıysa kurar; markalar popülerse (≥ 0,8) yenisini
+        /// Sanal mutfak: East Side açık, en az 15 kurye ve boş para kurulumun 4 katıysa kurar; markalar popülerse (≥ 0,8) yenisini
         /// açar, menüyü boş paranın 1/5'iyle geliştirir. Ar-Ge: boş para bedelin 4 katıysa en ucuz başlatılabilir projeyi başlatır.
         /// Kurye hesapları doluyken (platform paketine birikim) ikisine de dokunmaz.
         /// </summary>

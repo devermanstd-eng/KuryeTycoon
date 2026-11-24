@@ -28,14 +28,14 @@ namespace KuryeTycoon
             new MenuGroupDef
             {
                 label = "Ekip", title = "Ekip", icon = Icons.Kind.Couriers,
-                tabs = new[] { Tab.Kuryeler, Tab.IseAlim, Tab.Ekipman, Tab.Destek },
-                tabLabels = new[] { "Kuryeler", "Kayıtlar", "Ekipman", "Destek" }
+                tabs = new[] { Tab.Kuryeler, Tab.IseAlim, Tab.Ekipman, Tab.Destek, Tab.Efsaneler },
+                tabLabels = new[] { "Kuryeler", "Kayıtlar", "Ekipman", "Destek", "Efsaneler" }
             },
             new MenuGroupDef
             {
                 label = "İşletme", title = "İşletme", icon = Icons.Kind.Shops,
-                tabs = new[] { Tab.Dukkanlar, Tab.Market, Tab.Mutfak, Tab.Kampanyalar },
-                tabLabels = new[] { "Dükkanlar", "Market", "Mutfak", "Kampanya" }
+                tabs = new[] { Tab.Dukkanlar, Tab.Bolgeler, Tab.Market, Tab.Mutfak, Tab.Kampanyalar },
+                tabLabels = new[] { "Dükkanlar", "Bölgeler", "Market", "Mutfak", "Kampanya" }
             },
             new MenuGroupDef
             {

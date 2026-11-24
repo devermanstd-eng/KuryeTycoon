@@ -5,7 +5,7 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// Dükkan menüleri ve market ürünleri (~1 300 ürün; fiyatlar forint, 2026 Macaristan fiyatlarına yakın).
+    /// Dükkan menüleri ve market ürünleri (~1 300 ürün; fiyatlar oyunun iç birimiyle, 2026 Avrupa fiyatlarına yakın).
     /// Her satır "Ürün|fiyat|kategori":
     ///   Restoran / kafe: M menü (ana yemek + yan + içecek), A ana yemek, Y yan ürün / fırın, I içecek, K kahve,
     ///                    C çorba, T tatlı, E ekstra / sos
@@ -29,7 +29,7 @@ namespace KuryeTycoon
 
         static readonly string[] BurgerQueen =
         {
-            "Whooper Menü|3690|M", "Dupla Whooper Menü|4490|M", "Sajtos Whooper Menü|3890|M", "Crispy Chicken Menü|3490|M",
+            "Whooper Menü|3690|M", "Dupla Whooper Menü|4490|M", "Peynirli Whooper Menü|3890|M", "Crispy Chicken Menü|3490|M",
             "Long Chicken Menü|3390|M", "Big King Menü|3590|M", "Steakhouse Burger Menü|4290|M", "Veggie Whooper Menü|3590|M",
             "Cheeseburger Menü|2590|M", "Nuggets (9) Menü|3190|M", "Whooper Junior Menü|2790|M",
             "Whooper|2390|A", "Dupla Whooper|3190|A", "Whooper Junior|1590|A", "Cheeseburger|890|A", "Dupla Cheeseburger|1390|A",
@@ -123,17 +123,17 @@ namespace KuryeTycoon
             "Karamel sos|250|E", "Laktozsuz süt|290|E", "Hindistan cevizi sütü|290|E",
         };
 
-        static readonly string[] SzparExpress =
+        static readonly string[] SparxExpress =
         {
             // Fırın
-            "Beyaz ekmek 1 kg|690|F", "Tam buğday ekmeği 500 g|890|F", "Kifli (adet)|69|F", "Peynirli poğaça|249|F", "Kakaolu çörek|349|F",
-            "Tost ekmeği|790|F", "Kaiser zsemle (adet)|89|F",
+            "Beyaz ekmek 1 kg|690|F", "Tam buğday ekmeği 500 g|890|F", "Mini kruvasan (adet)|69|F", "Peynirli poğaça|249|F", "Kakaolu çörek|349|F",
+            "Tost ekmeği|790|F", "Kaiser ekmeği (adet)|89|F",
             // Süt ürünleri
             "Süt 1 L (%2,8)|399|L", "Laktozsuz süt 1 L|549|L", "Kefir 0,5 L|349|L", "Meyveli yoğurt 150 g|199|N", "Sade yoğurt 400 g|449|N",
             "Tereyağı 200 g|999|N", "Trappista peyniri 300 g|1490|N", "Krem peynir 200 g|699|N", "Ekşi krema 330 g|549|L",
-            "Túró Rudi|229|N", "Yumurta (10'lu)|1290|F", "Mozzarella 125 g|599|N",
+            "Çikolatalı lor bar|229|N", "Yumurta (10'lu)|1290|F", "Mozzarella 125 g|599|N",
             // Şarküteri ve et
-            "Párizsi 200 g|699|N", "Szalámi 100 g|899|N", "Sosis 400 g|1290|N", "Tavuk göğsü 500 g|1890|N", "Kıyma 500 g|1990|N",
+            "Dana jambon 200 g|699|N", "Salam 100 g|899|N", "Sosis 400 g|1290|N", "Tavuk göğsü 500 g|1890|N", "Kıyma 500 g|1990|N",
             "Hindi füme 100 g|799|N",
             // Meyve sebze
             "Elma 1 kg|599|N", "Muz 1 kg|699|N", "Portakal 1 kg|799|N", "Domates 1 kg|1290|F", "Salatalık|499|N", "Patates 2 kg|899|N",
@@ -154,13 +154,13 @@ namespace KuryeTycoon
             // Dondurulmuş
             "Dondurma 1 L|1990|N", "Dondurulmuş pizza|1490|N", "Dondurulmuş patates 1 kg|1290|N",
             // Ek çeşitler
-            "Çavdar ekmeği|790|F", "Baget|399|F", "Kakaolu kalács|899|F", "Haşhaşlı rulo (bejgli dilim)|499|F",
+            "Çavdar ekmeği|790|F", "Baget|399|F", "Kakaolu örgü çörek|899|F", "Haşhaşlı rulo dilim|499|F",
             "Hamburger ekmeği (6'lı)|899|F", "Lavaş (6'lı)|799|N", "Tortilla (6'lı)|899|N", "Süt 1 L (%1,5)|379|L",
             "Süt 1 L (%3,5)|429|L", "Kakaolu süt 0,5 L|399|L", "Krema (pişirme) 200 ml|449|L", "Krem şanti 200 ml|549|L",
             "Labne 200 g|699|N", "Gouda dilim 150 g|899|N", "Parmesan 100 g|1490|N", "Feta peyniri 200 g|1190|N",
-            "Lor peyniri (túró) 250 g|699|N", "Puding (çikolatalı)|299|N", "Sütlaç (kap)|349|N", "Margarin 250 g|599|N",
+            "Lor peyniri 250 g|699|N", "Puding (çikolatalı)|299|N", "Sütlaç (kap)|349|N", "Margarin 250 g|599|N",
             "Jambon dilim 100 g|799|N", "Pastırma 100 g|1590|N", "Sucuk 200 g|1290|N", "Kabanos 200 g|999|N",
-            "Pick szalámi 100 g|1290|N", "Kolbász 300 g|1490|N", "Hindi göğsü 500 g|2290|N", "Bütün tavuk 1,5 kg|2990|N",
+            "Dilim salam 100 g|1290|N", "Sucuk 300 g|1490|N", "Hindi göğsü 500 g|2290|N", "Bütün tavuk 1,5 kg|2990|N",
             "Domuz pirzola 500 g|2190|N", "Somon fileto 250 g|2990|N", "Dondurulmuş karides 300 g|2490|N", "Balık kroket|1390|N",
             "Armut 1 kg|899|N", "Kiraz 500 g|1990|F", "Çilek 500 g|1490|F", "Kivi (6'lı)|899|N",
             "Mandalina 1 kg|799|N", "Avokado|599|N", "Ananas|1290|N", "Karpuz (dilim)|899|N",
@@ -170,10 +170,10 @@ namespace KuryeTycoon
             "Mercimek 1 kg|899|N", "Nohut konservesi|499|N", "Fasulye konservesi|499|N", "Spagetti 500 g|499|N",
             "Penne 500 g|499|N", "Erişte 500 g|699|N", "Kuskus 500 g|799|N", "Ketçap 500 g|699|N",
             "Mayonez 400 g|899|N", "Hardal|499|N", "Soya sosu|799|L", "Sirke 1 L|399|L",
-            "Zeytinyağı 0,5 L|2490|L", "Tuz 1 kg|199|N", "Karabiber|599|N", "Toz biber (pirospaprika)|699|N",
+            "Zeytinyağı 0,5 L|2490|L", "Tuz 1 kg|199|N", "Karabiber|599|N", "Toz biber|699|N",
             "Kekik|399|N", "Kakao 200 g|999|N", "Hazır çorba|299|N", "Hazır noodle|299|N",
             "Kurabiye karışımı|899|N", "Kabartma tozu|99|N", "Vanilya şekeri|99|N", "Pirinç unu 500 g|599|N",
-            "Zeytin 400 g|1290|F", "Turşu kavanoz|899|F", "Közlenmiş biber kavanoz|1190|F", "Lecsó konservesi|899|F",
+            "Zeytin 400 g|1290|F", "Turşu kavanoz|899|F", "Közlenmiş biber kavanoz|1190|F", "Menemen konservesi|899|F",
             "Tahin 300 g|1290|F", "Pekmez|1190|F", "Helva 300 g|1390|N", "Çikolatalı gofret (paket)|699|N",
             "Jelibon|499|N", "Patlamış mısır|599|N", "Kuru üzüm 200 g|699|N", "Fındık 150 g|1490|N",
             "Badem 150 g|1590|N", "Çekirdek 200 g|599|N", "Pirinç patlağı|399|N", "Mısır cipsi (tortilla)|899|N",
@@ -183,7 +183,7 @@ namespace KuryeTycoon
             "Fanta 1,75 L|899|L", "Ice tea şeftali 1,5 L|599|L", "Ayran 1 L|599|L", "Kefir 1 L|599|L",
             "Soğuk kahve kutu|499|L", "Spor içeceği 0,5 L|499|L", "Bira 0,5 L (şişe)|499|F", "Alkolsüz bira 0,5 L|449|L",
             "Radler 0,5 L|449|L", "Beyaz şarap 0,75 L|2290|F", "Rosé şarap 0,75 L|2390|F", "Köpüklü şarap|2990|F",
-            "Pálinka 0,5 L|4490|F", "Fröccs hazır (kutu)|499|L", "Diş fırçası|699|N", "Deodorant|1290|N",
+            "Meyve brendisi 0,5 L|4490|F", "Şarap spritzer (kutu)|499|L", "Diş fırçası|699|N", "Deodorant|1290|N",
             "Duş jeli|999|L", "Tıraş bıçağı (4'lü)|1990|N", "Pamuk|399|N", "Kulak çubuğu|399|N",
             "Hijyenik ped|999|N", "El kremi|899|N", "Güneş kremi|2990|L", "Yüzey temizleyici|899|L",
             "Çamaşır suyu|599|L", "Cam sil|799|L", "Sünger (5'li)|499|N", "Alüminyum folyo|899|N",
@@ -195,7 +195,7 @@ namespace KuryeTycoon
 
         static readonly string[] Market24Extras =
         {
-            "Sigara kağıdı|349|N", "Çakmak|399|N", "Bira 0,5 L (şişe)|549|F", "Pálinka 0,5 L|4990|F", "Vodka 0,5 L|3990|F", "Unicum 0,5 L|5490|F",
+            "Sigara kağıdı|349|N", "Çakmak|399|N", "Bira 0,5 L (şişe)|549|F", "Meyve brendisi 0,5 L|4990|F", "Vodka 0,5 L|3990|F", "Bitkisel likör 0,5 L|5490|F",
             "Mikrodalga sandviç|1290|N", "Hazır noodle|599|N", "Prezervatif (3'lü)|1990|N", "Ağrı kesici|990|N", "Telefon şarj kablosu|2990|N",
             "Buz torbası|699|N", "Mangal kömürü|1990|N",
             // Ek çeşitler
@@ -207,7 +207,7 @@ namespace KuryeTycoon
             "Nane şekeri|349|N",
         };
 
-        static readonly string[] InterSzparExtras =
+        static readonly string[] InterSparxExtras =
         {
             "Su 6×1,5 L (koli)|1090|L", "Bebek bezi (paket)|5490|N", "Bebek maması|2490|N", "Çamaşır deterjanı 3 L|5990|L", "Yumuşatıcı 2 L|2490|L",
             "Kedi maması 2 kg|3990|N", "Köpek maması 4 kg|6990|N", "Kedi kumu 10 L|2990|N", "Tavuk butu 1 kg|1990|N", "Somon fileto 400 g|4490|N",
@@ -352,10 +352,10 @@ namespace KuryeTycoon
             "Fish & chips|3290|A", "Büyük fish & chips|4290|A", "Kızarmış kalamar|2790|A", "Karides tava|3490|A", "Izgara somon|4490|A",
             "Izgara levrek|4290|A", "Balık burger|2290|A", "Balık dürüm|2190|A", "Midye tava|2490|A", "Fish taco (2)|2490|A",
             "Ton balıklı salata|2290|A", "Izgara alabalık|3690|A",
-            "Halászlé (balık çorbası)|2590|C", "Deniz ürünleri çorbası|1890|C",
+            "Acılı balık çorbası|2590|C", "Deniz ürünleri çorbası|1890|C",
             "Patates|890|Y", "Tatlı patates kızartması|1090|Y", "Coleslaw|690|Y", "Pilav|790|Y", "Yeşil salata|990|Y", "Soğan halkası|890|Y",
             "Ev yapımı limonata|890|I", "Kola 0,5 L|690|I", "Su 0,5 L|450|I", "Bira 0,5 L|890|I", "Beyaz şarap (kadeh)|1290|I",
-            "Limonlu cheesecake|1390|T", "Dondurma (2 top)|990|T", "Elmalı rétes|990|T",
+            "Limonlu cheesecake|1390|T", "Dondurma (2 top)|990|T", "Elmalı strudel|990|T",
             "Tartar sos|290|E", "Ekstra limon|100|E", "Sarımsaklı mayonez|290|E",
             // Ek çeşitler
             "Deniz ürünleri tabağı (2 kişilik)|9990|M", "Aile fish & chips kovası|11990|M", "Çocuk balık menüsü|2490|M", "Izgara çipura|4290|A",
@@ -365,32 +365,32 @@ namespace KuryeTycoon
             "Levrek buğulama|4490|A", "Fish curry|3490|A", "Ton balığı steak|5490|A", "Midye çorbası|1890|C",
             "Karides çorbası|1990|C", "Bouillabaisse|2890|C", "Patates püresi|790|Y", "Haşlanmış patates|690|Y",
             "Izgara sebze|1190|Y", "Bezelye püresi (mushy peas)|690|Y", "Roka salatası|1090|Y", "Akdeniz salatası|1290|Y",
-            "Sarımsaklı ekmek|790|Y", "Kalamar halkası (yan)|1390|Y", "Fröccs (şarap + soda)|990|I", "Rakı (tek)|1690|I",
+            "Sarımsaklı ekmek|790|Y", "Kalamar halkası (yan)|1390|Y", "Şarap spritzer (şarap + soda)|990|I", "Rakı (tek)|1690|I",
             "Elma suyu|590|I", "Ice tea 0,5 L|690|I", "Soda|390|I", "Alkolsüz bira|790|I",
-            "Rosé şarap (kadeh)|1290|I", "Çikolatalı sufle|1390|T", "Somlói galuska|1290|T", "Tiramisu|1290|T",
+            "Rosé şarap (kadeh)|1290|I", "Çikolatalı sufle|1390|T", "Kat kat pandispanya|1290|T", "Tiramisu|1290|T",
             "Meyve tabağı|1490|T", "Remoulade sos|290|E", "Acı sos|190|E", "Ekstra patates|590|E",
             "Limonlu mayonez|290|E",
         };
 
         static readonly string[] OtogarBufe =
         {
-            "Lángos (sade)|990|A", "Lángos (ekşi krema, peynir)|1490|A", "Lángos (sarımsaklı)|1190|A", "Hot dog|990|A", "Büyük hot dog|1390|A",
+            "Pişi (sade)|990|A", "Pişi (kaymak, peynir)|1490|A", "Pişi (sarımsaklı)|1190|A", "Hot dog|990|A", "Büyük hot dog|1390|A",
             "Kaşarlı tost|890|A", "Karışık tost|1090|A", "Hamburger|1490|A", "Jambonlu sandviç|1190|A", "Gyros pita|1890|A", "Pizza dilim|790|A",
-            "Kroket (6)|990|Y", "Patates|690|Y", "Pogácsa (3'lü)|590|Y", "Simit|490|Y", "Peynirli poğaça|290|Y",
+            "Kroket (6)|990|Y", "Patates|690|Y", "Mini poğaça (3'lü)|590|Y", "Simit|490|Y", "Peynirli poğaça|290|Y",
             "Çay|290|I", "Kahve|390|K", "Kola 0,5 L|590|I", "Su 0,5 L|290|I", "Ayran|390|I", "Enerji içeceği|590|I", "Sıcak çikolata|490|K",
-            "Kakaolu çörek|390|T", "Elmalı rétes|590|T", "Gofret|290|T", "Túrós batyu|490|T",
+            "Kakaolu çörek|390|T", "Elmalı strudel|590|T", "Gofret|290|T", "Lorlu börek|490|T",
             "Ketçap|100|E", "Hardal|100|E",
             // Ek çeşitler
-            "Lángos (peynirli)|1290|A", "Lángos (jambonlu)|1590|A", "Lángos (Nutella)|1290|A", "Sosisli sandviç|990|A",
+            "Pişi (peynirli)|1290|A", "Pişi (jambonlu)|1590|A", "Pişi (Nutella)|1290|A", "Sosisli sandviç|990|A",
             "Kızarmış tavuk sandviç|1490|A", "Börek (peynirli)|790|A", "Börek (patatesli)|790|A", "Kumru|1490|A",
             "Islak burger|990|A", "Kaşarlı simit|890|A", "Gözleme|1290|A", "Pide dilim|890|A",
-            "Falafel sandviç|1290|A", "Zsíros kenyér|590|A", "Vadász sandviç|1190|A", "Patates (büyük)|890|Y",
+            "Falafel sandviç|1290|A", "Tereyağlı ekmek|590|A", "Avcı sandviç|1190|A", "Patates (büyük)|890|Y",
             "Soğan halkası|790|Y", "Mısır (bardak)|590|Y", "Haşlanmış yumurta (2)|390|Y", "Turşu (bardak)|390|Y",
             "Türk kahvesi|490|K", "Cappuccino|590|K", "Latte|690|K", "Bitki çayı|290|I",
             "Meyve suyu 0,33 L|390|I", "Ice tea 0,5 L|490|I", "Gazoz|490|I", "Soda|290|I",
             "Boza|490|I", "Salep|590|K", "Kakaolu süt|390|I", "Kek dilimi|390|T",
             "Dondurma (kap)|490|T", "Krep (çikolatalı)|990|T", "Waffle|1290|T", "Lokma (6)|690|T",
-            "Puding|390|T", "Fánk (krapfen)|390|T", "Mayonez|100|E", "Acı sos|100|E",
+            "Puding|390|T", "Dolgulu donut|390|T", "Mayonez|100|E", "Acı sos|100|E",
             "Ekstra peynir|250|E",
         };
 
@@ -411,17 +411,17 @@ namespace KuryeTycoon
             "Bruschetta tabağı|2490|A", "Kuzu kafes|9990|A", "Dana yanağı (ağır pişmiş)|7490|A", "Kaz budu confit|6990|A",
             "Mantı (trüflü)|4990|A", "Ravioli (ıstakozlu)|7990|A", "Gnocchi (adaçayı tereyağlı)|4490|A", "Risotto (deniz ürünlü)|6990|A",
             "Paccheri (dana ragù)|4990|A", "Mezgit fileto|5490|A", "Ton balığı tataki|5990|A", "Tavuk supreme|4990|A",
-            "Vegan Wellington|5490|A", "Dana Wellington (2 kişilik)|17990|A", "Tomahawk steak (2 kişilik)|24990|A", "Gulyás (gurme)|2690|C",
+            "Vegan Wellington|5490|A", "Dana Wellington (2 kişilik)|17990|A", "Tomahawk steak (2 kişilik)|24990|A", "Paprikalı dana yahni (gurme)|2690|C",
             "Soğan çorbası (gratin)|2290|C", "Gazpacho|1990|C", "Kremalı ıspanak|1490|Y", "Trüflü makarna peyniri|2290|Y",
             "Kuşkonmaz (tereyağlı)|2490|Y", "Brüksel lahanası (pastırmalı)|1690|Y", "Polenta kızartması|1490|Y", "Taze ekmek (ekşi maya)|1190|Y",
-            "Şampanya (şişe)|19990|I", "Tokaji Aszú (şişe)|12990|I", "Egri Bikavér (şişe)|7990|I", "Villányi kırmızı (şişe)|8990|I",
-            "Badacsonyi beyaz (şişe)|6990|I", "Kokteyl (Negroni)|2990|I", "Mocktail|1690|I", "Cappuccino|990|K",
-            "Tarte tatin|2290|T", "Dobos pasta (gurme)|2490|T", "Eszterházy pasta|2490|T", "Sorbet tabağı|1790|T",
+            "Şampanya (şişe)|19990|I", "Tatlı beyaz şarap (şişe)|12990|I", "Kupaj kırmızı şarap (şişe)|7990|I", "Bağ evi kırmızı (şişe)|8990|I",
+            "Göl kıyısı beyaz (şişe)|6990|I", "Kokteyl (Negroni)|2990|I", "Mocktail|1690|I", "Cappuccino|990|K",
+            "Tarte tatin|2290|T", "Karamelli katlı pasta (gurme)|2490|T", "Cevizli katlı pasta|2490|T", "Sorbet tabağı|1790|T",
             "Çikolata tabağı (el yapımı)|2990|T", "Profiterol (gurme)|2290|T", "Mille-feuille|2390|T", "Havyar (30 g)|9990|E",
             "Ekstra trüf rendesi|1990|E", "Peynir seçkisi ekstra|1490|E",
         };
 
-        static readonly string[] BioSzpar =
+        static readonly string[] BioSparx =
         {
             "Organik süt 1 L|690|L", "Organik yumurta (10'lu)|1690|F", "Ekşi mayalı ekmek|1490|F", "Çavdar ekmeği|1290|F", "Organik tereyağı 200 g|1590|N",
             "Keçi peyniri 150 g|1890|N", "Organik yoğurt 400 g|799|N", "Badem sütü 1 L|1190|L", "Yulaf sütü 1 L|990|L", "Tofu 200 g|899|N",
@@ -501,26 +501,26 @@ namespace KuryeTycoon
             menus = new Dictionary<string, Item[]>
             {
                 { "Burger Queen", Parse(BurgerQueen) },
-                { "Döner Kral", Parse(DonerKral) },
+                { "Kebab King", Parse(DonerKral) },
                 { "Starbocks", Parse(Starbocks) },
-                { "Szpar Express", Parse(SzparExpress) },
-                { "Market 24", Parse(Concat(SzparExpress, Market24Extras), 1.12f) },     // gece açık market: biraz pahalı
+                { "Sparx Express", Parse(SparxExpress) },
+                { "Market 24", Parse(Concat(SparxExpress, Market24Extras), 1.12f) },     // gece açık market: biraz pahalı
                 { "McDanold's", Parse(McDanolds) },
                 { "Pizza Hat", Parse(PizzaRows()) },
-                { "InterSzpar", Parse(Concat(SzparExpress, InterSzparExtras), 0.93f) },  // hipermarket: biraz ucuz, toplu ürün
+                { "InterSparx", Parse(Concat(SparxExpress, InterSparxExtras), 0.93f) },  // hipermarket: biraz ucuz, toplu ürün
                 { "KFG", Parse(KFG) },
                 { "Sushi Samurai", Parse(SushiSamurai) },
                 { "Fish & Ships", Parse(FishAndShips) },
-                { "Otogar Büfé", Parse(OtogarBufe) },
+                { "Station Snack Bar", Parse(OtogarBufe) },
                 { "Villa Gourmet", Parse(VillaGourmet) },
-                { "BioSzpar", Parse(BioSzpar) },
+                { "BioSparx", Parse(BioSparx) },
             };
             // 24 saat açık yerler: gece fiyatı biraz yüksek
-            Register("Non-Stop Gyros", "Döner Kral", 1.08f);
-            menus["Szent István Patika"] = Parse(Patika);
-            Register("Belvárosi Patika", "Szent István Patika", 1.03f);
-            Register("Kikötő Ügyeletes Patika", "Szent István Patika", 1.08f);   // nöbetçi eczane: gece de açık
-            foreach (var b in new[] { "ABC Non-Stop", "Sarok Kisbolt", "Éjjel-Nappali", "Mini ABC", "Kikötő Non-Stop", "Falu ABC" })
+            Register("Non-Stop Gyros", "Kebab King", 1.08f);
+            menus["Central Pharmacy"] = Parse(Patika);
+            Register("High Street Pharmacy", "Central Pharmacy", 1.03f);
+            Register("Harbour Night Pharmacy", "Central Pharmacy", 1.08f);   // nöbetçi eczane: gece de açık
+            foreach (var b in new[] { "24/7 Corner Store", "Corner Shop", "Day & Night Market", "Mini Mart", "Harbour 24", "Village Store" })
                 Register(b, "Market 24", 1.02f);
         }
 

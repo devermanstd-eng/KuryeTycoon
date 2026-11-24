@@ -12,9 +12,10 @@ namespace KuryeTycoon
     /// </summary>
     public partial class GameUI : MonoBehaviour
     {
-        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler, Mesajlar, Market, Istatistik, Analitik, Basarimlar, Mutfak, ArGe }
+        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler, Mesajlar, Market, Istatistik, Analitik, Basarimlar, Mutfak, ArGe, Bolgeler, Efsaneler }
         static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "Kayıtlar", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar", "Haftalık Hedefler",
-                                                  "Müşteri Yorumları", "Kendi Marketin", "İstatistikler", "Analitik", "Başarımlar", "Sanal Mutfak", "Ar-Ge" };
+                                                  "Müşteri Yorumları", "Kendi Marketin", "İstatistikler", "Analitik", "Başarımlar", "Sanal Mutfak", "Ar-Ge",
+                                                  "Bölge Müdürleri", "Efsane Kuryeler" };
 
         public float panelWidth = 560f;     // açılan pencerenin genişliği (kimlik kartları ve kurye tablosu sığsın)
         const float TopBar = 60f;
@@ -36,7 +37,7 @@ namespace KuryeTycoon
         System.Action deferred; // listeleri değiştiren işlemler bir sonraki Update'te yapılır
 
         // Kurulum ekranı
-        string companyName = "Hızlı Kurye";
+        string companyName = "Swift Courier";
         Color primary, secondary;
         int editingColor;
 
@@ -122,7 +123,9 @@ namespace KuryeTycoon
             // IMGUI'de yalnızca haritanın üstündekiler kaldı (etiketler, uçan yazılar, seçili bina işareti, lejant, şehir olayı,
             // "?" balonu); bütün arayüz UI Toolkit'te. Harita üstü çizimler harita alanına kırpılır: UI Toolkit'in altına taşmasın.
             GUI.enabled = modalFree;
-            var haritaAlani = new Rect(MapLeftGui, TopBar, Mathf.Max(0f, sw - MapLeftGui), Mathf.Max(0f, sh - TopBar));
+            // Pencere açıkken harita sağa kaymasa da (Ayarlar > pencere haritayı kapatmasın: kapalı) etiketler pencerenin üstüne çıkmasın
+            float haritaSol = Mathf.Max(MapLeftGui, panelOpen ? WindowRect(sh).xMax : 0f);
+            var haritaAlani = new Rect(haritaSol, TopBar, Mathf.Max(0f, sw - haritaSol), Mathf.Max(0f, sh - TopBar));
             GUI.BeginClip(haritaAlani, -haritaAlani.position, Vector2.zero, false);
             if (!Ciz2D.UitkCiziyor && Event.current.type == EventType.Repaint) Ciz2D.Isi.Oynat();   // harita katmanı: normalde UI Toolkit'te, arayüzün altında
             DrawWorldLabels();

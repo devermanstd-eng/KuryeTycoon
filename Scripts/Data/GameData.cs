@@ -63,37 +63,37 @@ namespace KuryeTycoon
 
         public static readonly ShopDef[] Shops =
         {
-            // Bölge 1 — Merkez Mahalle
+            // Bölge 1 — Downtown
             new ShopDef { name = "Burger Queen",  color = new Color(0.95f, 0.45f, 0.15f), prepMinutes = 8,  basketMin = 2500, basketMax = 6000,  commission = 0.22f, weight = 1.2f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.5f, kgMax = 2.5f },
-            new ShopDef { name = "Döner Kral",    color = new Color(0.80f, 0.20f, 0.20f), prepMinutes = 6,  basketMin = 1800, basketMax = 4500,  commission = 0.25f, weight = 1.0f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.4f, kgMax = 2f },
+            new ShopDef { name = "Kebab King",    color = new Color(0.80f, 0.20f, 0.20f), prepMinutes = 6,  basketMin = 1800, basketMax = 4500,  commission = 0.25f, weight = 1.0f, contractCost = 0,      unlockLevel = 1, hotFood = true, kgMin = 0.4f, kgMax = 2f },
             new ShopDef { name = "Starbocks",     color = new Color(0.10f, 0.55f, 0.35f), prepMinutes = 5,  basketMin = 1500, basketMax = 4000,  commission = 0.20f, weight = 0.8f, contractCost = 20000,  unlockLevel = 1, hotFood = false, kgMin = 0.3f, kgMax = 1.5f },
-            new ShopDef { name = "Szpar Express", color = new Color(0.15f, 0.62f, 0.30f), prepMinutes = 10, basketMin = 3000, basketMax = 15000, commission = 0.15f, weight = 0.7f, contractCost = 30000,  unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 2f, kgMax = 18f },
+            new ShopDef { name = "Sparx Express", color = new Color(0.15f, 0.62f, 0.30f), prepMinutes = 10, basketMin = 3000, basketMax = 15000, commission = 0.15f, weight = 0.7f, contractCost = 30000,  unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 2f, kgMax = 18f },
             new ShopDef { name = "Market 24",     color = new Color(0.25f, 0.45f, 0.90f), prepMinutes = 5,  basketMin = 3000, basketMax = 12000, commission = 0.15f, weight = 0.6f, contractCost = 25000,  unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 1f, kgMax = 12f },
-            // Bölge 2 — Doğu İlçesi
+            // Bölge 2 — East Side
             new ShopDef { name = "McDanold's",    color = new Color(0.95f, 0.80f, 0.10f), prepMinutes = 7,  basketMin = 2500, basketMax = 6500,  commission = 0.20f, weight = 1.4f, contractCost = 60000,  unlockLevel = 2, hotFood = true, kgMin = 0.5f, kgMax = 2.5f },
             new ShopDef { name = "Pizza Hat",     color = new Color(0.85f, 0.10f, 0.35f), prepMinutes = 18, basketMin = 3500, basketMax = 9000,  commission = 0.22f, weight = 1.0f, contractCost = 50000,  unlockLevel = 2, hotFood = true, kgMin = 1f, kgMax = 4f },
-            new ShopDef { name = "InterSzpar",    color = new Color(0.85f, 0.12f, 0.18f), prepMinutes = 20, basketMin = 8000, basketMax = 45000, commission = 0.12f, weight = 0.8f, contractCost = 70000,  unlockLevel = 2, hotFood = false, isMarket = true, kgMin = 6f, kgMax = 40f },
-            // Bölge 3 — Sanayi & Kampüs
+            new ShopDef { name = "InterSparx",    color = new Color(0.85f, 0.12f, 0.18f), prepMinutes = 20, basketMin = 8000, basketMax = 45000, commission = 0.12f, weight = 0.8f, contractCost = 70000,  unlockLevel = 2, hotFood = false, isMarket = true, kgMin = 6f, kgMax = 40f },
+            // Bölge 3 — Industry & Campus
             new ShopDef { name = "KFG",           color = new Color(0.70f, 0.15f, 0.10f), prepMinutes = 10, basketMin = 3000, basketMax = 7500,  commission = 0.22f, weight = 1.1f, contractCost = 80000,  unlockLevel = 3, hotFood = true, kgMin = 0.7f, kgMax = 3f },
             new ShopDef { name = "Sushi Samurai", color = new Color(0.95f, 0.95f, 0.95f), prepMinutes = 20, basketMin = 5000, basketMax = 15000, commission = 0.25f, weight = 0.7f, contractCost = 100000, unlockLevel = 3, hotFood = false, kgMin = 0.5f, kgMax = 2.5f },
-            // Bölge 4 — Batı Liman
+            // Bölge 4 — West Harbour
             new ShopDef { name = "Fish & Ships",  color = new Color(0.20f, 0.55f, 0.75f), prepMinutes = 15, basketMin = 3500, basketMax = 9000,  commission = 0.22f, weight = 0.9f, contractCost = 120000, unlockLevel = 4, hotFood = true, kgMin = 0.6f, kgMax = 3f },
-            new ShopDef { name = "Otogar Büfé",   color = new Color(0.90f, 0.62f, 0.15f), prepMinutes = 5,  basketMin = 1500, basketMax = 4000,  commission = 0.25f, weight = 1.2f, contractCost = 90000,  unlockLevel = 4, hotFood = true, kgMin = 0.3f, kgMax = 1.5f },
-            // Bölge 5 — Yeşil Tepe
+            new ShopDef { name = "Station Snack Bar",   color = new Color(0.90f, 0.62f, 0.15f), prepMinutes = 5,  basketMin = 1500, basketMax = 4000,  commission = 0.25f, weight = 1.2f, contractCost = 90000,  unlockLevel = 4, hotFood = true, kgMin = 0.3f, kgMax = 1.5f },
+            // Bölge 5 — Green Hill
             new ShopDef { name = "Villa Gourmet", color = new Color(0.55f, 0.25f, 0.45f), prepMinutes = 25, basketMin = 6000, basketMax = 20000, commission = 0.25f, weight = 0.6f, contractCost = 160000, unlockLevel = 5, hotFood = true, kgMin = 0.8f, kgMax = 4f },
-            new ShopDef { name = "BioSzpar",      color = new Color(0.45f, 0.70f, 0.25f), prepMinutes = 12, basketMin = 4000, basketMax = 20000, commission = 0.14f, weight = 0.6f, contractCost = 140000, unlockLevel = 5, hotFood = false, isMarket = true, kgMin = 2f, kgMax = 20f },
+            new ShopDef { name = "BioSparx",      color = new Color(0.45f, 0.70f, 0.25f), prepMinutes = 12, basketMin = 4000, basketMax = 20000, commission = 0.14f, weight = 0.6f, contractCost = 140000, unlockLevel = 5, hotFood = false, isMarket = true, kgMin = 2f, kgMax = 20f },
             // 24 saat açık yerler (gece de sipariş gelir). Listenin sonuna eklendi: eski kayıtlarda diğer dükkanların yeri değişmesin.
             new ShopDef { name = "Non-Stop Gyros",  color = new Color(0.90f, 0.35f, 0.25f), prepMinutes = 6, basketMin = 1800, basketMax = 4500,  commission = 0.24f, weight = 0.7f,  contractCost = 35000, unlockLevel = 1, hotFood = true, kgMin = 0.4f, kgMax = 2f },
-            new ShopDef { name = "ABC Non-Stop",    color = new Color(0.30f, 0.55f, 0.85f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 15000, unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
-            new ShopDef { name = "Sarok Kisbolt",   color = new Color(0.55f, 0.45f, 0.80f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 15000, unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
-            new ShopDef { name = "Éjjel-Nappali",   color = new Color(0.25f, 0.65f, 0.70f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 25000, unlockLevel = 2, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
-            new ShopDef { name = "Mini ABC",        color = new Color(0.65f, 0.55f, 0.30f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 30000, unlockLevel = 3, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
-            new ShopDef { name = "Kikötő Non-Stop", color = new Color(0.20f, 0.45f, 0.65f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 35000, unlockLevel = 4, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
-            new ShopDef { name = "Falu ABC",        color = new Color(0.50f, 0.65f, 0.35f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 40000, unlockLevel = 5, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
+            new ShopDef { name = "24/7 Corner Store",    color = new Color(0.30f, 0.55f, 0.85f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 15000, unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
+            new ShopDef { name = "Corner Shop",   color = new Color(0.55f, 0.45f, 0.80f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 15000, unlockLevel = 1, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
+            new ShopDef { name = "Day & Night Market",   color = new Color(0.25f, 0.65f, 0.70f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 25000, unlockLevel = 2, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
+            new ShopDef { name = "Mini Mart",        color = new Color(0.65f, 0.55f, 0.30f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 30000, unlockLevel = 3, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
+            new ShopDef { name = "Harbour 24", color = new Color(0.20f, 0.45f, 0.65f), prepMinutes = 4, basketMin = 1500, basketMax = 8000,  commission = 0.15f, weight = 0.35f, contractCost = 35000, unlockLevel = 4, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 6f },
+            new ShopDef { name = "Village Store",        color = new Color(0.50f, 0.65f, 0.35f), prepMinutes = 4, basketMin = 1500, basketMax = 7000,  commission = 0.15f, weight = 0.3f,  contractCost = 40000, unlockLevel = 5, hotFood = false, isMarket = true, kgMin = 0.5f, kgMax = 5f },
             // Eczaneler (sona eklendi: eski haritalarda diğer dükkanların yeri değişmesin). Siparişlerini sadece ilaç sertifikalı kurye götürür.
-            new ShopDef { name = "Szent István Patika",     color = new Color(0.20f, 0.70f, 0.55f), prepMinutes = 8, basketMin = 2500, basketMax = 14000, commission = 0.14f, weight = 0.3f,  contractCost = 50000,  unlockLevel = 2, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
-            new ShopDef { name = "Belvárosi Patika",        color = new Color(0.15f, 0.60f, 0.50f), prepMinutes = 8, basketMin = 2500, basketMax = 14000, commission = 0.14f, weight = 0.3f,  contractCost = 80000,  unlockLevel = 3, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
-            new ShopDef { name = "Kikötő Ügyeletes Patika", color = new Color(0.10f, 0.50f, 0.45f), prepMinutes = 6, basketMin = 2500, basketMax = 16000, commission = 0.13f, weight = 0.25f, contractCost = 120000, unlockLevel = 4, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
+            new ShopDef { name = "Central Pharmacy",     color = new Color(0.20f, 0.70f, 0.55f), prepMinutes = 8, basketMin = 2500, basketMax = 14000, commission = 0.14f, weight = 0.3f,  contractCost = 50000,  unlockLevel = 2, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
+            new ShopDef { name = "High Street Pharmacy",        color = new Color(0.15f, 0.60f, 0.50f), prepMinutes = 8, basketMin = 2500, basketMax = 14000, commission = 0.14f, weight = 0.3f,  contractCost = 80000,  unlockLevel = 3, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
+            new ShopDef { name = "Harbour Night Pharmacy", color = new Color(0.10f, 0.50f, 0.45f), prepMinutes = 6, basketMin = 2500, basketMax = 16000, commission = 0.13f, weight = 0.25f, contractCost = 120000, unlockLevel = 4, hotFood = false, isMarket = true, kgMin = 0.2f, kgMax = 2.5f, eczane = true },
         };
 
         public static readonly EquipmentDef[] Equipment =
@@ -131,16 +131,47 @@ namespace KuryeTycoon
 
         static readonly string[] FirstNames =
         {
-            "Ahmet", "Mehmet", "Ayşe", "Zeynep", "Can", "Elif", "Emre", "Selin",
-            "Bence", "Dávid", "Anna", "Réka", "Márk", "Lili", "Tamás", "Eszter"
+            "James", "Oliver", "Emma", "Sophie", "Lucas", "Mia", "Noah", "Chloe",
+            "Ethan", "Grace", "Liam", "Ella", "Jack", "Ava", "Leo", "Ruby"
         };
 
         static readonly string[] LastNames =
         {
-            "Yılmaz", "Kaya", "Demir", "Şahin", "Çelik", "Nagy", "Kovács", "Tóth", "Szabó", "Horváth"
+            "Smith", "Taylor", "Brown", "Wilson", "Evans", "Walker", "Wright", "Hughes", "Green", "Carter"
         };
 
         /// <summary>Rastgele isim. Kuryeler, başvurular ve destek ekibinde aynı isim iki kez çıkmaz.</summary>
+        // ---------- Eski kayıt uyumu (26.11: isimler değişti) ----------
+
+        static readonly System.Collections.Generic.Dictionary<string, string> EskiDukkanlar = new System.Collections.Generic.Dictionary<string, string>
+        {
+            { "Szpar Express", "Sparx Express" }, { "InterSzpar", "InterSparx" }, { "BioSzpar", "BioSparx" }, { "Otogar Büfé", "Station Snack Bar" },
+            { "ABC Non-Stop", "24/7 Corner Store" }, { "Sarok Kisbolt", "Corner Shop" }, { "Éjjel-Nappali", "Day & Night Market" }, { "Mini ABC", "Mini Mart" },
+            { "Kikötő Non-Stop", "Harbour 24" }, { "Falu ABC", "Village Store" }, { "Szent István Patika", "Central Pharmacy" },
+            { "Belvárosi Patika", "High Street Pharmacy" }, { "Kikötő Ügyeletes Patika", "Harbour Night Pharmacy" }, { "Döner Kral", "Kebab King" },
+        };
+
+        /// <summary>Eski kayıttaki dükkan adını bugünkü ada çevirir (değişmediyse aynısı).</summary>
+        public static string GuncelDukkanAdi(string ad) => ad != null && EskiDukkanlar.TryGetValue(ad, out var y) ? y : ad;
+
+        static readonly System.Collections.Generic.Dictionary<string, string> EskiIsimler = new System.Collections.Generic.Dictionary<string, string>
+        {
+            { "Ahmet", "James" }, { "Mehmet", "Oliver" }, { "Ayşe", "Emma" }, { "Zeynep", "Sophie" }, { "Can", "Lucas" }, { "Elif", "Mia" },
+            { "Emre", "Noah" }, { "Selin", "Chloe" }, { "Bence", "Ethan" }, { "Dávid", "Grace" }, { "Anna", "Liam" }, { "Réka", "Ella" },
+            { "Márk", "Jack" }, { "Lili", "Ava" }, { "Tamás", "Leo" }, { "Eszter", "Ruby" },
+            { "Yılmaz", "Smith" }, { "Kaya", "Taylor" }, { "Demir", "Brown" }, { "Şahin", "Wilson" }, { "Çelik", "Evans" },
+            { "Nagy", "Walker" }, { "Kovács", "Wright" }, { "Tóth", "Hughes" }, { "Szabó", "Green" }, { "Horváth", "Carter" },
+        };
+
+        /// <summary>Eski kayıttaki kişi adının eski isimlerini bugünkü listeden karşılığıyla değiştirir ("Ahmet Yılmaz" → "James Smith").</summary>
+        public static string GuncelIsim(string ad)
+        {
+            if (string.IsNullOrEmpty(ad)) return ad;
+            var p = ad.Split(' ');
+            for (int i = 0; i < p.Length; i++) if (EskiIsimler.TryGetValue(p[i], out var y)) p[i] = y;
+            return string.Join(" ", p);
+        }
+
         public static string RandomName()
         {
             string n = "";
@@ -232,12 +263,12 @@ namespace KuryeTycoon
 
         /// <summary>Euro gösteriminde kullanılan sabit kur.</summary>
         public const float FtPerEuro = 400f;
-        public static Currency DisplayCurrency = Currency.Forint;
+        public static Currency DisplayCurrency = Currency.Euro;
         const string CurrencyPrefKey = "KuryeTycoon.ParaBirimi";
 
         /// <summary>Kayıtlı para birimi tercihini yükler (oyun açılırken GameBootstrap çağırır).</summary>
-        public static void LoadCurrency() =>
-            DisplayCurrency = PlayerPrefs.GetInt(CurrencyPrefKey, 0) == 1 ? Currency.Euro : Currency.Forint;
+        /// Oyun artık sadece euro gösterir (iç birimin adı ekranda görünmez); eski "Ft" tercihi yok sayılır.
+        public static void LoadCurrency() => DisplayCurrency = Currency.Euro;
 
         public static void SetCurrency(Currency c)
         {
