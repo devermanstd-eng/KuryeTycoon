@@ -153,7 +153,7 @@ namespace KuryeTycoon
             {
                 if (o.Kusgun || o.shop == null) continue;
                 // Günlük paket × saat ağırlığı (saat başına) × dt/60, biraz rastgelelik
-                o.birikim += Turler[o.tur].gunluk * gun * agirlik * dt / 60f * Random.Range(0.7f, 1.3f);
+                o.birikim += Turler[o.tur].gunluk * gun * agirlik * dt / 60f * Random.Range(0.7f, 1.3f) * SezonEtkinlikleri.IsletmeCarpani(o.tur);
                 while (o.birikim >= 1f && sinir-- > 0)
                 {
                     o.birikim -= 1f;

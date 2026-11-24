@@ -128,6 +128,8 @@ namespace KuryeTycoon
             UiSekmeEkle(Tab.Istatistik, new UiIstatistik());
             UiSekmeEkle(Tab.Analitik, new UiAnalitik());
             UiSekmeEkle(Tab.Basarimlar, new UiBasarimlar());
+            UiSekmeEkle(Tab.Mutfak, new UiMutfak());
+            UiSekmeEkle(Tab.ArGe, new UiArGe());
             UiSekmeEkle(Tab.Ayarlar, new UiAyarlar());
         }
 

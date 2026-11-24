@@ -837,6 +837,12 @@ namespace KuryeTycoon
                           $"dükkan sadakati: yeni {sad[0]}, düzenli {sad[1]}, sadık {sad[2]}, ortak {sad[3]} (münhasır {munhasir}, primli kabul {Sayac("Münhasırlık: primli kabul")}) · " +
                           $"kurye modeli: {(CrisisManager.I != null ? (CrisisManager.I.employees ? "hepsi çalışan" : CrisisManager.I.karma ? $"karma ({CrisisManager.CalisanSayisi()} çalışan)" : CrisisManager.YasaKararVerildi ? "serbest" : "karar yok") : "-")}, " +
                           $"tam zamanlı {CrisisManager.TamZamanliSayisi()} · başarım {Basarimlar.AcikSayisi}/{Basarimlar.Tanimlar.Count}");
+            var se = SezonEtkinlikleri.I; var sm = SanalMutfak.I; var ag = ArGe.I;
+            sb.AppendLine($"Etkinlik, mutfak, Ar-Ge: etkinlik hedefi {(se != null ? se.tamamlanan : 0)} tuttu / {(se != null ? se.kacirilan : 0)} tutmadı " +
+                          $"(duyuru {Sayac("Sezon: duyuru")}, başlayan {Sayac("Sezon: başladı")}) · sanal mutfak " +
+                          (sm != null && sm.IsOpen ? $"{sm.Acik.Count} marka, {sm.toplamSiparis} sipariş, net {GameData.Ft(sm.toplamSatis - sm.toplamMalzeme - sm.toplamGider)}" : "kapalı") +
+                          $" · Ar-Ge {(ag != null ? ag.TamamSayisi : 0)}/{ArGe.Projeler.Count} proje (harcanan {GameData.Ft(ag != null ? ag.harcanan : 0)}" +
+                          $"{(ag != null && ag.Aktif != null ? $", sürüyor: {ag.Aktif.ad} %{ag.Oran * 100f:0}" : "")}) · drone siparişi {Sayac("Drone siparişi aldı")}");
         }
 
         string Ozet(List<string> kilitli)

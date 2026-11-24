@@ -538,6 +538,13 @@ namespace KuryeTycoon
             menus[name] = copy;
         }
 
+        /// <summary>Yeni bir dükkana (ör. sanal mutfak markası) kendi ürün satırlarını verir ("ad|fiyat|kategori").</summary>
+        public static void RegisterRows(string name, IEnumerable<string> rows, float priceMul = 1f)
+        {
+            Ensure();
+            menus[name] = Parse(rows, priceMul);
+        }
+
         /// <summary>Dükkanın bütün ürünleri (dükkan kartında menü göstermek için).</summary>
         public static Item[] Of(string shopName)
         {

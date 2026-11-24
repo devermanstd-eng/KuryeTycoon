@@ -23,6 +23,8 @@ namespace KuryeTycoon
                 case Tab.Market: return Feature.Market;
                 case Tab.Istatistik: return Feature.Grafik;
                 case Tab.Analitik: return Feature.Grafik;
+                case Tab.Mutfak: return Feature.Market;
+                case Tab.ArGe: return Feature.Gelisim;
                 case Tab.Mesajlar: return Feature.Mesajlar;
                 default: return null;
             }

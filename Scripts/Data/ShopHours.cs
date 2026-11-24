@@ -54,6 +54,9 @@ namespace KuryeTycoon
             { "Kikötő Ügyeletes Patika", Nonstop },
         };
 
+        /// <summary>Yeni bir dükkanın saatleri (ör. sanal mutfak markaları).</summary>
+        public static void Register(string name, float acHi, float kapHi, float acHs, float kapHs) => Table[name] = H(acHi, kapHi, acHs, kapHs);
+
         public static Hours Of(ShopDef d) => d != null && Table.TryGetValue(d.name, out var h) ? h : Nonstop;
         public static bool Is24h(ShopDef d) => Of(d).Always;
 

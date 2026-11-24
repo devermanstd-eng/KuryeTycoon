@@ -71,7 +71,57 @@ namespace KuryeTycoon
                 AkilliMarket();
                 AkilliEgitim();
                 AkilliHizmet();
+                AkilliMutfakArGe();
                 if (clk.DayOfWeek == 0 && sonHaftaGun != clk.Day) { sonHaftaGun = clk.Day; AkilliFiyat(); }
+            }
+        }
+
+        // ------------------------------------------------------------------ sanal mutfak ve Ar-Ge
+
+        /// <summary>
+        /// Sanal mutfak: Doğu İlçesi açık, en az 15 kurye ve boş para kurulumun 4 katıysa kurar; markalar popülerse (≥ 0,8) yenisini
+        /// açar, menüyü boş paranın 1/5'iyle geliştirir. Ar-Ge: boş para bedelin 4 katıysa en ucuz başlatılabilir projeyi başlatır.
+        /// Kurye hesapları doluyken (platform paketine birikim) ikisine de dokunmaz.
+        /// </summary>
+        void AkilliMutfakArGe()
+        {
+            if (Biriktir) return;
+            long bos = Bos;
+            var sm = SanalMutfak.I;
+            var cm = CourierManager.I;
+            if (sm != null && Guide.I != null && Guide.I.IsOpen(Feature.Market))
+            {
+                if (!sm.IsOpen)
+                {
+                    if (sm.KilitNedeni.Length == 0 && cm.Couriers.Count >= 15 && bos >= SanalMutfak.KurulumBedeli * 4 && sm.Kur())
+                        Eylem("Mutfak", $"sanal mutfak kuruldu ({Ft(SanalMutfak.KurulumBedeli)}) · neden: {cm.Couriers.Count} kurye, boş para {Ft(bos)}");
+                }
+                else
+                {
+                    bool hepsiPopuler = true;
+                    foreach (var m in sm.Acik) if (m.populerlik < 0.8f) hepsiPopuler = false;
+                    SanalMutfak.MarkaDurum enAz = null;
+                    foreach (var m in sm.Acik) if (m.menu < 3 && (enAz == null || m.menu < enAz.menu)) enAz = m;
+                    if (sm.SiradakiMarka >= 0 && hepsiPopuler && bos >= SanalMutfak.MarkaBedeli * 4 && sm.MarkaAc())
+                        Eylem("Mutfak", $"yeni sanal marka: {sm.Acik[sm.Acik.Count - 1].T.ad} · neden: mevcut markalar popüler, boş para {Ft(bos)}");
+                    else if (enAz != null && sm.MenuBedel(enAz) <= bos / 5 && sm.MenuGelistir(enAz))
+                        Eylem("Mutfak", $"{enAz.T.ad} menüsü {enAz.menu}. seviyeye · neden: boş para {Ft(bos)}");
+                }
+            }
+            var a = ArGe.I;
+            if (a != null && string.IsNullOrEmpty(a.aktif) && Guide.I != null && Guide.I.IsOpen(Feature.Gelisim))
+            {
+                ArGe.Proje en = null;
+                foreach (var p in ArGe.Projeler)
+                {
+                    if (a.Engel(p).Length > 0) continue;
+                    bool hazir = true;
+                    foreach (var k in p.onKosul) if (!a.Tamam(k)) hazir = false;
+                    if (!hazir || p.bedel * 4 > Bos) continue;
+                    if (en == null || p.bedel < en.bedel) en = p;
+                }
+                if (en != null && a.Baslat(en))
+                    Eylem("Ar-Ge", $"{en.ad} başlatıldı ({Ft(en.bedel)}, {en.gun:0} gün) · etki: {en.etki}");
             }
         }
 
@@ -572,6 +622,15 @@ namespace KuryeTycoon
                 if (iHepsi >= 0 && hepsi < serbestM && hepsi < karma) { neden = ozet + " → hepsi çalışan"; return iHepsi; }
                 neden = ozet + " → serbest";
                 return iSerbest >= 0 ? iSerbest : iKarma;
+            }
+
+            if (t.StartsWith("Yaklaşan etkinlik:"))
+            {
+                long kb = SezonEtkinlikleri.KampanyaBedeli, b = Bos;
+                if (kb <= b / 6) { neden = $"kampanya {Ft(kb)} rahat karşılanır, prim de verilir: hedef için talep ve kurye"; return Bul(ev, izinli, "ikisi de"); }
+                if (kb <= b / 3) { neden = $"kampanya {Ft(kb)} karşılanır"; return Bul(ev, izinli, "kampanyası"); }
+                neden = "kasa dar: sadece kurye primi";
+                return Bul(ev, izinli, "primi");
             }
 
             // Bilinmeyen kart: her seçeneği puanla

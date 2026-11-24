@@ -12,9 +12,9 @@ namespace KuryeTycoon
     /// </summary>
     public partial class GameUI : MonoBehaviour
     {
-        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler, Mesajlar, Market, Istatistik, Analitik, Basarimlar }
+        enum Tab { Siparisler, Kuryeler, IseAlim, Destek, Gelistirmeler, Dukkanlar, Ekipman, Kampanyalar, Finans, Ayarlar, Hedefler, Mesajlar, Market, Istatistik, Analitik, Basarimlar, Mutfak, ArGe }
         static readonly string[] BaseTabNames = { "Siparişler", "Kuryeler", "Kayıtlar", "Destek", "Geliştirmeler", "Dükkanlar", "Ekipman", "Kampanyalar", "Finans", "Ayarlar", "Haftalık Hedefler",
-                                                  "Müşteri Yorumları", "Kendi Marketin", "İstatistikler", "Analitik", "Başarımlar" };
+                                                  "Müşteri Yorumları", "Kendi Marketin", "İstatistikler", "Analitik", "Başarımlar", "Sanal Mutfak", "Ar-Ge" };
 
         public float panelWidth = 560f;     // açılan pencerenin genişliği (kimlik kartları ve kurye tablosu sığsın)
         const float TopBar = 60f;

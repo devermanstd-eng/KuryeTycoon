@@ -104,8 +104,9 @@ namespace KuryeTycoon
                 string status = !map.IsUnlocked(s.tile) ? "Kilitli bölge" : s.exclusive ? "Münhasır" : s.contracted ? "Sözleşmeli" : "Sözleşmesiz";
                 renk = s.def.color;
                 U.SimgeAyarla(binaSimge, s.def.isMarket ? Icons.Kind.Orders : Icons.Kind.Shops, renk.grayscale > 0.7f ? new Color(0.1f, 0.1f, 0.12f) : Color.white);
-                U.Metin(binaAd, s.isletme ? s.Name : s.kargo ? KargoAnlasmasi.DepoAdi : s.own && DarkStore.I != null ? DarkStore.StoreName : s.Name);
-                U.Metin(binaAlt, s.isletme ? "İş ortağın · işletme teslimatı (komisyonsuz, paket başı ücret)" :
+                U.Metin(binaAd, s.mutfak ? "Sanal mutfak" : s.isletme ? s.Name : s.kargo ? KargoAnlasmasi.DepoAdi : s.own && DarkStore.I != null ? DarkStore.StoreName : s.Name);
+                U.Metin(binaAlt, s.mutfak ? "Senin mutfağın · sadece uygulamada satılan markalar, komisyonsuz" :
+                                 s.isletme ? "İş ortağın · işletme teslimatı (komisyonsuz, paket başı ücret)" :
                                  s.kargo ? "Senin kargo deponun · paket dağıtımı" : s.own ? "Senin marketin · komisyonsuz" : $"{kind} · {status} · {(ShopHours.IsOpen(s.def) ? "Açık" : "Kapalı")}");
             }
             else
@@ -123,6 +124,19 @@ namespace KuryeTycoon
             if (infoShop != null) BinaDukkan(y, infoShop, om, now);
             else BinaMusteri(y, infoTile, map, om, now);
             y.Bitir();
+        }
+
+        void BinaMutfak(Yazici y)
+        {
+            var sm = SanalMutfak.I;
+            if (sm == null || !sm.IsOpen) return;
+            y.Kucuk($"Aynı mutfakta {sm.Acik.Count} marka pişiyor; ayrıntılar İşletme > Mutfak'ta.");
+            foreach (var m in sm.Acik)
+                y.KV(m.T.ad, $"menü {m.menu}/3 · popülerlik {m.populerlik:0.00} · bugün {m.bugunSiparis} sipariş");
+            y.KutularBasla();
+            y.Kutu("Bugün", $"{sm.bugunSiparis} sipariş", Ft(sm.bugunSatis));
+            y.Kutu("Dün net", Ft(sm.dunSatis - sm.dunMalzeme - sm.dunGider), "satış − malzeme − gider");
+            y.KutularBitir();
         }
 
         void BinaIsletme(Yazici y, Shop s)
@@ -170,7 +184,8 @@ namespace KuryeTycoon
             y.Kutu("Toplam", s.ordersTotal.ToString());
             y.KutularBitir();
 
-            if (s.isletme) BinaIsletme(y, s);
+            if (s.mutfak) BinaMutfak(y);
+            else if (s.isletme) BinaIsletme(y, s);
             else if (s.kargo) BinaKargo(y);
             else if (s.own) BinaKendiMarket(y);
             else UiDukkanAyrinti(y, s, RivalCompany.I);

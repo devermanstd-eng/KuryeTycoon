@@ -43,6 +43,7 @@ namespace KuryeTycoon
         public bool own;                   // kendi marketin (dark store): komisyon yok, satışın tamamı senin, stok senin
         public bool kargo;                 // kargo deposu (KargoAnlasmasi): siparişleri kargo şirketi verir, sepet yok
         public bool isletme;               // işletme teslimatı ortağı (IsletmeTeslimati); kargo da işaretli (sepetsiz, komisyonsuz)
+        public bool mutfak;                // sanal mutfak markası (SanalMutfak): kendi dükkanın, stok yok, malzeme teslimde gider
         // Öncelikli hazırlık anlaşması (Mutfak): dükkan senin siparişlerini sıraya sokmadan hazırlar, karşılığında komisyonundan pay alır
         public bool oncelikli;
         public bool sponsorlu;             // bu gece uygulamada reklamı var (RestoranReklam; kayda girmez, her gece yeniden dağıtılır)

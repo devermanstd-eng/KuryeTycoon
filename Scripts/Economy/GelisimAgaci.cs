@@ -133,8 +133,11 @@ namespace KuryeTycoon
                 var d = Bul(id);
                 if (d != null && !d.buyuk && d.tip == t) s += d.miktar;
             }
-            return s;
+            return s + ArGe.Bonus(t);   // tamamlanan Ar-Ge projeleri de aynı bonuslara eklenir
         }
+
+        /// <summary>Sadece ağacın küçük düğümlerinden gelen bonus (Ar-Ge hariç).</summary>
+        public static float AgacBonusu(BonusTip t) => Bonus(t) - ArGe.Bonus(t);
 
         /// <summary>Küçük düğüm neden alınamıyor (boşsa alınabilir; para hariç).</summary>
         public static string KucukEngeli(AgacDugum d)

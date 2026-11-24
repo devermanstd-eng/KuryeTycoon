@@ -209,6 +209,15 @@ namespace KuryeTycoon
             Sayi("OTOMASYON_3", Y, "Kendi kendine işleyen", "Operasyon otomasyonunu en üst seviyeye çıkar.", () => Otomasyon.Seviye, 3);
             Sayi("AGAC_TAM", Y, "Bütün dallar", "Gelişim ağacındaki bütün küçük düğümleri al.", () => GelisimAgaci.AlinanSayisi, Math.Max(1, KucukDugumToplam));
 
+            Sayi("SEZON_1", K, "Etkinlik ustası", "Bir sezon etkinliğinin hedefini tuttur (Black Friday, Noel, maç günleri...).", () => SezonEtkinlikleri.I != null ? SezonEtkinlikleri.I.tamamlanan : 0, 1);
+            Sayi("SEZON_5", K, "Her mevsim hazır", "Beş sezon etkinliğinin hedefini tuttur.", () => SezonEtkinlikleri.I != null ? SezonEtkinlikleri.I.tamamlanan : 0, 5);
+            B("MUTFAK_ACIK", Y, "Kendi mutfağın", "Sanal mutfak kur.", () => SanalMutfak.I != null && SanalMutfak.I.IsOpen);
+            Sayi("MUTFAK_4", Y, "Marka fabrikası", "Sanal mutfakta dört markanın hepsini aç.", () => SanalMutfak.I != null ? SanalMutfak.I.Acik.Count : 0, 4);
+            Sayi("MUTFAK_1000", Y, "Bin tabak", "Sanal mutfaktan 1 000 sipariş.", () => SanalMutfak.I != null ? SanalMutfak.I.toplamSiparis : 0, 1000);
+            Sayi("ARGE_5", Y, "Laboratuvar", "Beş Ar-Ge projesi tamamla.", () => ArGe.I != null ? ArGe.I.TamamSayisi : 0, 5);
+            B("DRONE", Y, "Gökyüzü kuryesi", "Drone teslimatı pilotunu tamamla.", () => ArGe.I != null && ArGe.I.Tamam("drone"));
+            Sayi("ARGE_HEPSI", Y, "Teknoloji şirketi", "Bütün Ar-Ge projelerini tamamla.", () => ArGe.I != null ? ArGe.I.TamamSayisi : 0, ArGe.Projeler.Count);
+
             Sayi("YIL_1", S, "Bir yıl", "Şirketini bir yıl ayakta tut.", () => GameClock.I != null ? GameClock.I.CompanyDay : 0, 365);
             Sayi("SATIS_1", S, "Exit", "İlk şirketini sat ve yeni şehre geç.", () => Marka.Veri.satilan, 1);
             Sayi("SATIS_3", S, "Seri girişimci", "Üç şirket sat.", () => Marka.Veri.satilan, 3);

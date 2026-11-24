@@ -22,6 +22,10 @@ namespace KuryeTycoon
         /// <summary>Müşteri aşağı inip robotun kapağını açar.</summary>
         public const float KapidaDakika = 2f;
 
+        /// <summary>Drone (Ar-Ge: drone teslimatı pilotu): ~3 kat hızlı (saatte ~14 km), en fazla 2 kg taşır.</summary>
+        public const float DroneHizCarpani = 0.35f, DroneEnFazlaKg = 2f;
+        public static readonly Color DroneHalka = new Color(1f, 0.6f, 0.2f);
+
         public static readonly Color RobotRengi = new Color(0.92f, 0.94f, 0.96f);
         public static readonly Color RobotHalka = new Color(0.25f, 0.85f, 0.75f);
 
@@ -38,7 +42,9 @@ namespace KuryeTycoon
             public float waitUntil;
             public Transform tr;
             public SpriteRenderer govde, halka;
-            public string Ad => $"Robot {no}";
+            public bool drone;
+            public float Dakika => drone ? KareDakika * DroneHizCarpani : KareDakika;
+            public string Ad => drone ? $"Drone {no}" : $"Robot {no}";
         }
 
         public readonly List<Robot> Robotlar = new List<Robot>();
@@ -78,7 +84,10 @@ namespace KuryeTycoon
         {
             if (GameBootstrap.I == null || !GameBootstrap.I.Started || CityMap.I == null) return;
             int hedef = UpgradeManager.I != null ? UpgradeManager.I.RobotSayisi : 0;
-            while (Robotlar.Count < hedef) Ekle();
+            int robot = 0, drone = 0;
+            foreach (var x in Robotlar) { if (x.drone) drone++; else robot++; }
+            while (robot < hedef) { Ekle(false); robot++; }
+            while (drone < ArGe.DroneSayisi) { Ekle(true); drone++; }
 
             var clock = GameClock.I;
             float dm = clock.DeltaMinutes;
@@ -104,18 +113,19 @@ namespace KuryeTycoon
                 bool iceride = r.durum == Durum.Bosta;   // merkezde şarjda
                 r.govde.enabled = !iceride;
                 r.halka.enabled = !iceride;
-                r.halka.color = r.order != null ? RobotHalka : new Color(RobotHalka.r, RobotHalka.g, RobotHalka.b, 0.45f);
+                var hr = r.drone ? DroneHalka : RobotHalka;
+                r.halka.color = r.order != null ? hr : new Color(hr.r, hr.g, hr.b, 0.45f);
             }
         }
 
-        void Ekle()
+        void Ekle(bool drone)
         {
-            var r = new Robot { no = Robotlar.Count + 1, pos = CityMap.I.HQDoor, durum = Durum.Bosta };
+            var r = new Robot { no = Robotlar.Count + 1, pos = CityMap.I.HQDoor, durum = Durum.Bosta, drone = drone };
             var go = new GameObject(r.Ad);
             go.transform.SetParent(kok, false);
             r.tr = go.transform;
             r.halka = SpriteFactory.Create("Halka", r.tr, true, RobotHalka, new Vector3(0f, 0f, -0.04f), 0.5f, 9);
-            r.govde = SpriteFactory.Create("Gövde", r.tr, false, RobotRengi, new Vector3(0f, 0f, -0.05f), 0.3f, 10);
+            r.govde = SpriteFactory.Create("Gövde", r.tr, false, drone ? DroneHalka : RobotRengi, new Vector3(0f, 0f, -0.05f), drone ? 0.22f : 0.3f, 10);
             Robotlar.Add(r);
         }
 
@@ -128,7 +138,7 @@ namespace KuryeTycoon
         bool Yuru(Robot r, float dm)
         {
             if (r.path == null || r.path.Count == 0) return true;
-            float kalan = dm / KareDakika;
+            float kalan = dm / r.Dakika;
             while (kalan > 0f && r.pathIndex < r.path.Count)
             {
                 Vector2 t = r.path[r.pathIndex];
@@ -190,11 +200,12 @@ namespace KuryeTycoon
             {
                 var o = bekleyen[i];
                 if (!Uygun(o)) continue;
+                if (r.drone && o.weightKg > DroneEnFazlaKg) continue;
                 int u = CityMap.Manhattan(konum, o.shop.door);
                 if (u > MaxDukkanUzakligi || u >= secUzaklik) continue;
                 // Söz verilen saate yetişecek mi? (Yol, kuş uçuşundan ~%15 uzun.)
-                float alis = Mathf.Max(now + u * 1.15f * KareDakika, o.readyAt);
-                float varis = alis + o.distance * KareDakika + KapidaDakika;
+                float alis = Mathf.Max(now + u * 1.15f * r.Dakika, o.readyAt);
+                float varis = alis + o.distance * r.Dakika + KapidaDakika;
                 if (varis > o.deadlineAt - 1f) continue;
                 sec = o;
                 secUzaklik = u;
@@ -208,7 +219,7 @@ namespace KuryeTycoon
             sec.status = OrderStatus.Atandi;
             sec.assignedAt = now;
             if (sec.marker != null) sec.marker.color = Color.Lerp(RobotHalka, Color.white, 0.4f);
-            Telemetry.Add("Robot siparişi aldı");
+            Telemetry.Add(r.drone ? "Drone siparişi aldı" : "Robot siparişi aldı");
             r.order = sec;
             Git(r, sec.shop.door);
             r.durum = Durum.Dukkana;

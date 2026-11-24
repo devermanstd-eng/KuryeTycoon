@@ -198,6 +198,9 @@ namespace KuryeTycoon
         public RestoranReklamSave reklam;      // restoran reklamları (eski kayıtlarda yok)
         public YatirimSave yatirim;            // yatırım turları (eski kayıtlarda yok)
         public IsletmeSave isletme;            // işletme teslimatı ortakları (eski kayıtlarda yok)
+        public SezonSave sezon;                // sezonluk etkinlikler (eski kayıtlarda yok)
+        public SanalMutfakSave mutfak;         // sanal mutfak (eski kayıtlarda yok)
+        public ArGeSave arge;                  // Ar-Ge (eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -437,7 +440,10 @@ namespace KuryeTycoon
                 abonelik = Abonelik.I != null ? Abonelik.I.Kaydet() : null,
                 reklam = RestoranReklam.I != null ? RestoranReklam.I.Kaydet() : null,
                 yatirim = Yatirim.I != null ? Yatirim.I.Kaydet() : null,
-                isletme = IsletmeTeslimati.I != null ? IsletmeTeslimati.I.Kaydet() : null
+                isletme = IsletmeTeslimati.I != null ? IsletmeTeslimati.I.Kaydet() : null,
+                sezon = SezonEtkinlikleri.I != null ? SezonEtkinlikleri.I.Kaydet() : null,
+                mutfak = SanalMutfak.I != null ? SanalMutfak.I.Kaydet() : null,
+                arge = ArGe.I != null ? ArGe.I.Kaydet() : null
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -509,6 +515,9 @@ namespace KuryeTycoon
             if (RestoranReklam.I != null) RestoranReklam.I.Yukle(d.reklam);
             if (Yatirim.I != null) Yatirim.I.Yukle(d.yatirim);
             if (IsletmeTeslimati.I != null) IsletmeTeslimati.I.Yukle(d.isletme);
+            if (SezonEtkinlikleri.I != null) SezonEtkinlikleri.I.Yukle(d.sezon);
+            if (SanalMutfak.I != null) SanalMutfak.I.Yukle(d.mutfak);
+            if (ArGe.I != null) ArGe.I.Yukle(d.arge, d.kayitUtc);
             CityMap.I.RefreshColors();
             if (d.gearStock != null)
                 for (int i = 0; i < cm.gearStock.Length && i < d.gearStock.Length; i++) cm.gearStock[i] = d.gearStock[i];

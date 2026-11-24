@@ -205,11 +205,24 @@ namespace KuryeTycoon
         {
             Label baslik, toplam;
             VisualElement kap;
+            VisualElement sezonKart;
+            Label sezonAd, sezonSayi, sezonAlt;
+            U.Cubuk sezonCubuk;
             readonly List<(VisualElement kok, Label ad, Label odul, U.Cubuk cubuk, Label sayi)> satirlar =
                 new List<(VisualElement, Label, Label, U.Cubuk, Label)>();
 
             protected override void Kur()
             {
+                // Sezonluk etkinlik: aktifse ilerlemesi, 7 gün içinde başlayacaksa duyurusu (SezonEtkinlikleri)
+                sezonKart = U.El(kok, "kart");
+                sezonKart.style.marginBottom = 10;
+                var su = U.El(sezonKart, "satir");
+                sezonAd = U.Kalin(su, "", "esnek");
+                sezonSayi = U.Yazi(su, "", "kucuk", "soluk");
+                sezonCubuk = U.CubukEkle(sezonKart, 0f, UITheme.Accent);
+                sezonCubuk.kok.style.marginTop = 6;
+                sezonAlt = U.Yazi(sezonKart, "", "minik", "soluk");
+                sezonAlt.style.marginTop = 5;
                 baslik = U.Bolum(kok, "");
                 var aciklama = U.Yazi(kok, "Her pazartesi 6 yeni hedef gelir. Tamamladığın hedefin ödülü hemen kasaya girer. " +
                                            "Hedefler şirketinin büyüklüğüne göre seçilir; yarım kalan hedef için ceza yok.", "kucuk", "soluk");
@@ -223,6 +236,7 @@ namespace KuryeTycoon
             {
                 var gm = GoalManager.I;
                 if (gm == null) return;
+                SezonYenile();
                 U.Metin(baslik, $"BU HAFTANIN HEDEFLERİ · {gm.DaysLeft} GÜN KALDI");
                 while (satirlar.Count < gm.Goals.Count)
                 {
@@ -250,6 +264,42 @@ namespace KuryeTycoon
                     U.Metin(odul, $"Ödül: {Ft(g.reward)}" + (g.reputation > 0f ? " + itibar" : "") + (g.done ? " · alındı" : ""));
                 }
                 U.Metin(toplam, $"Bugüne kadar tamamlanan hedef: {gm.completedTotal}");
+            }
+
+            void SezonYenile()
+            {
+                var se = SezonEtkinlikleri.I;
+                var a = se != null ? se.Aktif : null;
+                int bas = 0;
+                var y = a == null && se != null ? se.Yaklasan(out bas) : null;
+                U.Goster(sezonKart, a != null || y != null);
+                if (a != null)
+                {
+                    bool gercek = se.GercekTakvimde(a);
+                    U.Metin(sezonAd, $"ETKİNLİK · {a.ad}" + (gercek ? " · gerçek takvimde de!" : ""));
+                    if (se.hedefli)
+                    {
+                        float v = se.hedefTeslimat > 0 ? Mathf.Clamp01(se.BugunkuTeslimat / (float)se.hedefTeslimat) : 0f;
+                        U.Metin(sezonSayi, $"{se.BugunkuTeslimat} / {se.hedefTeslimat} teslimat · {se.KalanGun} gün");
+                        sezonCubuk.Ayarla(v, v >= 1f ? U.Iyi : UITheme.Accent);
+                        U.Goster(sezonCubuk.kok, true);
+                        U.Metin(sezonAlt, $"İptal + kaçan en fazla %{SezonEtkinlikleri.EnFazlaKayip * 100f:0}. Ödül: para, itibar, kalıcı +%1 komisyon" +
+                                          (gercek ? " (×1,5)" : "") + (se.kampanya ? " · kampanya yayında" : "") + (se.prim ? " · kurye primi" : "") + ".");
+                    }
+                    else
+                    {
+                        U.Metin(sezonSayi, $"{se.KalanGun} gün");
+                        U.Goster(sezonCubuk.kok, false);
+                        U.Metin(sezonAlt, "Şirket yeni kurulduğu için hedefi yok: sadece talep değişiyor. " + a.aciklama);
+                    }
+                }
+                else if (y != null)
+                {
+                    U.Metin(sezonAd, $"YAKLAŞAN ETKİNLİK · {y.ad}");
+                    U.Metin(sezonSayi, $"{bas - GameClock.I.Day} gün sonra · {y.gun} gün");
+                    U.Goster(sezonCubuk.kok, false);
+                    U.Metin(sezonAlt, y.aciklama + " Başlamadan 3 gün önce hazırlık kartı gelir.");
+                }
             }
         }
     }
