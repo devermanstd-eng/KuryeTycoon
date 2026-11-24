@@ -134,6 +134,17 @@ namespace KuryeTycoon
             }
         }
 
+        /// <summary>Çayır çimi için karenin çim ağırlığı (0–1): çimen 1, bahçe 0,85, sert zemin 0. Bkz. Cim.</summary>
+        public static float CimAgirligi(int x, int y)
+        {
+            switch (KareDeseni(x, y))
+            {
+                case Desen.Cim: return 1f;
+                case Desen.Bahce: return 0.85f;
+                default: return 0f;
+            }
+        }
+
         static bool OnCephe(int x, int y)
         {
             for (int dx = -1; dx <= 1; dx++)
