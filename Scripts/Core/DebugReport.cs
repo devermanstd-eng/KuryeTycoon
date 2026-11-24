@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-24 u33 (çayır çimi: rüzgârla dalgalanan çimen ve kır çiçekleri, mevsim ve karla değişir)";
+        public const string CodeVersion = "2026-11-24 u34 (çayır çimi Manor Lords tarzı: uzun sarkık ot, tohum başları, eğrelti, serpiştirilmiş çiçekler, toprak açıklıkları)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
