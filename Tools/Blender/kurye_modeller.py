@@ -228,11 +228,22 @@ ICO_F = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [
 ICO2 = None
 
 
+def _ico_hazirla():
+    """Ikosahedron köşeleri (ilk kullanımda). top() dışında yaprak_kumesi() de kullanıyor: ağaç ilk çizilen şeyse boş kalıyordu."""
+    global ICO_V
+    if ICO_V is None:
+        t = (1 + math.sqrt(5)) / 2
+        raw = [(-1, t, 0), (1, t, 0), (-1, -t, 0), (1, -t, 0), (0, -1, t), (0, 1, t), (0, -1, -t), (0, 1, -t),
+               (t, 0, -1), (t, 0, 1), (-t, 0, -1), (-t, 0, 1)]
+        ICO_V = [norm(p) for p in raw]
+    return ICO_V
+
+
 def _ico2():
     """Bir kez bölünmüş ikosahedron (80 yüz): büyük ağaç tepeleri daha yuvarlak görünsün."""
     global ICO2
     if ICO2 is None:
-        vs = list(ICO_V)
+        vs = list(_ico_hazirla())
         orta = {}
 
         def mid(i, j):
@@ -1580,7 +1591,7 @@ def yesil_malzemeler(i):
 
 def yaprak_kumesi(g, c, rad, rnd, mat, basik=0.82, puruz=0.13):
     """Tek yaprak kümesi: yumuşak gölgeli, kenarı tırtıklı top (fırçayla boyanmış bulut gibi)."""
-    vs, fs = _ico2() if rad >= 0.3 else (ICO_V, ICO_F)
+    vs, fs = _ico2() if rad >= 0.3 else (_ico_hazirla(), ICO_F)
     pts = []
     for p in vs:
         j = 1.0 + rnd.uniform(-puruz, puruz)
@@ -9668,6 +9679,9 @@ def gorunum():
 
 
 def mesaj(satirlar):
+    # Arka planda (Unity'nin Blender menüsü, -b) pencere yok: popup_menu Blender 5.3'te çöküyordu (EXCEPTION_ACCESS_VIOLATION)
+    if bpy.app.background:
+        return
     def ciz(self, context):
         for s in satirlar:
             self.layout.label(text=s)
