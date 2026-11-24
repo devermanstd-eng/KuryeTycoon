@@ -42,6 +42,8 @@ namespace KuryeTycoon
         /// <summary>Birikmiş yorgunluk (0–1): günde 6 saatten fazla çalıştıkça artar, izin günü azalır. Güne yorgun başlatır, moralı düşürür.</summary>
         public float burnout;
         public float morale = 0.7f;
+        public bool calisan;                   // platform yasası karma model: çalışan statüsünde (CrisisManager.CalisanMi)
+        public float ortSaat;                  // günlük çevrimiçi saat ortalaması (son ~5 günün ağırlıklı ortalaması)
         public int deliveries;
         public int deliveriesToday;
         public int level = 1;

@@ -24,7 +24,7 @@ namespace KuryeTycoon
         static readonly MenuGroupDef[] MenuGroups =
         {
             new MenuGroupDef { label = "Siparişler", title = "Siparişler", icon = Icons.Kind.Orders, tabs = new[] { Tab.Siparisler }, tabLabels = new[] { "Siparişler" } },
-            new MenuGroupDef { label = "Hedefler", title = "Haftalık Hedefler", icon = Icons.Kind.Flag, tabs = new[] { Tab.Hedefler }, tabLabels = new[] { "Hedefler" } },
+            new MenuGroupDef { label = "Hedefler", title = "Hedefler", icon = Icons.Kind.Flag, tabs = new[] { Tab.Hedefler, Tab.Basarimlar }, tabLabels = new[] { "Haftalık", "Başarımlar" } },
             new MenuGroupDef
             {
                 label = "Ekip", title = "Ekip", icon = Icons.Kind.Couriers,
@@ -34,14 +34,14 @@ namespace KuryeTycoon
             new MenuGroupDef
             {
                 label = "İşletme", title = "İşletme", icon = Icons.Kind.Shops,
-                tabs = new[] { Tab.Dukkanlar, Tab.Market, Tab.Kampanyalar },
-                tabLabels = new[] { "Dükkanlar", "Market", "Kampanya" }
+                tabs = new[] { Tab.Dukkanlar, Tab.Market, Tab.Mutfak, Tab.Kampanyalar },
+                tabLabels = new[] { "Dükkanlar", "Market", "Mutfak", "Kampanya" }
             },
             new MenuGroupDef
             {
                 label = "Şirket", title = "Şirket", icon = Icons.Kind.Finance,
-                tabs = new[] { Tab.Finans, Tab.Gelistirmeler, Tab.Istatistik },
-                tabLabels = new[] { "Finans", "Gelişim", "Grafik" }
+                tabs = new[] { Tab.Finans, Tab.Gelistirmeler, Tab.ArGe, Tab.Istatistik, Tab.Analitik },
+                tabLabels = new[] { "Finans", "Gelişim", "Ar-Ge", "Grafik", "Analitik" }
             },
             new MenuGroupDef { label = "Ayarlar", title = "Ayarlar", icon = Icons.Kind.Settings, tabs = new[] { Tab.Ayarlar }, tabLabels = new[] { "Ayarlar" } },
         };

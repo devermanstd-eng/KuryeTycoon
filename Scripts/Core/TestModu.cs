@@ -96,6 +96,7 @@ namespace KuryeTycoon
         {
             I = this;
             Aktif = true;
+            Basarimlar.TestiSifirla();
             tohum = OzelBotTohumu ?? (SabitTohum ? SabitBotTohumu : System.Environment.TickCount & 0x7fffffff);
             rnd = new System.Random(tohum);
             eskiArkaPlan = Application.runInBackground;
@@ -826,6 +827,22 @@ namespace KuryeTycoon
                           $"restoran reklamı {(RestoranReklam.I != null ? RestoranReklam.SeviyeAdlari[RestoranReklam.I.seviye] : "-")} (toplam {GameData.Ft(RestoranReklam.I != null ? RestoranReklam.I.toplamGelir : 0)}) · " +
                           $"yatırım: {(Yatirim.I != null ? Yatirim.I.tamamlanan : 0)} tur, pay %{(Yatirim.I != null ? Yatirim.I.pay * 100f : 100f):0}, baskı {(Yatirim.I != null ? Yatirim.I.baski : 0)} · " +
                           $"ağaçta {GelisimAgaci.AlinanSayisi} küçük düğüm (komisyon +%{GelisimAgaci.Bonus(BonusTip.Komisyon) * 100f:0}, sipariş +%{GelisimAgaci.Bonus(BonusTip.Siparis) * 100f:0})");
+            var it = IsletmeTeslimati.I;
+            int[] sad = new int[4];
+            int munhasir = 0;
+            foreach (var s in CityMap.I.Shops)
+                if (s.contracted && !s.own && !s.kargo) { sad[DukkanSadakati.Seviye(s)]++; if (s.exclusive) munhasir++; }
+            sb.AppendLine($"Yeni sistemler: işletme teslimatı {(it != null ? it.Ortaklar.Count : 0)} ortak, {(it != null ? it.toplamTeslim : 0)} teslim " +
+                          $"({(it != null ? it.toplamGec : 0)} geç, {(it != null ? it.toplamKacan : 0)} edilemedi, {GameData.Ft(it != null ? it.toplamGelir : 0)}) · " +
+                          $"dükkan sadakati: yeni {sad[0]}, düzenli {sad[1]}, sadık {sad[2]}, ortak {sad[3]} (münhasır {munhasir}, primli kabul {Sayac("Münhasırlık: primli kabul")}) · " +
+                          $"kurye modeli: {(CrisisManager.I != null ? (CrisisManager.I.employees ? "hepsi çalışan" : CrisisManager.I.karma ? $"karma ({CrisisManager.CalisanSayisi()} çalışan)" : CrisisManager.YasaKararVerildi ? "serbest" : "karar yok") : "-")}, " +
+                          $"tam zamanlı {CrisisManager.TamZamanliSayisi()} · başarım {Basarimlar.AcikSayisi}/{Basarimlar.Tanimlar.Count}");
+            var se = SezonEtkinlikleri.I; var sm = SanalMutfak.I; var ag = ArGe.I;
+            sb.AppendLine($"Etkinlik, mutfak, Ar-Ge: etkinlik hedefi {(se != null ? se.tamamlanan : 0)} tuttu / {(se != null ? se.kacirilan : 0)} tutmadı " +
+                          $"(duyuru {Sayac("Sezon: duyuru")}, başlayan {Sayac("Sezon: başladı")}) · sanal mutfak " +
+                          (sm != null && sm.IsOpen ? $"{sm.Acik.Count} marka, {sm.toplamSiparis} sipariş, net {GameData.Ft(sm.toplamSatis - sm.toplamMalzeme - sm.toplamGider)}" : "kapalı") +
+                          $" · Ar-Ge {(ag != null ? ag.TamamSayisi : 0)}/{ArGe.Projeler.Count} proje (harcanan {GameData.Ft(ag != null ? ag.harcanan : 0)}" +
+                          $"{(ag != null && ag.Aktif != null ? $", sürüyor: {ag.Aktif.ad} %{ag.Oran * 100f:0}" : "")}) · drone siparişi {Sayac("Drone siparişi aldı")}");
         }
 
         string Ozet(List<string> kilitli)

@@ -115,7 +115,7 @@ namespace KuryeTycoon
 
         /// <summary>Dükkanın şu anki talep ağırlığı (yoğunluk × saat çarpanı).</summary>
         static float ShopDemand(Shop s) =>
-            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s);
+            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s) * DukkanSadakati.SiparisCarpani(s);
 
         /// <summary>Saat çarpanı; dükkan kapalıysa (ya da kapanışa 15 dk kaldıysa) 0. 24 saat açık yerlerde gece de biraz sipariş.</summary>
         static float CurveNow(Shop s)
@@ -151,6 +151,7 @@ namespace KuryeTycoon
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
             float dm = GameClock.I.DeltaMinutes;
             if (dm <= 0f) return;
+            SaatAnalizi.Ornekle();   // analitik: saatlik kurye açığı örneği
 
             // Her sözleşmeli dükkan kendi türüne göre (yemek / market) saatlik talep üretir
             float demand = 0f;
@@ -162,7 +163,7 @@ namespace KuryeTycoon
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
                          * Difficulty.OrderRate * Marka.SiparisCarpani * Marka.SehirSiparisCarpani * (1f + GelisimAgaci.Bonus(BonusTip.Siparis)) * (Abonelik.I != null ? Abonelik.I.SiparisCarpani : 1f) * CityEvents.DemandFactor * CourierMessages.ReviewDemandFactor
-                         * CrisisManager.DemandFactor
+                         * CrisisManager.DemandFactor * SezonEtkinlikleri.TalepCarpani
                          * (RivalCompany.I != null ? RivalCompany.I.ServiceDemandFactor : 1f);   // hızlı teslimat pazarı büyütür
             if (!CrisisManager.OrdersBlocked) spawnAcc += rate * dm;   // uygulama çöktüyse yeni sipariş gelmez
             while (spawnAcc >= 1f)
@@ -400,7 +401,8 @@ namespace KuryeTycoon
             basket = Mathf.Max(shop.def.basketMin / 2, Menus.Sum(items));
             // Kendi marketin: ürünler stoktan düşer; stokta olmayanlar sepetten çıkar, sepetin çoğu yoksa sipariş kaçar
             int stockCost = 0;
-            if (shop.own && (DarkStore.I == null || !DarkStore.I.TakeOrder(items, ref basket, out stockCost)))
+            if (shop.mutfak) stockCost = Mathf.RoundToInt(basket * SanalMutfak.GidaOrani);   // sanal mutfak: malzeme teslimde gider yazılır
+            else if (shop.own && (DarkStore.I == null || !DarkStore.I.TakeOrder(items, ref basket, out stockCost)))
             {
                 lostToday++;
                 Telemetry.Add("Kaçan sipariş: kendi marketinde stok yok");
@@ -445,7 +447,8 @@ namespace KuryeTycoon
             var quote = EconomyManager.I.QuoteFee(commission, dist, kg);
             int fee = quote.Total;
             // Büyüme: kilometre taşı ve marka çarpanı komisyona ücret hesaplandıktan sonra uygulanır (müşteri ücreti düşmez, kâr artar)
-            commission = Mathf.RoundToInt(commission * Buyume.KomisyonCarpani);
+            // Kendi dükkanların (market, sanal mutfak) komisyon almaz, satışın tamamı zaten senin: çarpan sadece komisyona
+            if (!shop.own) commission = Mathf.RoundToInt(commission * Buyume.KomisyonCarpani);
 
             // Pahalı teslimat ücreti = müşteri vazgeçebilir (kötü hava ücretini çoğu müşteri anlayışla karşılar)
             // Ücret ~3,75 € (1500 Ft) iken müşterilerin ~%90'ı sipariş verir, 5 €'da ~%73, 6,25 €'da ~%57
@@ -563,7 +566,8 @@ namespace KuryeTycoon
                     o.status = OrderStatus.Iptal;
                     if (o.marker != null) Destroy(o.marker.gameObject);
                     Pending.RemoveAt(i);
-                    if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Kacti(o);
+                    if (o.isletme) { if (IsletmeTeslimati.I != null) IsletmeTeslimati.I.Kacti(o); }
+                    else if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Kacti(o);
                     continue;
                 }
                 if (SupportManager.I.TryCallCustomer(o)) continue; // destek müşteriyi arayıp oyalar
@@ -571,7 +575,7 @@ namespace KuryeTycoon
                 if (o.marker != null) Destroy(o.marker.gameObject);
                 Pending.RemoveAt(i);
                 // Kendi marketin: iptal olan siparişin ürünleri rafa geri döner (eskiden stok boşa gidiyordu)
-                if (o.shop.own && DarkStore.I != null) DarkStore.I.ReturnStock(o.stockCost);
+                if (o.shop.own && !o.shop.mutfak && DarkStore.I != null) DarkStore.I.ReturnStock(o.stockCost);
                 cancelledToday++;
                 cancelledByHour[GameClock.I.Hour]++;
                 Telemetry.Add(o.priceDeclines > 0 || o.rejectedBy.Count > 0 ? "İptal: kuryeler kazancı beğenmedi / reddetti" : "İptal: zamanında kurye bulunamadı");
@@ -703,7 +707,7 @@ namespace KuryeTycoon
             Active.Remove(o);
             o.status = OrderStatus.Iptal;
             if (o.marker != null) Destroy(o.marker.gameObject);
-            if (o.shop.own && DarkStore.I != null) DarkStore.I.ReturnStock(o.stockCost);
+            if (o.shop.own && !o.shop.mutfak && DarkStore.I != null) DarkStore.I.ReturnStock(o.stockCost);
             OrderHeat.Record(o.customerTile, true);
             MapFx.Cancelled(o);
 
@@ -765,7 +769,7 @@ namespace KuryeTycoon
         }
 
         /// <summary>Şu an yeni iş alabilecek boştaki (elinde paket olmayan) çevrimiçi kurye sayısı.</summary>
-        int IdleCourierCount()
+        public int IdleCourierCount()
         {
             int n = 0;
             foreach (var c in CourierManager.I.Couriers)
@@ -783,10 +787,11 @@ namespace KuryeTycoon
             for (int i = 0; i < Pending.Count; i++)
             {
                 var o = Pending[i];
-                int siparisTuru = o.ekspres ? 0 : o.kargo ? 2 : 1;
+                bool acilIsletme = o.isletme && o.deadlineAt - now < IsletmeTeslimati.AcilDk;   // işletme paketi: süresi daralınca öne
+                int siparisTuru = o.ekspres ? 0 : o.kargo && !acilIsletme ? 2 : 1;
                 if (siparisTuru != tur) continue;
                 if (o.holdUntil > now) continue;   // planlı: saati gelmedi
-                if (o.kargo && !idleSurplus && AktifBekleyen > 0) continue;   // kargo: önce bekleyen yemek/market siparişleri
+                if (o.kargo && !acilIsletme && !idleSurplus && AktifBekleyen > 0) continue;   // kargo: önce bekleyen yemek/market siparişleri
 
                 // 10 dk'dan uzun bekleyen ve fiyat yüzünden reddedilen sipariş: reddedenlere bir kez daha, daha esnek sorulur
                 if (!o.secondRound && o.priceDeclines > 0 && now - o.createdAt > 10f)
@@ -977,7 +982,9 @@ namespace KuryeTycoon
             if (o.customerType == CustomerType.Aceleci && late > 0f) rating -= 1f;
             if (o.dolap) rating += 0.2f;
             rating -= RestoranReklam.PuanCezasi;   // uygulama reklamla dolu
+            if (o.shop.mutfak) rating += SanalMutfak.PuanEki(o.shop);
             o.rating = Mathf.Clamp(rating, 1f, 5f);
+            if (o.shop.mutfak && SanalMutfak.I != null) SanalMutfak.I.Teslim(o);
             OrderHeat.RecordDelivery(o.customerTile, now - o.createdAt);
             DukkanKari.Record(o);
             RestoranReklam.SatisKaydet(o);   // reklam bedeli dükkanın satışından
@@ -1085,6 +1092,50 @@ namespace KuryeTycoon
             return o;
         }
 
+        /// <summary>
+        /// İşletme teslimatı (IsletmeTeslimati): eczane, çiçekçi gibi bir iş ortağının paketi. Sepet ve komisyon yok; işletme sabit ücret
+        /// öder. Kargo gibi işaretlenir (atamada yemek siparişinin önüne geçmez, müşteri vazgeçmez, itibarı etkilemez) ama 90 dk içinde
+        /// teslim edilmeli; süresi daralınca normal sıraya alınır.
+        /// </summary>
+        public Order IsletmeSiparisi(Shop ortak, Vector2Int custTile, float kg, string urun, string not)
+        {
+            var map = CityMap.I;
+            var custDoor = map.GetDoor(custTile);
+            int dist = Mathf.Max(1, map.FindPath(ortak.door, custDoor).Count - 1);
+            int ucret = IsletmeTeslimati.Ucret(dist);
+            float now = GameClock.I.TotalMinutes;
+            var o = new Order
+            {
+                shop = ortak,
+                customerTile = custTile,
+                customerDoor = custDoor,
+                customerType = CustomerType.Normal,
+                addressIssue = RandomAddressIssue(),
+                basket = 0,
+                distance = dist,
+                weightKg = kg,
+                commissionIncome = 0,
+                deliveryFee = ucret,
+                feeBase = ucret,
+                createdAt = now,
+                items = new List<OrderItem> { new OrderItem { name = urun, qty = 1, unitPrice = 0, cat = 'N' } },
+                customerName = GameData.RandomName(),
+                stockCost = 0
+            };
+            o.SetAddress(custTile, custDoor);
+            o.customerNote = not;
+            o.noteTranslation = "";
+            o.noContact = Random.value < 0.3f;
+            o.kargo = true;
+            o.isletme = true;
+            o.readyAt = now + 4f;
+            o.deadlineAt = now + IsletmeTeslimati.TeslimSuresi;
+            o.marker = SpriteFactory.Create($"İşletme #{o.id}", markerRoot, true, ortak.def.color, CityMap.ToWorld(custTile), 0.4f, 15);
+            Pending.Add(o);
+            ortak.ordersTotal++;
+            return o;
+        }
+
         public void CompleteDelivery(Order o, Courier c)
         {
             float now = GameClock.I.TotalMinutes;
@@ -1115,7 +1166,7 @@ namespace KuryeTycoon
             {
                 // Sıcak yemek: termal çantayla 30 dk, çantasız 15 dk sıcak kalır (toplu siparişte risk)
                 float carried = now - o.pickedAt;
-                float limit = c.Has(EquipmentKind.TermalCanta) ? 30f : 15f;
+                float limit = (c.Has(EquipmentKind.TermalCanta) ? 30f : 15f) + ArGe.TermalEk;   // Ar-Ge: yeni nesil termal çanta
                 if (carried > limit)
                 {
                     rating -= 0.8f;
@@ -1131,10 +1182,13 @@ namespace KuryeTycoon
             if (o.ekspres && HizmetSeviyeleri.I != null) rating += HizmetSeviyeleri.I.Teslim(o, late);   // ekspres sözü tutuldu mu (geçse ücret iade)
             if (o.planli && late <= 0f) rating += 0.1f;   // tam seçtiği saatte geldi
             if (!o.kargo) rating -= RestoranReklam.PuanCezasi;   // uygulama reklamla dolu: müşteri memnuniyeti biraz düşer
+            if (o.shop.mutfak) rating += SanalMutfak.PuanEki(o.shop);   // sanal mutfak: geliştirilmiş menü
             o.rating = Mathf.Clamp(rating, 1f, 5f);
+            if (o.shop.mutfak && SanalMutfak.I != null) SanalMutfak.I.Teslim(o);
             if (!o.kargo) OrderHeat.RecordDelivery(o.customerTile, now - basAn);   // harita: teslimat süresi katmanı
             if (o.catering && KurumsalSiparisler.I != null) KurumsalSiparisler.I.Teslim(o, late);
-            if (o.kargo && KargoAnlasmasi.I != null) KargoAnlasmasi.I.Teslim(o, late);
+            if (o.isletme) { if (IsletmeTeslimati.I != null) IsletmeTeslimati.I.Teslim(o, late); }
+            else if (o.kargo && KargoAnlasmasi.I != null) KargoAnlasmasi.I.Teslim(o, late);
             DukkanKari.Record(o);
             RestoranReklam.SatisKaydet(o);   // reklam bedeli dükkanın satışından                                          // harita: dükkan kârlılığı katmanı
 

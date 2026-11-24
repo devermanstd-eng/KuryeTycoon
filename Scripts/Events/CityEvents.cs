@@ -174,6 +174,9 @@ namespace KuryeTycoon
 
         bool Has(int day, string title) => Events.Exists(e => e.day == day && e.title == title);
 
+        /// <summary>Sezonluk etkinlikler (SezonEtkinlikleri) günün talep etkinliğini buradan ekler (aynı gün aynı başlık bir kez).</summary>
+        public void SezonEkle(CityEvent e) => Add(e);
+
         void Add(CityEvent e)
         {
             if (e.day < GameClock.I.Day || Has(e.day, e.title)) return;

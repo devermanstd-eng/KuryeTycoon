@@ -71,7 +71,57 @@ namespace KuryeTycoon
                 AkilliMarket();
                 AkilliEgitim();
                 AkilliHizmet();
+                AkilliMutfakArGe();
                 if (clk.DayOfWeek == 0 && sonHaftaGun != clk.Day) { sonHaftaGun = clk.Day; AkilliFiyat(); }
+            }
+        }
+
+        // ------------------------------------------------------------------ sanal mutfak ve Ar-Ge
+
+        /// <summary>
+        /// Sanal mutfak: Doğu İlçesi açık, en az 15 kurye ve boş para kurulumun 4 katıysa kurar; markalar popülerse (≥ 0,8) yenisini
+        /// açar, menüyü boş paranın 1/5'iyle geliştirir. Ar-Ge: boş para bedelin 4 katıysa en ucuz başlatılabilir projeyi başlatır.
+        /// Kurye hesapları doluyken (platform paketine birikim) ikisine de dokunmaz.
+        /// </summary>
+        void AkilliMutfakArGe()
+        {
+            if (Biriktir) return;
+            long bos = Bos;
+            var sm = SanalMutfak.I;
+            var cm = CourierManager.I;
+            if (sm != null && Guide.I != null && Guide.I.IsOpen(Feature.Market))
+            {
+                if (!sm.IsOpen)
+                {
+                    if (sm.KilitNedeni.Length == 0 && cm.Couriers.Count >= 15 && bos >= SanalMutfak.KurulumBedeli * 4 && sm.Kur())
+                        Eylem("Mutfak", $"sanal mutfak kuruldu ({Ft(SanalMutfak.KurulumBedeli)}) · neden: {cm.Couriers.Count} kurye, boş para {Ft(bos)}");
+                }
+                else
+                {
+                    bool hepsiPopuler = true;
+                    foreach (var m in sm.Acik) if (m.populerlik < 0.8f) hepsiPopuler = false;
+                    SanalMutfak.MarkaDurum enAz = null;
+                    foreach (var m in sm.Acik) if (m.menu < 3 && (enAz == null || m.menu < enAz.menu)) enAz = m;
+                    if (sm.SiradakiMarka >= 0 && hepsiPopuler && bos >= SanalMutfak.MarkaBedeli * 4 && sm.MarkaAc())
+                        Eylem("Mutfak", $"yeni sanal marka: {sm.Acik[sm.Acik.Count - 1].T.ad} · neden: mevcut markalar popüler, boş para {Ft(bos)}");
+                    else if (enAz != null && sm.MenuBedel(enAz) <= bos / 5 && sm.MenuGelistir(enAz))
+                        Eylem("Mutfak", $"{enAz.T.ad} menüsü {enAz.menu}. seviyeye · neden: boş para {Ft(bos)}");
+                }
+            }
+            var a = ArGe.I;
+            if (a != null && string.IsNullOrEmpty(a.aktif) && Guide.I != null && Guide.I.IsOpen(Feature.Gelisim))
+            {
+                ArGe.Proje en = null;
+                foreach (var p in ArGe.Projeler)
+                {
+                    if (a.Engel(p).Length > 0) continue;
+                    bool hazir = true;
+                    foreach (var k in p.onKosul) if (!a.Tamam(k)) hazir = false;
+                    if (!hazir || p.bedel * 4 > Bos) continue;
+                    if (en == null || p.bedel < en.bedel) en = p;
+                }
+                if (en != null && a.Baslat(en))
+                    Eylem("Ar-Ge", $"{en.ad} başlatıldı ({Ft(en.bedel)}, {en.gun:0} gün) · etki: {en.etki}");
             }
         }
 
@@ -560,14 +610,27 @@ namespace KuryeTycoon
 
             if (t == "Platform Çalışanları Yasası")
             {
-                var govde = Tutarlar((ev.body ?? "").Replace("~", "−"));
-                long calisanGunluk = 0;
-                foreach (var v in govde) if (v < 0) calisanGunluk = -v;   // gövdedeki son tutar: "günde ~X"
-                long calisanAylik = calisanGunluk * 30;
-                int serbest = Bul(ev, izinli, "serbest çalışan");
-                long serbestAylik = serbest >= 0 ? Gider(ev.choices[serbest].label) : long.MaxValue;
-                if (calisanAylik > 0 && calisanAylik < serbestAylik) { neden = $"çalışan statüsü ayda ~{Ft(calisanAylik)} < serbest {Ft(serbestAylik)}, üstelik moral ve grev avantajı"; return Bul(ev, izinli, "çalışan statüsüne"); }
-                neden = $"serbest kalmak ayda {Ft(serbestAylik)}, çalışan statüsü ~{Ft(calisanAylik)}"; return serbest;
+                // Üç modelin aylık beklenen maliyeti: hepsi çalışan · karma (tam zamanlılar çalışan) · serbest (uyum + beklenen ceza)
+                int n = CourierManager.I.Couriers.Count;
+                long hepsi = CrisisManager.EmployeeDailyCost(n) * 30;
+                long karma = CrisisManager.KarmaGunlukMaliyet(true) * 30 + CrisisManager.KarmaAylikUyum(true);
+                long serbestM = CrisisManager.SerbestAylikUyum(n) + (long)(CrisisManager.SerbestDenetimIhtimali() * CrisisManager.DenetimCezasi());
+                int iHepsi = Bul(ev, izinli, "bütün kuryeleri çalışan"), iKarma = Bul(ev, izinli, "karma model"), iSerbest = Bul(ev, izinli, "serbest çalışan");
+                string ozet = $"aylık: hepsi çalışan ~{Ft(hepsi)}, karma ~{Ft(karma)}, serbest ~{Ft(serbestM)} (beklenen ceza dahil)";
+                // Çalışan kuryenin moral ve sadakat avantajı var: karma, serbestten %15'e kadar pahalıysa yine karma
+                if (iKarma >= 0 && karma <= serbestM * 1.15f && karma <= hepsi) { neden = ozet + " → karma model"; return iKarma; }
+                if (iHepsi >= 0 && hepsi < serbestM && hepsi < karma) { neden = ozet + " → hepsi çalışan"; return iHepsi; }
+                neden = ozet + " → serbest";
+                return iSerbest >= 0 ? iSerbest : iKarma;
+            }
+
+            if (t.StartsWith("Yaklaşan etkinlik:"))
+            {
+                long kb = SezonEtkinlikleri.KampanyaBedeli, b = Bos;
+                if (kb <= b / 6) { neden = $"kampanya {Ft(kb)} rahat karşılanır, prim de verilir: hedef için talep ve kurye"; return Bul(ev, izinli, "ikisi de"); }
+                if (kb <= b / 3) { neden = $"kampanya {Ft(kb)} karşılanır"; return Bul(ev, izinli, "kampanyası"); }
+                neden = "kasa dar: sadece kurye primi";
+                return Bul(ev, izinli, "primi");
             }
 
             // Bilinmeyen kart: her seçeneği puanla
@@ -803,10 +866,15 @@ namespace KuryeTycoon
             foreach (var t in rv.Tehditler)
             {
                 var ts = rv.TehditDukkani(t);
-                if (ts == null || ts.exclusive || !rv.CanOfferExclusive(ts) || rv.ExclusiveChance(ts) < 0.4f) continue;
+                if (ts == null || ts.exclusive || !rv.CanOfferExclusive(ts)) continue;
+                // Şans düşükse ve kasa rahatsa primli teklif (prim sadece kabul ederse ödenir)
+                bool primT = rv.ExclusiveChance(ts) < 0.4f && rv.CanOfferExclusivePrim(ts) && BosDar >= DukkanSadakati.Prim(ts) * 4 &&
+                             rv.ExclusiveChance(ts, true) >= 0.5f;
+                if (rv.ExclusiveChance(ts) < 0.4f && !primT) continue;
                 var tr = rv.RakipAt(t.rakip);
-                Eylem("Pazarlık", $"{ts.Name}'a münhasırlık önerildi: {(tr != null ? tr.ad : "rakip")} teklif hazırlıyor (şans %{rv.ExclusiveChance(ts) * 100f:0})");
-                rv.OfferExclusive(ts);
+                Eylem("Pazarlık", $"{ts.Name}'a {(primT ? $"primli ({Ft(DukkanSadakati.Prim(ts))}) " : "")}münhasırlık önerildi: {(tr != null ? tr.ad : "rakip")} teklif hazırlıyor " +
+                                  $"(şans %{rv.ExclusiveChance(ts, primT) * 100f:0}, sadakat {DukkanSadakati.Ad(ts)})");
+                rv.OfferExclusive(ts, primT);
                 sonPazarlikGun = clk.Day;
                 return;
             }
@@ -817,12 +885,14 @@ namespace KuryeTycoon
             if (gecen < (sev >= 1 ? 3 : 7)) return;
             float esikM = sev >= 1 ? 0.55f : 0.65f;
             Shop enM = null, enP = null;
+            bool enMPrim = false;
             foreach (var s in CityMap.I.Shops)
             {
                 if (!s.contracted || s.own) continue;
-                if (s.rivalContracted && rv.CanOfferExclusive(s) && rv.ExclusiveChance(s) >= esikM && DukkanPayi(s) >= 0.1f)
+                bool primS = rv.ExclusiveChance(s) < esikM && rv.CanOfferExclusivePrim(s) && BosDar >= DukkanSadakati.Prim(s) * 4;
+                if (s.rivalContracted && rv.CanOfferExclusive(s) && rv.ExclusiveChance(s, primS) >= esikM && DukkanPayi(s) >= 0.1f)
                 {
-                    if (enM == null || DukkanPayi(s) > DukkanPayi(enM)) enM = s;
+                    if (enM == null || DukkanPayi(s) > DukkanPayi(enM)) { enM = s; enMPrim = primS; }
                 }
                 else if (rv.CanNegotiate(s) && rv.NegotiateChance(s) >= 0.5f && (enP == null || DukkanPayi(s) > DukkanPayi(enP))) enP = s;
             }
@@ -830,8 +900,9 @@ namespace KuryeTycoon
             if (enM != null)
             {
                 sonPazarlikGun = clk.Day;
-                Eylem("Pazarlık", $"{enM.Name}'a münhasırlık önerildi (şans %{rv.ExclusiveChance(enM) * 100f:0}, rakip de çalışıyor)");
-                rv.OfferExclusive(enM);
+                Eylem("Pazarlık", $"{enM.Name}'a {(enMPrim ? $"primli ({Ft(DukkanSadakati.Prim(enM))}) " : "")}münhasırlık önerildi " +
+                                  $"(şans %{rv.ExclusiveChance(enM, enMPrim) * 100f:0}, rakip de çalışıyor, sadakat {DukkanSadakati.Ad(enM)})");
+                rv.OfferExclusive(enM, enMPrim);
             }
             else if (enP != null)
             {
@@ -889,7 +960,15 @@ namespace KuryeTycoon
                                  (kilit.Length > 0 ? $"; {kilit}" : "") + ") için para biriktiriliyor. Bölge, sözleşme, market, diğer geliştirmeler ve erken borç ödemesi bekliyor.");
             }
             biriktiriyordu = biriktir;
-            if (biriktir) return;
+            if (biriktir)
+            {
+                // Gelir getiren ucuz alımlar birikimi bozmaz: işletme teslimatı (boş kuryeye komisyonsuz iş) ve otomasyon,
+                // bedeli boş paranın %15'ini geçmiyorsa. (24.11 testi: hesaplar 30 gün doluydu, ikisi de hiç alınmadı.)
+                if (son == null || clk.Day - sonAkilliGelistirmeGun < 3) return;
+                if (cm.Couriers.Count >= 12 && UcuzAl(UpgradeKind.Isletme, bos, "kurye hesapları dolu ama sakin saatlerde boş kurye var: işletme paketleri komisyonsuz gelir")) return;
+                if (cm.Couriers.Count >= 8 && UcuzAl(UpgradeKind.Otomasyon, bos, "günlük ayarları otomasyona bırak, oyun kapalıyken kazanç")) return;
+                return;
+            }
 
             if (son == null || clk.Day - sonAkilliGelistirmeGun < 3) return;
             long gelir = OrtalamaGelir(7);
@@ -906,6 +985,7 @@ namespace KuryeTycoon
             if (OrtMoral < 0.6f) adaylar.Add((UpgradeKind.Dinlenme, $"ort. moral {OrtMoral:0.00}"));
             // Otomasyon her gün iş görür ve kalıcıdır: sürekli geçerli adayların (dolap, merkez, robot) arkasında kalıp hiç alınmıyordu
             if (cm.Couriers.Count >= 8) adaylar.Add((UpgradeKind.Otomasyon, $"{cm.Couriers.Count} kurye: günlük ayarları otomasyona bırak, oyun kapalıyken kazanç"));
+            if (cm.Couriers.Count >= 12 && iptal < 0.08f) adaylar.Add((UpgradeKind.Isletme, $"kurye başı {kuryeBasi:0} teslimat: öğleden önce ve öğleden sonra boş kurye, işletme paketleri komisyonsuz gelir"));
             bool hesapBekleyen = up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0;
             if (iptal < 0.03f && kuryeBasi < 12f && cm.Couriers.Count >= 5 && YogunKayipOrani(3) < 0.02f && !hesapBekleyen)
                 adaylar.Add((UpgradeKind.Reklam, $"servis iyi, kurye başı {kuryeBasi:0} teslimat: talep lazım"));
@@ -930,6 +1010,17 @@ namespace KuryeTycoon
                 if (gelir > 0 && ekGunluk > gelir * 0.08f) continue;   // günlük gideri gelire göre ağır
                 if (Al(a.k, bos, a.neden)) { sonAkilliGelistirmeGun = clk.Day; return; }
             }
+        }
+
+        /// <summary>Birikim sırasında: bedeli boş paranın %15'ini geçmeyen geliştirme.</summary>
+        bool UcuzAl(UpgradeKind k, long bos, string neden)
+        {
+            var up = UpgradeManager.I;
+            int bedel = up.NextCost(k);
+            if (bedel <= 0 || up.IsLocked(k) || bedel > bos * 0.15f) return false;
+            if (!Al(k, bos, neden + " (birikim sürerken ucuz alım)")) return false;
+            sonAkilliGelistirmeGun = GameClock.I.Day;
+            return true;
         }
 
         /// <summary>Geliştirmeyi alır: normalde boş paranın en fazla yarısı; darboğazı çözen alımda (tamami) boş paranın tamamı.</summary>

@@ -276,7 +276,7 @@ namespace KuryeTycoon
 
         public void OnDelivered(Order o)
         {
-            if (o == null || o.shop == null || !o.shop.own) return;
+            if (o == null || o.shop == null || !o.shop.own || o.shop.mutfak || o.shop.kargo) return;   // sanal mutfak ve kargo/işletme kendi istatistiğini tutar
             ordersToday++; ordersTotal++;
             salesToday += o.basket; salesTotal += o.basket;
             long gross = o.basket - o.stockCost;

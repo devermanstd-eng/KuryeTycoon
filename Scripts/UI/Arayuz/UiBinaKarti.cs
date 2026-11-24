@@ -104,8 +104,10 @@ namespace KuryeTycoon
                 string status = !map.IsUnlocked(s.tile) ? "Kilitli bölge" : s.exclusive ? "Münhasır" : s.contracted ? "Sözleşmeli" : "Sözleşmesiz";
                 renk = s.def.color;
                 U.SimgeAyarla(binaSimge, s.def.isMarket ? Icons.Kind.Orders : Icons.Kind.Shops, renk.grayscale > 0.7f ? new Color(0.1f, 0.1f, 0.12f) : Color.white);
-                U.Metin(binaAd, s.kargo ? KargoAnlasmasi.DepoAdi : s.own && DarkStore.I != null ? DarkStore.StoreName : s.Name);
-                U.Metin(binaAlt, s.kargo ? "Senin kargo deponun · paket dağıtımı" : s.own ? "Senin marketin · komisyonsuz" : $"{kind} · {status} · {(ShopHours.IsOpen(s.def) ? "Açık" : "Kapalı")}");
+                U.Metin(binaAd, s.mutfak ? "Sanal mutfak" : s.isletme ? s.Name : s.kargo ? KargoAnlasmasi.DepoAdi : s.own && DarkStore.I != null ? DarkStore.StoreName : s.Name);
+                U.Metin(binaAlt, s.mutfak ? "Senin mutfağın · sadece uygulamada satılan markalar, komisyonsuz" :
+                                 s.isletme ? "İş ortağın · işletme teslimatı (komisyonsuz, paket başı ücret)" :
+                                 s.kargo ? "Senin kargo deponun · paket dağıtımı" : s.own ? "Senin marketin · komisyonsuz" : $"{kind} · {status} · {(ShopHours.IsOpen(s.def) ? "Açık" : "Kapalı")}");
             }
             else
             {
@@ -122,6 +124,37 @@ namespace KuryeTycoon
             if (infoShop != null) BinaDukkan(y, infoShop, om, now);
             else BinaMusteri(y, infoTile, map, om, now);
             y.Bitir();
+        }
+
+        void BinaMutfak(Yazici y)
+        {
+            var sm = SanalMutfak.I;
+            if (sm == null || !sm.IsOpen) return;
+            y.Kucuk($"Aynı mutfakta {sm.Acik.Count} marka pişiyor; ayrıntılar İşletme > Mutfak'ta.");
+            foreach (var m in sm.Acik)
+                y.KV(m.T.ad, $"menü {m.menu}/3 · popülerlik {m.populerlik:0.00} · bugün {m.bugunSiparis} sipariş");
+            y.KutularBasla();
+            y.Kutu("Bugün", $"{sm.bugunSiparis} sipariş", Ft(sm.bugunSatis));
+            y.Kutu("Dün net", Ft(sm.dunSatis - sm.dunMalzeme - sm.dunGider), "satış − malzeme − gider");
+            y.KutularBitir();
+        }
+
+        void BinaIsletme(Yazici y, Shop s)
+        {
+            var it = IsletmeTeslimati.I;
+            var o = it != null ? it.OrtakBul(s) : null;
+            if (o == null) return;
+            y.Kucuk($"{o.Ad} müşterilerine gidecek paketleri senin kuryelerinle gönderiyor: 09:00–20:00 arası, en çok 10–11 ve 14–17 saatlerinde. " +
+                    $"Paket başı {GameData.Ft(IsletmeTeslimati.Ucret(15))} (3 km), 90 dk içinde teslim edilmeli.");
+            Color mc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), o.memnuniyet / 100f);
+            y.Cubuk("Memnuniyet", o.memnuniyet / 100f, mc, $"{o.memnuniyet:0}/100");
+            if (o.Kusgun) y.Uyari($"Küs: {GameClock.I.DateOf(o.kusBitis)} tarihine kadar paket göndermiyor.");
+            y.KutularBasla();
+            y.Kutu("Bugün", $"{o.bugunTeslim} teslim", o.bugunGec > 0 ? $"{o.bugunGec} geç" : null);
+            y.Kutu("Teslim edilemeyen", o.bugunKacan.ToString(), "bugün", o.bugunKacan > 0 ? U.Uyari : (Color?)null);
+            y.Kutu("Bütün ortaklar · dün", $"{it.dunTeslim} paket", GameData.Ft(it.dunGelir));
+            y.Kutu("Toplam", $"{it.toplamTeslim} paket", GameData.Ft(it.toplamGelir));
+            y.KutularBitir();
         }
 
         void BinaKargo(Yazici y)
@@ -151,7 +184,9 @@ namespace KuryeTycoon
             y.Kutu("Toplam", s.ordersTotal.ToString());
             y.KutularBitir();
 
-            if (s.kargo) BinaKargo(y);
+            if (s.mutfak) BinaMutfak(y);
+            else if (s.isletme) BinaIsletme(y, s);
+            else if (s.kargo) BinaKargo(y);
             else if (s.own) BinaKendiMarket(y);
             else UiDukkanAyrinti(y, s, RivalCompany.I);
 

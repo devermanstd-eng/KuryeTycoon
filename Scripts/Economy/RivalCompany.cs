@@ -499,29 +499,42 @@ namespace KuryeTycoon
 
         /// <summary>Münhasırlık kabul ihtimali: memnuniyete bağlı; dükkanla çalışan her rakip biraz zorlaştırır.</summary>
         public float ExclusiveChance(Shop s) =>
-            Mathf.Clamp((s.satisfaction - 40f) / 50f - 0.05f * Mathf.Max(0, DukkanRakipSayisi(s) - 1), 0f, 0.9f);
+            Mathf.Clamp((s.satisfaction - 40f) / 50f - 0.05f * Mathf.Max(0, DukkanRakipSayisi(s) - 1) + DukkanSadakati.MunhasirlikEki(s), 0f, 0.9f);
+
+        /// <summary>Primli münhasırlık: tek seferlik prim kabul ihtimalini 30 puan artırır (en fazla %95).</summary>
+        public float ExclusiveChance(Shop s, bool primli) =>
+            primli ? Mathf.Min(0.95f, ExclusiveChance(s) + DukkanSadakati.PrimEki) : ExclusiveChance(s);
+
+        /// <summary>Primli teklif yapılabilir mi (serbest kasa primi karşılıyor mu).</summary>
+        public bool CanOfferExclusivePrim(Shop s) => CanOfferExclusive(s) && EconomyManager.I.FreeCash >= DukkanSadakati.Prim(s);
 
         public bool CanOfferExclusive(Shop s) => s.contracted && !s.exclusive && Day >= s.negotiateCooldownUntil;
 
         /// <summary>Münhasırlık: bütün rakipler çıkar, siparişler artar, komisyon 3 puan düşer, sözleşme yeniden 6 ay.</summary>
-        public void OfferExclusive(Shop s)
+        public void OfferExclusive(Shop s, bool primli = false)
         {
             if (!CanOfferExclusive(s)) return;
+            if (primli && !CanOfferExclusivePrim(s)) primli = false;
+            long prim = primli ? DukkanSadakati.Prim(s) : 0;
             s.negotiateCooldownUntil = Day + 30;
-            if (Random.value < ExclusiveChance(s))
+            if (Random.value < ExclusiveChance(s, primli))
             {
+                if (primli && !EconomyManager.I.TrySpendYatirim(prim, $"Münhasırlık primi: {s.Name}", ExpenseCategory.Sozlesme)) primli = false;
+                if (primli) Telemetry.Add("Münhasırlık: primli kabul");
                 string eski = DukkanRakipleri(s);
                 MakeExclusive(s);
                 s.commissionBonus -= 0.03f;
                 AddSatisfaction(s, 8f);
                 EventManager.I.Push(new GameEvent("Münhasır sözleşme!",
                     $"{s.Name} artık sadece seninle çalışacak" + (eski.Length > 0 ? $" ({eski} ile anlaşmasını bitirdi)" : "") +
-                    $". Siparişler +%15, komisyon {Pct(s.Commission)}. Sözleşme {GameClock.I.DateOf(s.contractEndDay)} tarihine kadar."));
+                    $". Siparişler +%15, komisyon {Pct(s.Commission)}. Sözleşme {GameClock.I.DateOf(s.contractEndDay)} tarihine kadar." +
+                    (primli ? $" Münhasırlık primi: {GameData.Ft(prim)}." : "")));
             }
             else
             {
                 AddSatisfaction(s, -3f);
-                EventManager.I.Notify($"{s.Name} münhasırlık teklifini şimdilik kabul etmedi (memnuniyet {s.satisfaction:0}).");
+                EventManager.I.Notify($"{s.Name} münhasırlık teklifini şimdilik kabul etmedi (memnuniyet {s.satisfaction:0})" +
+                                      (primli ? "; prim ödenmedi." : "."));
             }
         }
 
@@ -721,6 +734,7 @@ namespace KuryeTycoon
                 {
                     if (giden >= enFazla) break;
                     if (c.morale >= esikMoral || c.OrderCount > 0) continue;
+                    if (CrisisManager.CalisanMi(c)) continue;   // karma model: çalışan statüsündeki kurye gitmez
                     if (UpgradeManager.I != null && UpgradeManager.I.LoyaltyProgram && c.level >= 3) continue;   // sadakat programı: kıdemli kurye kalır
                     float sans = (0.2f + 0.05f * (Rakipler.Count - 1) + (esikMoral - c.morale) * 0.8f) * akademi;
                     if (Random.value < sans)
@@ -742,14 +756,14 @@ namespace KuryeTycoon
             Shop s = null;
             if (seviye >= 1 && Random.value < 0.6f)
             {
-                foreach (var d in CityMap.I.Shops) if (d.contracted && !d.own && !d.exclusive && !Var(d, i)) cands.Add(d);
+                foreach (var d in CityMap.I.Shops) if (d.contracted && !d.own && !d.exclusive && !Var(d, i) && Random.value >= DukkanSadakati.RakipRedOrani(d)) cands.Add(d);
                 cands.Sort((a, b) => (b.lastMonthOrders + b.monthOrders).CompareTo(a.lastMonthOrders + a.monthOrders));
                 if (cands.Count > 0) s = cands[Random.Range(0, Mathf.Min(3, cands.Count))];
             }
             if (s == null)
             {
                 cands.Clear();
-                foreach (var d in CityMap.I.Shops) if (!Var(d, i) && !d.exclusive && !d.own) cands.Add(d);
+                foreach (var d in CityMap.I.Shops) if (!Var(d, i) && !d.exclusive && !d.own && Random.value >= DukkanSadakati.RakipRedOrani(d)) cands.Add(d);
                 if (cands.Count == 0) return;
                 s = cands[Random.Range(0, cands.Count)];
             }
@@ -873,6 +887,7 @@ namespace KuryeTycoon
             var list = new List<Courier>(CourierManager.I.Couriers);
             if (list.Count < 8) return null;
             list.RemoveAll(HedefteMi);   // başka rakibin hedefindekiler
+            list.RemoveAll(CrisisManager.CalisanMi);   // çalışan statüsündekiler (karma model) teklife açık değil
             if (list.Count < 3) return null;
             int seviye = TehditSeviyesi;
             int bekleme = seviye >= 2 ? 21 : seviye == 1 ? 28 : 42;
@@ -1059,6 +1074,7 @@ namespace KuryeTycoon
             s.contracted = false;
             s.exclusive = false;
             s.oncelikli = false;
+            s.sadakat *= 0.3f;   // rakibe giden dükkanın sadakati büyük ölçüde kaybolur
             if (ri >= 0 && ri < Rakipler.Count) Ekle(s, ri);
             s.resignBlockedUntil = Day + 30;
             s.satisfaction = 40f;

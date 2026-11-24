@@ -67,7 +67,7 @@ namespace KuryeTycoon
         }
 
         /// <summary>Dükkan bir rakibe gidebilir mi: öncelikli hazırlık anlaşması olan dükkan daha sadık.</summary>
-        static float SadakatEki(Shop s) => s != null && s.oncelikli ? Mutfak.OncelikSadakat : 0f;
+        static float SadakatEki(Shop s) => (s != null && s.oncelikli ? Mutfak.OncelikSadakat : 0f) + DukkanSadakati.TutmaEki(s);
 
         void SadakatKaydet(RivalSave s)
         {

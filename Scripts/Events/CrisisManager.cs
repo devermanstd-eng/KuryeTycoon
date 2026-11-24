@@ -32,6 +32,8 @@ namespace KuryeTycoon
         public int lawStage;               // 0 henüz yok · 1 ertelendi · 2 karar verildi
         public int lawDecisionDay;
         public long lawMonthlyFee;         // serbest çalışan modeli için aylık hukuki uyum gideri
+        public bool karma;                 // karma model: tam zamanlı kuryeler çalışan, diğerleri serbest
+        public bool lawAnnounced;          // yasa duyurusu yapıldı
     }
 
     /// <summary>
@@ -50,8 +52,90 @@ namespace KuryeTycoon
         float outageUntil;
         public bool serverUpgraded;
         public bool employees;
+        public bool karma;                 // karma model (bkz. CalisanMi)
+        bool lawAnnounced;
         int lawStage, lawDecisionDay;
         public long lawMonthlyFee;
+
+        /// <summary>Yasanın duyurulduğu ve kararın istendiği şirket günü (en az 12 kurye varsa).</summary>
+        public const int YasaDuyuruGunu = 35, YasaGunu = 45, YasaEnAzKurye = 12;
+        /// <summary>Günde ortalama bu kadar saatten fazla çevrimiçi olan kurye "tam zamanlı" sayılır (yasa onu çalışan sayar).</summary>
+        public const float TamZamanSaat = 6f;
+
+        /// <summary>Bu kurye çalışan statüsünde mi: hepsi çalışan ya da karma modelde çalışan yapılmış.</summary>
+        public static bool CalisanMi(Courier c) => I != null && c != null && (I.employees || (I.karma && c.calisan));
+        public static bool TamZamanli(Courier c) => c != null && c.ortSaat >= TamZamanSaat;
+        public static bool YasaKararVerildi => I != null && I.lawStage == 2;
+
+        public static int TamZamanliSayisi()
+        {
+            int n = 0;
+            if (CourierManager.I != null) foreach (var c in CourierManager.I.Couriers) if (TamZamanli(c)) n++;
+            return n;
+        }
+
+        public static int CalisanSayisi()
+        {
+            int n = 0;
+            if (CourierManager.I != null) foreach (var c in CourierManager.I.Couriers) if (CalisanMi(c)) n++;
+            return n;
+        }
+
+        /// <summary>Bir kurye grubunun çalışma saatinin toplamdaki payı (maliyet hakedişle orantılı).</summary>
+        static float SaatPayi(System.Func<Courier, bool> grup, out int adet)
+        {
+            adet = 0;
+            float g = 0f, t = 0f;
+            if (CourierManager.I == null) return 0f;
+            foreach (var c in CourierManager.I.Couriers)
+            {
+                float h = Mathf.Max(0.5f, c.ortSaat);
+                t += h;
+                if (grup(c)) { g += h; adet++; }
+            }
+            return t > 0f ? g / t : 0f;
+        }
+
+        /// <summary>Karma model günlük işveren maliyeti: çalışan yapılan grubun hakediş payının %28'i + kişi başı sabit.</summary>
+        public static long KarmaGunlukMaliyet(bool teklif)
+        {
+            float pay = SaatPayi(teklif ? (System.Func<Courier, bool>)TamZamanli : CalisanMi, out int adet);
+            var hist = StatsHistory.I != null ? StatsHistory.I.Days : null;
+            long odeme = hist != null && hist.Count > 0 ? hist[hist.Count - 1].courierPay : 0;
+            return (long)Mathf.Round(odeme * EmployeeCostShare * pay) + EmployeeDailyFixed * adet;
+        }
+
+        public static long SerbestAylikUyum(int kurye) => Round1000(Mathf.Max(2000000f, kurye * 30000f));
+
+        /// <summary>Karma modelde serbest kalan kuryeler için aylık uyum gideri (tam serbest modelin %40'ı, serbest payıyla).</summary>
+        public static long KarmaAylikUyum(bool teklif)
+        {
+            int n = CourierManager.I != null ? CourierManager.I.Couriers.Count : 0;
+            int calisan = teklif ? TamZamanliSayisi() : CalisanSayisi();
+            float serbestPay = n > 0 ? (n - calisan) / (float)n : 0f;
+            return Round1000(SerbestAylikUyum(n) * 0.4f * serbestPay);
+        }
+
+        /// <summary>Serbest modelde aylık denetim cezası ihtimali: tam zamanlı kuryelerin payı arttıkça yükselir (%6 + pay × %24).</summary>
+        public static float SerbestDenetimIhtimali()
+        {
+            int n = CourierManager.I != null ? CourierManager.I.Couriers.Count : 0;
+            return n > 0 ? 0.06f + 0.24f * TamZamanliSayisi() / (float)n : 0.06f;
+        }
+
+        /// <summary>Tam zamanlı serbest kurye başına geriye dönük sosyal katkı ve ceza (450 €).</summary>
+        public const long KuryeBasiCeza = 180000;
+
+        /// <summary>
+        /// Denetim cezası: tam zamanlı çalıştığı hâlde serbest tutulan her kurye için geriye dönük prim ve ceza (kişi başı 450 €),
+        /// en az 5 000 € ya da 1,5 günlük ortalama gelir. (24.11 testi: eski ceza ~7 290 € ve %12 ihtimalle serbest model ayda
+        /// ~7 900 €'ya geliyordu, karma ~19 600 €; seçim anlamsızdı.)
+        /// </summary>
+        public static long DenetimCezasi(int serbestTamZamanli = -1)
+        {
+            if (serbestTamZamanli < 0) serbestTamZamanli = TamZamanliSayisi();
+            return Round1000(Mathf.Max(Mathf.Max(2000000f, AvgDailyIncome() * 1.5f), serbestTamZamanli * (float)KuryeBasiCeza));
+        }
 
         /// <summary>
         /// Çalışan statüsünün işveren maliyeti: kuryelere ödenen hakedişin %28'i (Macaristan'da işveren sosyal katkısı %13
@@ -82,6 +166,7 @@ namespace KuryeTycoon
             outageUntil = 0f;
             serverUpgraded = false;
             employees = false;
+            karma = false; lawAnnounced = false;
             lawStage = 0; lawDecisionDay = 0; lawMonthlyFee = 0;
             GameClock.I.OnNewDay -= OnNewDay;
             GameClock.I.OnNewMonth -= OnNewMonth;
@@ -96,7 +181,8 @@ namespace KuryeTycoon
             effects = new List<CrisisEffect>(Effects), nextCrisisDay = nextCrisisDay,
             lastStrikeDay = lastStrikeDay, lastOutageDay = lastOutageDay, lastFuelDay = lastFuelDay, lastHeatDay = lastHeatDay,
             outageUntil = outageUntil, serverUpgraded = serverUpgraded, employees = employees,
-            lawStage = lawStage, lawDecisionDay = lawDecisionDay, lawMonthlyFee = lawMonthlyFee
+            lawStage = lawStage, lawDecisionDay = lawDecisionDay, lawMonthlyFee = lawMonthlyFee,
+            karma = karma, lawAnnounced = lawAnnounced
         };
 
         public void RestoreSave(CrisisSave s)
@@ -108,6 +194,7 @@ namespace KuryeTycoon
             lastStrikeDay = s.lastStrikeDay; lastOutageDay = s.lastOutageDay; lastFuelDay = s.lastFuelDay; lastHeatDay = s.lastHeatDay;
             outageUntil = s.outageUntil; serverUpgraded = s.serverUpgraded; employees = s.employees;
             lawStage = s.lawStage; lawDecisionDay = s.lawDecisionDay; lawMonthlyFee = s.lawMonthlyFee;
+            karma = s.karma; lawAnnounced = s.lawAnnounced || s.lawStage > 0;
         }
 
         // ================================================================ diğer sistemlerin okuduğu etkiler
@@ -250,10 +337,19 @@ namespace KuryeTycoon
                 EconomyManager.I.Spend(EmployeeDailyCost(Couriers.Count), $"Kurye çalışan maliyeti ({Couriers.Count} kişi: hakedişin %28'i + kişi başı {Ft(EmployeeDailyFixed)})", ExpenseCategory.Maas);
                 foreach (var c in Couriers) if (c.morale < 0.75f) c.morale = Mathf.Min(0.75f, c.morale + 0.01f);
             }
+            else if (karma && Couriers.Count > 0)
+            {
+                long k = KarmaGunlukMaliyet(false);
+                int n = CalisanSayisi();
+                if (k > 0) EconomyManager.I.Spend(k, $"Kurye çalışan maliyeti (karma model, {n} çalışan kurye)", ExpenseCategory.Maas);
+                foreach (var c in Couriers) if (c.calisan && c.morale < 0.75f) c.morale = Mathf.Min(0.75f, c.morale + 0.01f);
+            }
 
-            // Yasa: ertelendiyse vakti gelince yeniden sorulur, hiç gelmediyse bir gün gelir
+            // Yasa: 35. gün duyurulur, 45. gün karar istenir (en az 12 kurye varsa); ertelendiyse vakti gelince yeniden sorulur
+            int sirketGunu = GameClock.I.CompanyDay;
             if (lawStage == 1 && Day >= lawDecisionDay) PlatformLaw();
-            else if (lawStage == 0 && GameClock.I.CompanyDay >= 120 && Couriers.Count >= 20 && Random.value < 0.02f) PlatformLaw();
+            else if (lawStage == 0 && !lawAnnounced && sirketGunu >= YasaDuyuruGunu && Couriers.Count >= YasaEnAzKurye) YasaDuyurusu();
+            else if (lawStage == 0 && lawAnnounced && sirketGunu >= YasaGunu && Couriers.Count >= YasaEnAzKurye) PlatformLaw();
 
             if (Day >= nextCrisisDay && GameClock.I.CompanyDay >= 25 && !Anlatici.Mola) RollCrisis();
         }
@@ -261,12 +357,33 @@ namespace KuryeTycoon
         void OnNewMonth()
         {
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
-            if (lawStage == 2 && !employees && lawMonthlyFee > 0)
+            if (lawStage == 2 && karma)
+            {
+                // Denetim: geçen ay tam zamanlı çalışıp hâlâ serbest olan kurye varsa küçük bir risk; sonra onlar da çalışan olur
+                int n = Couriers.Count, aciktaKalan = 0;
+                foreach (var c in Couriers) if (!c.calisan && TamZamanli(c)) aciktaKalan++;
+                long uyum = KarmaAylikUyum(false);
+                if (uyum > 0) EconomyManager.I.Spend(uyum, "Platform yasası: serbest kuryeler için hukuki uyum (karma model)", ExpenseCategory.Vergi);
+                if (n > 0 && aciktaKalan > 0 && Random.value < 0.12f * aciktaKalan / n * 3f)
+                {
+                    long fine = Round1000(Mathf.Max(500000f, aciktaKalan * (float)KuryeBasiCeza));
+                    EconomyManager.I.Spend(fine, "Çalışma denetimi cezası (tam zamanlı serbest kurye)", ExpenseCategory.Vergi);
+                    EventManager.I.Push(new GameEvent("Çalışma denetimi: ceza",
+                        $"Müfettişler {aciktaKalan} kuryenin bu ay tam zamanlı çalıştığı hâlde serbest kaldığını tespit etti. Ceza: {Ft(fine)}. " +
+                        "Karma modelde tam zamanlı kuryeler her ay başında çalışan statüsüne geçer."));
+                }
+                int gecen = 0;
+                foreach (var c in Couriers)
+                    if (!c.calisan && TamZamanli(c)) { c.calisan = true; c.morale = Mathf.Min(1f, c.morale + 0.05f); gecen++; }
+                if (gecen > 0)
+                    EventManager.I.Notify($"Karma model: {gecen} kurye tam zamanlı çalıştığı için çalışan statüsüne geçti (toplam {CalisanSayisi()} çalışan kurye).");
+            }
+            if (lawStage == 2 && !employees && !karma && lawMonthlyFee > 0)
             {
                 EconomyManager.I.Spend(lawMonthlyFee, "Platform yasası: hukuki uyum ve sözleşme denetimi", ExpenseCategory.Vergi);
-                if (Random.value < 0.08f)
+                if (Random.value < SerbestDenetimIhtimali())
                 {
-                    long fine = Round1000(Mathf.Max(2000000f, AvgDailyIncome() * 1.5f));
+                    long fine = DenetimCezasi();
                     EconomyManager.I.Spend(fine, "Çalışma denetimi cezası (kurye statüsü)", ExpenseCategory.Vergi);
                     EventManager.I.Push(new GameEvent("Çalışma denetimi: ceza",
                         $"Müfettişler bazı kuryelerin fiilen tam zamanlı çalıştığını tespit etti. Ceza: {Ft(fine)}. " +
@@ -284,7 +401,7 @@ namespace KuryeTycoon
             // Grev: en az 90 günde bir ve önceki grev anlaşmasının zammı sürerken değil
             // Grev ancak kuryeler gerçekten mutsuzken (ortalama moral %50'nin altı)
             if (Couriers.Count >= 12 && AvgMorale() < Denge.GrevMoralSiniri && Day - lastStrikeDay >= 90 && !HasEffect("grev_zam") && !HasEffect("grev_uzlasma") && !HasEffect("paket_ucret"))
-                pool.Add((new System.Action(Strike), (AvgMorale() < 0.6f ? 2.5f : 1f) * (employees ? 0.3f : 1f)
+                pool.Add((new System.Action(Strike), (AvgMorale() < 0.6f ? 2.5f : 1f) * (employees ? 0.3f : karma ? 0.65f : 1f)
                                                   * (UpgradeManager.I != null && UpgradeManager.I.InsuranceProgram ? 0.5f : 1f)));
             if (Day - lastOutageDay >= 40)
                 pool.Add((new System.Action(Outage), serverUpgraded ? 0.3f : 1f));
@@ -402,29 +519,60 @@ namespace KuryeTycoon
                     AddEffect(new CrisisEffect { id = "sicak", title = "Sıcak dalgası", demand = 1.15f, fatigue = 1.5f, moraleDaily = -0.02f }, 5)));
         }
 
+        /// <summary>35. gün: yasa 10 gün sonra yürürlüğe giriyor (hazırlanmak için).</summary>
+        void YasaDuyurusu()
+        {
+            lawAnnounced = true;
+            Telemetry.Add("Kriz: platform yasası duyurusu");
+            int n = Couriers.Count, tam = TamZamanliSayisi();
+            EventManager.I.Push(new GameEvent("Platform yasası geliyor",
+                "AB'nin platform çalışması direktifi (2024/2831) ülkelerin kendi yasalarına aktarılıyor; Macaristan'daki düzenleme " +
+                $"{YasaGunu - YasaDuyuruGunu} gün sonra yürürlüğe giriyor. Uygulama ve algoritmayla yönetilen kurye, aksi kanıtlanana kadar " +
+                "çalışan sayılacak; algoritmanın nasıl iş dağıttığı da kuryelere açıklanmak zorunda.\n\n" +
+                $"Şu an {n} kuryenden {tam}'i günde ortalama {TamZamanSaat:0} saatten fazla çevrimiçi: yasa en çok bunları ilgilendiriyor. " +
+                "Karar günü üç yol olacak: hepsini çalışan yapmak, sadece tam zamanlıları çalışan yapmak (karma model) ya da serbest " +
+                "kalıp denetim riskini göze almak."));
+        }
+
         void PlatformLaw()
         {
             Telemetry.Add("Kriz: platform yasası");
             int n = Couriers.Count;
+            int tam = TamZamanliSayisi();
             long daily = EmployeeDailyCost(n);
-            long monthly = Round1000(Mathf.Max(2000000f, n * 30000f));
+            long karmaGunluk = KarmaGunlukMaliyet(true);
+            long karmaAylik = KarmaAylikUyum(true);
+            long monthly = SerbestAylikUyum(n);
+            float risk = SerbestDenetimIhtimali();
+            long fine = DenetimCezasi();
             long lawyer = Round1000(Mathf.Max(1500000f, AvgDailyIncome() * 0.5f));
             var ev = new GameEvent("Platform Çalışanları Yasası",
-                "AB'nin platform çalışması direktifi Macaristan'da yürürlüğe giriyor: uygulama ve algoritmayla yönetilen kuryeler " +
+                "AB'nin platform çalışması direktifi Macaristan'da yürürlüğe girdi: uygulama ve algoritmayla yönetilen kuryeler " +
                 "artık çalışan sayılabilir. Şirketin kurye modelini seçmesi gerekiyor. Bu karar kalıcıdır.\n\n" +
-                $"• Çalışan statüsü: kurye hakedişlerinin %28'i kadar işveren maliyeti + kurye başına günde {Ft(EmployeeDailyFixed)} " +
-                $"(şu an {n} kurye → günde ~{Ft(daily)}). " +
-                "Moral artar, rakip kuryelerini ayartamaz, grev ihtimali düşer.\n" +
-                $"• Serbest çalışan kalsın: her ay {Ft(monthly)} hukuki uyum gideri ve arada denetim cezası riski.");
-            ev.Add("Kuryeleri çalışan statüsüne al", () =>
+                $"• Hepsi çalışan: kurye hakedişlerinin %{EmployeeCostShare * 100f:0}'i kadar işveren maliyeti + kurye başına günde {Ft(EmployeeDailyFixed)} " +
+                $"(şu an {n} kurye → günde ~{Ft(daily)}). Moral artar, kurye işi zor bırakır, rakip kuryelerini ayartamaz, grev ihtimali düşer.\n" +
+                $"• Karma model: günde {TamZamanSaat:0} saatten fazla çalışan {tam} tam zamanlı kurye çalışan olur (günde ~{Ft(karmaGunluk)}), " +
+                $"yarı zamanlılar serbest kalır (ayda {Ft(karmaAylik)} uyum gideri). Her ay başında yeni tam zamanlılar da çalışan olur. " +
+                "Çalışan kuryeler daha mutlu ve sadık; diğerleri eskisi gibi.\n" +
+                $"• Hepsi serbest: her ay {Ft(monthly)} hukuki uyum gideri ve her ay %{risk * 100f:0} ihtimalle ~{Ft(fine)} denetim cezası " +
+                $"(tam zamanlı kurye çoğaldıkça risk ve ceza artar: serbest tutulan her tam zamanlı kurye için {Ft(KuryeBasiCeza)} geriye dönük prim ve ceza).");
+            ev.Add($"Bütün kuryeleri çalışan statüsüne al (günde ~{Ft(daily)})", () =>
             {
-                lawStage = 2; employees = true;
+                lawStage = 2; employees = true; karma = false;
                 AddMorale(0.15f);
                 EventManager.I.Notify("Kuryelerin artık çalışan statüsünde. Günlük işveren maliyeti giderlerde 'Personel maaşları' altında.");
             });
-            ev.Add($"Serbest çalışan kalsın (her ay −{Ft(monthly)})", () =>
+            ev.Add($"Karma model: {tam} tam zamanlı kuryeyi çalışan yap (günde ~{Ft(karmaGunluk)}, ayda {Ft(karmaAylik)} uyum)", () =>
             {
-                lawStage = 2; employees = false; lawMonthlyFee = monthly;
+                lawStage = 2; employees = false; karma = true; lawMonthlyFee = 0;
+                foreach (var c in Couriers)
+                    if (TamZamanli(c)) { c.calisan = true; c.morale = Mathf.Min(1f, c.morale + 0.12f); }
+                Telemetry.Add("Platform yasası: karma model");
+                EventManager.I.Notify($"Karma model: {CalisanSayisi()} tam zamanlı kurye çalışan statüsüne geçti. Yarı zamanlılar serbest kaldı.");
+            });
+            ev.Add($"Serbest çalışan kalsın (her ay −{Ft(monthly)}, denetim riski %{risk * 100f:0})", () =>
+            {
+                lawStage = 2; employees = false; karma = false; lawMonthlyFee = monthly;
                 AddMorale(-0.04f);
             });
             if (lawStage == 0)
@@ -445,6 +593,7 @@ namespace KuryeTycoon
                 foreach (var e in Effects) parts.Add($"{e.title} ({DaysLeft(e)} gün): {EffectText(e)}");
                 if (OrdersBlocked) parts.Add($"Uygulama çökmüş: {OutageMinutesLeft:0} dk daha sipariş yok");
                 parts.Add(employees ? "Kurye modeli: çalışan statüsü" :
+                          karma ? $"Kurye modeli: karma ({CalisanSayisi()} çalışan, {Couriers.Count - CalisanSayisi()} serbest)" :
                           lawStage == 2 ? $"Kurye modeli: serbest çalışan (aylık uyum {Ft(lawMonthlyFee)})" :
                           lawStage == 1 ? $"Platform yasası ertelendi ({GameClock.I.DateOf(lawDecisionDay)})" : "Kurye modeli: serbest çalışan");
                 parts.Add(serverUpgraded ? "Sunucu: yedekli" : "Sunucu: tek");

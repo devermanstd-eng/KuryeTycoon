@@ -88,6 +88,7 @@ namespace KuryeTycoon
             K("k_siparis3", "+%3 sipariş", BonusTip.Siparis, 0.03f, 120000, "reklam", 250, 260, 2, Icons.Kind.Orders);
             // Yeni iş kolları (aşağı)
             B("kargo", UpgradeKind.Kargo, null, 0, 160, 3, Icons.Kind.Car);
+            B("isletme", UpgradeKind.Isletme, null, 130, 310, 3, Icons.Kind.Basket);
             K("k_komisyon4", "+%2 komisyon", BonusTip.Komisyon, 0.02f, 300000, "kargo", 0, 290, 3, Icons.Kind.Coins);
         }
 
@@ -132,8 +133,11 @@ namespace KuryeTycoon
                 var d = Bul(id);
                 if (d != null && !d.buyuk && d.tip == t) s += d.miktar;
             }
-            return s;
+            return s + ArGe.Bonus(t);   // tamamlanan Ar-Ge projeleri de aynı bonuslara eklenir
         }
+
+        /// <summary>Sadece ağacın küçük düğümlerinden gelen bonus (Ar-Ge hariç).</summary>
+        public static float AgacBonusu(BonusTip t) => Bonus(t) - ArGe.Bonus(t);
 
         /// <summary>Küçük düğüm neden alınamıyor (boşsa alınabilir; para hariç).</summary>
         public static string KucukEngeli(AgacDugum d)

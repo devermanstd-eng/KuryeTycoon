@@ -28,7 +28,7 @@ namespace KuryeTycoon
         public static float TasCarpani => 1f + TasBasi * KartTasSayisi;
 
         /// <summary>Siparişin komisyon gelirine uygulanan toplam çarpan.</summary>
-        public static float KomisyonCarpani => TasCarpani * Marka.GelirCarpani * (1f + GelisimAgaci.Bonus(BonusTip.Komisyon));
+        public static float KomisyonCarpani => TasCarpani * Marka.GelirCarpani * (1f + GelisimAgaci.Bonus(BonusTip.Komisyon)) * SezonEtkinlikleri.KaliciCarpani;
 
         /// <summary>Son n günün ortalama net kârı (Ft).</summary>
         public static long OrtalamaNet(int n = 7)
@@ -62,6 +62,7 @@ namespace KuryeTycoon
         public static string CarpanAciklama =>
             $"Komisyon geliri ×{KomisyonCarpani:0.00}: kilometre taşları ×{TasCarpani:0.00} ({KartTasSayisi} taş, her biri +%{TasBasi * 100f:0})" +
             (Marka.GelirCarpani > 1.001f ? $", marka ×{Marka.GelirCarpani:0.00}" : "") +
-            (GelisimAgaci.Bonus(BonusTip.Komisyon) > 0f ? $", gelişim ağacı ×{1f + GelisimAgaci.Bonus(BonusTip.Komisyon):0.00}" : "") + ".";
+            (GelisimAgaci.Bonus(BonusTip.Komisyon) > 0f ? $", gelişim ağacı ve Ar-Ge ×{1f + GelisimAgaci.Bonus(BonusTip.Komisyon):0.00}" : "") +
+            (SezonEtkinlikleri.KaliciCarpani > 1.001f ? $", tutturulan etkinlikler ×{SezonEtkinlikleri.KaliciCarpani:0.00}" : "") + ".";
     }
 }
