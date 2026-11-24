@@ -8,12 +8,12 @@ namespace KuryeTycoon
     /// Çayır çimi (organik şehir): Manor Lords'taki gibi canlı, rüzgârla dalgalanan çimen örtüsü. Kendi kodumuzla üretilir.
     ///  • Öbekler: koddan üretilen 6 mesh. İki çim öbeği (kıvrık, sivri uçlu yapraklar), tohum başlı uzun ot, üç kır çiçeği
     ///    öbeği (papatya, düğün çiçeği, peygamber çiçeği, gelincik, yonca). Gölgelendirici KuryeTycoon/Cim (Resources/Gorsel/Cim.shader).
-    ///  • Yerleşim: kare başına (10 m) ~90 öbek, karenin kendi tohumuyla (hep aynı yerde). Şehirde çimen ve bahçe desenli karelerde
+    ///  • Yerleşim: kare başına (10 m) 12 × 12 sarsılmış ızgarada 1 m'lik lekeler (üst üste biner, zemin görünmez), karenin kendi tohumuyla. Şehirde çimen ve bahçe desenli karelerde
     ///    (OrganikZemin.CimAgirligi); yol, su, bina, meydan ve kaldırımda yok. Kırda tarla, yol, çiftlik, köy ve banliyö evlerinin
-    ///    dışında (KirOrman.AcikAlan); nehir kıyısında yok. Çayırda gürültüyle yoğun / seyrek lekeler; çiçekler kırda daha çok.
+    ///    dışında (KirOrman.AcikAlan); nehir kıyısında yok. Çiçek ve tohumlu ot kırda daha çok.
     ///  • Çizim: yalnızca kamera yakınken (MapCamera.Zoom ≥ ~0,45; uzaklaşırken boy kısalarak kaybolur), ekranın gördüğü karelerde,
     ///    Graphics.DrawMeshInstanced ile. Kare başına öbek listesi ilk görüldüğünde üretilir ve saklanır. Toplam öbek sınırı grafik
-    ///    kalitesine göre (düşük 8 000, orta 18 000, yüksek 32 000); sınırı aşınca her kareden eşit oranda azaltılır.
+    ///    kalitesine göre (düşük 16 000, orta 38 000, yüksek 70 000). Kameranın baktığı yere kadar tam yoğunluk, ötesi uzaklıkla incelir.
     ///  • Mevsim (KirDurum): ilkbaharda taze yeşil ve bol çiçek, yazın koyu yeşil, kurakta sarı yamalar, sonbaharda altın-kahve, kışın
     ///    solgun ve karla örtülü (kar CityMap.KarMiktari). Rüzgâr havaya göre (fırtınada çok güçlü, sıcakta durgun).
     ///  • Ayarlar > Grafik'ten kapatılabilir (PlayerPrefs "KuryeTycoon.Cim").
@@ -31,9 +31,9 @@ namespace KuryeTycoon
         }
 
         // Dünya: 1 kare = 10 m, −Z yukarı. Öbek mesh'i yarıçap 1, boy 1 (yerel −Z); örnek ölçeği aşağıda.
-        const float OlcekXY = 0.07f;           // leke yarıçapı ~70 cm (bir lekede 20–26 yaprak)
-        const float BoyMin = 0.032f, BoyMax = 0.072f;   // 32–72 cm (çayır otu)
-        const int KareBasi = 200;              // kare başına aday leke
+        const float OlcekXY = 0.1f;            // leke yarıçapı ~1 m (bir lekede 28–36 yaprak); lekeler üst üste biner, boşluk kalmaz
+        const float BoyMin = 0.03f, BoyMax = 0.06f;     // 30–60 cm (çayır otu)
+        const int Izgara = 12;                 // kare başına 12 × 12 leke (~83 cm aralık, sarsılmış ızgara)
         const float KirPay = 43f;              // kır zemini KirOrman ile aynı kuşak
         const float KirZeminZ = 0.012f;
 
@@ -49,6 +49,7 @@ namespace KuryeTycoon
         readonly Dictionary<long, KareVeri> onbellek = new Dictionary<long, KareVeri>();
         readonly Matrix4x4[] tampon = new Matrix4x4[1023];
         readonly List<KareVeri> gorunen = new List<KareVeri>();
+        readonly List<float> payKatsayi = new List<float>();
 
         /// <summary>Kurulum (City3D, kır kurulduktan sonra). banliyoEvleri: kırdaki ev noktaları (çim girmesin).</summary>
         public static void Kur(Transform parent, CityMap map, IList<Vector2> banliyoEvleri)
@@ -62,9 +63,9 @@ namespace KuryeTycoon
             c.map = map;
             c.malzeme = new Material(sh) { name = "Cim", enableInstancing = true };
             c.meshler = new Mesh[TurSayisi];
-            c.meshler[Cim0] = OtOrbegi(11, 26, false);
-            c.meshler[Cim1] = OtOrbegi(23, 22, false);
-            c.meshler[Tohum] = OtOrbegi(37, 16, true);
+            c.meshler[Cim0] = OtOrbegi(11, 36, false);
+            c.meshler[Cim1] = OtOrbegi(23, 30, false);
+            c.meshler[Tohum] = OtOrbegi(37, 24, true);
             c.meshler[Cicek0] = CicekObegi(41);
             c.meshler[Cicek1] = CicekObegi(53);
             c.meshler[Cicek2] = CicekObegi(67);
@@ -132,47 +133,57 @@ namespace KuryeTycoon
             if (kirDolu.Contains(new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y)))) return false;
             // Çayır lekeleri: kimi yer gür, kimi yer seyrek (Manor Lords'taki gibi düzensiz)
             float leke = Mathf.PerlinNoise(p.x * 0.11f + 13.7f, p.y * 0.11f + 41.2f) * 0.7f + Mathf.PerlinNoise(p.x * 0.45f + 2.2f, p.y * 0.45f + 7.9f) * 0.3f;
-            yogun = Mathf.Lerp(0.55f, 1f, Mathf.SmoothStep(0.25f, 0.7f, leke));
+            yogun = Mathf.Lerp(0.9f, 1f, Mathf.SmoothStep(0.25f, 0.7f, leke));
             z = KirZeminZ - Arazi.Tepe(p.x, p.y);
             return true;
         }
 
         static long Anahtar(int x, int y) => ((long)(x + 100000) << 32) | (uint)(y + 100000);
 
+        int buKareUretilen;
+        const int KareBasiUretim = 120;   // bir karede en çok bu kadar yeni kare hazırlanır (ilk bakışta takılma olmasın)
+
         KareVeri KareGetir(int x, int y)
         {
             long k = Anahtar(x, y);
             if (onbellek.TryGetValue(k, out var v)) return v;
+            if (buKareUretilen >= KareBasiUretim) return null;
+            buKareUretilen++;
             v = new KareVeri();
             var listeler = new List<Matrix4x4>[TurSayisi];
             for (int i = 0; i < TurSayisi; i++) listeler[i] = new List<Matrix4x4>();
-            for (int n = 0; n < KareBasi; n++)
+            // Sırayı karıştır: uzakta inceltilirken (dizinin başı alınır) kalanlar karenin her yerine dağılsın
+            var sira = new int[Izgara * Izgara];
+            for (int i = 0; i < sira.Length; i++) sira[i] = i;
+            for (int i = sira.Length - 1; i > 0; i--) { int j = (int)(Hash(x, y, 900 + i) * (i + 0.999f)); (sira[i], sira[j]) = (sira[j], sira[i]); }
+            foreach (int n in sira)
             {
-                var p = new Vector2(x - 0.5f + Hash(x, y, n * 3 + 1), y - 0.5f + Hash(x, y, n * 3 + 2));
+                float gx = (n % Izgara + 0.15f + 0.7f * Hash(x, y, n * 3 + 1)) / Izgara, gy = (n / Izgara + 0.15f + 0.7f * Hash(x, y, n * 3 + 2)) / Izgara;
+                var p = new Vector2(x - 0.5f + gx, y - 0.5f + gy);
                 if (!Uygun(p, out float z, out float yogun, out bool kir)) continue;
                 float h = Hash(x, y, n * 3 + 3);
                 if (h > yogun) continue;
                 float tur = Hash(x, y, n * 7 + 101);
-                float cicekOran = kir ? 0.16f : 0.08f;
+                float cicekOran = kir ? 0.08f : 0.04f;
                 int t = tur < cicekOran ? Cicek0 + (int)(Hash(x, y, n * 7 + 103) * 2.999f)
-                      : tur < cicekOran + 0.1f ? Tohum
+                      : tur < cicekOran + (kir ? 0.12f : 0.04f) ? Tohum
                       : (Hash(x, y, n * 7 + 107) < 0.5f ? Cim0 : Cim1);
                 float boy = Mathf.Lerp(BoyMin, BoyMax, Hash(x, y, n * 7 + 109)) * Mathf.Lerp(0.8f, 1.1f, yogun);
                 if (t >= Cicek0) boy *= 0.9f;
-                if (!kir) boy *= 0.7f;   // şehirde biçilmiş çimen, kırda diz boyu çayır
+                if (!kir) boy *= 0.75f;  // şehirde biçilmiş çimen, kırda diz boyu çayır
                 float s = OlcekXY * Mathf.Lerp(0.8f, 1.25f, Hash(x, y, n * 7 + 113));
                 var rot = Quaternion.Euler(0f, 0f, Hash(x, y, n * 7 + 127) * 360f);
                 listeler[t].Add(Matrix4x4.TRS(new Vector3(p.x, p.y, z), rot, new Vector3(s, s, boy)));
             }
             for (int i = 0; i < TurSayisi; i++) { v.m[i] = listeler[i].ToArray(); v.toplam += v.m[i].Length; }
-            if (onbellek.Count > 6000) onbellek.Clear();   // çok uzun oyunda bellek şişmesin
+            if (onbellek.Count > 3000) onbellek.Clear();   // çok uzun oyunda bellek şişmesin
             onbellek[k] = v;
             return v;
         }
 
         // ------------------------------------------------------------------ çizim
 
-        static int Butce => GrafikKalitesi.Seviye == GrafikKalitesi.Yuksek ? 36000 : GrafikKalitesi.Seviye == GrafikKalitesi.Orta ? 20000 : 9000;
+        static int Butce => GrafikKalitesi.Seviye == GrafikKalitesi.Yuksek ? 70000 : GrafikKalitesi.Seviye == GrafikKalitesi.Orta ? 38000 : 16000;
 
         void LateUpdate()
         {
@@ -205,18 +216,25 @@ namespace KuryeTycoon
             int y0 = Mathf.Max(Mathf.FloorToInt(ymin) - 1, -(int)KirPay), y1 = Mathf.Min(Mathf.CeilToInt(ymax) + 1, H - 1 + (int)KirPay);
             if ((long)(x1 - x0 + 1) * (y1 - y0 + 1) > 2500) return;   // çok geniş görüş: çim zaten görünmez
 
-            gorunen.Clear();
-            int toplam = 0;
+            buKareUretilen = 0;
+            // Yakına öncelik: kameranın baktığı noktaya kadar tam yoğunluk, ötesinde uzaklıkla incelir
+            var cp = cam.transform.position;
+            var orta = cam.ScreenPointToRay(new Vector2(px.center.x, px.center.y));
+            float yakin = orta.direction.z > 1e-4f ? (-orta.origin.z / orta.direction.z) : 30f;
+            gorunen.Clear(); payKatsayi.Clear();
+            float toplam = 0f;
             for (int x = x0; x <= x1; x++)
                 for (int y = y0; y <= y1; y++)
                 {
                     var k = KareGetir(x, y);
-                    if (k.toplam == 0) continue;
-                    gorunen.Add(k);
-                    toplam += k.toplam;
+                    if (k == null || k.toplam == 0) continue;
+                    float d = Vector3.Distance(cp, new Vector3(x, y, 0f));
+                    float f = Mathf.Lerp(1f, 0.15f, Mathf.InverseLerp(yakin * 1.15f, yakin * 2.2f, d));
+                    gorunen.Add(k); payKatsayi.Add(f);
+                    toplam += k.toplam * f;
                 }
-            if (toplam == 0) return;
-            float oran = Mathf.Min(1f, Butce / (float)toplam);
+            if (toplam <= 0f) return;
+            float oran = Mathf.Min(1f, Butce / toplam);
 
             MalzemeyiAyarla(gorunum);
             bool cicekVar = malzeme.GetFloat("_Kar") < 0.3f && CicekMevsimi > 0.05f;
@@ -225,11 +243,11 @@ namespace KuryeTycoon
                 if (tur >= Cicek0 && !cicekVar) continue;
                 float turOran = tur >= Cicek0 ? oran * CicekMevsimi : oran;
                 int dolu = 0;
-                foreach (var k in gorunen)
+                for (int g = 0; g < gorunen.Count; g++)
                 {
-                    var arr = k.m[tur];
-                    int n = Mathf.CeilToInt(arr.Length * turOran);
-                    if (turOran >= 0.999f) n = arr.Length;
+                    var arr = gorunen[g].m[tur];
+                    float o = turOran * payKatsayi[g];
+                    int n = o >= 0.999f ? arr.Length : Mathf.CeilToInt(arr.Length * o);
                     for (int j = 0; j < n; j++)
                     {
                         tampon[dolu++] = arr[j];
@@ -253,8 +271,8 @@ namespace KuryeTycoon
         };
         static readonly Color[] TabanRenk =
         {
-            new Color(0.15f, 0.27f, 0.09f), new Color(0.13f, 0.23f, 0.08f), new Color(0.22f, 0.24f, 0.10f),
-            new Color(0.24f, 0.19f, 0.09f), new Color(0.17f, 0.22f, 0.11f),
+            new Color(0.26f, 0.42f, 0.15f), new Color(0.22f, 0.37f, 0.13f), new Color(0.34f, 0.36f, 0.16f),
+            new Color(0.34f, 0.29f, 0.14f), new Color(0.28f, 0.34f, 0.17f),
         };
         static readonly float[] KuruOran = { 0.1f, 0.22f, 0.6f, 0.55f, 0.4f };
         static readonly float[] Cicekler = { 1f, 0.75f, 0.35f, 0.15f, 0f };
@@ -338,7 +356,7 @@ namespace KuryeTycoon
                 var yon3 = new Vector3(yon.x, yon.y, 0f);
                 var yan = new Vector3(-yon.y, yon.x, 0f) * (1f + ((float)r.NextDouble() - 0.5f) * 0.4f);
                 var nr = (yon3 * 0.8f + Yukari * 0.2f).normalized;
-                const int P = 3;
+                const int P = 2;
                 int onceki0 = -1, onceki1 = -1;
                 for (int i = 0; i <= P; i++)
                 {
@@ -405,13 +423,13 @@ namespace KuryeTycoon
             for (int i = 0; i < yaprakSayisi; i++)
             {
                 float a = (float)(i / (double)yaprakSayisi * Mathf.PI * 2f + r.NextDouble() * 0.6);
-                float uz = Mathf.Sqrt((float)r.NextDouble()) * 0.95f;
+                float uz = Mathf.Sqrt((float)r.NextDouble());
                 var kok = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * uz;
                 var yon = (new Vector2(Mathf.Cos(a), Mathf.Sin(a)) + new Vector2((float)r.NextDouble() - 0.5f, (float)r.NextDouble() - 0.5f) * 0.6f).normalized;
-                float boy = Mathf.Lerp(0.5f, 1f, (float)r.NextDouble()) * (1f - uz * 0.35f);
+                float boy = Mathf.Lerp(0.55f, 1f, (float)r.NextDouble()) * (1f - uz * 0.25f);
                 bool bas = tohumlu && i % 3 == 0;
                 if (bas) boy = Mathf.Min(1.25f, boy * 1.35f);
-                float en = Mathf.Lerp(0.09f, 0.14f, (float)r.NextDouble()) * (bas ? 0.7f : 1f);
+                float en = Mathf.Lerp(0.08f, 0.12f, (float)r.NextDouble()) * (bas ? 0.7f : 1f);
                 float kivrim = Mathf.Lerp(0.1f, 0.45f, (float)r.NextDouble()) * (bas ? 0.4f : 1f);
                 y.Yaprak(r, kok, boy, en, yon, kivrim, basRenk, bas);
             }

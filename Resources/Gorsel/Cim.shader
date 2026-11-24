@@ -146,7 +146,7 @@ Shader "KuryeTycoon/Cim"
                 float ndl = dot(N, L.direction) * 0.5 + 0.5;
                 float3 Vd = normalize(GetWorldSpaceViewDir(i.positionWS));
                 float gecis = pow(saturate(dot(Vd, -L.direction)), 3.0) * 0.55 * t;      // güneşe karşı ışık geçirir
-                float ao = lerp(0.5, 1.0, t);
+                float ao = lerp(0.72, 1.0, t);
                 half3 c = renk * (SampleSH(N) * 0.85 * ao + L.color * atten * (ndl * 0.95 * ao + gecis));
                 c = MixFog(c, i.fog);
                 return half4(c, 1);
