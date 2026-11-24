@@ -43,9 +43,9 @@ namespace KuryeTycoon.EditorTools
         /// → Art/Stilize; bitince "Stilize Prefabları Kur" malzemeleri ve Prefabs/Stilize'yi kurar.
         /// </summary>
         /// <summary>Gerçekçi yapılar (Tools/Blender/gercekci_yapilar.py): dokulu model + dört açıdan render
-        /// (proje kökünde Onizleme/Gercekci) + Modeller/Gercekci/*.fbx. Oyuna henüz bağlı değil; önizleme onaylanınca bağlanır.</summary>
+        /// (proje kökünde Onizleme/Gercekci) + Modeller/Gercekci/*.fbx; bitince "Gerçekçi Yapıları Kur" prefabları yapar (Resources/SehirPaketi/Gercekci).</summary>
         [MenuItem("Kurye Tycoon/Blender/Gerçekçi yapı önizlemesi")]
-        static void Gercekci() => Calistir("gercekci_yapilar.py", null);
+        static void Gercekci() => Calistir("gercekci_yapilar.py", GercekciKurulum.MenuYolu);
 
         [MenuItem("Kurye Tycoon/Blender/Stilize varlıkları üret")]
         static void Stilize() => Calistir("varlik_uretici.py", StilizeVarlikKurucu.MenuYolu);

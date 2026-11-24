@@ -458,8 +458,10 @@ namespace KuryeTycoon
 
                     if (tile == map.HQTile)
                     {
-                        // Merkez ofis her zaman şirket renginde kutu: haritada hemen tanınsın
-                        AddBox(tile, 0.84f, 1.9f, CompanyProfile.Primary, null, true);
+                        // Merkez ofis: gerçekçi model (Gercekci_merkez_ofis, şirket renginde tente/tabela) varsa o, yoksa şirket renginde kutu
+                        var hq = GercekciSirketKopyasi("Gercekci_merkez_ofis");
+                        if (hq != null) { AddPrefab(hq, tile, 1f, face, null, default, 0f, true, true); Destroy(hq); }
+                        else AddBox(tile, 0.84f, 1.9f, CompanyProfile.Primary, null, true);
                         continue;
                     }
 
@@ -1875,6 +1877,36 @@ namespace KuryeTycoon
         // ---------- Paket modeli ----------
 
         /// <summary>Prefabı kareye sığdırır (footprint) ya da verilen boya ölçekler, tabanı yere oturtur, yüzünü döndürür.</summary>
+        /// <summary>Gerçekçi yapı prefabının (Resources/SehirPaketi/Gercekci) şirket rengine boyanmış geçici kopyası; yoksa null.
+        /// SirketRengi_* malzemeleri CompanyProfile.Primary olur (tabela hafif ışır). Çağıran AddPrefab'dan sonra kopyayı yok eder.</summary>
+        GameObject GercekciSirketKopyasi(string ad)
+        {
+            var kaynak = Resources.Load<GameObject>(PackFolder + "/Gercekci/" + ad);
+            if (kaynak == null) return null;
+            // Pasif bir kabın altında: sahnede görünmez, ama AddPrefab'ın ondan yaptığı kopya etkin olur
+            if (gercekciKap == null) { gercekciKap = new GameObject("Gercekci_kalip"); gercekciKap.SetActive(false); }
+            var kopya = Instantiate(kaynak, gercekciKap.transform);
+            kopya.name = ad;
+            var renk = CompanyProfile.Primary;
+            foreach (var r in kopya.GetComponentsInChildren<Renderer>(true))
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null || !mats[i].name.StartsWith("SirketRengi")) continue;
+                    if (!gercekciSirketMalz.TryGetValue(mats[i].name, out var m) || m == null)
+                        gercekciSirketMalz[mats[i].name] = m = new Material(mats[i]) { name = mats[i].name };
+                    m.SetColor("_BaseColor", renk);
+                    if (m.IsKeywordEnabled("_EMISSION")) m.SetColor("_EmissionColor", renk * 0.4f);
+                    mats[i] = m;
+                }
+                r.sharedMaterials = mats;
+            }
+            return kopya;
+        }
+        readonly Dictionary<string, Material> gercekciSirketMalz = new Dictionary<string, Material>();
+        GameObject gercekciKap;
+
         void AddPrefab(GameObject prefab, Vector2Int tile, float footprint, float faceAngle, Shop shop,
                        Vector2 offset = default, float targetHeight = 0f, bool registerHeight = true, bool ownModel = false)
         {
@@ -1910,10 +1942,11 @@ namespace KuryeTycoon
             float horiz = Mathf.Max(b.size.x, b.size.y);
             // Bölge modelleri (Bolge_*) hep 14 m arsaya göre çizildi, arsa levhası yok: sabit ölçek (bütün binalar aynı
             // metre ölçüsünde, bina boyları birbirine göre tutarlı) ve arsanın ortası (model kökü) karenin ortasına
-            bool bolge = prefab.name.StartsWith("Bolge_");
+            bool gercekci = prefab.name.StartsWith("Gercekci_");                // gerçek metre ölçüsü (1 m = 0,1 kare), kök karenin ortasında
+            bool bolge = prefab.name.StartsWith("Bolge_") || gercekci;
             // Blok binaları tam 10 m kare: ölçek sabit (1 m = 0,1 kare), çizgi kabuğu yüzünden küçülüp aralarında boşluk kalmasın
             float s = targetHeight > 0f ? targetHeight / Mathf.Max(0.001f, b.size.z)
-                    : prefab.name.StartsWith("Blok_") ? footprint * 0.1f : bolge ? footprint / 14f : footprint / Mathf.Max(0.001f, horiz);
+                    : prefab.name.StartsWith("Blok_") ? footprint * 0.1f : gercekci ? 0.1f : bolge ? footprint / 14f : footprint / Mathf.Max(0.001f, horiz);
             inst.transform.localScale = Vector3.one * s;
             b = CombinedBounds(renderers);
             if (bolge) inst.transform.position += new Vector3(0f, 0f, -b.max.z);
