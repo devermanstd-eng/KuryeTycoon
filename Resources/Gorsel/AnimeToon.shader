@@ -6,6 +6,9 @@
 //  • URP/Lit ile aynı özellik adları: _BaseColor, _BaseMap, _EmissionColor, _Surface, _Cull ... böylece oyunun gece
 //    ışıkları, ıslak/kar tonlaması, kilitli semt rengi ve kar katmanı kodu değişmeden çalışır.
 //  • Işıma (_EmissionColor) anahtar kelimesiz her zaman eklenir: gece pencereleri derlemede de yanar.
+//  • Rüzgârda salınım (_Salinim, varsayılan 0): ağaç kopyalarında 1 (AgacSalinimi.cs). Nesnenin tabanından yükseldikçe artan yatay
+//    kayma; güç ve yön oyundan gelir (_KuryeSalinim, _KuryeRuzgarYon: Diorama.cs). Gölge, derinlik ve normal geçişleri de aynı
+//    kaymayı yapar (gölge ve ortam gölgesi ağaçla birlikte oynar). Çizgi kabuğu CizgiSalinim.shader'da aynı formülle.
 Shader "KuryeTycoon/AnimeToon"
 {
     Properties
@@ -36,6 +39,9 @@ Shader "KuryeTycoon/AnimeToon"
 
         [Header(Kenar isigi)]
         _Rim("Kenar ışığı", Range(0, 1)) = 0.22
+
+        [Header(Ruzgar)]
+        _Salinim("Rüzgârda salınım (ağaç)", Range(0, 1)) = 0
 
         // URP/Lit uyumu (oyun kodu bu adları kullanıyor)
         [HideInInspector] _Smoothness("Smoothness", Range(0, 1)) = 0.1
@@ -75,7 +81,26 @@ Shader "KuryeTycoon/AnimeToon"
         half _Smoothness;
         half _Metallic;
         half _Surface;
+        half _Salinim;
     CBUFFER_END
+
+    // Oyunun verdiği ortak değerler (malzemeye ait değil): Diorama.cs
+    float _KuryeSalinim;        // tepedeki salınım (dünya birimi; sakin havada küçük, fırtınada büyük)
+    float4 _KuryeRuzgarYon;     // rüzgâr yönü (dünya xy)
+
+    // Rüzgârda salınım: nesnenin kökünden (ağacın tabanı, Blender'da z = 0) yükseldikçe artan yatay kayma. Dünyada yukarı −Z.
+    // Her ağaç kendi kökünün yerine göre farklı fazda sallanır. CizgiSalinim.shader'daki ile aynı formül (çizgi kabuğu kaymasın).
+    float3 AT_Salinim(float3 pw)
+    {
+        float guc = _Salinim * _KuryeSalinim;
+        float3 kok = TransformObjectToWorld(float3(0.0, 0.0, 0.0));
+        float h = saturate((kok.z - pw.z) * 2.0);               // 0 tabanda, 1 yarım birim (5 m) yukarıda
+        float faz = dot(kok.xy, float2(1.7, 2.3));
+        float t = _Time.y;
+        float dalga = sin(t * 1.3 + faz) * 0.65 + sin(t * 2.9 + faz * 1.9) * 0.35;
+        pw.xy += _KuryeRuzgarYon.xy * (guc * h * h * (dalga * 0.6 + 0.4));
+        return pw;
+    }
 
     TEXTURE2D(_BaseMap);
     SAMPLER(sampler_BaseMap);
@@ -229,12 +254,12 @@ Shader "KuryeTycoon/AnimeToon"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_TRANSFER_INSTANCE_ID(v, o);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                VertexPositionInputs p = GetVertexPositionInputs(v.positionOS.xyz);
-                o.positionCS = p.positionCS;
-                o.positionWS = p.positionWS;
+                float3 pw = AT_Salinim(TransformObjectToWorld(v.positionOS.xyz));
+                o.positionWS = pw;
+                o.positionCS = TransformWorldToHClip(pw);
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.uv = TRANSFORM_TEX(v.uv, _BaseMap);
-                o.fogCoord = ComputeFogFactor(p.positionCS.z);
+                o.fogCoord = ComputeFogFactor(o.positionCS.z);
                 return o;
             }
 
@@ -331,7 +356,7 @@ Shader "KuryeTycoon/AnimeToon"
             {
                 VG o;
                 UNITY_SETUP_INSTANCE_ID(v);
-                float3 pw = TransformObjectToWorld(v.positionOS.xyz);
+                float3 pw = AT_Salinim(TransformObjectToWorld(v.positionOS.xyz));
                 float3 nw = TransformObjectToWorldNormal(v.normalOS);
                 #if defined(_CASTING_PUNCTUAL_LIGHT_SHADOW)
                     float3 ld = normalize(_LightPosition - pw);
@@ -373,7 +398,7 @@ Shader "KuryeTycoon/AnimeToon"
             {
                 VD o;
                 UNITY_SETUP_INSTANCE_ID(v);
-                o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
+                o.positionCS = TransformWorldToHClip(AT_Salinim(TransformObjectToWorld(v.positionOS.xyz)));
                 return o;
             }
 
@@ -402,7 +427,7 @@ Shader "KuryeTycoon/AnimeToon"
             {
                 VN o;
                 UNITY_SETUP_INSTANCE_ID(v);
-                o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
+                o.positionCS = TransformWorldToHClip(AT_Salinim(TransformObjectToWorld(v.positionOS.xyz)));
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 return o;
             }

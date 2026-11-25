@@ -101,7 +101,42 @@ namespace KuryeTycoon
                 sonuc.Add(Nesne("Swan River (organik)", parent, su, suMat != null ? suMat : Malzeme("OrganikSu", SuRenk), golgeAl: false));
             }
             KirNehirKur(parent, sonuc);
+            IslakUygula();          // şehir yeniden kurulunca yağmurdaki ıslaklık kaybolmasın
             return sonuc;
+        }
+
+        // ------------------------------------------------------------------ ıslak yol (Diorama)
+
+        static float islak, islakParlak = 0.72f, islakKoyu = 0.7f;
+
+        /// <summary>
+        /// Yağmurda asfalt koyulaşır ve parlar (gökyüzü, güneş ve gece sokak lambaları yansır); kaldırım ve çizgiler daha az.
+        /// Diorama ıslaklık değişince çağırır (CityMap.Islaklik). Malzemeler bu sınıfın kopyaları: asıl dosyalar değişmez.
+        /// </summary>
+        public static void Islat(float deger, float parlaklik, float koyuluk)
+        {
+            islak = Mathf.Clamp01(deger);
+            islakParlak = parlaklik;
+            islakKoyu = koyuluk;
+            IslakUygula();
+        }
+
+        static void IslakUygula()
+        {
+            IslakAyarla("OrganikAsfalt", AsfaltRenk, 1f, 1f);
+            IslakAyarla("OrganikKaldirim", KaldirimRenk, 0.55f, 0.55f);     // taş: daha az koyulaşır, daha az parlar
+            IslakAyarla("OrganikBordur", BordurRenk, 0.55f, 0.55f);
+            IslakAyarla("OrganikCizgi", CizgiRenk, 0.3f, 0.7f);
+            IslakAyarla("OrganikSariCizgi", SariRenk, 0.3f, 0.7f);
+        }
+
+        static void IslakAyarla(string ad, Color asil, float koyuPay, float parlakPay)
+        {
+            if (!malzemeler.TryGetValue(ad, out var m) || m == null) return;
+            var c = asil * Mathf.Lerp(1f, Mathf.Lerp(1f, islakKoyu, koyuPay), islak);
+            c.a = 1f;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", Mathf.Lerp(0.05f, islakParlak * parlakPay, islak));
         }
 
         // ------------------------------------------------------------------ nehrin şehir dışındaki kolları

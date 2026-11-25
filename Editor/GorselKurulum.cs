@@ -130,7 +130,7 @@ namespace KuryeTycoon.EditorTools
         }
 
         /// <summary>Ekran ortam gölgesi (SSAO): binaların dibi ve köşeler hafifçe koyulaşır (referanstaki yumuşak derinlik).</summary>
-        static void SsaoEkle(UniversalRendererData renderer)
+        internal static void SsaoEkle(UniversalRendererData renderer)
         {
             foreach (var f in renderer.rendererFeatures)
                 if (f != null && f.GetType().Name == "ScreenSpaceAmbientOcclusion") return;

@@ -37,26 +37,6 @@ namespace KuryeTycoon
             return f == null || Guide.I == null || Guide.I.IsOpen(f.Value);
         }
 
-        Tab? dockTip;       // fare üstündeki kilitli simge (ipucu kutusu için)
-        Rect dockTipRect;
-
-        /// <summary>Kilitli simgenin yanında küçük açıklama kutusu.</summary>
-        void DrawDockTooltip()
-        {
-            if (dockTip == null || !modalFree) return;
-            var f = FeatureOf(dockTip.Value);
-            if (f == null) return;
-            string text = $"<b>{BaseTabNames[(int)dockTip.Value]}</b> kilitli\n{Guide.LockReason(f.Value)}";
-            float w = 250f;
-            var content = new GUIContent(text);
-            small.normal.textColor = UITheme.Yazi(UITheme.Text);
-            float h = small.CalcHeight(content, w - 20f) + 14f;
-            var r = new Rect(DockW + 6f, dockTipRect.center.y - h / 2f, w, h);
-            UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.97f), 10f, 4f);
-            GUI.Label(new Rect(r.x + 10f, r.y + 7f, w - 20f, h - 14f), content, small);
-            small.normal.textColor = UITheme.Yazi(UITheme.TextDim);   // paylaşılan stil: rengi geri al
-        }
-
         /// <summary>Sekmenin bulunduğu menünün sol çubuktaki kutusu (rehber vurgusu için).</summary>
         Rect DockRect(Tab t, float sh) => GroupDockRect(GroupIndexOf(t), sh);
 

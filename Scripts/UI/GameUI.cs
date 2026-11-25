@@ -7,8 +7,9 @@ namespace KuryeTycoon
     /// Prototip arayüzü (Unity IMGUI). Kurulum ekranı, üst bar, sol panel sekmeleri,
     /// haber akışı ve olay kartları. Hiçbir Canvas / prefab gerektirmez.
     /// Arayüzün tamamı UI Toolkit'te (Scripts/UI/Arayuz, Resources/UI/Arayuz), kurulum ekranı dahil (Arayuz/UiKurulum.cs).
-    /// OnGUI'de yalnızca haritanın üstüne çizilenler (etiketler, uçan yazılar, seçili bina işareti, lejant, şehir olayı, "?" balonu)
-    /// ve klavye/fare girişi kaldı; eski IMGUI arayüzü (F8) 20.11'de silindi. Yeni çizim OnGUI'ye yazılmaz.
+    /// Haritanın üstündeki yazılar (etiketler, uçan yazılar, şehir etkinliği, lejant) 25.11'de UI Toolkit'e taşındı
+    /// (Arayuz/UiHaritaEtiketleri.cs), seçili bina işareti 3D seçim halkası oldu. OnGUI'de yalnız klavye/fare girişi kaldı;
+    /// çizim yok. Yeni çizim OnGUI'ye yazılmaz.
     /// </summary>
     public partial class GameUI : MonoBehaviour
     {
@@ -89,56 +90,31 @@ namespace KuryeTycoon
         // =====================================================================
         void OnGUI()
         {
-            // Ekran yüksekliğine göre ölçek × oyuncunun seçtiği arayüz boyutu (Ayarlar > Arayüz)
+            // Yalnız giriş: klavye kısayolları, Esc, haritada sürükleme / yakınlaştırma / tıklama. Hiçbir şey çizilmez: arayüz ve
+            // haritanın üstündeki yazılar UI Toolkit'te. (Girişin Input System'e taşınması ayrı iş: Unity'de denenerek yapılmalı.)
+            // Ekran yüksekliğine göre ölçek × oyuncunun seçtiği arayüz boyutu (Ayarlar > Arayüz): fare konumu GUI biriminde gelir
             uiScale = UiOlcek();
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(uiScale, uiScale, 1f));
             float sw = Screen.width / uiScale;
             float sh = Screen.height / uiScale;
-            InitStyles();
-            if (Event.current.type == EventType.Repaint) helpTip = null;   // "?" balonu her karede yeniden bulunur
+            InitStyles();   // rehber kartının yeri (TutorialRect) IMGUI stiliyle ölçülüyor
 
             if (GameBootstrap.I == null) return;
             if (!GameBootstrap.I.Started) return;   // kurulum ekranı UI Toolkit'te (Arayuz/UiKurulum.cs)
-            if (!UiAktif)
-            {
-                // Eski IMGUI arayüzü (F8) kaldırıldı: arayüz kurulamadıysa en azından nedeni görünsün
-                if (uiKurulamadi) GUI.Label(new Rect(20f, 20f, Mathf.Max(100f, sw - 40f), 60f), "Arayüz kurulamadı. Ayrıntı Unity Console'da ya da hata raporunda (F9).", warn);
-                return;
-            }
-            if (HandlePhotoMode(sw, sh)) return;   // F10: arayüz gizli, yalnızca şehir
+            if (!UiAktif) return;                   // arayüz kurulamadıysa nedeni Unity Console'da ve hata raporunda (F9)
+            if (HandlePhotoMode(sw, sh)) return;    // F10: arayüz gizli, yalnızca şehir
 
             if (ConfirmOpen) HandleConfirmKey();
             else if (BigCardOpen) HandleBigCardKey();   // büyük kurye kartı: Esc kapatır (Arayuz/UiBuyukKart.cs)
             else if (EventManager.I.Current == null) HandleMenuKey();
             modalFree = EventManager.I.Current == null && !pauseMenuOpen && !ConfirmOpen && !BigCardOpen;
             if (modalFree) HandleKeys();
-            // Gelişim ağacı tam ekran: harita fareyi almaz, IMGUI (etiketler, uçan yazılar) ağacın üstüne çizilmez
+            // Gelişim ağacı tam ekran: harita fareyi almaz
             if (AgacGorunur) return;
             if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
-
-            // Ortada bir kutu (olay kartı, Esc menüsü, onay, büyük kurye kartı) açıksa IMGUI hiçbir şey çizmez. Otomatik testin ekran
-            // görüntülerinde IMGUI, UI Toolkit'in üstünde çıktı (uçan "+€" yazıları ve gece ışıkları olay kartına biniyordu).
-            if (OrtaKutuAcik) return;
-
-            // IMGUI'de yalnızca haritanın üstündekiler kaldı (etiketler, uçan yazılar, seçili bina işareti, lejant, şehir olayı,
-            // "?" balonu); bütün arayüz UI Toolkit'te. Harita üstü çizimler harita alanına kırpılır: UI Toolkit'in altına taşmasın.
-            GUI.enabled = modalFree;
-            // Pencere açıkken harita sağa kaymasa da (Ayarlar > pencere haritayı kapatmasın: kapalı) etiketler pencerenin üstüne çıkmasın
-            float haritaSol = Mathf.Max(MapLeftGui, panelOpen ? WindowRect(sh).xMax : 0f);
-            var haritaAlani = new Rect(haritaSol, TopBar, Mathf.Max(0f, sw - haritaSol), Mathf.Max(0f, sh - TopBar));
-            GUI.BeginClip(haritaAlani, -haritaAlani.position, Vector2.zero, false);
-            if (!Ciz2D.UitkCiziyor && Event.current.type == EventType.Repaint) Ciz2D.Isi.Oynat();   // harita katmanı: normalde UI Toolkit'te, arayüzün altında
-            DrawWorldLabels();
-            DrawMapPops();       // uçan "+350 Ft" yazıları
-            DrawInfoMarker();    // seçili binanın üstündeki işaret (bina kartı UI Toolkit'te: Arayuz/UiBinaKarti.cs)
-            GUI.EndClip();
-            DrawLegend(sh);
-            DrawCityEventMarker(sw);
-            DrawGuideOverlays(sw, sh);
-            GUI.enabled = true;
         }
 
-        /// <summary>Yeni arayüzde ortada bir kutu açık: IMGUI (GameUI ve WeatherFx) o sırada çizmez.</summary>
+        /// <summary>Ortada perdeli bir kutu açık (olay kartı, Esc menüsü, onay, büyük kurye kartı) ya da test kart çekimi.</summary>
         public static bool OrtaKutuAcik { get; private set; }
 
         // ---------------------------------------------------------------- ESC menüsü (kaydet / ana menü / çık)
@@ -187,7 +163,7 @@ namespace KuryeTycoon
         float fotoIpucuBitis;
 
         /// <summary>
-        /// F10 arayüzü gizler (ekran görüntüsü, fragman): harita kısayolları ve fare çalışmaya devam eder.
+        /// F10 arayüzü gizler (ekran görüntüsü, fragman): harita kısayolları ve fare çalışmaya devam eder. İlk 3 saniye altta ipucu.
         /// F10 ya da Esc geri getirir; karar kartı çıkarsa kendiliğinden kapanır. true dönerse arayüz çizilmez.
         /// </summary>
         bool HandlePhotoMode(float sw, float sh)
@@ -205,13 +181,7 @@ namespace KuryeTycoon
             modalFree = true;
             HandleKeys();
             HandleMapMouse(sw, sh);
-            if (Time.unscaledTime < fotoIpucuBitis)
-            {
-                var hr = new Rect(sw / 2f - 190f, sh - 54f, 380f, 30f);
-                Fill(hr, new Color(0f, 0f, 0f, 0.55f));
-                GUI.Label(hr, "Fotoğraf modu · F10 ya da Esc: arayüzü geri getir", new GUIStyle(small) { alignment = TextAnchor.MiddleCenter, normal = { textColor = Color.white } });
-            }
-            return true;
+            return true;   // ipucu yazısı UI Toolkit'te (UiHaritaEtiketleri: fotoIpucu)
         }
 
         // ---------------------------------------------------------------- klavye
@@ -258,160 +228,7 @@ namespace KuryeTycoon
             GameClock.I.Paused = false;
         }
 
-        // ---------------------------------------------------------------- harita etiketleri
-        struct LabelReq { public Vector2 p; public string text; public Color color; public bool landmark; public Rect r; public bool skip; public bool hasIcon; public Icons.Kind icon; public bool onemli; }
-        readonly List<LabelReq> labelReqs = new List<LabelReq>();
-        readonly List<Rect> labelPlaced = new List<Rect>();
-
-        /// <summary>Etiketi sıraya koyar; icon verilirse yazının soluna simge çizilir (ör. kuryenin aracı).</summary>
-        void QueueLabel(Camera cam, Vector3 world, string text, Color color, bool landmark = false, Icons.Kind? icon = null, bool onemli = false)
-        {
-            Vector3 sp = cam.WorldToScreenPoint(world);
-            if (sp.z < 0f) return;
-            labelReqs.Add(new LabelReq
-            {
-                p = new Vector2(sp.x / uiScale, (Screen.height - sp.y) / uiScale), text = text, color = color, landmark = landmark,
-                hasIcon = icon.HasValue, icon = icon ?? Icons.Kind.Close, onemli = onemli
-            });
-        }
-
-        /// <summary>
-        /// Harita etiketleri. Çakışmasınlar diye önem sırasına göre yerleştirilir: kuryeler, merkez ofis, dükkanlar, rakipler, yer adları.
-        /// Çakışan etiket biraz yukarı/aşağı kaydırılır; yer adı çakışırsa hiç gösterilmez. Önemli olan en üstte çizilir.
-        /// </summary>
-        void DrawWorldLabels()
-        {
-            var cam = Camera.main;
-            if (cam == null || CityMap.I == null) return;
-            labelReqs.Clear();
-            float zoom = MapCamera.I != null ? MapCamera.I.Zoom : 1f;
-
-            // 1) Kuryeler (aynı karedekiler üst üste dizilir). Kalabalık ekipte bütün şehre bakarken isim yazılmaz
-            //    (sadece fare üstündeki / seçili kurye): etiketler birbirine girmesin
-            var stack = new Dictionary<Vector2Int, int>();
-            bool kalabalik = CourierManager.I.Couriers.Count > 8 && zoom < 0.18f;
-            foreach (var c in CourierManager.I.Couriers)
-            {
-                var key = Vector2Int.RoundToInt(c.Position);
-                stack.TryGetValue(key, out int n);
-                stack[key] = n + 1;
-                bool hi = c == popupCourier || c == hoverCourier;
-                if (kalabalik && !hi) continue;
-                QueueLabel(cam, CityMap.ToWorld(c.Position) + CourierLabelOffset(n),
-                    c.ShortName, hi ? new Color(1f, 0.85f, 0.2f) : Color.white, false, Icons.Of(c.vehicle), hi);
-            }
-
-            // 2) Merkez ofis
-            float hqTop = BuildingTop(CityMap.I.HQTile);
-            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(0f, hqTop + 0.05f), CompanyProfile.Initial, CompanyProfile.Secondary, false, null, true);
-            QueueLabel(cam, CityMap.ToWorld(CityMap.I.HQTile) + MapCamera.LabelOffset(-0.7f, hqTop + 0.35f), "Merkez", Color.white, false, null, true);
-
-            // 3) Dükkanlar (uzaktayken sözleşmesizler gizlenir: harita kalabalık olmasın)
-            foreach (var s in CityMap.I.Shops)
-            {
-                if (!CityMap.I.IsUnlocked(s.tile)) continue;
-                if (!s.contracted && zoom < 0.3f && infoShop != s) continue;
-                if (heatMode == HeatMode.DukkanKari && !s.contracted) continue;   // kârlılık katmanında yalnızca sözleşmeli dükkanlar
-                if (ShopProfitLabel(s, out string karYazi, out Color karRenk))
-                {
-                    QueueLabel(cam, CityMap.ToWorld(s.tile) + MapCamera.LabelOffset(0.7f, BuildingTop(s.tile) + 0.2f), karYazi, karRenk);
-                    continue;
-                }
-                bool shopOpen = ShopHours.IsOpen(s.def);
-                QueueLabel(cam, CityMap.ToWorld(s.tile) + MapCamera.LabelOffset(0.7f, BuildingTop(s.tile) + 0.2f),
-                    (s.contracted ? s.Name : s.Name + " (sözleşmesiz)") + (shopOpen ? "" : " · Kapalı"),
-                    !shopOpen ? new Color(0.55f, 0.55f, 0.6f) : s.contracted ? Color.white : new Color(0.7f, 0.7f, 0.7f));
-            }
-
-            // 4) Rakip kuryeler: sadece yakındayken
-            if (RivalFleet.I != null && MapCamera.I != null && MapCamera.I.ShowModels)
-                foreach (var a in RivalFleet.I.Agents)
-                    if (a != null && a.Visible)
-                        QueueLabel(cam, CityMap.ToWorld(a.Position) + MapCamera.LabelOffset(0.5f, 0.55f), a.label,
-                                   Color.Lerp(a.renk, Color.white, 0.4f));
-
-            // 4b) Teslimat robotları: sadece yakındayken
-            if (RobotFilo.I != null && MapCamera.I != null && MapCamera.I.ShowModels)
-                foreach (var rb in RobotFilo.I.Robotlar)
-                    if (rb.durum != RobotFilo.Durum.Bosta)
-                        QueueLabel(cam, CityMap.ToWorld(rb.pos) + MapCamera.LabelOffset(0.5f, 0.35f),
-                                   rb.order != null ? $"{rb.Ad} · #{rb.order.id}" : rb.Ad, RobotFilo.RobotHalka);
-
-            // 5) Yer adları: kilitli bölgedekiler soluk
-            if (ShowLandmarks)
-                foreach (var lm in CityMap.Landmarks)
-                {
-                    bool open = CityMap.I.IsUnlocked(Vector2Int.RoundToInt(lm.pos));
-                    var c = open ? lm.color : UITheme.WithAlpha(lm.color, 0.45f);
-                    QueueLabel(cam, CityMap.ToWorld(lm.pos) + MapCamera.LabelOffset(0f, 0.05f), lm.name, c, true);
-                }
-
-            // Yerleştir
-            if (landmarkStyle == null)
-                landmarkStyle = UITheme.Semi(new GUIStyle(worldLabel) { fontStyle = FontStyle.BoldAndItalic, fontSize = 13, alignment = TextAnchor.MiddleCenter });
-            labelPlaced.Clear();
-            // Haritanın üstündeki UI Toolkit kutuları (olaylar, hedefler, araç çubuğu) dolu sayılır: etiket altlarına girmesin
-            if (UiAktif) UiHaritaUstuDolu(labelPlaced);
-            float[] shifts = { 0f, -19f, 19f, -38f, 38f };
-            for (int i = 0; i < labelReqs.Count; i++)
-            {
-                var q = labelReqs[i];
-                var style = q.landmark ? landmarkStyle : worldLabel;
-                float tw = style.CalcSize(new GUIContent(q.text)).x + 14f + (q.hasIcon ? 18f : 0f);
-                var baseR = new Rect(q.p.x - tw / 2f, q.p.y - 9f, tw, 18f);
-                q.r = baseR;
-                q.skip = false;
-                bool ok = false;
-                foreach (float dy in q.landmark ? new[] { 0f } : shifts)
-                {
-                    var r = new Rect(baseR.x, baseR.y + dy, baseR.width, baseR.height);
-                    bool hit = false;
-                    foreach (var o in labelPlaced) if (o.Overlaps(r)) { hit = true; break; }
-                    if (!hit) { q.r = r; ok = true; break; }
-                }
-                if (!ok && !q.onemli) q.skip = true;   // yer yoksa çizilmez (üst üste binen etiket okunmuyor)
-                // Önemli etiket (seçili kurye, merkez) de UI Toolkit kutusunun altına girmez: IMGUI kutunun üstüne çizilirdi
-                if (!ok && q.onemli && UiAktif && UiHaritaUstuDoluMu(q.r)) q.skip = true;
-                if (!q.skip) labelPlaced.Add(q.r);
-                labelReqs[i] = q;
-            }
-
-            // Önemsizden önemliye çiz: kuryeler en üstte kalsın
-            for (int i = labelReqs.Count - 1; i >= 0; i--)
-            {
-                var q = labelReqs[i];
-                if (q.skip) continue;
-                if (q.landmark) DrawLandmarkAt(q.r, q.text, q.color);
-                else if (q.hasIcon) DrawPillAt(q.r, q.text, q.color, q.icon);
-                else DrawPillAt(q.r, q.text, q.color);
-            }
-        }
-
-        void DrawPillAt(Rect r, string text, Color color)
-        {
-            UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.72f), 9f);
-            worldLabel.normal.textColor = UITheme.Yazi(color);
-            GUI.Label(new Rect(r.center.x - 120f, r.y - 1f, 240f, 20f), text, worldLabel);
-        }
-
-        /// <summary>Solunda simge olan etiket (kurye: aracın simgesi + adı).</summary>
-        void DrawPillAt(Rect r, string text, Color color, Icons.Kind icon)
-        {
-            UITheme.Box(r, new Color(0.05f, 0.055f, 0.07f, 0.72f), 9f);
-            Icons.Draw(new Rect(r.x + 7f, r.center.y - 7f, 14f, 14f), icon, color);
-            worldLabel.normal.textColor = UITheme.Yazi(color);
-            float cx = r.center.x + 9f;   // yazı simgenin sağındaki alanın ortasında
-            GUI.Label(new Rect(cx - 120f, r.y - 1f, 240f, 20f), text, worldLabel);
-        }
-
-        void DrawLandmarkAt(Rect r, string text, Color color)
-        {
-            var lr = new Rect(r.center.x - 120f, r.center.y - 11f, 240f, 22f);
-            landmarkStyle.normal.textColor = new Color(0f, 0f, 0f, color.a * 0.75f);
-            GUI.Label(new Rect(lr.x + 1, lr.y + 1, lr.width, lr.height), text, landmarkStyle);
-            landmarkStyle.normal.textColor = color;
-            GUI.Label(lr, text, landmarkStyle);
-        }
+        // ---------------------------------------------------------------- harita etiketleri (çizim: Arayuz/UiHaritaEtiketleri.cs)
 
         const string LandmarkKey = "KuryeTycoon.HaritaEtiketleri";
         static bool ShowLandmarks
@@ -420,9 +237,7 @@ namespace KuryeTycoon
             set { PlayerPrefs.SetInt(LandmarkKey, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 
-        GUIStyle landmarkStyle;
-
-        bool legendOpen;
+        bool legendOpen;      // harita araç çubuğundaki "Lejant"; kutu UI Toolkit'te (UiHaritaEtiketleri.LejantKur)
         const int LegendItems = 14;
 
         Rect LegendRect(float sh)
@@ -430,41 +245,6 @@ namespace KuryeTycoon
             float w = 250f, h = LegendItems * 19f + 34f;
             float x = panelOpen ? WindowRect(sh).xMax + 10f : DockW + 10f;
             return new Rect(x, sh - 52f - h, w, h);
-        }
-
-        /// <summary>Harita lejantı: renklerin ne anlama geldiği.</summary>
-        void DrawLegend(float sh)
-        {
-            if (!legendOpen) return;
-            var items = new List<(Color c, string t)>
-            {
-                (CityMap.RoadColor, "Yol"),
-                (CityMap.BridgeColor, "Köprü (nehri sadece buradan geç)"),
-                (CityMap.WaterColor, "Nehir"),
-                (CityMap.GrassColor, "Park"),
-                (CityMap.PlazaColor, "Meydan"),
-                (CityMap.LegendColor(Zone.OldTown), "Eski şehir (3–5 kat)"),
-                (CityMap.LegendColor(Zone.HighRise), "Kule bloklar (7–12 kat, asansör)"),
-                (CityMap.LegendColor(Zone.Houses), "Bahçeli evler (1–2 kat)"),
-                (CityMap.LegendColor(Zone.Mixed), "Çarşı (3–6 kat)"),
-                (CityMap.MallColor, "AVM"),
-                (CityMap.LegendColor(Zone.Campus), "Kampüs (2–4 kat)"),
-                (CityMap.LegendColor(Zone.Warehouse), "Sanayi (1–2 kat)"),
-                (CityMap.RailBedColor, "Tren yolu"),
-                (CompanyProfile.Primary, "Merkez ofis"),
-            };
-            var r = LegendRect(sh);
-            float rowH = 19f, w = r.width;
-            UITheme.Shadowed(r, new Color(0.07f, 0.075f, 0.09f, 0.92f), 12f, 4f);
-            small.normal.textColor = UITheme.Yazi(UITheme.Text);
-            GUI.Label(new Rect(r.x + 12, r.y + 6, w - 24, 20), "Lejant", small);
-            for (int i = 0; i < items.Count; i++)
-            {
-                float yy = r.y + 28f + i * rowH;
-                UITheme.Box(new Rect(r.x + 12, yy + 3, 14, 13), items[i].c, 3f);
-                small.normal.textColor = UITheme.Yazi(UITheme.TextDim);
-                GUI.Label(new Rect(r.x + 34, yy, w - 44, rowH), items[i].t, small);
-            }
         }
 
         static float BuildingTop(Vector2Int tile) => City3D.I != null ? City3D.I.HeightAt(tile) : 0f;
@@ -727,15 +507,6 @@ namespace KuryeTycoon
         bool olayAyrintiAcik;
 
         // ---------------------------------------------------------------- yardımcılar
-        static void Fill(Rect r, Color c)
-        {
-            if (Event.current.type != EventType.Repaint) return;
-            var old = GUI.color;
-            GUI.color = UITheme.Zemin(c);     // kâğıt tema: koyu zeminler kreme döner
-            GUI.DrawTexture(r, Texture2D.whiteTexture);
-            GUI.color = old;
-        }
-
         Color themeColor;
 
         void InitStyles()

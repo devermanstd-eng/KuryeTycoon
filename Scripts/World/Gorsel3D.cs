@@ -15,6 +15,8 @@ namespace KuryeTycoon
     ///  • Ayarlar: PlayerPrefs "KuryeTycoon.Isik3D" (1 açık, 0 kapalı; kapalıysa eski düz görünüm).
     ///  • Atmosfer dosyası (Resources/Gorsel/Atmosfer.asset, AtmosferAyari) varsa ışık anahtarları, gölge sapması ve ekran
     ///    efektleri profili oradan gelir ("Kurye Tycoon > Atmosferi Güncelle" yazar); yoksa aşağıdaki koddaki ayarlar.
+    ///  • Minyatür maket görünümü (tilt-shift, saate göre renk ve ışıma, ağaç salınımı, ıslak yol) profilin oyun içi kopyasında:
+    ///    Diorama.cs ("Kurye Tycoon > Diorama Atmosferi Kur").
     /// </summary>
     public class Gorsel3D : MonoBehaviour
     {
@@ -251,6 +253,7 @@ namespace KuryeTycoon
                 volume.profile = null;
                 calismaProfili = volume.profile;          // Volume, paylaşılan profilin bileşenlerini kopyalar
                 calismaProfili.TryGet(out bloom);
+                Diorama.ProfilHazirla(calismaProfili);   // tilt-shift ve saate göre renk: eksik efektler kopyaya eklenir
                 return;
             }
             volume.profile = null;
@@ -277,6 +280,7 @@ namespace KuryeTycoon
             vig.intensity.Override(0.16f);
             vig.smoothness.Override(0.5f);
 
+            Diorama.ProfilHazirla(p);
             volume.sharedProfile = p;
         }
 
@@ -327,9 +331,10 @@ namespace KuryeTycoon
 
             // Bulutlu ve yağmurlu havada güneş zayıflar, gölgeler silikleşir
             var fx = WeatherFx.I;
+            float overcast = 0f;
             if (fx != null && WeatherFx.Enabled)
             {
-                float overcast = Mathf.Clamp01(fx.CloudAmt * 0.45f + fx.RainAmt * 0.35f + fx.StormAmt * 0.25f + fx.SnowAmt * 0.2f);
+                overcast = Mathf.Clamp01(fx.CloudAmt * 0.45f + fx.RainAmt * 0.35f + fx.StormAmt * 0.25f + fx.SnowAmt * 0.2f);
                 sun.intensity *= 1f - overcast * 0.55f;
                 sun.shadowStrength *= 1f - overcast * bulutluGolge;
             }
@@ -348,6 +353,8 @@ namespace KuryeTycoon
             RenderSettings.reflectionIntensity = Mathf.Lerp(1f, geceYansima, night);
             // Kod kutusu binalar (AVM, otogar, merkez) ışıktan etkilenmiyor: geceye kendileri uysun
             if (City3D.I != null) City3D.I.SetNight(night);
+            // Minyatür maket: tilt-shift odağı, saate göre renk ve ışıma, rüzgâr, ıslak yol
+            Diorama.Guncelle(Camera.main, hour, night, overcast);
         }
     }
 }

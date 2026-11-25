@@ -8,7 +8,7 @@ namespace KuryeTycoon
     /// Haritanın üstünde beliren kartlar (UI Toolkit):
     ///  • Bildirimler (Toasts.cs'teki liste): haritanın görünen kısmının üst ortasında, birkaç saniye; tıklayınca kapanır.
     ///  • İlk gün rehberi (Tutorial.cs'teki adımlar): alt ortada kart; hedef menü sol çubukta (ya da penceredeki sekme) yanıp söner.
-    /// IMGUI'deki çizimleri (DrawToasts, DrawGuideOverlays) yeni arayüz açıkken çizilmez.
+    /// (Eski IMGUI çizimleri 25.11'de silindi.)
     /// </summary>
     public partial class GameUI
     {

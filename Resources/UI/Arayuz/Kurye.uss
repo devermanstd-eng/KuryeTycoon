@@ -1548,3 +1548,171 @@ Button.dg.yz-dugme.kucuk-dg { min-height: 26px; padding: 3px 10px 3px 10px; font
 .kurulum-kurye { width: 56px; height: 56px; border-radius: 12px; padding: 9px; }
 .kurulum-kurye-ic { flex-grow: 1; border-radius: 7px; }
 Button.dg.yz-dugme.kurulum-basla { min-height: 46px; font-size: 17px; margin-top: 4px; }
+
+/* ---------------------------------------------------------------- harita yazıları (Arayuz/UiHaritaEtiketleri.cs)
+   Haritaya bağlı etiketler, uçan kazanç yazıları, şehir etkinliği işareti, lejant ve foto modu ipucu (25.11'e kadar OnGUI).
+   Konumlar koddan (translate); görünüm burada. Küçük koyu mürekkep rozetler: kutu dilinin küçültülmüş hali. */
+
+.harita-etiketler {
+    position: absolute;
+    overflow: hidden;
+}
+
+.harita-etiket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    flex-direction: row;
+    align-items: center;
+    height: 18px;
+    padding: 0 7px 0 6px;
+    border-radius: 9px;
+    border-width: 1.5px;
+    border-color: var(--cerceve);
+    background-color: rgba(20, 18, 16, 0.84);
+}
+
+/* Seçili / fare üstündeki kurye ve merkez ofis */
+.harita-etiket.onemli {
+    border-color: rgba(242, 196, 84, 0.9);
+}
+
+.harita-etiket-simge {
+    width: 13px;
+    height: 13px;
+    margin-right: 4px;
+    flex-shrink: 0;
+}
+
+.harita-etiket-yazi {
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--yazi);
+    -unity-text-align: middle-left;
+}
+
+/* Yer adları: rozet yok, haritanın üstünde gölgeli eğik yazı */
+.harita-etiket.yer-adi {
+    height: 22px;
+    padding: 0 3px 0 3px;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.yer-adi .harita-etiket-yazi {
+    font-size: 13px;
+    -unity-font-style: bold-and-italic;
+    text-shadow: 1px 1px 0 rgba(8, 7, 6, 0.75);
+}
+
+/* Uçan kazanç yazısı: belirir, yukarı süzülür, kaybolur (ölçek ve saydamlık koddan) */
+.ucan-yazi {
+    position: absolute;
+    left: 0;
+    top: 0;
+    flex-direction: row;
+    align-items: center;
+    height: 22px;
+    padding: 0 8px 0 8px;
+    border-radius: 11px;
+    border-width: 1.5px;
+    border-bottom-width: 2.5px;
+    border-color: var(--cerceve);
+    background-color: rgba(30, 27, 25, 0.9);
+}
+
+.ucan-yazi-metin {
+    font-size: 14px;
+    white-space: nowrap;
+    -unity-text-align: middle-center;
+}
+
+/* Şehir etkinliği: nabız gibi atan halka (boyut ve renk koddan), takvim noktası, başlık */
+.etkinlik-halka {
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-width: 2px;
+}
+
+.etkinlik-nokta {
+    position: absolute;
+    left: 0;
+    top: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(102, 178, 255, 0.92);
+    border-width: 1.5px;
+    border-color: var(--cerceve);
+}
+
+.etkinlik-yazi {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 20px;
+    padding: 0 9px 0 9px;
+    border-radius: 10px;
+    border-width: 1.5px;
+    border-color: var(--cerceve);
+    background-color: rgba(20, 18, 16, 0.88);
+    font-size: 12px;
+    white-space: nowrap;
+    color: var(--yazi);
+    -unity-text-align: middle-center;
+}
+
+/* Lejant (harita araç çubuğu > Lejant): sol altta, araç çubuğunun üstünde */
+.lejant {
+    position: absolute;
+    width: 250px;
+    padding: 8px 12px 10px 12px;
+    border-radius: 16px;
+    border-width: 2px;
+    border-bottom-width: 3px;
+    border-color: var(--cerceve);
+    background-color: var(--yuzen);
+}
+
+.lejant-baslik {
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--etiket);
+    margin-bottom: 6px;
+}
+
+.lejant-satir {
+    flex-direction: row;
+    align-items: center;
+    height: 19px;
+}
+
+.lejant-renk {
+    width: 14px;
+    height: 13px;
+    margin-right: 8px;
+    flex-shrink: 0;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(8, 7, 6, 0.8);
+}
+
+.lejant-yazi {
+    font-size: 12px;
+    color: var(--soluk);
+}
+
+/* Fotoğraf modu (F10) ipucu: arayüz gizliyken altta, ortada */
+.foto-ipucu {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    translate: -50% 0;
+    padding: 6px 14px 6px 14px;
+    border-radius: 14px;
+    border-width: 1.5px;
+    border-color: var(--cerceve);
+    background-color: rgba(20, 18, 16, 0.8);
+    font-size: 12px;
+    color: var(--yazi);
+}

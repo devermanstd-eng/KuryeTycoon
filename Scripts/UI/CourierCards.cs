@@ -36,15 +36,6 @@ namespace KuryeTycoon
         static int CareStars(float v) => Stars(v, 0.55f, 1f);
         static int StaminaStars(float v) => Stars(v, 0.7f, 1.3f);
 
-        /// <summary>Fare bu alanın üstündeyse "?" balonundaki gibi açıklama gösterir.</summary>
-        void HoverTip(Rect r, string text)
-        {
-            if (Event.current.type != EventType.Repaint || !modalFree) return;
-            if (!r.Contains(Event.current.mousePosition)) return;
-            helpTip = text;
-            helpTipInWindow = drawingWindow;
-        }
-
         // ---------------------------------------------------------------- kimlik kartı parçaları
 
         /// <summary>
@@ -81,7 +72,6 @@ namespace KuryeTycoon
             Icons.Draw(new Rect(r.x + 4f, r.y + 4.5f, 11f, 11f), Icons.Kind.Star, StarOn);
             kitHelp.normal.textColor = UITheme.Yazi(Color.white);
             GUI.Label(new Rect(r.x + 14f, r.y, r.width - 15f, r.height), level.ToString(), kitHelp);
-            HoverTip(r, $"<b>Tecrübe {level}</b>: teslimat yaptıkça artar; her seviye biraz daha hızlı.");
         }
 
         /// <summary>Simge ve kısa yazı, yuvarlak zeminde (kartın sağ üstünde: araç, "Vardiyada"...). tint verilirse o renkte.</summary>

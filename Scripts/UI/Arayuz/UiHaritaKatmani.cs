@@ -11,7 +11,7 @@ namespace KuryeTycoon
     ///    parlaması telefonun üstüne biniyordu (16.11).
     ///  • uiKok'tan ayrı: foto modunda da görünür; ortada bir kutu açıkken de çizilir.
     ///  • Hava kaydı ekran pikseli, katman kaydı GUI birimi; panel birimine ölçekle çevrilir ve kaydın alanına kırpılır.
-    /// Harita etiketleri IMGUI'de kaldı; UI Toolkit kutularının altına giren etiket çizilmez (UiHaritaUstuDolu).
+    /// Harita etiketleri ve uçan yazılar hud katmanının en altında (UiHaritaEtiketleri.cs): bu katmanın üstünde, kutuların altında.
     /// </summary>
     public partial class GameUI
     {

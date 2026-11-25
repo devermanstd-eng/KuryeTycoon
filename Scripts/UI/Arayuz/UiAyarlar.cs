@@ -22,6 +22,11 @@ namespace KuryeTycoon
             static readonly string[] Acilar = { "0°", "90°", "180°", "270°" };
             static readonly string[] KarakterModlari = { "Işıklı", "Düz renk", "Kapalı (daire)" };
             static readonly string[] AracRenkModlari = { "Karışık (her kurye kendi rengi)", "Şirket rengi", "Tek fabrika rengi" };
+            static readonly string[] EfektSecimleri = { "Kaliteye göre", "Açık", "Kapalı" };
+
+            // Seçim şeridi sırası: kaliteye göre (−1), açık (1), kapalı (0)
+            static int EfektIndeksi(int secim) => secim == GrafikKalitesi.SecimAcik ? 1 : secim == GrafikKalitesi.SecimKapali ? 2 : 0;
+            static int EfektSecimi(int indeks) => indeks == 1 ? GrafikKalitesi.SecimAcik : indeks == 2 ? GrafikKalitesi.SecimKapali : GrafikKalitesi.SecimKaliteyeGore;
 
             protected override void Kur()
             {
@@ -179,12 +184,23 @@ namespace KuryeTycoon
             void Harita()
             {
                 y.Bolum("Grafik", "Oyun kasıyorsa kaliteyi düşür. Otomatik: oyun kare hızına bakıp kendisi ayarlar. " +
-                                  "Yüksek: yumuşak gölgeler, ortam gölgesi, ışıma. Düşük: sert gölgeler, daha düşük çözünürlük, gece daha az lamba ışığı.");
+                                  "Yüksek: yumuşak gölgeler, ortam gölgesi, maket bulanıklığı, ışıma. Düşük: sert gölgeler, daha düşük çözünürlük, " +
+                                  "gece daha az lamba ışığı. Maket bulanıklığı ve ortam gölgesi aşağıdan ayrıca açılıp kapatılabilir.");
                 y.Secim(kaliteAdlari, GrafikKalitesi.Ayar == GrafikKalitesi.Otomatik ? 0 : GrafikKalitesi.Ayar + 1,
                         v => GrafikKalitesi.Ayar = v == 0 ? GrafikKalitesi.Otomatik : v - 1);
                 string fps = GrafikOlcer.I != null && GrafikOlcer.I.Fps > 0f ? $" · şu an ~{GrafikOlcer.I.Fps:0} FPS" : "";
                 string oto = GrafikKalitesi.Ayar == GrafikKalitesi.Otomatik ? $"Otomatik → {GrafikKalitesi.Adlar[GrafikKalitesi.Seviye]}" : GrafikKalitesi.Adlar[GrafikKalitesi.Seviye];
                 y.Kucuk(Gorsel3D.Active ? $"Geçerli: {oto}{fps}" : $"3D ışık kapalı (eski düz görünüm){fps}");
+                if (Gorsel3D.Active)
+                {
+                    int ts = GrafikKalitesi.TiltShiftModu;
+                    y.Kucuk("Maket bulanıklığı (tilt-shift): ekranın üst ve alt kenarı hafif bulanık, şehir minyatür maket gibi. Şu an: " +
+                            (ts == 2 ? "tam" : ts == 1 ? "hızlı (yalnız uzak taraf)" : "kapalı"));
+                    y.Secim(EfektSecimleri, EfektIndeksi(GrafikKalitesi.TiltShiftSecimi), v => GrafikKalitesi.TiltShiftSecimi = EfektSecimi(v));
+                    y.Kucuk("Ortam gölgesi (SSAO): binaların, ağaçların ve araçların yere bastığı yerde yumuşak temas gölgesi. Şu an: " +
+                            (GrafikKalitesi.OrtamGolgesi ? "açık" : "kapalı"));
+                    y.Secim(EfektSecimleri, EfektIndeksi(GrafikKalitesi.OrtamGolgesiSecimi), v => GrafikKalitesi.OrtamGolgesiSecimi = EfektSecimi(v));
+                }
                 y.Onay("Çayır çimi: yakından bakınca rüzgârla dalgalanan çimen ve kır çiçekleri (kapatmak performansı artırır)", Cim.Acik, v => Cim.Acik = v);
                 y.Onay("Gerçek ışık ve gölge (3D). Kapatınca eski düz görünüm; oyunu yeniden başlatınca uygulanır", Gorsel3D.Enabled, v => Gorsel3D.Enabled = v);
 
