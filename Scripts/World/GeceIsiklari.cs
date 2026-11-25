@@ -35,6 +35,7 @@ namespace KuryeTycoon
             public bool locked;
             public int state = -1;     // son uygulanan: -1 bilinmiyor, 0 gündüz, 1+ gece varyantı
             public float onAt, offAt, morningOn, morningOff, threshold;
+            public DukkanCanli canli;  // atölye binasının vitrini: binanın açık / kapalı durumuna bakar (yoksa null)
             public int variant;        // gece hâli: sıcak, sıcak2, TV (3 faz), ofis, vitrin, tabela, lamba, arızalı lamba
         }
 
@@ -101,9 +102,10 @@ namespace KuryeTycoon
 
         // ---------------------------------------------------------------- kayıt
 
-        static bool IsWindow(string n) => n.StartsWith("Cam_") || n.StartsWith("Cam2_") || n.StartsWith("Cam3_") || n.StartsWith("Pastel_Cam_");   // Pastel_: Bina Atölyesi
+        static bool IsWindow(string n) => n.StartsWith("Cam_") || n.StartsWith("Cam2_") || n.StartsWith("Cam3_") ||
+                                          n.StartsWith("Pastel_Cam_") || n.StartsWith("Pastel_Cam2_") || n.StartsWith("Pastel_Cam3_");   // Pastel_: Bina Atölyesi
         static bool IsOffice(string n) => n.StartsWith("CamKoyu") || n.StartsWith("OfisCam");
-        static bool IsShop(string n) => n.StartsWith("Vitrin_");
+        static bool IsShop(string n) => n.StartsWith("Vitrin_") || n.StartsWith("Pastel_Vitrin_");
         static bool IsSign(string n) => n.StartsWith("Yazi_") || n.StartsWith("Pastel_Yazi_");
         static bool IsStreetLamp(string n) => n.StartsWith("YIsik") || n.StartsWith("PIsik");
         static bool IsLamp(string n) => !n.StartsWith("IsikHavuz") && (IsStreetLamp(n) || n.StartsWith("Isik_") || n.StartsWith("Pastel_Isik_") || n.StartsWith("TSari_isik"));
@@ -145,7 +147,7 @@ namespace KuryeTycoon
                     string n = m.name;
                     Kind kind;
                     int group = 0;
-                    if (IsWindow(n)) { kind = Kind.Window; group = n.StartsWith("Cam2_") ? 1 : n.StartsWith("Cam3_") ? 2 : 0; }
+                    if (IsWindow(n)) { kind = Kind.Window; group = n.StartsWith("Cam2_") || n.StartsWith("Pastel_Cam2_") ? 1 : n.StartsWith("Cam3_") || n.StartsWith("Pastel_Cam3_") ? 2 : 0; }
                     else if (IsShop(n)) kind = Kind.Shop;
                     else if (IsSign(n)) kind = Kind.Sign;
                     else if (IsOffice(n)) kind = Kind.Office;
@@ -153,6 +155,7 @@ namespace KuryeTycoon
                     else if (IsLamp(n)) kind = Kind.Lamp;
                     else continue;
                     var e = new Entry { r = r, index = i, kind = kind, locked = locked, day = m, seed = Hash(px, py, group * 7 + (int)kind) };
+                    if (kind == Kind.Shop && n.StartsWith("Pastel_")) e.canli = r.GetComponentInParent<DukkanCanli>(true);
                     Plan(e);
                     entries.Add(e);
                     // Sokak ve park lambalarının başları: gerçek ışık kaynağının yerleri
@@ -348,6 +351,8 @@ namespace KuryeTycoon
         {
             if (e.kind == Kind.Lamp) return night > e.threshold;
             if (night < 0.05f) return false;
+            // Atölye binasının vitrini: bina açıksa yanar, kapalıysa (kepenk inik) söner
+            if (e.canli != null) return e.canli.IsikAcik;
             // Saatleri gün batımı / doğumuna göre karşılaştır (gece yarısını geçen saatler için 24 ekle)
             float h = hour < 12f ? hour + 24f : hour;
             float evening = set + e.onAt;

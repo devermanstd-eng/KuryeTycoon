@@ -376,6 +376,7 @@ namespace KuryeTycoon
             alinanOlay = 0;
             posetGorunur = false;
             if (poset != null) poset.gameObject.SetActive(false);
+            if (icIsik != null && Iceride != this) icIsik.enabled = false;
             if (kamyonet != null) kamyonet.gameObject.SetActive(false);
             if (koliler != null) koliler.gameObject.SetActive(false);
             // Kapı kapalı, duvarlar yerinde
@@ -575,6 +576,7 @@ namespace KuryeTycoon
                 if (!gizli) DikeyOlcek(kepenk[i], kepenkOlcek0[i], Mathf.Max(0.03f, kepenkInik));
             }
             if (ampul != null && ampul.gameObject.activeSelf != dukkanAcik) ampul.gameObject.SetActive(dukkanAcik);
+            IcIsik(Iceride == this || (dukkanAcik && cati.IcGorunur && DayNight.Night01 > 0.25f));
 
             // Poşet: hazır sipariş varken tezgâhta (kasiyer toplayıp dönünce ya da birkaç saniye sonra)
             if (hazir > 0)
@@ -721,12 +723,12 @@ namespace KuryeTycoon
         static readonly Vector3[] BakisYer =
         {
             new Vector3(3f, -1.9f, ZeminZ + 1.6f),       // kapının içi: bütün dükkân
-            new Vector3(1.9f, -2.3f, ZeminZ + 1.6f),     // ön koridorun sağ ucu: tezgâh, kasiyer, arkasındaki raf
+            new Vector3(1.75f, -0.3f, ZeminZ + 1.6f),    // kuyruk koridorunun kenarı: tezgâh, poşet ve kasiyer karşıda
             new Vector3(-1.92f, 3.2f, ZeminZ + 1.6f),    // arka koridor: iki gondolun arasından öne doğru
             new Vector3(-3.9f, 2.75f, ZeminZ + 1.6f),    // arka sol köşe: dondurma dolabı ve soğutucular boyunca
         };
-        static readonly float[] BakisYaw = { 150f, 72f, -90f, 10f };
-        static readonly float[] BakisPitch = { -6f, -9f, -9f, -4f };
+        static readonly float[] BakisYaw = { 150f, 49f, -90f, 10f };      // Kasa: (3,5; 1,7) noktasına, yani tezgâha bakar
+        static readonly float[] BakisPitch = { -6f, -12f, -9f, -4f };
         public static readonly string[] BakisAd = { "Giriş", "Kasa", "Raflar", "Soğutucular" };
         int bakis;
         float bakisYaw, bakisPitch;
@@ -736,7 +738,7 @@ namespace KuryeTycoon
         public void IceriGir()
         {
             if (Iceride == this) return;
-            if (Iceride != null) Iceride.Cik();
+            IceriBakis.Cik();
             var mc = MapCamera.I;
             if (mc == null || Camera.main == null) return;
             Iceride = this;
@@ -745,6 +747,21 @@ namespace KuryeTycoon
             cati.zorlaAcik = false;
             PencereBirak();
             BakisSec(0);
+            IcIsik(true);
+            sonrakiKontrol = 0f;
+        }
+
+        /// <summary>
+        /// İç ışık (tavanda yumuşak nokta ışık): kamera içerideyken hep; dışarıdan bakarken çatı açık, dükkân açık ve hava
+        /// karanlıksa (gece çatısı kalkan dükkânın içi karanlık kalmasın).
+        /// </summary>
+        void IcIsik(bool yak)
+        {
+            if (!yak)
+            {
+                if (icIsik != null && icIsik.enabled) icIsik.enabled = false;
+                return;
+            }
             if (icIsik == null)
             {
                 var go = new GameObject("Bakkal iç ışık");
@@ -760,8 +777,7 @@ namespace KuryeTycoon
             // ölçeklenmezse her şey beyaza patlar. 2 m ötede ~0,5: gündüz de gece de yumuşak bir tavan ışığı.
             icIsik.range = 9f * birim;
             icIsik.intensity = 2f * birim * birim;
-            icIsik.enabled = true;
-            sonrakiKontrol = 0f;
+            if (!icIsik.enabled) icIsik.enabled = true;
         }
 
         public void Cik()
@@ -769,7 +785,6 @@ namespace KuryeTycoon
             if (Iceride != this) return;
             Iceride = null;
             if (cati != null) cati.iceriModu = false;
-            if (icIsik != null) icIsik.enabled = false;
             if (MapCamera.I != null) MapCamera.I.enabled = true;
             sonrakiKontrol = 0f;
         }

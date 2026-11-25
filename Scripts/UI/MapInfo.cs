@@ -36,7 +36,7 @@ namespace KuryeTycoon
 
         void CloseInfo()
         {
-            if (BakkalCanli.Iceride != null) BakkalCanli.Iceride.Cik();   // "İçeri gir" kamerası kartla birlikte kapanır
+            IceriBakis.Cik();   // "İçeri gir" kamerası kartla birlikte kapanır
             infoShop = null;
             infoBuilding = false;
         }

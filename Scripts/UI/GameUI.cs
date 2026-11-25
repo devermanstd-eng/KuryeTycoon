@@ -116,7 +116,7 @@ namespace KuryeTycoon
             if (AgacGorunur) return;
             if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
             // Kamera bakkalın içinde: harita etiketleri (yer, dükkân ve kurye adları), uçan yazılar, işaret ve lejant çizilmez
-            if (BakkalCanli.Iceride != null) return;
+            if (IceriBakis.Acik) return;
 
             // Ortada bir kutu (olay kartı, Esc menüsü, onay, büyük kurye kartı) açıksa IMGUI hiçbir şey çizmez. Otomatik testin ekran
             // görüntülerinde IMGUI, UI Toolkit'in üstünde çıktı (uçan "+€" yazıları ve gece ışıkları olay kartına biniyordu).
@@ -152,7 +152,7 @@ namespace KuryeTycoon
             if (e.type != EventType.KeyDown || e.keyCode != KeyCode.Escape) return;
             e.Use();
             // Önce bina kartı, kurye telefonu ve açık pencere kapanır, sonra Esc menüsü açılır
-            if (BakkalCanli.Iceride != null) { BakkalCanli.Iceride.Cik(); return; }   // bakkalın içinden haritaya dön
+            if (IceriBakis.Acik) { IceriBakis.Cik(); return; }   // binanın içinden haritaya dön
             if (InfoOpen && !pauseMenuOpen) { CloseInfo(); return; }
             if (popupCourier != null && !pauseMenuOpen) { popupCourier = null; return; }
             if (panelOpen && !pauseMenuOpen) { panelOpen = false; return; }
@@ -224,7 +224,7 @@ namespace KuryeTycoon
             if (e.type != EventType.KeyDown) return;
             if (UiYaziOdakta) return;   // UI Toolkit yazı kutusuna yazılıyor
             // Kamera bakkalın içinde: tuşlar bakışı çevirir, oyun kısayolları çalışmaz (Esc: HandleMenuKey)
-            if (BakkalCanli.Iceride != null) { BakkalCanli.Iceride.Girdi(e); if (e.type == EventType.KeyDown) e.Use(); return; }
+            if (IceriBakis.Acik) { IceriBakis.Girdi(e); if (e.type == EventType.KeyDown) e.Use(); return; }
             var clk = GameClock.I;
             switch (e.keyCode)
             {
@@ -520,9 +520,9 @@ namespace KuryeTycoon
             var e = Event.current;
             Vector2 m = e.mousePosition;
             // Kamera bakkalın içinde: harita kaydırma / tıklama yok, sürükleme etrafa baktırır
-            if (BakkalCanli.Iceride != null)
+            if (IceriBakis.Acik)
             {
-                if (e.type == EventType.MouseDrag && !UiUzerinde(m)) BakkalCanli.Iceride.Girdi(e);
+                if (e.type == EventType.MouseDrag && !UiUzerinde(m)) IceriBakis.Girdi(e);
                 return;
             }
             bool overMap = m.x > MapLeftGui && m.y > TopBar &&
