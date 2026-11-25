@@ -43,11 +43,11 @@ namespace KuryeTycoon
         // (Temettu). Tohum 10. → 14. gün; A 8 → 5 M, en erken 35. gün; B 32 → 20 M, 60. gün; C 100 → 60 M, 85. gün.
         public static readonly Tur[] Turlar =
         {
-            new Tur { ad = "Tohum yatırım", yatirimci = "Tisza Angels", tutar = 1600000, pay = 0.12f, sure = 60,
+            new Tur { ad = "Tohum yatırım", yatirimci = "Swan Angels", tutar = 1600000, pay = 0.12f, sure = 60,
                       ilce = 2, teslimat = 150, abone = 0, enErkenGun = 14, enAzTeslimat = 80 },
-            new Tur { ad = "A serisi", yatirimci = "Danube Ventures", tutar = 5000000, pay = 0.18f, sure = 90,
+            new Tur { ad = "A serisi", yatirimci = "Northwind Ventures", tutar = 5000000, pay = 0.18f, sure = 90,
                       ilce = 3, teslimat = 500, abone = 300, enErkenGun = 35, enAzTeslimat = 300 },
-            new Tur { ad = "B serisi", yatirimci = "Carpathia Capital", tutar = 20000000, pay = 0.20f, sure = 120,
+            new Tur { ad = "B serisi", yatirimci = "Summit Capital", tutar = 20000000, pay = 0.20f, sure = 120,
                       ilce = 4, teslimat = 1200, abone = 1500, enErkenGun = 60, enAzTeslimat = 700 },
             new Tur { ad = "C serisi", yatirimci = "Euro Growth Partners", tutar = 60000000, pay = 0.20f, sure = 150,
                       ilce = 5, teslimat = 2500, abone = 5000, enErkenGun = 85, enAzTeslimat = 1100 },

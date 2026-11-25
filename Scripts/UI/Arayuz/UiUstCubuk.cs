@@ -28,7 +28,7 @@ namespace KuryeTycoon
             public Label deger, alt;
         }
 
-        Gosterge gKasa, gKar, gItibar, gKurye, gPazar, gZaman;
+        Gosterge gKasa, gKar, gItibar, gKurye, gPazar, gSeri, gZaman;
 
         static readonly Color KasaRengi = new Color(0.40f, 0.85f, 0.55f);
         static readonly Color HarcaRengi = new Color(0.45f, 0.75f, 1f);
@@ -81,6 +81,12 @@ namespace KuryeTycoon
             });
             gPazar = GostergeEkle(sol, Icons.Kind.Chart, KasaRengi, PazarIpucu);
             U.Tikla(gPazar.kok, () => SekmeyeGit(Tab.Dukkanlar));
+            gSeri = GostergeEkle(sol, Icons.Kind.Bolt, MapFx.Altin, () =>
+            {
+                var k = Kutlama.I;
+                return k == null ? "" : $"Seri: art arda {k.seri} zamanında teslimat (şirket rekoru {k.enIyiSeri}). Geç teslimat ya da iptal seriyi bozar. " +
+                                        $"Rekor gün sayısı {k.rekorSayisi}, en kârlı gün {Ft(k.rekorNet)}.";
+            });
 
             U.Gecirgen(ustKok, "bosluk");
 
@@ -217,6 +223,10 @@ namespace KuryeTycoon
             float sw = UiEkranGenisligi;
             U.Goster(ustAd, sw >= 1320f);
             U.Goster(gPazar.kok, sw >= 1160f && RivalCompany.I != null);
+            var kut = Kutlama.I;
+            bool seriVar = kut != null && kut.seri >= 10 && sw >= 1240f;
+            U.Goster(gSeri.kok, seriVar);
+            if (seriVar) GostergeAyarla(gSeri, $"×{kut.seri}", $"seri · rekor {kut.enIyiSeri}", MapFx.Altin, kut.seri >= kut.enIyiSeri ? MapFx.Altin : (Color?)null);
 
             DurumYenile(eco);
         }

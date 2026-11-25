@@ -71,8 +71,9 @@ namespace KuryeTycoon
 
         public static float HizCarpani(Courier c)
         {
-            if (c == null || c.ozellikler == null || c.ozellikler.Count == 0) return 1f;
-            float m = 1f;
+            if (c == null) return 1f;
+            float m = KuryeKariyer.HizCarpani(c);   // rütbe ve efsane
+            if (c.ozellikler == null || c.ozellikler.Count == 0) return m;
             int h = GameClock.I != null ? GameClock.I.Hour : 12;
             if (Var(c, Tur.GeceKusu)) m *= h >= 20 || h < 4 ? 1.10f : h >= 7 && h < 11 ? 0.90f : 1f;
             if (Var(c, Tur.Sabahci)) m *= h >= 6 && h < 12 ? 1.10f : h >= 21 || h < 4 ? 0.90f : 1f;
@@ -88,28 +89,28 @@ namespace KuryeTycoon
 
         public static float PuanEki(Courier c)
         {
-            float p = 0f;
+            float p = KuryeKariyer.PuanEki(c);   // rütbe ve efsane
             if (Var(c, Tur.GulerYuzlu)) p += 0.25f;
             if (Var(c, Tur.Kestirmeci)) p -= 0.1f;
             return p;
         }
 
         public static float YorgunlukCarpani(Courier c) =>
-            Var(c, Tur.Dayanikli) ? 0.75f : Var(c, Tur.CabukYorulur) ? 1.25f : 1f;
+            (Var(c, Tur.Dayanikli) ? 0.75f : Var(c, Tur.CabukYorulur) ? 1.25f : 1f) * KuryeKariyer.YorgunlukCarpani(c);
 
         public static float TeklifCarpani(Courier c) => Var(c, Tur.Paragoz) ? 1.15f : 1f;
 
         /// <summary>Moral hedefine eklenen (gece hesabında).</summary>
         public static float MoralEki(Courier c, float kazancOrani)
         {
-            float m = 0f;
+            float m = KuryeKariyer.MoralEki(c);
             if (Var(c, Tur.Sadik)) m += 0.03f;
             if (Var(c, Tur.Paragoz) && kazancOrani < 0.9f) m -= 0.05f;
             if (Var(c, Tur.YagmurSevmez) && WeatherSystem.I != null && WeatherSystem.I.IsRainy) m -= 0.05f;
             return m;
         }
 
-        public static float BirakmaCarpani(Courier c) => Var(c, Tur.Sadik) ? 0.5f : 1f;
+        public static float BirakmaCarpani(Courier c) => (Var(c, Tur.Sadik) ? 0.5f : 1f) * KuryeKariyer.BirakmaCarpani(c);
     }
 
     /// <summary>

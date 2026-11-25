@@ -7,7 +7,7 @@ namespace KuryeTycoon
     /// Senaryolar, serbest mod ve günlük meydan okuma. Yeni oyun kurarken seçilir (kurulum ekranı), kayda yazılır.
     ///  • Klasik: bildiğimiz oyun (kurulum kredisi, rakipler, büyüme).
     ///  • Borç batağı: kurulum kredisi 15 000 € (+faiz), aynı beş taksit. Hedef: krediyi Temmuz sonuna kadar kapat.
-    ///  • Rakiplerin şehri: üç platform da güçlü, Turbo Paket bütün dükkanlarla çalışıyor. Hedef: 90 gün içinde şehrin lideri ol
+    ///  • Rakiplerin şehri: üç platform da güçlü, TurboDrop bütün dükkanlarla çalışıyor. Hedef: 90 gün içinde şehrin lideri ol
     ///    (bir haftada her rakipten çok teslimat).
     ///  • Hızlı büyüme: yatırımcıdan 6 000 € ek sermaye. Hedef: 60 gün içinde 25 kurye ve günde ortalama 1 000 € gelir.
     ///  • Serbest mod: 250 000 € kasa, borç yok, hedef yok; şehri kurup denemek için.
@@ -25,7 +25,7 @@ namespace KuryeTycoon
         {
             "Kredini öde, rakiplerini geç, şirketi büyüt. Hedef sende.",
             "Kurulum kredisi 15 000 € (+%8 faiz), Mart–Temmuz beş taksit. Hedef: krediyi zamanında kapat. Zor.",
-            "Üç platform da güçlü, Turbo Paket şehrin bütün dükkanlarıyla çalışıyor. Hedef: 90 gün içinde şehrin lideri ol (bir haftada her rakipten çok teslimat).",
+            "Üç platform da güçlü, TurboDrop şehrin bütün dükkanlarıyla çalışıyor. Hedef: 90 gün içinde şehrin lideri ol (bir haftada her rakipten çok teslimat).",
             "Bir yatırımcı 6 000 € ek sermaye verdi. Hedef: 60 gün içinde 25 kurye ve son 7 günde günde ortalama 1 000 € gelir.",
             "250 000 € kasa, borç yok, hedef yok. Şehri kur, dene, eğlen.",
             "Herkes bugün aynı şehirle başlar. 14 gün sonra puanın: teslimat × itibar / 5. Her gün yeni şehir.",
@@ -83,7 +83,7 @@ namespace KuryeTycoon
                     var rv = RivalCompany.I;
                     if (rv != null)
                     {
-                        foreach (var s in CityMap.I.Shops) if (!s.own) s.rivalContracted = true;   // en az Turbo Paket her dükkanda
+                        foreach (var s in CityMap.I.Shops) if (!s.own) s.rivalContracted = true;   // en az TurboDrop her dükkanda
                         foreach (var r in rv.Rakipler)
                         {
                             r.couriers = Mathf.Max(r.couriers, 14);

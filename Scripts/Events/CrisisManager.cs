@@ -138,7 +138,7 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Çalışan statüsünün işveren maliyeti: kuryelere ödenen hakedişin %28'i (Macaristan'da işveren sosyal katkısı %13
+        /// Çalışan statüsünün işveren maliyeti: kuryelere ödenen hakedişin %28'i (Avrupa'da işveren sosyal katkısı %13
         /// + ücretli izin, hastalık ve sigorta) + kurye başına günde 800 Ft (~2 €; bordro, iş güvenliği eğitimi, ekipman).
         /// Az çalışan kurye az maliyet çıkarır; boşta bekleyen çok kurye yine de pahalıdır.
         /// </summary>
@@ -526,7 +526,7 @@ namespace KuryeTycoon
             Telemetry.Add("Kriz: platform yasası duyurusu");
             int n = Couriers.Count, tam = TamZamanliSayisi();
             EventManager.I.Push(new GameEvent("Platform yasası geliyor",
-                "AB'nin platform çalışması direktifi (2024/2831) ülkelerin kendi yasalarına aktarılıyor; Macaristan'daki düzenleme " +
+                "AB'nin platform çalışması direktifi (2024/2831) ülkelerin kendi yasalarına aktarılıyor; ülkedeki düzenleme " +
                 $"{YasaGunu - YasaDuyuruGunu} gün sonra yürürlüğe giriyor. Uygulama ve algoritmayla yönetilen kurye, aksi kanıtlanana kadar " +
                 "çalışan sayılacak; algoritmanın nasıl iş dağıttığı da kuryelere açıklanmak zorunda.\n\n" +
                 $"Şu an {n} kuryenden {tam}'i günde ortalama {TamZamanSaat:0} saatten fazla çevrimiçi: yasa en çok bunları ilgilendiriyor. " +
@@ -547,7 +547,7 @@ namespace KuryeTycoon
             long fine = DenetimCezasi();
             long lawyer = Round1000(Mathf.Max(1500000f, AvgDailyIncome() * 0.5f));
             var ev = new GameEvent("Platform Çalışanları Yasası",
-                "AB'nin platform çalışması direktifi Macaristan'da yürürlüğe girdi: uygulama ve algoritmayla yönetilen kuryeler " +
+                "AB'nin platform çalışması direktifi ülkede yürürlüğe girdi: uygulama ve algoritmayla yönetilen kuryeler " +
                 "artık çalışan sayılabilir. Şirketin kurye modelini seçmesi gerekiyor. Bu karar kalıcıdır.\n\n" +
                 $"• Hepsi çalışan: kurye hakedişlerinin %{EmployeeCostShare * 100f:0}'i kadar işveren maliyeti + kurye başına günde {Ft(EmployeeDailyFixed)} " +
                 $"(şu an {n} kurye → günde ~{Ft(daily)}). Moral artar, kurye işi zor bırakır, rakip kuryelerini ayartamaz, grev ihtimali düşer.\n" +

@@ -20,8 +20,8 @@ namespace KuryeTycoon
     /// <summary>
     /// Sanal mutfak (dark kitchen, Wolt'un ve Deliveroo Editions'ın kendi mutfakları gibi): sadece uygulamada satılan kendi yemek
     /// markaların, tek bir mutfakta pişer. Dark store'un yemek versiyonu.
-    ///  • Kurulum 1 600 000 Ft (Doğu İlçesi açıkken, şirketin 10. gününden sonra); ilk marka (Kurye Burger) dahil.
-    ///    Diğer markalar 500 000 Ft: Bowl &amp; Co (sağlıklı kase), Nonna Pizza, Tatlı Kutusu.
+    ///  • Kurulum 1 600 000 Ft (East Side açıkken, şirketin 10. gününden sonra); ilk marka (Courier Burger) dahil.
+    ///    Diğer markalar 500 000 Ft: Bowl &amp; Co (sağlıklı kase), Nonna Pizza, Sweet Box.
     ///  • Komisyon yok: sepetin tamamı senin. Malzeme + ambalaj sepetin %38'i (teslimde gider). Kira + enerji günde 12 000 Ft,
     ///    marka başı aşçı günde 20 000 Ft.
     ///  • Menü geliştirme (2. seviye 300 000, 3. seviye 900 000 Ft): talep ×1,2 / ×1,4, müşteri puanı +0,1 / +0,2.
@@ -54,7 +54,7 @@ namespace KuryeTycoon
 
         public static readonly MarkaTanim[] Markalar =
         {
-            new MarkaTanim { ad = "Kurye Burger", tur = "burger", renk = new Color(0.95f, 0.55f, 0.2f), sicak = true, sepetMin = 3000, sepetMax = 7500, kaynak = "Burger Queen", fiyat = 0.97f },
+            new MarkaTanim { ad = "Courier Burger", tur = "burger", renk = new Color(0.95f, 0.55f, 0.2f), sicak = true, sepetMin = 3000, sepetMax = 7500, kaynak = "Burger Queen", fiyat = 0.97f },
             new MarkaTanim { ad = "Bowl & Co", tur = "sağlıklı kase", renk = new Color(0.45f, 0.75f, 0.35f), sicak = true, sepetMin = 3200, sepetMax = 7000, satirlar = new[]
             {
                 "Tavuklu kinoa kase|3290|A", "Somon poke kase|3990|A", "Falafel humus kase|2990|A", "Teriyaki tofu kase|3190|A", "Biftekli pirinç kase|3790|A",
@@ -64,10 +64,10 @@ namespace KuryeTycoon
                 "Chia puding|990|T", "Meyve kasesi|1190|T"
             }},
             new MarkaTanim { ad = "Nonna Pizza", tur = "pizza", renk = new Color(0.85f, 0.25f, 0.25f), sicak = true, sepetMin = 3500, sepetMax = 9000, kaynak = "Pizza Hat", fiyat = 0.95f },
-            new MarkaTanim { ad = "Tatlı Kutusu", tur = "tatlı ve kahve", renk = new Color(0.9f, 0.55f, 0.75f), sicak = false, sepetMin = 2200, sepetMax = 5500, satirlar = new[]
+            new MarkaTanim { ad = "Sweet Box", tur = "tatlı ve kahve", renk = new Color(0.9f, 0.55f, 0.75f), sicak = false, sepetMin = 2200, sepetMax = 5500, satirlar = new[]
             {
                 "Latte|890|K", "Cappuccino|850|K", "Flat white|990|K", "Buzlu karamel latte|1190|K", "Sıcak çikolata|990|K", "Ev yapımı limonata|790|K",
-                "Kürtőskalács (tarçınlı)|1290|T", "Dobos torta dilimi|1390|T", "Somlói galuska|1490|T", "San Sebastian cheesecake|1590|T",
+                "Baca keki (tarçınlı)|1290|T", "Karamelli pasta dilimi|1390|T", "Kat kat pandispanya|1490|T", "San Sebastian cheesecake|1590|T",
                 "Tiramisu|1390|T", "Brownie|890|T", "Lotus cheesecake|1490|T", "Baklava (4 dilim)|1690|T",
                 "Kurabiye (3)|690|Y", "Kruvasan|590|Y", "Çikolatalı muffin|690|Y", "Makaron (6)|1490|Y"
             }},

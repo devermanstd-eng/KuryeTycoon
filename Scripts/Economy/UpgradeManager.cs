@@ -44,7 +44,7 @@ namespace KuryeTycoon
     {
         public static UpgradeManager I { get; private set; }
 
-        // Hesap sınırları açık bölgelerin talebine göre: 4 = başlangıç, 14 = Merkez dolu, 22 = Doğu, 32 = Sanayi, 45 = Batı Liman, 60–80 = bütün şehir;
+        // Hesap sınırları açık bölgelerin talebine göre: 4 = başlangıç, 14 = Merkez dolu, 22 = Doğu, 32 = Sanayi, 45 = West Harbour, 60–80 = bütün şehir;
         // 100–180 = büyük şehir operasyonu (kurye merkezleri, yapay zekâ dispatch ve bölge ofisleri gerekir)
         static readonly int[] AccountCap = { 4, 8, 14, 22, 32, 45, 60, 80, 100, 125, 150, 180 };
 
@@ -73,8 +73,8 @@ namespace KuryeTycoon
                 summary = "Kuryeler kendi işinin patronu ama her biri uygulamanda bir hesapla çalışır. Paket kaç aktif kurye hesabını " +
                           "kaldırabileceğini belirler; büyük paketin sunucu ve lisans ücreti de yüksek. Büyük paketler şehir büyüdükçe açılır.",
                 // Metropol (32 → 45) 1,6 M → 1,1 M → 0,9 M, Kurumsal (45 → 60) 2,8 M → 2,4 M → 2,0 M → 1,3 M. 15.11'de 32'de 30 gün,
-                // 16.11 sabah 32'de 17, 45'te 18; 16.11 akşam 22'de 11, 32'de 11, 45'te yine 18 gün beklendi (hedef 10–13): Yeşil Tepe
-                // 5 810 € + Kurumsal 9 745 € ≈ 15 500 €, günde ~1 000 € birikirken. Yeşil Tepe de 1,2 M → 0,9 M (CityMap.UnlockCost).
+                // 16.11 sabah 32'de 17, 45'te 18; 16.11 akşam 22'de 11, 32'de 11, 45'te yine 18 gün beklendi (hedef 10–13): Green Hill
+                // 5 810 € + Kurumsal 9 745 € ≈ 15 500 €, günde ~1 000 € birikirken. Green Hill de 1,2 M → 0,9 M (CityMap.UnlockCost).
                 // 20.11 120 günlük test (2 şehir): 32, 45 ve 60 hesapta paket 21–28 gün dolu kaldı (hedef ≤13), 60'ta 44–46 gün.
                 // Şehir 900 → 675 bin, Metropol 900 → 675 bin, Kurumsal+ 4,5 → 3 M (bölgeler de ucuzladı: CityMap.UnlockCost).
                 // 23.11 48 günlük test: 80 hesap 14 gün dolu kaldı (Büyük şehir 50 000 € birikirken); 20 M → 14 M.

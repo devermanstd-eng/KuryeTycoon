@@ -2,7 +2,7 @@
 """
 KURYE TYCOON · BÖLGE MODELLERİ VE SOKAK DONATILARI (Blender scripti)
 
-Her bölgenin kendine özgü binaları (Orta Avrupa / Macar kasabası konsepti) ve yol kenarı donatıları.
+Her bölgenin kendine özgü binaları (Orta Avrupa / Orta Avrupa kasabası konsepti) ve yol kenarı donatıları.
 Geometri saf Python ile kurulur (bpy işlemi yok, sadece mesh + FBX dışa aktarma): Blender arka planda güvenle çalışır,
 Blender dışında da önizleme resmi çizilebilir.
 
@@ -1164,7 +1164,7 @@ def eski_kuleli(rnd):
 
 
 def eski_kasaba_evi(rnd):
-    """Tek katlı Macar kasaba evi: sokağa paralel uzun cephe, yüksek pencereler, yan araba kapısı, kırma çatı, arka bahçe."""
+    """Tek katlı kasaba evi: sokağa paralel uzun cephe, yüksek pencereler, yan araba kapısı, kırma çatı, arka bahçe."""
     g = G("eski_kasaba_evi")
     zemin(g, M("Cim", SABIT["cim2"]))
     st = eski_st(rnd)
@@ -1963,7 +1963,7 @@ def havuz(g, x0, x1, y0, y1):
 
 
 def ev_kocka(rnd):
-    """Kocka ház: kare planlı, piramit çatılı Macar evi; süslü pencere bantları, yan girişli sundurma, kaideli demir çit, meyve ağaçları."""
+    """Kocka ház: kare planlı, piramit çatılı kasaba evi; süslü pencere bantları, yan girişli sundurma, kaideli demir çit, meyve ağaçları."""
     g = G("ev_kocka")
     zemin(g, M("Cim", rnd.choice((SABIT["cim"], SABIT["cim2"]))))
     st = ev_st(rnd)
@@ -2230,7 +2230,7 @@ def ev_ikiz(rnd):
 # ================================== BANLİYÖ / KÖY ==================================
 
 def gemeskut(g, x, y, rnd):
-    """Gémeskút: kuyu bilezikli, çatallı direk ve uzun kaldıraç (Macar ovası simgesi)."""
+    """Gémeskút: kuyu bilezikli, çatallı direk ve uzun kaldıraç (ova simgesi)."""
     ah = M("Ahsap", "#7a5a3a")
     dsil(g, x, y, ZL, ZL + 0.8, 0.6, 10, M("Tas", "#bdb4a4"), kapak=(False, False))
     dsil(g, x, y, ZL + 0.75, ZL + 0.78, 0.48, 10, M("Su", "#3a6a8a"))
@@ -3244,7 +3244,7 @@ def don_saksi(rnd):
 
 
 def don_ilan_sutunu(rnd):
-    """İlan sütunu (hirdetőoszlop): yeşil döküm kaide ve kubbeli şapka, etrafında renkli afişler."""
+    """İlan sütunu: yeşil döküm kaide ve kubbeli şapka, etrafında renkli afişler."""
     g = G("ilan_sutunu")
     yesil = M("Demir", rnd.choice(("#2f4f3a", "#3a3d42")))
     dsil(g, 0, 0, 0, 0.35, 0.72, 14, yesil)

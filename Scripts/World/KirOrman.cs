@@ -71,6 +71,18 @@ namespace KuryeTycoon
         }
 
         /// <summary>Kır bitki örtüsünü kurar. ornek: şehrin bir malzemesi (aynı gölgelendirici); dolu: köy/çiftlik noktaları.</summary>
+        static bool[,] acikIzgara;
+        static int acikW, acikH;
+
+        /// <summary>Kırda bu nokta tarla, yol, çiftlik ya da köy dışında mı (çayır çimi için). Kurulmadıysa false.</summary>
+        public static bool AcikAlan(Vector2 p)
+        {
+            if (acikIzgara == null) return false;
+            int i = Mathf.RoundToInt((p.x + 43f) / 0.5f), j = Mathf.RoundToInt((p.y + 43f) / 0.5f);
+            if (i < 0 || j < 0 || i >= acikW || j >= acikH) return false;
+            return !acikIzgara[i, j];
+        }
+
         public static void Kur(Transform parent, CityMap map, Material ornek, IList<Vector2> dolu, int tohum)
         {
             if (!CityMap.Organik || map == null) return;
@@ -87,6 +99,7 @@ namespace KuryeTycoon
             const float A = 0.5f;
             int gw = Mathf.CeilToInt((W + 2 * Pay) / A) + 1, gh = Mathf.CeilToInt((H + 2 * Pay) / A) + 1;
             var izgara = new bool[gw, gh];
+            acikIzgara = izgara; acikW = gw; acikH = gh;
             void Isaretle(Rect r)
             {
                 int i0 = Mathf.Max(0, Mathf.FloorToInt((r.xMin + Pay) / A)), i1 = Mathf.Min(gw - 1, Mathf.CeilToInt((r.xMax + Pay) / A));

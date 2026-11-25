@@ -7,7 +7,7 @@ namespace KuryeTycoon
     /// Dükkanların açılış ve kapanış saatleri (gerçek hayattaki gibi). Kapalı dükkana sipariş gelmez;
     /// kapanıştan 15 dakika önce yeni sipariş alınmaz (mutfak / kasa kapanıyor). Verilmiş siparişler yine teslim edilir.
     /// Saatler: hafta içi (Pzt–Cum) ve hafta sonu (Cmt–Paz). Gece yarısını geçen kapanış 24'ten büyük yazılır (02:00 = 26).
-    /// 24 saat açık: Burger Queen, McDanold's, Non-Stop Gyros ve bakkallar (Market 24, ABC'ler, éjjel-nappali).
+    /// 24 saat açık: Burger Queen, McDanold's, Non-Stop Gyros ve bakkallar (Market 24, bakkallar).
     /// </summary>
     public static class ShopHours
     {
@@ -26,32 +26,32 @@ namespace KuryeTycoon
             { "Burger Queen",   Nonstop },
             { "McDanold's",     Nonstop },
             { "Non-Stop Gyros", Nonstop },
-            { "Döner Kral",     H(10, 26, 10, 28) },     // 10:00–02:00, hafta sonu 04:00'e kadar
+            { "Kebab King",     H(10, 26, 10, 28) },     // 10:00–02:00, hafta sonu 04:00'e kadar
             { "Starbocks",      H(7, 21, 8, 20) },
             { "Pizza Hat",      H(11, 23, 11, 24) },
             { "KFG",            H(10, 23, 10, 25) },     // hafta sonu 01:00'e kadar
             { "Sushi Samurai",  H(11, 22, 12, 22) },
             { "Fish & Ships",   H(11, 22, 11, 22) },
-            { "Otogar Büfé",    H(5, 23, 6, 23) },
+            { "Station Snack Bar",    H(5, 23, 6, 23) },
             { "Villa Gourmet",  H(12, 23, 12, 24) },
             // Market
-            { "Szpar Express",  H(6, 21, 7, 19) },
-            { "InterSzpar",     H(7, 21, 7, 20) },
-            { "BioSzpar",       H(7, 20, 8, 18) },
+            { "Sparx Express",  H(6, 21, 7, 19) },
+            { "InterSparx",     H(7, 21, 7, 20) },
+            { "BioSparx",       H(7, 20, 8, 18) },
             { DarkStore.StoreName, H(7, 24, 8, 24) },     // kendi marketin (dark store)
             { KargoAnlasmasi.DepoAdi, H(8, 19, 8, 14) },  // kargo deposu (pazar kapalı ama tablo hafta sonunu tek tutuyor)
-            // Bakkal / éjjel-nappali: 24 saat
+            // Bakkal: 24 saat
             { "Market 24",      Nonstop },
-            { "ABC Non-Stop",   Nonstop },
-            { "Sarok Kisbolt",  Nonstop },
-            { "Éjjel-Nappali",  Nonstop },
-            { "Mini ABC",       Nonstop },
-            { "Kikötő Non-Stop", Nonstop },
-            { "Falu ABC",       Nonstop },
+            { "24/7 Corner Store",   Nonstop },
+            { "Corner Shop",  Nonstop },
+            { "Day & Night Market",  Nonstop },
+            { "Mini Mart",       Nonstop },
+            { "Harbour 24", Nonstop },
+            { "Village Store",       Nonstop },
             // Eczane (patika): hafta içi 8–20, cumartesi 8–14; nöbetçi eczane 24 saat
-            { "Szent István Patika", H(8, 20, 8, 14) },
-            { "Belvárosi Patika",    H(8, 20, 8, 14) },
-            { "Kikötő Ügyeletes Patika", Nonstop },
+            { "Central Pharmacy", H(8, 20, 8, 14) },
+            { "High Street Pharmacy",    H(8, 20, 8, 14) },
+            { "Harbour Night Pharmacy", Nonstop },
         };
 
         /// <summary>Yeni bir dükkanın saatleri (ör. sanal mutfak markaları).</summary>

@@ -191,7 +191,7 @@ namespace KuryeTycoon
         public HizmetSave hizmet;              // ekspres ve planlı teslimat (eski kayıtlarda yok)
         public KargoSave kargo;                // kargo deposu ve sayıları (eski kayıtlarda yok)
         public GunPlaniSave gunPlani;          // grip dalgası (eski kayıtlarda yok)
-        public int sehirNo;                    // Marka: oyunun şehri (0 = Nyíregyháza; eski kayıtlarda 0)
+        public int sehirNo;                    // Marka: oyunun şehri (0 = Northbrook; eski kayıtlarda 0)
         public long kayitUtc;                  // kaydın gerçek zamanı (UTC tick): oyun kapalıyken kazanç için
         public List<string> agacBonuslari;     // gelişim ağacında alınan küçük düğümler (eski kayıtlarda yok)
         public AbonelikSave abonelik;          // abonelik (eski kayıtlarda yok)
@@ -201,6 +201,8 @@ namespace KuryeTycoon
         public SezonSave sezon;                // sezonluk etkinlikler (eski kayıtlarda yok)
         public SanalMutfakSave mutfak;         // sanal mutfak (eski kayıtlarda yok)
         public ArGeSave arge;                  // Ar-Ge (eski kayıtlarda yok)
+        public KutlamaSave kutlama;            // seri ve rekorlar (eski kayıtlarda yok)
+        public BolgeSave bolge;                // bölge müdürleri (eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -218,7 +220,7 @@ namespace KuryeTycoon
     {
         public static SaveSystem I { get; private set; }
 
-        // 2: yeni şehir planı (Budapeşte düzeni) ve sadeleştirilmiş kurallar (depozito, nakit borcu, hijyen, habersiz vergi yok)
+        // 2: yeni şehir planı (Başkent düzeni) ve sadeleştirilmiş kurallar (depozito, nakit borcu, hijyen, habersiz vergi yok)
         public const int Version = 2;
 
         /// <summary>Kayıt oyunun eski bir sürümünden mi? (Açılır ama dükkan/kurye yerleri ve denge tutmayabilir.)</summary>
@@ -443,7 +445,9 @@ namespace KuryeTycoon
                 isletme = IsletmeTeslimati.I != null ? IsletmeTeslimati.I.Kaydet() : null,
                 sezon = SezonEtkinlikleri.I != null ? SezonEtkinlikleri.I.Kaydet() : null,
                 mutfak = SanalMutfak.I != null ? SanalMutfak.I.Kaydet() : null,
-                arge = ArGe.I != null ? ArGe.I.Kaydet() : null
+                arge = ArGe.I != null ? ArGe.I.Kaydet() : null,
+                kutlama = Kutlama.I != null ? Kutlama.I.Kaydet() : null,
+                bolge = BolgeMudurleri.I != null ? BolgeMudurleri.I.Kaydet() : null
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -495,7 +499,8 @@ namespace KuryeTycoon
             CityMap.I.RestoreUnlockLevel(d.unlockLevel);
             foreach (var ss in d.shops)
             {
-                var s = CityMap.I.Shops.Find(x => x.def.name == ss.name);
+                string ad = GameData.GuncelDukkanAdi(ss.name);   // eski kayıt: dükkan adları değişti
+                var s = CityMap.I.Shops.Find(x => x.def.name == ad);
                 if (s == null) continue;
                 s.contracted = ss.contracted; s.exclusive = ss.exclusive; s.rivalMask = ss.rivalMask != 0 ? ss.rivalMask : (ss.rivalContracted ? 1 : 0);
                 s.lowSatisfactionWarned = ss.lowSatisfactionWarned; s.commissionBonus = ss.commissionBonus;
@@ -551,13 +556,19 @@ namespace KuryeTycoon
             UpgradeManager.I.RestoreLevels(d.upgradeLevels);
             SupportManager.I.Agents.Clear();
             if (d.support != null) SupportManager.I.Agents.AddRange(d.support);
+            foreach (var a in SupportManager.I.Agents) a.name = GameData.GuncelIsim(a.name);
             SupportManager.I.handledThisMonth = d.supportHandledThisMonth;
             if (d.ops != null) OperationsManager.I.RestoreSave(d.ops);
+            if (OperationsManager.I.Manager != null) OperationsManager.I.Manager.name = GameData.GuncelIsim(OperationsManager.I.Manager.name);
+            foreach (var c in CourierManager.I.Couriers) c.courierName = GameData.GuncelIsim(c.courierName);   // eski kayıt: isimler değişti
             if (d.rival != null) RivalCompany.I.RestoreSave(d.rival);
             if (d.kayit != null && KayitSistemi.I != null) KayitSistemi.I.RestoreSave(d.kayit);
+            if (KayitSistemi.I != null) foreach (var k in KayitSistemi.I.Adaylar) if (k.aday != null) k.aday.name = GameData.GuncelIsim(k.aday.name);
             if (d.goals != null && GoalManager.I != null) GoalManager.I.RestoreSave(d.goals);
             WeatherSystem.I.Restore((WeatherKind)d.weather);
             if (StatsHistory.I != null) StatsHistory.I.Restore(d.history);
+            if (Kutlama.I != null) Kutlama.I.Yukle(d.kutlama);   // geçmişten sonra: eski kayıtta rekorlar geçmişten çıkar
+            if (BolgeMudurleri.I != null) BolgeMudurleri.I.Yukle(d.bolge);
             if (Milestones.I != null) Milestones.I.Restore(d.milestoneIds, d.milestoneDates);
             if (d.feed != null) EventManager.I.Feed.AddRange(d.feed);
             if (Guide.I != null) Guide.I.RestoreSave(d.guide);

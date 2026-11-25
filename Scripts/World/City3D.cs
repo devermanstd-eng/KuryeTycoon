@@ -57,14 +57,14 @@ namespace KuryeTycoon
         static readonly Dictionary<string, string> ShopModel = new Dictionary<string, string>
         {
             { "Burger Queen", "FastFood_burger_queen" }, { "McDanold's", "FastFood_mcdanolds" },
-            { "Szpar Express", "Market_szpar_express" }, { "Market 24", "Market_market_24" }, { "InterSzpar", "Market_interszpar" },
+            { "Sparx Express", "Market_szpar_express" }, { "Market 24", "Market_market_24" }, { "InterSparx", "Market_interszpar" },
             // Altı dükkanlı binalar (Blender: MODEL = "dukkan")
-            { "Döner Kral", "Dukkan_doner_kral" }, { "Starbocks", "Dukkan_starbocks" }, { "Pizza Hat", "Dukkan_pizza_hat" },
+            { "Kebab King", "Dukkan_doner_kral" }, { "Starbocks", "Dukkan_starbocks" }, { "Pizza Hat", "Dukkan_pizza_hat" },
             { "KFG", "Dukkan_kfg" }, { "Sushi Samurai", "Dukkan_sushi_samurai" }, { "Fish & Ships", "Dukkan_fish_ships" },
-            { "Otogar Büfé", "Dukkan_otogar_bufe" }, { "Villa Gourmet", "Dukkan_villa_gourmet" }, { "Non-Stop Gyros", "Dukkan_nonstop_gyros" },
-            { "BioSzpar", "Dukkan_bioszpar" }, { "ABC Non-Stop", "Dukkan_abc_nonstop" }, { "Sarok Kisbolt", "Dukkan_sarok_kisbolt" },
-            { "Éjjel-Nappali", "Dukkan_ejjel_nappali" }, { "Mini ABC", "Dukkan_mini_abc" }, { "Kikötő Non-Stop", "Dukkan_kikoto_nonstop" },
-            { "Falu ABC", "Dukkan_falu_abc" },
+            { "Station Snack Bar", "Dukkan_otogar_bufe" }, { "Villa Gourmet", "Dukkan_villa_gourmet" }, { "Non-Stop Gyros", "Dukkan_nonstop_gyros" },
+            { "BioSparx", "Dukkan_bioszpar" }, { "24/7 Corner Store", "Dukkan_abc_nonstop" }, { "Corner Shop", "Dukkan_sarok_kisbolt" },
+            { "Day & Night Market", "Dukkan_ejjel_nappali" }, { "Mini Mart", "Dukkan_mini_abc" }, { "Harbour 24", "Dukkan_kikoto_nonstop" },
+            { "Village Store", "Dukkan_falu_abc" },
         };
         public static int OwnBuildingCount { get { LoadPack(); return ownAll.Length; } }
         // Kendi park parçalarımız (Resources/SehirPaketi/Parklar): park kareleri, göl, anıt, meydan çeşmesi
@@ -511,7 +511,7 @@ namespace KuryeTycoon
                             }
                             else if (CityMap.IsBlockCenter(x, y))
                             {
-                                if (tile == CityMap.BelediyeCenter)   // Belediye Parkı: anıt kule
+                                if (tile == CityMap.BelediyeCenter)   // City Park: anıt kule
                                 {
                                     AddBoxR(tile, new Vector2(0.34f, 0.34f), 0.08f, new Color(0.78f, 0.76f, 0.70f), null, false, default, false);
                                     AddBoxR(tile, new Vector2(0.16f, 0.16f), 0.95f, new Color(0.86f, 0.84f, 0.78f), null, false, default, false);
@@ -677,6 +677,7 @@ namespace KuryeTycoon
 
         Material organikOrnek;
         readonly List<Vector2> koyNoktalari = new List<Vector2>();
+        readonly List<Vector2> banliyoEvleri = new List<Vector2>();   // çayır çimi bu noktalara girmez
 
         /// <summary>Organik şehir: yol ağı ve nehir tek parça mesh (merkez ofisin karesine bağlı: hiç kararmaz).</summary>
         void OrganikYollarKur(CityMap map)
@@ -1006,6 +1007,7 @@ namespace KuryeTycoon
                 BanliyoKur(map, rng, packTreesOk);
                 KoyleriKur(map, rng, packTreesOk);
                 KirOrman.Kur(root, map, organikOrnek, koyNoktalari, 2026);
+                Cim.Kur(root, map, banliyoEvleri);
             }
             int sira = 0;
             bool extras = UsePack && countryExtras != null && countryExtras.Length > 0;
@@ -1055,12 +1057,14 @@ namespace KuryeTycoon
             int w = CityMap.Width, h = CityMap.Height;
             float B = CityMap.Banliyo;
             var dolu = new HashSet<Vector2Int>();
+            banliyoEvleri.Clear();
 
             void Ev(Vector2 p, float aci)
             {
                 var t = new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y));
                 if (CityMap.KirNehirYakin(p, 0.7f)) return;
                 if (!dolu.Add(t)) return;
+                banliyoEvleri.Add(p);
                 // Banliyö: uzun köy evleri, çiftlikler, bağ evleri çoğunlukta; arada aile evleri ve eski evler
                 double z0 = rng.NextDouble();
                 var bh = z0 < 0.65 ? BolgeHavuzu("banliyo") : z0 < 0.92 ? BolgeHavuzu("ev") : null;

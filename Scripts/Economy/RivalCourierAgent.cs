@@ -25,7 +25,7 @@ namespace KuryeTycoon
         float facing = 180f;
         Vector2 lastPos;
 
-        static readonly string[] Names = { "Ádám", "Gergő", "Nóra", "Kata", "Levente", "Zsófi", "Barış", "Deniz", "Mert", "Ece", "Péter", "Dóra" };
+        static readonly string[] Names = { "Adam", "Harry", "Lily", "Zoe", "Ryan", "Holly", "Owen", "Megan", "Daniel", "Amy", "Sam", "Lucy" };
 
         public void Init(Vector2Int start, int index, int rakipNo = 0)
         {

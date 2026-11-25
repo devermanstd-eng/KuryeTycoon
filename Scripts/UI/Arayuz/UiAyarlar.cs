@@ -20,7 +20,6 @@ namespace KuryeTycoon
             readonly List<string> havaAdlari = new List<string>();
             readonly List<WeatherKind> havalar = new List<WeatherKind>();
             static readonly string[] Acilar = { "0°", "90°", "180°", "270°" };
-            static readonly string[] ParaBirimleri = { "Forint (Ft)", "Euro (€)" };
             static readonly string[] KarakterModlari = { "Işıklı", "Düz renk", "Kapalı (daire)" };
             static readonly string[] AracRenkModlari = { "Karışık (her kurye kendi rengi)", "Şirket rengi", "Tek fabrika rengi" };
 
@@ -69,7 +68,7 @@ namespace KuryeTycoon
                 y.Kucuk("Arayüz boyutu");
                 y.Secim(UiSizeNames, UiSizeSetting, v => UiSizeSetting = v);
                 y.Onay("Pencere açılınca haritayı sağa kaydır (pencere haritayı kapatmaz)", PushMapSetting, v => PushMapSetting = v);
-                y.Onay("Haritada teslimat kârını göster (uçan \"+350 Ft\" yazıları)", ShowPopsSetting, v => ShowPopsSetting = v);
+                y.Onay("Haritada teslimat kârını göster (uçan \"+0,88 €\" yazıları)", ShowPopsSetting, v => ShowPopsSetting = v);
                 y.Onay("Sesler (teslimat, bildirim, kilometre taşı)", GameSounds.Enabled, v => GameSounds.Enabled = v);
                 if (GameSounds.Enabled)
                 {
@@ -95,10 +94,6 @@ namespace KuryeTycoon
                 y.Onay("Her gece gün sonu raporunu göster (oyun duraklar)", e.showDailyReport, v => e.showDailyReport = v);
                 y.Onay("Her Pazar gecesi haftalık raporu göster", e.showWeeklyReport, v => e.showWeeklyReport = v);
 
-                y.Bolum("Para birimi", $"Sadece gösterim değişir, oyun dengesi aynı kalır (1 € = {GameData.FtPerEuro:0} Ft). " +
-                                       "Seçim kaydedilir. Daha önce yazılmış bildirim ve hesap kayıtları yazıldıkları birimde kalır.");
-                y.Secim(ParaBirimleri, GameData.DisplayCurrency == Currency.Euro ? 1 : 0,
-                        v => GameData.SetCurrency(v == 1 ? Currency.Euro : Currency.Forint));
             }
 
             // ------------------------------------------------------------------ Ekonomi
@@ -190,6 +185,7 @@ namespace KuryeTycoon
                 string fps = GrafikOlcer.I != null && GrafikOlcer.I.Fps > 0f ? $" · şu an ~{GrafikOlcer.I.Fps:0} FPS" : "";
                 string oto = GrafikKalitesi.Ayar == GrafikKalitesi.Otomatik ? $"Otomatik → {GrafikKalitesi.Adlar[GrafikKalitesi.Seviye]}" : GrafikKalitesi.Adlar[GrafikKalitesi.Seviye];
                 y.Kucuk(Gorsel3D.Active ? $"Geçerli: {oto}{fps}" : $"3D ışık kapalı (eski düz görünüm){fps}");
+                y.Onay("Çayır çimi: yakından bakınca rüzgârla dalgalanan çimen ve kır çiçekleri (kapatmak performansı artırır)", Cim.Acik, v => Cim.Acik = v);
                 y.Onay("Gerçek ışık ve gölge (3D). Kapatınca eski düz görünüm; oyunu yeniden başlatınca uygulanır", Gorsel3D.Enabled, v => Gorsel3D.Enabled = v);
 
                 y.Bolum("Harita");
