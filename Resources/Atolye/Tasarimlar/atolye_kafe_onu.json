@@ -1,0 +1,193 @@
+{
+ "ad": "kafe_onu",
+ "bolge": "karma",
+ "tohum": 65,
+ "dukkan": false,
+ "tur": "kafe",
+ "tabela": "CAFE ROSE",
+ "tente": 9,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 3,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 3,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  }
+ ],
+ "susler": [
+  {
+   "ad": "masa",
+   "x": -3.2,
+   "y": -4.2,
+   "aci": 20,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "masa",
+   "x": 3.3,
+   "y": -4.4,
+   "aci": -15,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "masa",
+   "x": -5.3,
+   "y": -1.8,
+   "aci": 80,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "saksi",
+   "x": -1.3,
+   "y": -5.9,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "saksi",
+   "x": 1.3,
+   "y": -5.9,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "agac_cinar_3",
+   "x": 5.6,
+   "y": -1.2,
+   "aci": 0,
+   "olcek": 0.8,
+   "renk": 0
+  },
+  {
+   "ad": "sokak_lambasi",
+   "x": -6.2,
+   "y": -6.2,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cop_kutusu",
+   "x": 6.2,
+   "y": -6.2,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "bisiklet_park",
+   "x": 5.6,
+   "y": 2.2,
+   "aci": 90,
+   "olcek": 1.0,
+   "renk": 0
+  }
+ ]
+}

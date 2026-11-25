@@ -1,0 +1,84 @@
+{
+ "ad": "flowers",
+ "bolge": "karma",
+ "tohum": 39,
+ "dukkan": false,
+ "tur": "cicekci",
+ "tabela": "",
+ "tente": 6,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 6,
+   "ct": 7
+  }
+ ],
+ "susler": []
+}

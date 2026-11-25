@@ -1,0 +1,66 @@
+{
+ "ad": "garage",
+ "bolge": "sanayi",
+ "tohum": 55,
+ "dukkan": false,
+ "tur": "garaj",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 11,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 11,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 11,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 11,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 11,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 11,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  }
+ ],
+ "susler": []
+}

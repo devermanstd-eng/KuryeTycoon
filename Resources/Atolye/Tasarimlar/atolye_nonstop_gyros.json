@@ -1,0 +1,84 @@
+{
+ "ad": "nonstop_gyros",
+ "bolge": "karma",
+ "tohum": 27,
+ "dukkan": false,
+ "tur": "gyros",
+ "tabela": "",
+ "tente": 8,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 6,
+   "ct": 7
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 6,
+   "ct": 7
+  }
+ ],
+ "susler": []
+}

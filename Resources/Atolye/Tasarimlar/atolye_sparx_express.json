@@ -1,0 +1,120 @@
+{
+ "ad": "sparx_express",
+ "bolge": "karma",
+ "tohum": 40,
+ "dukkan": false,
+ "tur": "market",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 0,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 0,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 0,
+   "y": 3,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 1,
+   "y": 3,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 4
+  }
+ ],
+ "susler": []
+}

@@ -126,6 +126,7 @@ namespace KuryeTycoon
             if (e.type != EventType.KeyDown || e.keyCode != KeyCode.Escape) return;
             e.Use();
             // Önce bina kartı, kurye telefonu ve açık pencere kapanır, sonra Esc menüsü açılır
+            if (IceriBakis.Acik) { IceriBakis.Cik(); return; }   // binanın içinden haritaya dön
             if (InfoOpen && !pauseMenuOpen) { CloseInfo(); return; }
             if (popupCourier != null && !pauseMenuOpen) { popupCourier = null; return; }
             if (panelOpen && !pauseMenuOpen) { panelOpen = false; return; }
@@ -190,6 +191,8 @@ namespace KuryeTycoon
             var e = Event.current;
             if (e.type != EventType.KeyDown) return;
             if (UiYaziOdakta) return;   // UI Toolkit yazı kutusuna yazılıyor
+            // Kamera bakkalın içinde: tuşlar bakışı çevirir, oyun kısayolları çalışmaz (Esc: HandleMenuKey)
+            if (IceriBakis.Acik) { IceriBakis.Girdi(e); if (e.type == EventType.KeyDown) e.Use(); return; }
             var clk = GameClock.I;
             switch (e.keyCode)
             {
@@ -294,6 +297,12 @@ namespace KuryeTycoon
         {
             var e = Event.current;
             Vector2 m = e.mousePosition;
+            // Kamera bakkalın içinde: harita kaydırma / tıklama yok, sürükleme etrafa baktırır
+            if (IceriBakis.Acik)
+            {
+                if (e.type == EventType.MouseDrag && !UiUzerinde(m)) IceriBakis.Girdi(e);
+                return;
+            }
             bool overMap = m.x > MapLeftGui && m.y > TopBar &&
                            !(panelOpen && WindowRect(sh).Contains(m)) &&
                            !(TutorialVisible && TutorialRect(sw, sh).Contains(m)) &&

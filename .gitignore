@@ -8,3 +8,16 @@ __pycache__/
 __pycache__.meta
 *.pyc
 *.pyc.meta
+
+# Bina Atölyesi: modeller oyun çalışırken tasarım JSON'larından kurulur (Scripts/World/Atolye/AtolyeUretici.cs).
+# Eski sürümlerin ürettiği mesh / prefab / malzeme dosyaları (yüzlerce MB metin YAML) depoya girmez; yerelde kaldıysa silinebilir.
+Modeller/Atolye/
+Modeller/Atolye.meta
+Modeller/Malzemeler/Pastel_*.mat
+Modeller/Malzemeler/Pastel_*.mat.meta
+Resources/SehirPaketi/Binalar/*_atolye_*.prefab
+Resources/SehirPaketi/Binalar/*_atolye_*.prefab.meta
+Resources/SehirPaketi/Agaclar/*_atolye_*.prefab
+Resources/SehirPaketi/Agaclar/*_atolye_*.prefab.meta
+Resources/SehirPaketi/Donatilar/*_atolye_*.prefab
+Resources/SehirPaketi/Donatilar/*_atolye_*.prefab.meta

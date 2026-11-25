@@ -202,6 +202,8 @@ namespace KuryeTycoon
                     y.Secim(EfektSecimleri, EfektIndeksi(GrafikKalitesi.OrtamGolgesiSecimi), v => GrafikKalitesi.OrtamGolgesiSecimi = EfektSecimi(v));
                 }
                 y.Onay("Çayır çimi: yakından bakınca rüzgârla dalgalanan çimen ve kır çiçekleri (kapatmak performansı artırır)", Cim.Acik, v => Cim.Acik = v);
+                if (Cim.Acik)
+                    y.Onay("Gerçekçi çim (deneme): yaprak geometrisi yerine dokulu çim kartları; hemen uygulanır", Cim.Gercekci, v => Cim.Gercekci = v);
                 y.Onay("Gerçek ışık ve gölge (3D). Kapatınca eski düz görünüm; oyunu yeniden başlatınca uygulanır", Gorsel3D.Enabled, v => Gorsel3D.Enabled = v);
 
                 y.Bolum("Harita");

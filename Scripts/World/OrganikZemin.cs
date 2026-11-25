@@ -174,8 +174,36 @@ namespace KuryeTycoon
             return (Zone)en;
         }
 
+        /// <summary>"Oyunda pastel zemin" (AtolyeAyari): Bina Atölyesi'nin zemin paleti; iri, yumuşak lekeler, derz yok.</summary>
+        static Color PastelRenk(Desen d, float wx, float wy)
+        {
+            float n1 = Mathf.PerlinNoise(wx * 0.8f + 3.1f, wy * 0.8f + 9.7f);
+            float n2 = Mathf.PerlinNoise(wx * 3.1f + 1.7f, wy * 3.1f + 4.4f);
+            float leke = n1 > 0.58f ? 1f : n2 > 0.7f ? 0.5f : 0f;        // basamaklı: suluboya lekesi gibi
+            switch (d)
+            {
+                case Desen.Cim:
+                case Desen.Bahce:
+                {
+                    var c = Color.Lerp(new Color(0.749f, 0.878f, 0.659f), new Color(0.682f, 0.827f, 0.588f), leke);
+                    if (d == Desen.Bahce)
+                    {
+                        int cx = Mathf.FloorToInt(wx * 14f), cy = Mathf.FloorToInt(wy * 14f);
+                        float h = Hash(cx, cy, 5);
+                        if (h > 0.985f) c = Hash(cx, cy, 6) < 0.5f ? new Color(0.91f, 0.38f, 0.48f) : new Color(0.96f, 0.78f, 0.29f);
+                    }
+                    return c;
+                }
+                case Desen.Kaldirim: return Color.Lerp(new Color(0.851f, 0.796f, 0.714f), new Color(0.796f, 0.733f, 0.639f), leke);
+                case Desen.Plaka: return Color.Lerp(new Color(0.902f, 0.875f, 0.816f), new Color(0.847f, 0.816f, 0.749f), leke);
+                case Desen.Beton: return Color.Lerp(new Color(0.84f, 0.83f, 0.80f), new Color(0.78f, 0.77f, 0.75f), leke);
+                default: return Color.Lerp(new Color(0.851f, 0.753f, 0.604f), new Color(0.769f, 0.651f, 0.486f), leke);
+            }
+        }
+
         static Color Renk(Desen d, float wx, float wy)
         {
+            if (AtolyeAyari.PastelZemin) return PastelRenk(d, wx, wy);
             switch (d)
             {
                 case Desen.Cim:

@@ -31,6 +31,13 @@ namespace KuryeTycoon.EditorTools
         [MenuItem("Kurye Tycoon/Blender/Bölge modellerini ve donatıları üret")]
         static void Bolgeler() => Calistir("bolge_modelleri.py");
 
+        /// <summary>
+        /// Mahalle bakkalı ("Corner Shop" binası): içi modelli, çatısı ayrı obje (oyunda kamera yaklaşınca kalkar:
+        /// Scripts/World/CatiKaldir.cs). Tools/Blender/bakkal.py → Modeller/Binalar/Dukkan_bakkal_1(.fbx, _Hafif.fbx).
+        /// </summary>
+        [MenuItem("Kurye Tycoon/Blender/Bakkalı üret (içi modelli, çatısı kalkan)")]
+        static void Bakkal() => Calistir("bakkal.py");
+
         /// <summary>Yazılı tabelası olan binalar (dükkânlar, marketler, katalog: büro, sanayi, kamu). Tabela metni değişince yeter.</summary>
         [MenuItem("Kurye Tycoon/Blender/Tabelalı binaları üret (dükkân, market, katalog)")]
         static void Tabelalar() => Calistir("calistir_tabela.py");

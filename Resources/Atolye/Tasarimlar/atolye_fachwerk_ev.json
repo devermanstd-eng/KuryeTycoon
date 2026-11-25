@@ -1,0 +1,120 @@
+{
+ "ad": "fachwerk_ev",
+ "bolge": "eski",
+ "tohum": 7,
+ "dukkan": false,
+ "tur": "konut",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 8,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 8,
+   "ct": 0
+  }
+ ],
+ "susler": []
+}

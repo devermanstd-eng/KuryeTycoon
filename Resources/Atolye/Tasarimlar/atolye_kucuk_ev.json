@@ -1,0 +1,109 @@
+{
+ "ad": "kucuk_ev",
+ "bolge": "ev",
+ "tohum": 2,
+ "dukkan": false,
+ "tur": "konut",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 1,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  }
+ ],
+ "susler": [
+  {
+   "ad": "agac_meyve_1",
+   "x": 4.2,
+   "y": -1.5,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cit_bitki",
+   "x": 4.2,
+   "y": -5.9,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cali_2",
+   "x": 3.6,
+   "y": 3.5,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  }
+ ]
+}

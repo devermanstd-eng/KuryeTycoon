@@ -108,7 +108,7 @@ namespace KuryeTycoon
 
             U.Goster(fotoIpucu, basladi && fotoModu && Time.unscaledTime < fotoIpucuBitis);
 
-            bool lejant = basladi && legendOpen && !AgacGorunur;
+            bool lejant = basladi && legendOpen && !AgacGorunur && !IceriBakis.Acik;
             U.Goster(lejantKok, lejant);
             if (lejant)
             {
@@ -118,7 +118,7 @@ namespace KuryeTycoon
             }
 
             // Gelişim ağacı tam ekran açıkken harita yazıları çizilmez (arkada kalırdı)
-            bool goster = basladi && !AgacGorunur && Camera.main != null && CityMap.I != null && CourierManager.I != null;
+            bool goster = basladi && !AgacGorunur && !IceriBakis.Acik && Camera.main != null && CityMap.I != null && CourierManager.I != null;
             U.Goster(katEtiket, goster);
             if (!goster) return;
 
@@ -374,7 +374,7 @@ namespace KuryeTycoon
             var ce = CityEvents.I;
             var e = ce != null ? ce.ActiveNow : null;
             var cam = Camera.main;
-            bool gorunur = e != null && e.HasSpot && cam != null && CityMap.I.IsUnlocked(e.Spot);
+            bool gorunur = e != null && e.HasSpot && cam != null && !IceriBakis.Acik && CityMap.I.IsUnlocked(e.Spot);
             U.Goster(katEtkinlik, gorunur);
             if (!gorunur) return;
 
@@ -412,7 +412,7 @@ namespace KuryeTycoon
         void SecimHalkasiGuncelle()
         {
             bool basladi = GameBootstrap.I != null && GameBootstrap.I.Started;
-            if (!basladi || fotoModu || AgacGorunur || CityMap.I == null) { SecimHalkasi.Gizle(); return; }
+            if (!basladi || fotoModu || AgacGorunur || IceriBakis.Acik || CityMap.I == null) { SecimHalkasi.Gizle(); return; }
             var mc = MapCamera.I;
             bool yakin = mc != null && mc.ShowModels;
             if (popupCourier != null)

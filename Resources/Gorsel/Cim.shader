@@ -128,13 +128,14 @@ Shader "KuryeTycoon/Cim"
 
                 // Yeşil / kuru yamalar (dünya ölçekli), öbek ve yaprak başına ton farkı
                 float yama = Gurultu(kok * 0.32) * 0.6 + Gurultu(kok * 1.35 + 3.7) * 0.4;
-                float kuru = saturate(_KuruOran + (yama - 0.5) * 0.95);
+                float kuru = saturate(_KuruOran + (yama - 0.5) * 0.95 + (Hs(kok * 5.31) - 0.5) * 0.6);   // öbekten öbeğe: biri taze yeşil, yanındaki saman
                 float tohum = Hs(kok * 91.7 + i.veri.z * 13.1);
                 float3 uc = lerp(_Uc.rgb, _Kuru.rgb, kuru);
                 uc *= 0.84 + 0.3 * tohum;
                 uc = lerp(uc, uc * float3(1.08, 1.02, 0.78), step(0.82, Hs(kok * 17.3)) * 0.6);   // sarımsı öbekler
                 float3 kokRenk = _Taban.rgb * lerp(1.0, 1.35, kuru);
                 float3 renk = lerp(kokRenk, uc, smoothstep(0.0, 0.85, t));
+                renk = lerp(renk, renk * 1.12 + float3(0.05, 0.045, 0.01), smoothstep(0.7, 1.0, t) * 0.55);   // uçlar güneşte açılır
                 if (i.veri.w > 0.5) renk = i.color.rgb;    // çiçek ve tohum başları kendi renginde
                 renk = lerp(renk, float3(0.92, 0.94, 0.97), _Kar * smoothstep(0.25, 1.0, t) * 0.85);
 

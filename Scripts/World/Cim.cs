@@ -6,8 +6,8 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Çayır çimi (organik şehir): Manor Lords'taki gibi canlı, rüzgârla dalgalanan çimen örtüsü. Kendi kodumuzla üretilir.
-    ///  • Öbekler: koddan üretilen 6 mesh. İki çim öbeği (kıvrık, sivri uçlu yapraklar), tohum başlı uzun ot, üç kır çiçeği
-    ///    öbeği (papatya, düğün çiçeği, peygamber çiçeği, gelincik, yonca). Gölgelendirici KuryeTycoon/Cim (Resources/Gorsel/Cim.shader).
+    ///  • Öbekler: koddan üretilen 7 mesh. Kısa çim, uçları sarkan uzun ot, pembe-bej tohum başlı ot, eğrelti ve üç
+    ///    çiçekli çim (kısa çimin içinde serpiştirilmiş mor, mavi, beyaz, sarı, kırmızı çiçekler). Gölgelendirici KuryeTycoon/Cim (Resources/Gorsel/Cim.shader).
     ///  • Yerleşim: kare başına (10 m) 12 × 12 sarsılmış ızgarada 1 m'lik lekeler (üst üste biner, zemin görünmez), karenin kendi tohumuyla. Şehirde çimen ve bahçe desenli karelerde
     ///    (OrganikZemin.CimAgirligi); yol, su, bina, meydan ve kaldırımda yok. Kırda tarla, yol, çiftlik, köy ve banliyö evlerinin
     ///    dışında (KirOrman.AcikAlan); nehir kıyısında yok. Çiçek ve tohumlu ot kırda daha çok.
@@ -30,17 +30,28 @@ namespace KuryeTycoon
             set { ayarCache = value ? 1 : 0; PlayerPrefs.SetInt(AyarKey, ayarCache); PlayerPrefs.Save(); }
         }
 
+        const string GercekciKey = "KuryeTycoon.CimGercekci";
+        static int gercekciCache = -1;
+        /// <summary>Deneme: stilize yaprak geometrisi yerine dokulu çim kartları (Resources/Gorsel/CimKart.png + KuryeTycoon/CimKart).</summary>
+        public static bool Gercekci
+        {
+            get { if (gercekciCache < 0) gercekciCache = PlayerPrefs.GetInt(GercekciKey, 0); return gercekciCache == 1; }
+            set { gercekciCache = value ? 1 : 0; PlayerPrefs.SetInt(GercekciKey, gercekciCache); PlayerPrefs.Save(); }
+        }
+
         // Dünya: 1 kare = 10 m, −Z yukarı. Öbek mesh'i yarıçap 1, boy 1 (yerel −Z); örnek ölçeği aşağıda.
         const float OlcekXY = 0.1f;            // leke yarıçapı ~1 m (bir lekede 28–36 yaprak); lekeler üst üste biner, boşluk kalmaz
-        const float BoyMin = 0.03f, BoyMax = 0.06f;     // 30–60 cm (çayır otu)
+        const float BoyMin = 0.045f, BoyMax = 0.075f;   // 45–75 cm; uzun ot alanında ×1,6'ya kadar (bel boyu), şehirde ×0,6
         const int Izgara = 12;                 // kare başına 12 × 12 leke (~83 cm aralık, sarsılmış ızgara)
         const float KirPay = 43f;              // kır zemini KirOrman ile aynı kuşak
         const float KirZeminZ = 0.012f;
 
-        const int Cim0 = 0, Cim1 = 1, Tohum = 2, Cicek0 = 3, Cicek1 = 4, Cicek2 = 5, TurSayisi = 6;
+        const int Kisa = 0, Uzun = 1, Tohum = 2, Egr = 3, Cicek0 = 4, TurSayisi = 7;   // 4–6: üç çiçek karışımı
 
-        Mesh[] meshler;
-        Material malzeme;
+        Mesh[] meshler, kartMeshler;
+        Material malzeme, kartMalzeme;
+        Mesh[] Meshler => Gercekci && kartMalzeme != null ? kartMeshler : meshler;
+        Material Malzeme => Gercekci && kartMalzeme != null ? kartMalzeme : malzeme;
         CityMap map;
         float[,] sehirAgirlik;                 // şehir karesinin çim ağırlığı (0–1), bir kez hesaplanır
         readonly HashSet<Vector2Int> kirDolu = new HashSet<Vector2Int>();   // banliyö evleri
@@ -63,12 +74,31 @@ namespace KuryeTycoon
             c.map = map;
             c.malzeme = new Material(sh) { name = "Cim", enableInstancing = true };
             c.meshler = new Mesh[TurSayisi];
-            c.meshler[Cim0] = OtOrbegi(11, 36, false);
-            c.meshler[Cim1] = OtOrbegi(23, 30, false);
-            c.meshler[Tohum] = OtOrbegi(37, 24, true);
-            c.meshler[Cicek0] = CicekObegi(41);
-            c.meshler[Cicek1] = CicekObegi(53);
-            c.meshler[Cicek2] = CicekObegi(67);
+            c.meshler[Kisa] = KisaCim(11);
+            c.meshler[Uzun] = UzunOt(23);
+            c.meshler[Tohum] = TohumluOt(37);
+            c.meshler[Egr] = Egrelti(47);
+            c.meshler[Cicek0] = CicekliCim(41, new[] { new[] { Mor, Sari }, new[] { Mavi, Beyaz }, new[] { Beyaz, Sari } });       // mor, peygamber çiçeği, papatya
+            c.meshler[Cicek0 + 1] = CicekliCim(53, new[] { new[] { Kirmizi, Koyu }, new[] { Beyaz, Sari }, new[] { Mor, Sari } }); // gelincik
+            c.meshler[Cicek0 + 2] = CicekliCim(67, new[] { new[] { Sari, Sari }, new[] { Pembe, Beyaz }, new[] { Beyaz, Sari } }); // düğün çiçeği, yonca
+            // Gerçekçi kartlar (deneme): atlas hücreleri 0 uzun ot · 1 kısa çim · 2 tohumlu · 3 kuru ot · 4 eğrelti · 5–7 çiçek
+            var ksh = Shader.Find("KuryeTycoon/CimKart");
+            var atlas = Resources.Load<Texture2D>("Gorsel/CimKart");
+            if (ksh != null && atlas != null)
+            {
+                atlas.wrapMode = TextureWrapMode.Clamp;
+                atlas.mipMapBias = -0.6f;   // uzakta yapraklar incelip kaybolmasın
+                c.kartMalzeme = new Material(ksh) { name = "CimKart", enableInstancing = true, mainTexture = atlas };
+                c.kartMeshler = new Mesh[TurSayisi];
+                c.kartMeshler[Kisa] = KartObegi(111, new[] { 1, 1, 3, 1 }, 0.85f);
+                c.kartMeshler[Uzun] = KartObegi(123, new[] { 0, 0, 3, 0 }, 1f);
+                c.kartMeshler[Tohum] = KartObegi(137, new[] { 2, 0, 2, 3 }, 1f);
+                c.kartMeshler[Egr] = KartObegi(147, new[] { 4, 4, 4, 4 }, 0.9f);
+                c.kartMeshler[Cicek0] = KartObegi(141, new[] { 5, 1, 5, 1 }, 0.85f);
+                c.kartMeshler[Cicek0 + 1] = KartObegi(153, new[] { 6, 1, 6, 1 }, 0.85f);
+                c.kartMeshler[Cicek0 + 2] = KartObegi(167, new[] { 7, 1, 7, 1 }, 0.85f);
+            }
+            else Debug.LogWarning("Kurye Tycoon: gerçekçi çim (CimKart) gölgelendiricisi ya da dokusu yok; stilize çim kullanılır.");
             if (banliyoEvleri != null)
                 foreach (var p in banliyoEvleri) c.kirDolu.Add(new Vector2Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y)));
         }
@@ -78,7 +108,9 @@ namespace KuryeTycoon
         {
             if (I == this) I = null;
             if (meshler != null) foreach (var m in meshler) if (m != null) Destroy(m);
+            if (kartMeshler != null) foreach (var m in kartMeshler) if (m != null) Destroy(m);
             if (malzeme != null) Destroy(malzeme);
+            if (kartMalzeme != null) Destroy(kartMalzeme);
         }
 
         // ------------------------------------------------------------------ yerleşim
@@ -93,23 +125,38 @@ namespace KuryeTycoon
             }
         }
 
+        bool[,] yolSu, binaKare;
+
+        /// <summary>Karenin çim ağırlığı (zemin deseni: çimen / bahçe 1, sert zemin 0). Yol ve su karelerinde -1.</summary>
         float SehirAgirligi(int x, int y)
         {
             int W = CityMap.Width, H = CityMap.Height;
             if (sehirAgirlik == null)
             {
-                sehirAgirlik = new float[W, H];
+                sehirAgirlik = new float[W, H]; yolSu = new bool[W, H]; binaKare = new bool[W, H];
                 var binalar = City3D.I != null ? City3D.I.BuildingHeights : null;
                 for (int i = 0; i < W; i++)
                     for (int j = 0; j < H; j++)
                     {
-                        float a = OrganikZemin.CimAgirligi(i, j);
-                        if (a > 0f && (CityMap.RoadAt(i, j) || CityMap.WaterAt(i, j))) a = 0f;
-                        if (a > 0f && binalar != null && binalar.ContainsKey(new Vector2Int(i, j))) a = 0f;
-                        sehirAgirlik[i, j] = a;
+                        yolSu[i, j] = CityMap.RoadAt(i, j) || CityMap.WaterAt(i, j);
+                        binaKare[i, j] = binalar != null && binalar.ContainsKey(new Vector2Int(i, j));
+                        sehirAgirlik[i, j] = yolSu[i, j] ? -1f : OrganikZemin.CimAgirligi(i, j);
                     }
             }
-            return x >= 0 && y >= 0 && x < W && y < H ? sehirAgirlik[x, y] : 0f;
+            x = Mathf.Clamp(x, 0, W - 1); y = Mathf.Clamp(y, 0, H - 1);
+            return sehirAgirlik[x, y];
+        }
+
+        /// <summary>Zemin dokusundaki gibi dört komşu kare arasında yumuşak geçiş (çim kare sınırında düz çizgiyle bitmesin).
+        /// Yol / su komşusu kendi karesinin ağırlığını alır: yol kenarına kadar tam yoğunluk.</summary>
+        float YumusakAgirlik(Vector2 p, float kendi)
+        {
+            int W = CityMap.Width, H = CityMap.Height;
+            float gx = Mathf.Clamp(p.x, 0f, W - 1.0001f), gy = Mathf.Clamp(p.y, 0f, H - 1.0001f);
+            int ix = Mathf.FloorToInt(gx), iy = Mathf.FloorToInt(gy);
+            float fx = Mathf.SmoothStep(0f, 1f, gx - ix), fy = Mathf.SmoothStep(0f, 1f, gy - iy);
+            float A(int i, int j) { float a = SehirAgirligi(i, j); return a < 0f ? kendi : a; }
+            return Mathf.Lerp(Mathf.Lerp(A(ix, iy), A(ix + 1, iy), fx), Mathf.Lerp(A(ix, iy + 1), A(ix + 1, iy + 1), fx), fy);
         }
 
         /// <summary>Noktadaki çim yoğunluğu (0–1) ve zemin yüksekliği. kir: kırda mı (çiçek daha çok).</summary>
@@ -121,8 +168,12 @@ namespace KuryeTycoon
             if (!kir)
             {
                 int tx = Mathf.RoundToInt(p.x), ty = Mathf.RoundToInt(p.y);
-                yogun = SehirAgirligi(tx, ty);
-                if (yogun <= 0f) return false;
+                float kendi = SehirAgirligi(tx, ty);
+                if (kendi < 0f) return false;                                     // yol, köprü, su
+                // Binalı karede yalnız binanın oturduğu orta kısım boş kalır; bahçe ve çevresi çimli
+                if (binaKare[Mathf.Clamp(tx, 0, W - 1), Mathf.Clamp(ty, 0, H - 1)] && Mathf.Max(Mathf.Abs(p.x - tx), Mathf.Abs(p.y - ty)) < 0.4f) return false;
+                yogun = YumusakAgirlik(p, kendi);
+                if (yogun <= 0.05f) return false;
                 if (Arazi.NehirCukur(p.x, p.y) > 0.12f) return false;
                 z = Arazi.Z(p.x, p.y) - 0.0006f;
                 return true;
@@ -163,14 +214,21 @@ namespace KuryeTycoon
                 if (!Uygun(p, out float z, out float yogun, out bool kir)) continue;
                 float h = Hash(x, y, n * 3 + 3);
                 if (h > yogun) continue;
+                // Çayır yamaları (Manor Lords'taki gibi): uzun ot alanı, kısa çim alanı, eğrelti kümeleri, toprak açıklıkları
+                float uzunAlan = Mathf.PerlinNoise(p.x * 0.16f + 31.7f, p.y * 0.16f + 5.3f) * 0.75f + Mathf.PerlinNoise(p.x * 0.6f + 8.1f, p.y * 0.6f + 77.2f) * 0.25f;
+                float egrAlan = Mathf.PerlinNoise(p.x * 0.22f + 101.3f, p.y * 0.22f + 12.9f);
+                if (kir && Mathf.PerlinNoise(p.x * 0.5f + 55.5f, p.y * 0.5f + 3.3f) < 0.17f && Hash(x, y, n * 7 + 99) < 0.85f) continue;   // toprak açıklığı
                 float tur = Hash(x, y, n * 7 + 101);
-                float cicekOran = kir ? 0.08f : 0.04f;
-                int t = tur < cicekOran ? Cicek0 + (int)(Hash(x, y, n * 7 + 103) * 2.999f)
-                      : tur < cicekOran + (kir ? 0.12f : 0.04f) ? Tohum
-                      : (Hash(x, y, n * 7 + 107) < 0.5f ? Cim0 : Cim1);
-                float boy = Mathf.Lerp(BoyMin, BoyMax, Hash(x, y, n * 7 + 109)) * Mathf.Lerp(0.8f, 1.1f, yogun);
-                if (t >= Cicek0) boy *= 0.9f;
-                if (!kir) boy *= 0.75f;  // şehirde biçilmiş çimen, kırda diz boyu çayır
+                float uzunOran = kir ? Mathf.SmoothStep(0.25f, 0.75f, uzunAlan) : 0f;
+                int t;
+                if (tur < (kir ? 0.07f : 0.035f)) t = Cicek0 + (int)(Hash(x, y, n * 7 + 103) * 2.999f);
+                else if (tur < (kir ? 0.07f + 0.16f * uzunOran : 0.06f)) t = Tohum;
+                else if (kir && egrAlan > 0.66f && Hash(x, y, n * 7 + 105) < 0.45f) t = Egr;
+                else t = Hash(x, y, n * 7 + 107) < uzunOran ? Uzun : Kisa;
+                float boy = Mathf.Lerp(BoyMin, BoyMax, Hash(x, y, n * 7 + 109));
+                if (kir) boy *= Mathf.Lerp(0.85f, 1.6f, uzunOran);   // uzun ot alanında bel boyu
+                else boy *= 0.6f;                                    // şehirde biçilmiş çimen
+                if (t == Egr) boy *= 1.1f;
                 float s = OlcekXY * Mathf.Lerp(0.8f, 1.25f, Hash(x, y, n * 7 + 113));
                 var rot = Quaternion.Euler(0f, 0f, Hash(x, y, n * 7 + 127) * 360f);
                 listeler[t].Add(Matrix4x4.TRS(new Vector3(p.x, p.y, z), rot, new Vector3(s, s, boy)));
@@ -259,7 +317,7 @@ namespace KuryeTycoon
         }
 
         void Ciz(int tur, int n) =>
-            Graphics.DrawMeshInstanced(meshler[tur], 0, malzeme, tampon, n, null, ShadowCastingMode.Off, true, gameObject.layer);
+            Graphics.DrawMeshInstanced(Meshler[tur], 0, Malzeme, tampon, n, null, ShadowCastingMode.Off, true, gameObject.layer);
 
         // ------------------------------------------------------------------ mevsim ve rüzgâr
 
@@ -277,6 +335,9 @@ namespace KuryeTycoon
         static readonly float[] KuruOran = { 0.1f, 0.22f, 0.6f, 0.55f, 0.4f };
         static readonly float[] Cicekler = { 1f, 0.75f, 0.35f, 0.15f, 0f };
 
+        static readonly string[] RenkAdlari = { "_Uc", "_Taban" };
+        static readonly string[] SayiAdlari = { "_KuruOran", "_Kar", "_RuzgarGuc", "_RuzgarHiz", "_Gorunum" };
+
         float CicekMevsimi { get; set; } = 1f;
         float sonMevsim = -999f;
 
@@ -292,6 +353,12 @@ namespace KuryeTycoon
                 {
                     uc += UcRenk[i] * w[i]; taban += TabanRenk[i] * w[i];
                     kuru += KuruOran[i] * w[i]; cicek += Cicekler[i] * w[i];
+                }
+                if (AtolyeAyari.PastelZemin)
+                {
+                    // "Oyunda pastel zemin": tutamlar pastel çimin tonlarına yaklaşır (mevsim farkı hafifçe kalır)
+                    uc = Color.Lerp(uc, new Color(0.812f, 0.910f, 0.722f), 0.75f);
+                    taban = Color.Lerp(taban, new Color(0.624f, 0.784f, 0.533f), 0.75f);
                 }
                 malzeme.SetColor("_Uc", uc);
                 malzeme.SetColor("_Taban", taban);
@@ -317,11 +384,19 @@ namespace KuryeTycoon
                 malzeme.SetVector("_RuzgarYon", new Vector4(Mathf.Cos(aci), Mathf.Sin(aci), 0f, 0f));
             }
             malzeme.SetFloat("_Gorunum", gorunum);
+            if (kartMalzeme != null && Gercekci)
+            {
+                // Kart gölgelendiricisi aynı mevsim / rüzgâr / kar ayarlarını kullanır
+                foreach (var ad in RenkAdlari) kartMalzeme.SetColor(ad, malzeme.GetColor(ad));
+                foreach (var ad in SayiAdlari) kartMalzeme.SetFloat(ad, malzeme.GetFloat(ad));
+                kartMalzeme.SetVector("_RuzgarYon", malzeme.GetVector("_RuzgarYon"));
+            }
         }
 
         // ------------------------------------------------------------------ mesh üretimi
 
         static readonly Vector3 Yukari = new Vector3(0f, 0f, -1f);
+        static float R(System.Random r) => (float)r.NextDouble();
 
         class Yapici
         {
@@ -349,128 +424,213 @@ namespace KuryeTycoon
                 return m;
             }
 
-            /// <summary>Bir yaprak: kökten uca daralan, dışa kıvrılan şerit (4 parça + sivri uç). tohumBasi: uçta başak.</summary>
-            public void Yaprak(System.Random r, Vector2 kok, float boy, float en, Vector2 yon, float kivrim, Color basRenk, bool tohumBasi)
+            /// <summary>Yaprağın orta çizgisi: kökten dışa açılır, uçta aşağı sarkar (Manor Lords'taki uzun ot gibi).</summary>
+            public static Vector3 Cizgi(Vector2 kok, Vector2 yon, float boy, float acilma, float sarkma, float s)
             {
-                float tohum = (float)r.NextDouble();
-                var yon3 = new Vector3(yon.x, yon.y, 0f);
-                var yan = new Vector3(-yon.y, yon.x, 0f) * (1f + ((float)r.NextDouble() - 0.5f) * 0.4f);
-                var nr = (yon3 * 0.8f + Yukari * 0.2f).normalized;
-                const int P = 2;
-                int onceki0 = -1, onceki1 = -1;
+                float disari = acilma * boy * Mathf.Pow(s, 1.5f);
+                float yukari = boy * (s - sarkma * s * s * s);
+                return new Vector3(kok.x + yon.x * disari, kok.y + yon.y * disari, 0f) + Yukari * yukari;
+            }
+
+            /// <summary>Bir yaprak: kökten uca daralan şerit, P parça. sarkma: uç ne kadar aşağı düşer (0 dik, 0,6 çok sarkık).</summary>
+            public void Yaprak(Vector2 kok, Vector2 yon, float boy, float en, float acilma, float sarkma, int P, float tohum)
+            {
+                var yan = new Vector3(-yon.y, yon.x, 0f);
+                var nr = (new Vector3(yon.x, yon.y, 0f) * 0.7f + Yukari * 0.3f).normalized;
+                int o0 = -1, o1 = -1;
                 for (int i = 0; i <= P; i++)
                 {
                     float s = i / (float)P;
-                    var merkez = new Vector3(kok.x, kok.y, 0f) + yon3 * (kivrim * s * s * boy) + Yukari * (boy * s * (1f - 0.18f * kivrim * s));
-                    float w = en * Mathf.Pow(1f - s * 0.92f, 0.8f) * 0.5f;
-                    int a = Kose(merkez - yan * w, nr, Color.white, s, tohum, 0f);
-                    int b = Kose(merkez + yan * w, nr, Color.white, s, tohum, 0f);
-                    if (onceki0 >= 0) { Ucgen(onceki0, onceki1, b); Ucgen(onceki0, b, a); }
-                    onceki0 = a; onceki1 = b;
-                }
-                var uc = new Vector3(kok.x, kok.y, 0f) + yon3 * (kivrim * 1.12f * boy) + Yukari * (boy * 1.08f * (1f - 0.18f * kivrim));
-                int u = Kose(uc, nr, Color.white, 1f, tohum, 0f);
-                Ucgen(onceki0, onceki1, u);
-                if (tohumBasi)
-                {
-                    // Başak: ucun hemen altında, yaprağa dik iki ince elmas (renk köşe renginden)
-                    var bm = uc - Yukari * (boy * 0.12f);
-                    for (int k = 0; k < 2; k++)
-                    {
-                        var ek = k == 0 ? yan.normalized : yon3;
-                        float bw = en * 0.9f, bh = boy * 0.16f;
-                        int a = Kose(bm - Yukari * bh, nr, basRenk, 1f, tohum, 1f);
-                        int b = Kose(bm + ek * bw, nr, basRenk, 1f, tohum, 1f);
-                        int d = Kose(bm + Yukari * bh * 0.8f, nr, basRenk, 1f, tohum, 1f);
-                        int e = Kose(bm - ek * bw, nr, basRenk, 1f, tohum, 1f);
-                        Ucgen(a, b, d); Ucgen(a, d, e);
-                    }
+                    var m = Cizgi(kok, yon, boy, acilma, sarkma, s);
+                    float w = en * Mathf.Pow(1f - s, 0.75f) * 0.5f + (i == P ? 0f : en * 0.04f);
+                    int a = Kose(m - yan * w, nr, Color.white, s, tohum, 0f);
+                    int b = Kose(m + yan * w, nr, Color.white, s, tohum, 0f);
+                    if (o0 >= 0) { Ucgen(o0, o1, b); Ucgen(o0, b, a); }
+                    o0 = a; o1 = b;
                 }
             }
 
-            /// <summary>Çiçek başı: tepeden görünen yıldız (taç yapraklar) ve ortada göbek; yandan da görünsün diye hafif çanak.</summary>
+            /// <summary>Küçük elmas (tohum başakçığı, eğrelti yaprakçığı, çiçek tacı). Renk köşe renginden gelir (bas = 1).</summary>
+            public void Elmas(Vector3 merkez, Vector3 boyYon, Vector3 enYon, float uzun, float gen, Color renk, float t, float tohum, float bas)
+            {
+                var nr = Yukari;
+                int a = Kose(merkez - boyYon * uzun * 0.5f, nr, renk, t, tohum, bas);
+                int b = Kose(merkez + enYon * gen, nr, renk, t, tohum, bas);
+                int d = Kose(merkez + boyYon * uzun * 0.5f, nr, renk, t, tohum, bas);
+                int e = Kose(merkez - enYon * gen, nr, renk, t, tohum, bas);
+                Ucgen(a, b, d); Ucgen(a, d, e);
+            }
+
+            /// <summary>Çiçek başı: tepeden görünen küçük yıldız (taç) ve ortada göbek.</summary>
             public void CicekBasi(System.Random r, Vector3 merkez, float yaricap, int yaprak, Color tac, Color gobek)
             {
-                float tohum = (float)r.NextDouble();
-                float donus = (float)r.NextDouble() * Mathf.PI * 2f;
+                float tohum = R(r), donus = R(r) * Mathf.PI * 2f;
                 int o = Kose(merkez + Yukari * yaricap * 0.15f, Yukari, gobek, 1f, tohum, 1f);
                 for (int i = 0; i < yaprak; i++)
                 {
-                    float a0 = donus + (i - 0.32f) / yaprak * Mathf.PI * 2f, a1 = donus + (i + 0.32f) / yaprak * Mathf.PI * 2f, am = donus + i / (float)yaprak * Mathf.PI * 2f;
-                    var p0 = merkez + new Vector3(Mathf.Cos(a0), Mathf.Sin(a0), 0f) * yaricap * 0.45f;
-                    var p1 = merkez + new Vector3(Mathf.Cos(am), Mathf.Sin(am), 0f) * yaricap - Yukari * yaricap * 0.2f;
-                    var p2 = merkez + new Vector3(Mathf.Cos(a1), Mathf.Sin(a1), 0f) * yaricap * 0.45f;
+                    float a0 = donus + (i - 0.33f) / yaprak * Mathf.PI * 2f, a1 = donus + (i + 0.33f) / yaprak * Mathf.PI * 2f, am = donus + i / (float)yaprak * Mathf.PI * 2f;
+                    var p0 = merkez + new Vector3(Mathf.Cos(a0), Mathf.Sin(a0), 0f) * yaricap * 0.4f;
+                    var p1 = merkez + new Vector3(Mathf.Cos(am), Mathf.Sin(am), 0f) * yaricap - Yukari * yaricap * 0.15f;
+                    var p2 = merkez + new Vector3(Mathf.Cos(a1), Mathf.Sin(a1), 0f) * yaricap * 0.4f;
                     int a = Kose(p0, Yukari, tac, 1f, tohum, 1f), b = Kose(p1, Yukari, tac, 1f, tohum, 1f), d = Kose(p2, Yukari, tac, 1f, tohum, 1f);
                     Ucgen(o, a, b); Ucgen(o, b, d);
                 }
-                // Göbek: küçük üçgen kümesi
-                for (int i = 0; i < 3; i++)
+            }
+        }
+
+        static Vector2 RastgeleKok(System.Random r, float yaricap, out Vector2 yon)
+        {
+            float a = R(r) * Mathf.PI * 2f, u = Mathf.Sqrt(R(r)) * yaricap;
+            var kok = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * u;
+            yon = (new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * (0.4f + u) + new Vector2(R(r) - 0.5f, R(r) - 0.5f)).normalized;
+            return kok;
+        }
+
+        /// <summary>Kısa çim: sık, dik, ince yapraklar (biçilmiş çimen ve çayırın alt katı).</summary>
+        static Mesh KisaCim(int tohum)
+        {
+            var r = new System.Random(tohum); var y = new Yapici();
+            for (int i = 0; i < 44; i++)
+            {
+                var kok = RastgeleKok(r, 1f, out var yon);
+                y.Yaprak(kok, yon, Mathf.Lerp(0.45f, 1f, R(r)), Mathf.Lerp(0.05f, 0.08f, R(r)), Mathf.Lerp(0.1f, 0.35f, R(r)), Mathf.Lerp(0f, 0.2f, R(r)), 2, R(r));
+            }
+            return y.Mesh("Cim_kisa");
+        }
+
+        /// <summary>Uzun çayır otu: ortadan yükselip dışa açılan, uçları aşağı sarkan ince uzun yapraklar.</summary>
+        static Mesh UzunOt(int tohum)
+        {
+            var r = new System.Random(tohum); var y = new Yapici();
+            for (int i = 0; i < 32; i++)
+            {
+                var kok = RastgeleKok(r, 0.7f, out var yon);
+                float boy = Mathf.Lerp(0.6f, 1.15f, R(r)) * (1f - kok.magnitude * 0.3f);
+                y.Yaprak(kok, yon, boy, Mathf.Lerp(0.045f, 0.07f, R(r)), Mathf.Lerp(0.35f, 0.9f, R(r)), Mathf.Lerp(0.25f, 0.65f, R(r)), 3, R(r));
+            }
+            return y.Mesh("Cim_uzun");
+        }
+
+        /// <summary>Tohum başlı ot: çevrede yapraklar, ortada ince saplar ve sapın üst kısmına dizilen pembe-bej başakçıklar.</summary>
+        static Mesh TohumluOt(int tohum)
+        {
+            var r = new System.Random(tohum); var y = new Yapici();
+            for (int i = 0; i < 18; i++)
+            {
+                var kok = RastgeleKok(r, 0.8f, out var yon);
+                y.Yaprak(kok, yon, Mathf.Lerp(0.4f, 0.75f, R(r)), 0.055f, Mathf.Lerp(0.3f, 0.8f, R(r)), Mathf.Lerp(0.3f, 0.6f, R(r)), 2, R(r));
+            }
+            var pembe = new Color(0.80f, 0.62f, 0.56f); var bej = new Color(0.86f, 0.78f, 0.58f); var mor = new Color(0.66f, 0.52f, 0.58f);
+            for (int i = 0; i < 9; i++)
+            {
+                var kok = RastgeleKok(r, 0.5f, out var yon);
+                float boy = Mathf.Lerp(0.95f, 1.35f, R(r)), acilma = Mathf.Lerp(0.1f, 0.4f, R(r)), sarkma = Mathf.Lerp(0.05f, 0.25f, R(r));
+                float th = R(r);
+                y.Yaprak(kok, yon, boy, 0.022f, acilma, sarkma, 3, th);
+                var renk = R(r) < 0.45f ? pembe : R(r) < 0.6f ? bej : mor;
+                var yan = new Vector3(-yon.y, yon.x, 0f);
+                for (int k = 0; k < 7; k++)
                 {
-                    float a0 = donus + i * 2.094f;
-                    int a = Kose(merkez + new Vector3(Mathf.Cos(a0), Mathf.Sin(a0), 0f) * yaricap * 0.3f + Yukari * yaricap * 0.1f, Yukari, gobek, 1f, tohum, 1f);
-                    int b = Kose(merkez + new Vector3(Mathf.Cos(a0 + 2.094f), Mathf.Sin(a0 + 2.094f), 0f) * yaricap * 0.3f + Yukari * yaricap * 0.1f, Yukari, gobek, 1f, tohum, 1f);
-                    Ucgen(o, a, b);
+                    float s = Mathf.Lerp(0.62f, 1f, k / 6f);
+                    var m = Yapici.Cizgi(kok, yon, boy, acilma, sarkma, s);
+                    var ileri = (Yapici.Cizgi(kok, yon, boy, acilma, sarkma, Mathf.Min(1f, s + 0.05f)) - m).normalized;
+                    float taraf = (k % 2 == 0 ? 1f : -1f) * Mathf.Lerp(0.05f, 0.02f, k / 6f);
+                    y.Elmas(m + yan * taraf, ileri, yan, 0.1f, 0.022f, renk * Mathf.Lerp(0.9f, 1.08f, R(r)), 1f, th, 1f);
                 }
             }
+            return y.Mesh("Cim_tohumlu");
         }
 
-        /// <summary>Çim öbeği: yaprak sayısı kadar kıvrık yaprak, ortada uzun dışta kısa. tohumlu: birkaç yaprağın ucunda başak.</summary>
-        static Mesh OtOrbegi(int tohum, int yaprakSayisi, bool tohumlu)
+        /// <summary>Eğrelti: dışa kıvrılan 6–8 yaprak sapı, iki yanında daralan yaprakçıklar (orman kıyısı ve gölge yerler).</summary>
+        static Mesh Egrelti(int tohum)
         {
-            var r = new System.Random(tohum);
-            var y = new Yapici();
-            var basRenk = new Color(0.80f, 0.71f, 0.46f);
-            for (int i = 0; i < yaprakSayisi; i++)
-            {
-                float a = (float)(i / (double)yaprakSayisi * Mathf.PI * 2f + r.NextDouble() * 0.6);
-                float uz = Mathf.Sqrt((float)r.NextDouble());
-                var kok = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * uz;
-                var yon = (new Vector2(Mathf.Cos(a), Mathf.Sin(a)) + new Vector2((float)r.NextDouble() - 0.5f, (float)r.NextDouble() - 0.5f) * 0.6f).normalized;
-                float boy = Mathf.Lerp(0.55f, 1f, (float)r.NextDouble()) * (1f - uz * 0.25f);
-                bool bas = tohumlu && i % 3 == 0;
-                if (bas) boy = Mathf.Min(1.25f, boy * 1.35f);
-                float en = Mathf.Lerp(0.08f, 0.12f, (float)r.NextDouble()) * (bas ? 0.7f : 1f);
-                float kivrim = Mathf.Lerp(0.1f, 0.45f, (float)r.NextDouble()) * (bas ? 0.4f : 1f);
-                y.Yaprak(r, kok, boy, en, yon, kivrim, basRenk, bas);
-            }
-            return y.Mesh(tohumlu ? "Cim_tohumlu" : "Cim_obek");
-        }
-
-        static readonly Color[][] CicekPalet =
-        {
-            new[] { new Color(0.96f, 0.95f, 0.90f), new Color(0.98f, 0.82f, 0.22f) },   // papatya
-            new[] { new Color(0.98f, 0.86f, 0.18f), new Color(0.90f, 0.70f, 0.12f) },   // düğün çiçeği
-            new[] { new Color(0.42f, 0.48f, 0.90f), new Color(0.30f, 0.32f, 0.72f) },   // peygamber çiçeği
-            new[] { new Color(0.86f, 0.20f, 0.16f), new Color(0.12f, 0.10f, 0.10f) },   // gelincik
-            new[] { new Color(0.78f, 0.52f, 0.76f), new Color(0.62f, 0.38f, 0.62f) },   // yonca
-        };
-
-        /// <summary>Kır çiçeği öbeği: birkaç ot yaprağı ve 3–5 saplı çiçek (karışık renk).</summary>
-        static Mesh CicekObegi(int tohum)
-        {
-            var r = new System.Random(tohum);
-            var y = new Yapici();
-            for (int i = 0; i < 14; i++)
-            {
-                float a = (float)(r.NextDouble() * Mathf.PI * 2f);
-                var kok = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Mathf.Sqrt((float)r.NextDouble()) * 0.9f;
-                y.Yaprak(r, kok, Mathf.Lerp(0.4f, 0.75f, (float)r.NextDouble()), 0.1f, new Vector2(Mathf.Cos(a), Mathf.Sin(a)), 0.6f, Color.white, false);
-            }
-            int adet = 4 + r.Next(4);
-            int anaTur = r.Next(CicekPalet.Length);
+            var r = new System.Random(tohum); var y = new Yapici();
+            int adet = 6 + r.Next(3);
             for (int i = 0; i < adet; i++)
             {
-                float a = (float)(r.NextDouble() * Mathf.PI * 2f);
-                var kok = new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * Mathf.Sqrt((float)r.NextDouble()) * 0.8f;
-                float boy = Mathf.Lerp(0.75f, 1.15f, (float)r.NextDouble());
+                float a = (i + R(r) * 0.5f) / adet * Mathf.PI * 2f;
                 var yon = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                // Sap: ince, az kıvrık yaprak
-                y.Yaprak(r, kok, boy, 0.035f, yon, 0.15f, Color.white, false);
-                var uc = new Vector3(kok.x, kok.y, 0f) + new Vector3(yon.x, yon.y, 0f) * (0.15f * 1.12f * boy) + Yukari * (boy * 1.08f * (1f - 0.18f * 0.15f));
-                var p = r.NextDouble() < 0.6 ? CicekPalet[anaTur] : CicekPalet[r.Next(CicekPalet.Length)];
-                y.CicekBasi(r, uc, Mathf.Lerp(0.08f, 0.12f, (float)r.NextDouble()), 5 + r.Next(3), p[0], p[1]);
+                var kok = yon * 0.08f;
+                float boy = Mathf.Lerp(0.7f, 1f, R(r)), acilma = Mathf.Lerp(0.9f, 1.3f, R(r)), sarkma = Mathf.Lerp(0.45f, 0.6f, R(r));
+                float th = R(r);
+                y.Yaprak(kok, yon, boy, 0.03f, acilma, sarkma, 3, th);
+                var yan = new Vector3(-yon.y, yon.x, 0f);
+                for (int k = 1; k <= 9; k++)
+                {
+                    float s = k / 10f;
+                    var m = Yapici.Cizgi(kok, yon, boy, acilma, sarkma, s);
+                    var ileri = (Yapici.Cizgi(kok, yon, boy, acilma, sarkma, s + 0.05f) - m).normalized;
+                    float uz = 0.32f * Mathf.Sin(s * Mathf.PI) * (1.1f - s * 0.5f);
+                    for (int sg = -1; sg <= 1; sg += 2)
+                    {
+                        var dis = (yan * sg + ileri * 0.35f).normalized;
+                        // yaprakçık: sapın yanından dışa uzanan ince şerit (renk normal yaprak gibi mevsimden)
+                        var p0 = m; var p1 = m + dis * uz;
+                        int q0 = y.Kose(p0 - ileri * 0.03f, Yukari, Color.white, s, th, 0f);
+                        int q1 = y.Kose(p0 + ileri * 0.03f, Yukari, Color.white, s, th, 0f);
+                        int q2 = y.Kose(p1 - Yukari * 0.02f, Yukari, Color.white, Mathf.Min(1f, s + 0.15f), th, 0f);
+                        y.Ucgen(q0, q1, q2);
+                    }
+                }
             }
-            return y.Mesh("Cim_cicek");
+            return y.Mesh("Cim_egrelti");
+        }
+
+        static readonly Color Beyaz = new Color(0.96f, 0.95f, 0.90f), Sari = new Color(0.98f, 0.84f, 0.20f),
+            Mor = new Color(0.55f, 0.40f, 0.85f), Mavi = new Color(0.40f, 0.48f, 0.92f), Kirmizi = new Color(0.88f, 0.20f, 0.15f),
+            Pembe = new Color(0.86f, 0.52f, 0.72f), Koyu = new Color(0.14f, 0.10f, 0.10f);
+
+        /// <summary>Serpiştirilmiş kır çiçekleri: kısa çimin içinde lekeye dağılmış 4–6 ince saplı küçük çiçek (öbek değil).</summary>
+        static Mesh CicekliCim(int tohum, Color[][] palet)
+        {
+            var r = new System.Random(tohum); var y = new Yapici();
+            for (int i = 0; i < 26; i++)
+            {
+                var kok = RastgeleKok(r, 1f, out var yon);
+                y.Yaprak(kok, yon, Mathf.Lerp(0.4f, 0.8f, R(r)), 0.06f, Mathf.Lerp(0.2f, 0.6f, R(r)), Mathf.Lerp(0.1f, 0.4f, R(r)), 2, R(r));
+            }
+            int adet = 4 + r.Next(3);
+            for (int i = 0; i < adet; i++)
+            {
+                var kok = RastgeleKok(r, 0.9f, out var yon);
+                float boy = Mathf.Lerp(0.8f, 1.2f, R(r));
+                y.Yaprak(kok, yon, boy, 0.025f, 0.15f, 0.05f, 2, R(r));
+                var uc = Yapici.Cizgi(kok, yon, boy, 0.15f, 0.05f, 1f);
+                var p = palet[r.Next(palet.Length)];
+                y.CicekBasi(r, uc, Mathf.Lerp(0.05f, 0.08f, R(r)), 5 + r.Next(2), p[0], p[1]);
+            }
+            return y.Mesh("Cim_cicekli");
+        }
+
+        // ------------------------------------------------------------------ gerçekçi kartlar (deneme)
+
+        /// <summary>Dokulu çim öbeği: 2 dikey kart çapraz kesişir, 2 kart iki yana ~40° yatık. hucreler: her kartın atlas hücresi
+        /// (0–7; 4 × 2 ızgara). en: kartın yarı genişliği (yerel birim; ~0,9 → öbek ~1,8 m genişliğinde). Yerel ölçü: yarıçap 1, boy 1 (yukarı −Z), Cim örnek ölçeğiyle büyür.</summary>
+        static Mesh KartObegi(int tohum, int[] hucreler, float en)
+        {
+            var r = new System.Random(tohum);
+            var y = new Yapici();
+            float donus = R(r) * Mathf.PI;
+            for (int k = 0; k < 4; k++)
+            {
+                int h = hucreler[k];
+                float u0 = (h % 4) / 4f, u1 = u0 + 0.25f, v0 = h < 4 ? 0.5f : 0f, v1 = v0 + 0.5f;   // PNG üst satırı = v 0,5–1
+                float a = donus + (k < 2 ? k * Mathf.PI / 2f : (k - 2) * Mathf.PI + 0.8f + R(r) * 0.6f);
+                var yan = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+                var ileri = new Vector3(-yan.y, yan.x, 0f);
+                float egik = k < 2 ? (R(r) - 0.5f) * 0.25f : 0.85f;         // 3. ve 4. kart iki yana yatık (tepeden bakınca da dolu görünsün)
+                var kayma = new Vector3(R(r) - 0.5f, R(r) - 0.5f, 0f) * 0.25f;
+                float w = en * (0.85f + R(r) * 0.3f), boy = 1.35f + R(r) * 0.3f;
+                var ust = Yukari * boy + ileri * (egik * boy);
+                var nr = (ileri * 0.4f + Yukari * 0.6f).normalized;
+                int q0 = y.Kose(kayma - yan * w, nr, Color.white, 0f, 0f, 0f);
+                int q1 = y.Kose(kayma + yan * w, nr, Color.white, 0f, 0f, 0f);
+                int q2 = y.Kose(kayma + yan * w + ust, nr, Color.white, 1f, 0f, 0f);
+                int q3 = y.Kose(kayma - yan * w + ust, nr, Color.white, 1f, 0f, 0f);
+                y.uv[q0] = new Vector2(u0, v0); y.uv[q1] = new Vector2(u1, v0); y.uv[q2] = new Vector2(u1, v1); y.uv[q3] = new Vector2(u0, v1);
+                y.Ucgen(q0, q1, q2); y.Ucgen(q0, q2, q3);
+            }
+            return y.Mesh("CimKart");
         }
     }
 }

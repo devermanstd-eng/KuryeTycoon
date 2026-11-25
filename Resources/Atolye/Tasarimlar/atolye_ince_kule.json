@@ -1,0 +1,120 @@
+{
+ "ad": "ince_kule",
+ "bolge": "kule",
+ "tohum": 19,
+ "dukkan": false,
+ "tur": "dukkan",
+ "tabela": "KIOSK",
+ "tente": 8,
+ "bloklar": [
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 2,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 3,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 4,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 2,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 3,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 4,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 4
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 4
+  }
+ ],
+ "susler": []
+}
