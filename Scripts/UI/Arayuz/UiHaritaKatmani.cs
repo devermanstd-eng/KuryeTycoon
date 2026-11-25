@@ -76,7 +76,8 @@ namespace KuryeTycoon
                 IsiKaydet(new Rect(MapLeftGui, TopBar, Mathf.Max(0f, sw - MapLeftGui), Mathf.Max(0f, sh - TopBar)));
             }
             if (katHarita == null) return;
-            U.Goster(katHarita, hazir);
+            // Kamera bakkalın içindeyken harita üstü katman (hava, gece tonu ve ışık haleleri, katman lekeleri) gizli
+            U.Goster(katHarita, hazir && BakkalCanli.Iceride == null);
             if (!hazir) return;
             havaKatmani.Yenile(1f / Mathf.Max(0.01f, s));   // ekran pikseli → panel birimi
             isiKatmani.Yenile(1f);                          // GUI birimi = panel birimi

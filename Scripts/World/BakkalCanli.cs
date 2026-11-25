@@ -717,12 +717,17 @@ namespace KuryeTycoon
 
         /// <summary>Kamerası içinde olan bakkal (yoksa null). GameUI bu sırada harita girdilerini buraya yollar.</summary>
         public static BakkalCanli Iceride { get; private set; }
+        // Bakış noktaları (model metresi, göz hizası) ve başlangıç yönleri: her biri adındaki şeyi kadraja alır
         static readonly Vector3[] BakisYer =
         {
-            new Vector3(3f, -1.9f, ZeminZ + 1.6f), new Vector3(2.2f, 1f, ZeminZ + 1.6f), new Vector3(-3.8f, 2.9f, ZeminZ + 1.6f), new Vector3(0.03f, -2.2f, ZeminZ + 1.6f),
+            new Vector3(3f, -1.9f, ZeminZ + 1.6f),       // kapının içi: bütün dükkân
+            new Vector3(1.9f, -2.3f, ZeminZ + 1.6f),     // ön koridorun sağ ucu: tezgâh, kasiyer, arkasındaki raf
+            new Vector3(-1.92f, 3.2f, ZeminZ + 1.6f),    // arka koridor: iki gondolun arasından öne doğru
+            new Vector3(-3.9f, 2.75f, ZeminZ + 1.6f),    // arka sol köşe: dondurma dolabı ve soğutucular boyunca
         };
-        static readonly float[] BakisYaw = { 150f, 20f, -40f, 90f };
-        public static readonly string[] BakisAd = { "Giriş", "Kasa önü", "Arka köşe", "Ön koridor" };
+        static readonly float[] BakisYaw = { 150f, 72f, -90f, 10f };
+        static readonly float[] BakisPitch = { -6f, -9f, -9f, -4f };
+        public static readonly string[] BakisAd = { "Giriş", "Kasa", "Raflar", "Soğutucular" };
         int bakis;
         float bakisYaw, bakisPitch;
         Light icIsik;
@@ -751,8 +756,10 @@ namespace KuryeTycoon
                 icIsik.shadows = LightShadows.None;
             }
             float birim = kok.TransformVector(YerelYon(Vector3.right)).magnitude;   // 1 m'nin dünyadaki boyu
-            icIsik.range = 11f * birim;
-            icIsik.intensity = 1.4f;
+            // Nokta ışık uzaklığın karesiyle söner ve dünya çok küçük (1 m ≈ 0,06 birim): şiddet metre karesine göre
+            // ölçeklenmezse her şey beyaza patlar. 2 m ötede ~0,5: gündüz de gece de yumuşak bir tavan ışığı.
+            icIsik.range = 9f * birim;
+            icIsik.intensity = 2f * birim * birim;
             icIsik.enabled = true;
             sonrakiKontrol = 0f;
         }
@@ -771,7 +778,7 @@ namespace KuryeTycoon
         {
             bakis = ((i % BakisYer.Length) + BakisYer.Length) % BakisYer.Length;
             bakisYaw = BakisYaw[bakis];
-            bakisPitch = -6f;
+            bakisPitch = BakisPitch[bakis];
         }
 
         /// <summary>İçerideyken fare ve klavye (GameUI'nin IMGUI olayından): sürükle / ok tuşları bakış, Tab sonraki nokta.</summary>

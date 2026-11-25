@@ -115,6 +115,8 @@ namespace KuryeTycoon
             // Gelişim ağacı tam ekran: harita fareyi almaz, IMGUI (etiketler, uçan yazılar) ağacın üstüne çizilmez
             if (AgacGorunur) return;
             if (!pauseMenuOpen && !ConfirmOpen && !BigCardOpen) HandleMapMouse(sw, sh);
+            // Kamera bakkalın içinde: harita etiketleri (yer, dükkân ve kurye adları), uçan yazılar, işaret ve lejant çizilmez
+            if (BakkalCanli.Iceride != null) return;
 
             // Ortada bir kutu (olay kartı, Esc menüsü, onay, büyük kurye kartı) açıksa IMGUI hiçbir şey çizmez. Otomatik testin ekran
             // görüntülerinde IMGUI, UI Toolkit'in üstünde çıktı (uçan "+€" yazıları ve gece ışıkları olay kartına biniyordu).
