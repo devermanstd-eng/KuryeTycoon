@@ -4,10 +4,12 @@ from PIL import Image
 def hexrgb(h):
     h=h.lstrip('#'); return np.array([int(h[i:i+2],16) for i in (0,2,4)],float)/255
 
-def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), kenar=0.25, normal_kenar=False, kadraj=None):
+def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), kenar=0.25, normal_kenar=False, kadraj=None, pastel=False):
     """kenar: mürekkep çizgisi için derinlik farkı eşiği (m). normal_kenar: yüz yönü değişen yerlere de çizgi (oyundaki
     mürekkep geçişi gibi). kadraj: ((x0, y0, z0), (x1, y1, z1)) verilirse görüntü bu kutuya göre ortalanır (aynı modelin
-    çatılı / çatısız hâli aynı kadrajda çıksın diye); yoksa modelin kendi sınırları."""
+    çatılı / çatısız hâli aynı kadrajda çıksın diye); yoksa modelin kendi sınırları.
+    pastel: Bina Atölyesi'nin elle çizilmiş görünümünü yaklaşık gösterir (yumuşak ışık, gölgede tarama, kâğıt dokusu,
+    siyah yerine yüzeyin koyusu renginde titrek kontur)."""
     V=np.array(g.v,float)
     S=size*ss
     a=math.radians(az); e=math.radians(el)
@@ -44,7 +46,8 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), 
         if n@fwd>=0: continue
         if m not in cols: cols[m]=hexrgb(HEX[m])
         lam=max(0,n@sun)
-        col=cols[m]*(0.55+0.55*lam)
+        col=cols[m]*((0.74+0.3*lam) if pastel else (0.55+0.55*lam))
+        if pastel and lam<0.25: col=col*np.array([0.93,0.93,1.0])     # gölge hafif mora kayar
         if m.startswith(('Cam','Vitrin','OfisCam')): col=col*0.85+0.1
         col=np.clip(col,0,1)
         for k in range(1,len(f)-1):
@@ -76,7 +79,24 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), 
         if nb is not None:
             n2=np.roll(nb,(dy,dx),(0,1))
             ed|=((nb*n2).sum(-1)<0.55)&(np.abs(a1-a2)<1e8)&((nb*nb).sum(-1)>0.5)&((n2*n2).sum(-1)>0.5)
-    img[ed]=img[ed]*0.25+np.array([0.12,0.09,0.07])*0.75
+    if pastel:
+        rs=np.random.RandomState(7)
+        yy,xx=np.mgrid[0:S,0:S]
+        # gölgede tarama: koyu (az ışık alan) yüzeylerde ince çapraz çizgiler
+        parlak=img.max(-1)
+        golge=(img.sum(-1)<img.sum(-1).mean()*0.86)&~np.isinf(zb)
+        tarama=(((xx+yy)//(2*ss))%4==0)&golge
+        img[tarama]*=0.9
+        # kontur: yüzeyin kendi renginin koyusu, yer yer kesik (titrek kalem)
+        kesik=rs.rand(S//8+1,S//8+1).repeat(8,0).repeat(8,1)[:S,:S]>0.12
+        e2=ed&kesik
+        img[e2]=img[e2]*0.30*np.array([0.95,0.86,0.98])+np.array([0.10,0.06,0.10])*0.2
+        # kâğıt dokusu
+        kagit=rs.rand(S//2+1,S//2+1).repeat(2,0).repeat(2,1)[:S,:S]
+        img*=(0.965+0.07*kagit)[...,None]
+        img=np.clip(img,0,1)
+    else:
+        img[ed]=img[ed]*0.25+np.array([0.12,0.09,0.07])*0.75
     im=Image.fromarray((img*255).astype(np.uint8)).resize((size,size),Image.LANCZOS)
     if yol: im.save(yol)
     return im
