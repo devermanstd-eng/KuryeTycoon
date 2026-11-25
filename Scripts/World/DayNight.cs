@@ -171,10 +171,15 @@ namespace KuryeTycoon
             // Işık tonu. Gerçek güneş ışığı açıksa (Gorsel3D) binalar zaten renklenip kararıyor: ekran tonu hafif kalır,
             // sadece ışıktan etkilenmeyen 2D zemini akşama ve geceye uydurur.
             bool lit3D = Gorsel3D.Active;
-            ciz.Doldur(full, new Color(1f, 0.48f, 0.18f), dusk * (lit3D ? 0.08f : 0.20f));
-            ciz.Doldur(full, new Color(1f, 0.62f, 0.72f), dawn * (lit3D ? 0.05f : 0.13f));
-            // 3D ışıkta zemin ve kır kendisi kararır (CityMap.SetNight): ekran tonu sadece hafif bir gece havası katar
-            ciz.Doldur(full, new Color(0.02f, 0.035f, 0.11f), night * (lit3D ? 0.16f : 0.56f));
+            // Minyatür maket renk derecelendirmesi açıksa (Diorama) ekrana ton bindirilmez: akşam, şafak ve gece tonu ekran
+            // efektlerinde. Yarı saydam perde kontrastı ve doygunluğu düşürüp haritayı grileştiriyordu.
+            if (!Diorama.RenkAktif)
+            {
+                ciz.Doldur(full, new Color(1f, 0.48f, 0.18f), dusk * (lit3D ? 0.08f : 0.20f));
+                ciz.Doldur(full, new Color(1f, 0.62f, 0.72f), dawn * (lit3D ? 0.05f : 0.13f));
+                // 3D ışıkta zemin ve kır kendisi kararır (CityMap.SetNight): ekran tonu sadece hafif bir gece havası katar
+                ciz.Doldur(full, new Color(0.02f, 0.035f, 0.11f), night * (lit3D ? 0.16f : 0.56f));
+            }
 
             if (night < 0.15f) return;
             var cam = Camera.main;

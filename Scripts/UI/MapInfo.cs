@@ -4,8 +4,8 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// Haritada binaya veya dükkana tıklayınca sağda açılan bilgi kartının seçim mantığı ve haritadaki işareti.
-    /// Kartın kendisi UI Toolkit'te (Arayuz/UiBinaKarti.cs).
+    /// Haritada binaya veya dükkana tıklayınca sağda açılan bilgi kartının seçim mantığı. Kartın kendisi UI Toolkit'te
+    /// (Arayuz/UiBinaKarti.cs); seçili binanın altında 3D seçim halkası (SecimHalkasi, UiHaritaEtiketleri.SecimHalkasiGuncelle).
     /// 3D'de yüksek binaların çatısına tıklamak da çalışır (binanın ekrandaki sütununa göre seçilir).
     /// </summary>
     public partial class GameUI
@@ -116,21 +116,6 @@ namespace KuryeTycoon
             var map = CityMap.I;
             var door = map.GetDoor(t);
             return $"{Addresses.StreetOf(door)} No: {Addresses.Number(t, door)}";
-        }
-
-        /// <summary>Seçili binanın üstünde küçük işaret.</summary>
-        void DrawInfoMarker()
-        {
-            if (!InfoOpen) return;
-            var cam = Camera.main;
-            if (cam == null) return;
-            var t = infoShop != null ? infoShop.tile : infoTile;
-            var top = CityMap.ToWorld(t) + MapCamera.LabelOffset(0.6f, BuildingTop(t) + 0.15f);
-            var p = ToGui(cam, top);
-            var r = new Rect(p.x - 9f, p.y - 22f, 18f, 18f);
-            if (UiAktif && UiHaritaUstuDoluMu(r)) return;   // kartın (telefon, bina kartı, durum) altında: üstüne binmesin
-            UITheme.Box(new Rect(r.x - 3f, r.y - 3f, r.width + 6f, r.height + 6f), UITheme.WithAlpha(Color.black, 0.45f), 12f);
-            UITheme.Box(r, UITheme.Accent, 9f);
         }
     }
 }

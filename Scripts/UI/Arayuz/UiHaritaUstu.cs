@@ -101,9 +101,9 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Haritanın üstündeki UI Toolkit kutularının dikdörtgenleri (GUI koordinatı). IMGUI (harita etiketleri, uçan yazılar,
-        /// seçili bina işareti, etkinlik işareti) her zaman UI Toolkit'in üstüne çizildiği için bunlarla kesişen hiçbir şey
-        /// çizilmez: kurye telefonunun, bina kartının, durum kartlarının, bildirimlerin ve rehberin üstüne isim binmez (16.11).
+        /// Haritanın üstündeki UI Toolkit kutularının dikdörtgenleri (GUI koordinatı = panel birimi). Harita etiketleri yerleşirken
+        /// bunları dolu sayar ve yanlarına kaymayı dener (UiHaritaEtiketleri). Etiketler kutuların altında çizilir: eskiden IMGUI
+        /// kutuların üstüne çizdiği için kesişen etiket hiç çizilmiyordu (16.11).
         /// </summary>
         readonly List<Rect> uiHaritaDolu = new List<Rect>();
 
@@ -127,12 +127,6 @@ namespace KuryeTycoon
             if (bildirimKok != null && U.Gorunur(bildirimKok))
                 foreach (var b in bildirimKok.Children()) Ekle(b);   // bildirimler tek tek (aralarındaki harita boş)
             hedef?.AddRange(uiHaritaDolu);
-        }
-
-        bool UiHaritaUstuDoluMu(Rect r)
-        {
-            foreach (var o in uiHaritaDolu) if (o.Overlaps(r)) return true;
-            return false;
         }
 
         // ------------------------------------------------------------------ olaylar kartı (Dikkat + son olaylar)

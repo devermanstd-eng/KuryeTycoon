@@ -83,31 +83,32 @@ namespace KuryeTycoon.EditorTools
         /// <summary>
         /// Sıcak şehir: koddaki eski ayardan daha sıcak tonlar, daha açık gölgeler (0,40–0,62; eskisi 0,45–0,72), daha uzun altın saat
         /// ve gece biraz daha aydınlık (oyun okunur kalsın). Saatler eskisiyle aynı: DayNight'ın gece/gündüz geçişiyle uyumlu.
+        /// 25.11 (Diorama): altın saat daha altın (güneş ve ufuk), gece derin lacivert (ay ışığı ve ortam mavi, parlaklık aynı).
         /// </summary>
-        static AtmosferAyari.IsikAnahtari[] SicakAnahtarlar()
+        internal static AtmosferAyari.IsikAnahtari[] SicakAnahtarlar()
         {
-            var ay = C(0.60f, 0.62f, 0.92f);
-            var geceGok = C(0.31f, 0.31f, 0.47f);
-            var geceUfuk = C(0.31f, 0.26f, 0.35f);
-            var geceZemin = C(0.16f, 0.14f, 0.17f);
+            var ay = C(0.58f, 0.66f, 0.98f);
+            var geceGok = C(0.25f, 0.31f, 0.52f);
+            var geceUfuk = C(0.23f, 0.26f, 0.40f);
+            var geceZemin = C(0.12f, 0.13f, 0.19f);
             return new[]
             {
-                A(0f,    ay, 0.32f, geceGok, geceUfuk, geceZemin, 0.40f),
-                A(4.9f,  ay, 0.32f, geceGok, geceUfuk, geceZemin, 0.40f),
+                A(0f,    ay, 0.32f, geceGok, geceUfuk, geceZemin, 0.42f),
+                A(4.9f,  ay, 0.32f, geceGok, geceUfuk, geceZemin, 0.42f),
                 // Şafak: şeftali güneş, pembe ufuk
                 A(6.0f,  C(1.00f, 0.72f, 0.60f), 0.70f, C(0.52f, 0.50f, 0.64f), C(0.72f, 0.55f, 0.50f), C(0.30f, 0.27f, 0.26f), 0.48f),
-                A(7.3f,  C(1.00f, 0.86f, 0.70f), 1.00f, C(0.64f, 0.68f, 0.80f), C(0.73f, 0.64f, 0.56f), C(0.40f, 0.40f, 0.32f), 0.55f),
+                A(7.3f,  C(1.00f, 0.84f, 0.64f), 1.00f, C(0.64f, 0.68f, 0.80f), C(0.76f, 0.64f, 0.52f), C(0.40f, 0.40f, 0.32f), 0.55f),
                 // Gündüz: bal rengi güneş, sıcak ufuk, yumuşak gölge
                 A(10.4f, C(1.00f, 0.92f, 0.80f), 1.15f, C(0.68f, 0.72f, 0.80f), C(0.73f, 0.64f, 0.55f), C(0.44f, 0.44f, 0.34f), 0.60f),
                 A(11.6f, C(1.00f, 0.94f, 0.84f), 1.22f, C(0.70f, 0.74f, 0.80f), C(0.72f, 0.64f, 0.54f), C(0.44f, 0.45f, 0.34f), 0.62f),
                 A(16.4f, C(1.00f, 0.92f, 0.80f), 1.18f, C(0.70f, 0.72f, 0.78f), C(0.74f, 0.64f, 0.53f), C(0.44f, 0.43f, 0.33f), 0.62f),
                 // Akşam: uzun altın saat → mercan gün batımı → lavanta alacakaranlık
-                A(17.4f, C(1.00f, 0.80f, 0.56f), 1.08f, C(0.70f, 0.66f, 0.70f), C(0.80f, 0.64f, 0.50f), C(0.44f, 0.40f, 0.32f), 0.60f),
-                A(19.0f, C(1.00f, 0.62f, 0.38f), 0.90f, C(0.64f, 0.52f, 0.62f), C(0.88f, 0.58f, 0.46f), C(0.38f, 0.32f, 0.30f), 0.52f),
-                A(20.2f, C(0.86f, 0.58f, 0.76f), 0.55f, C(0.46f, 0.40f, 0.58f), C(0.52f, 0.38f, 0.46f), C(0.24f, 0.21f, 0.24f), 0.45f),
-                // Gece: yumuşak mavi-mor ay ışığı
-                A(21.0f, ay, 0.32f, geceGok, geceUfuk, geceZemin, 0.40f),
-                A(24.0f, ay, 0.32f, geceGok, geceUfuk, geceZemin, 0.40f),
+                A(17.4f, C(1.00f, 0.78f, 0.50f), 1.10f, C(0.70f, 0.66f, 0.70f), C(0.84f, 0.64f, 0.46f), C(0.44f, 0.40f, 0.32f), 0.60f),
+                A(19.0f, C(1.00f, 0.60f, 0.32f), 0.92f, C(0.64f, 0.52f, 0.62f), C(0.92f, 0.58f, 0.42f), C(0.38f, 0.32f, 0.30f), 0.52f),
+                A(20.2f, C(0.80f, 0.56f, 0.78f), 0.55f, C(0.42f, 0.40f, 0.60f), C(0.48f, 0.38f, 0.50f), C(0.22f, 0.20f, 0.26f), 0.45f),
+                // Gece: derin lacivert ay ışığı (pencere ve lambalar sıcak kalır)
+                A(21.0f, ay, 0.32f, geceGok, geceUfuk, geceZemin, 0.42f),
+                A(24.0f, ay, 0.32f, geceGok, geceUfuk, geceZemin, 0.42f),
             };
         }
 
@@ -160,8 +161,9 @@ namespace KuryeTycoon.EditorTools
             st.balance.Override(-10f);
 
             var bl = Ekle<Bloom>(p);                                          // lambalar ve pencereler sıcak parlasın
-            bl.intensity.Override(0.32f);
-            bl.threshold.Override(1.0f);
+            bl.intensity.Override(0.24f);
+            bl.threshold.Override(1.25f);                                    // gündüz güneşli çatılar parlamasın (Diorama saate göre değiştirir)
+            bl.clamp.Override(8f);
             bl.scatter.Override(0.65f);
             bl.tint.Override(new Color(1f, 0.92f, 0.82f));
 

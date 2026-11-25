@@ -363,6 +363,7 @@ namespace KuryeTycoon
             bolgeSon.Clear();
             binaBolge = null;
             if (CityMap.Organik) Arazi.Hazirla();   // nehir yatağı ve tepeler: modeller araziye oturur
+            SuKiyisi.Hazirla();                     // su gölgelendiricisine nehir yatağı derinliği (kıyı köpüğü, sığ renk)
             bool roads3D = UsePack && UseRoads && roadStraight != null && roadCross != null;
 
             root = new GameObject("3D Şehir").transform;
@@ -1929,6 +1930,7 @@ namespace KuryeTycoon
             float mul = ownModel && targetHeight <= 0f ? OwnHeightBoost : 1f;
             pieces.Add(new Piece { t = holder, height = height * mul, prefab = true, tile = tile, shop = shop, varSeed = seed, heightMul = mul });
             if (targetHeight <= 0f && registerHeight) heightByTile[tile] = height * mul;
+            if (AgacSalinimi.AgacMi(prefab)) AgacSalinimi.Uygula(renderers);   // rüzgârda salınım (renklendirmeden önce: kopyalar asıl sayılsın)
             Tint(renderers, !CityMap.I.IsUnlocked(tile), seed);
         }
 

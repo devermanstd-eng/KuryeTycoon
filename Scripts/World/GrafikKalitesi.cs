@@ -12,6 +12,8 @@ namespace KuryeTycoon
     ///  • Düşük: 1024 sert gölge, tek kademe, kısa gölge mesafesi, ışıma ve HDR yok, %70 çözünürlük, gece 12 lamba ışığı, yağmur %30.
     ///  • Otomatik (varsayılan): Orta'dan başlar; oyun başladıktan sonra kare hızı düşükse bir kademe iner, iyiyse çıkar.
     ///    Sonuç kaydedilir, bir sonraki açılışta oradan başlar.
+    ///  • Maket bulanıklığı (tilt-shift) ve ortam gölgesi (SSAO) ayrıca açılıp kapatılabilir; varsayılanı kaliteye göre
+    ///    (Yüksek: ikisi de, Orta: hızlı tilt-shift, Düşük: hiçbiri).
     /// Render ayarı dosyaları (Resources/Gorsel) diskte değişmez: değerler oyun sırasında bellekte değişir, oyundan
     /// çıkınca (editörde Play durunca) eski hâline döner. Böylece git'te değişmiş dosya görünmez.
     /// </summary>
@@ -32,6 +34,7 @@ namespace KuryeTycoon
             orijinalAlindi = false;
             uygulandi = false;
             lodAlindi = false;
+            tiltCache = ssaoCache = -2;
         }
 
         /// <summary>Oyuncunun seçimi: −1 otomatik, 0–2 sabit.</summary>
@@ -92,6 +95,66 @@ namespace KuryeTycoon
         /// <summary>Uzak binalarda hafif modele geçiş: düşük kalitede daha erken.</summary>
         public static float LodCarpani => Seviye == Yuksek ? 1f : Seviye == Orta ? 0.8f : 0.55f;
         public static bool Isima => Seviye >= Orta;
+
+        // ---------------------------------------------------------------- maket bulanıklığı ve ortam gölgesi (Ayarlar > Harita)
+        // Her biri: −1 kaliteye göre (varsayılan), 1 açık, 0 kapalı. Steam Deck ve eski dizüstünde ayrı ayrı kapatılabilsin.
+
+        public const int SecimKaliteyeGore = -1, SecimKapali = 0, SecimAcik = 1;
+        const string TiltKey = "KuryeTycoon.TiltShift", SsaoKey = "KuryeTycoon.OrtamGolgesi";
+        static int tiltCache = -2, ssaoCache = -2;
+
+        static int SecimOku(string key, ref int cache)
+        {
+            if (cache == -2) cache = Mathf.Clamp(PlayerPrefs.GetInt(key, SecimKaliteyeGore), SecimKaliteyeGore, SecimAcik);
+            return cache;
+        }
+
+        static void SecimYaz(string key, ref int cache, int v)
+        {
+            cache = Mathf.Clamp(v, SecimKaliteyeGore, SecimAcik);
+            PlayerPrefs.SetInt(key, cache);
+            PlayerPrefs.Save();
+            Uygula();
+        }
+
+        /// <summary>Tilt-shift (minyatür maket bulanıklığı) seçimi: −1 kaliteye göre, 1 açık, 0 kapalı.</summary>
+        public static int TiltShiftSecimi
+        {
+            get => SecimOku(TiltKey, ref tiltCache);
+            set => SecimYaz(TiltKey, ref tiltCache, value);
+        }
+
+        /// <summary>Ortam gölgesi (SSAO) seçimi: −1 kaliteye göre, 1 açık, 0 kapalı.</summary>
+        public static int OrtamGolgesiSecimi
+        {
+            get => SecimOku(SsaoKey, ref ssaoCache);
+            set => SecimYaz(SsaoKey, ref ssaoCache, value);
+        }
+
+        /// <summary>
+        /// Tilt-shift: 0 kapalı, 1 hızlı (yalnız uzak taraf, Gaussian), 2 tam (üst ve alt kenar, Bokeh).
+        /// Kaliteye göre: Yüksek tam, Orta hızlı, Düşük kapalı. Açık: her kalitede tam.
+        /// </summary>
+        public static int TiltShiftModu
+        {
+            get
+            {
+                int s = TiltShiftSecimi;
+                if (s == SecimKapali) return 0;
+                if (s == SecimAcik) return 2;
+                return Seviye == Yuksek ? 2 : Seviye == Orta ? 1 : 0;
+            }
+        }
+
+        /// <summary>Ortam gölgesi açık mı? Kaliteye göre: yalnız Yüksek'te.</summary>
+        public static bool OrtamGolgesi
+        {
+            get
+            {
+                int s = OrtamGolgesiSecimi;
+                return s == SecimAcik || (s == SecimKaliteyeGore && Seviye == Yuksek);
+            }
+        }
 
         // ---------------------------------------------------------------- render ayarı
 
@@ -163,7 +226,7 @@ namespace KuryeTycoon
                     a.supportsHDR = false;
                 }
                 var ssao = Ssao();
-                if (ssao != null) ssao.SetActive(sv == Yuksek && oSsao);
+                if (ssao != null) ssao.SetActive(OrtamGolgesi);
                 uygulandi = true;
             }
             if (Gorsel3D.I != null) Gorsel3D.I.KaliteyeUy();

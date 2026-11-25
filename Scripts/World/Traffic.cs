@@ -77,6 +77,9 @@ namespace KuryeTycoon
 
         readonly List<Agent> agents = new List<Agent>();
         Transform root;
+
+        /// <summary>Trafiğin kökü: çocukları "Araba", "Otobüs", "Yaya" (yerel +X ileri). Gece far huzmeleri okur (FarHuzmeleri).</summary>
+        public Transform Kok => root;
         Material mat;
         System.Random rng;
         float lastTilt = -1f;

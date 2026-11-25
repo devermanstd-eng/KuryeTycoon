@@ -5,7 +5,8 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Haritada kısa süreli uçan yazılar: teslimatta "+350 Ft" (siparişten kalan kâr), iptalde kırmızı "İptal".
-    /// Oyun kodu buraya haber verir (OrderManager), GameUI çizer. Ayarlar > Arayüz'den kapatılabilir.
+    /// Oyun kodu buraya haber verir (OrderManager), GameUI UI Toolkit'te çizer (Arayuz/UiHaritaEtiketleri.cs). Ayarlar > Arayüz'den
+    /// kapatılabilir.
     /// </summary>
     public static class MapFx
     {
@@ -72,41 +73,6 @@ namespace KuryeTycoon
             }
         }
 
-        GUIStyle popStyle;
-
-        /// <summary>Uçan yazılar: yukarı süzülüp kaybolur. Dünya etiketlerinden sonra çizilir.</summary>
-        void DrawMapPops()
-        {
-            var pops = MapFx.Pops;
-            if (pops.Count == 0) return;
-            float now = Time.unscaledTime;
-            if (Event.current.type == EventType.Repaint)
-                pops.RemoveAll(q => now - q.born > MapFx.Life);
-            if (!ShowPopsSetting || Event.current.type != EventType.Repaint) return;
-            var cam = Camera.main;
-            if (cam == null) return;
-            if (popStyle == null)
-                popStyle = UITheme.Semi(new GUIStyle(label) { fontSize = 14, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, wordWrap = false });
-
-            float left = MapLeftGui;
-            foreach (var p in pops)
-            {
-                float age = now - p.born;
-                var world = CityMap.ToWorld(p.tile) + MapCamera.LabelOffset(0.4f, BuildingTop(p.tile) + 0.3f);
-                Vector3 sp = cam.WorldToScreenPoint(world);
-                if (sp.z < 0f) continue;
-                float x = sp.x / uiScale;
-                float y = (Screen.height - sp.y) / uiScale - age * 26f;
-                if (x < left || y < TopBar) continue;
-                float a = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(MapFx.Life * 0.45f, MapFx.Life, age));
-                var r = new Rect(x - 80f, y - 11f, 160f, 22f);
-                if (UiAktif && UiHaritaUstuDoluMu(new Rect(x - 40f, y - 11f, 80f, 22f))) continue;   // UI Toolkit kutusunun altına girmesin
-                popStyle.normal.textColor = new Color(0f, 0f, 0f, 0.8f * a);
-                GUI.Label(new Rect(r.x + 1f, r.y + 1f, r.width, r.height), p.text, popStyle);
-                popStyle.normal.textColor = UITheme.WithAlpha(p.color, a);
-                GUI.Label(r, p.text, popStyle);
-            }
-        }
-
+        // Uçan yazıların çizimi: Arayuz/UiHaritaEtiketleri.cs (UcanYazilar)
     }
 }
