@@ -3,6 +3,9 @@
  "bolge": "ev",
  "tohum": 2,
  "dukkan": false,
+ "tur": "konut",
+ "tabela": "",
+ "tente": 0,
  "bloklar": [
   {
    "x": 1,
@@ -10,7 +13,8 @@
    "k": 0,
    "tarz": 1,
    "renk": 5,
-   "cati": 3
+   "cati": 3,
+   "ct": 0
   },
   {
    "x": 1,
@@ -18,7 +22,8 @@
    "k": 0,
    "tarz": 1,
    "renk": 5,
-   "cati": 3
+   "cati": 3,
+   "ct": 0
   },
   {
    "x": 1,
@@ -26,7 +31,8 @@
    "k": 0,
    "tarz": 1,
    "renk": 5,
-   "cati": 3
+   "cati": 3,
+   "ct": 0
   },
   {
    "x": 2,
@@ -34,7 +40,8 @@
    "k": 0,
    "tarz": 1,
    "renk": 5,
-   "cati": 3
+   "cati": 3,
+   "ct": 0
   },
   {
    "x": 2,
@@ -42,7 +49,8 @@
    "k": 0,
    "tarz": 1,
    "renk": 5,
-   "cati": 3
+   "cati": 3,
+   "ct": 0
   },
   {
    "x": 2,
@@ -50,7 +58,42 @@
    "k": 0,
    "tarz": 1,
    "renk": 5,
-   "cati": 3
+   "cati": 3,
+   "ct": 0
+  }
+ ],
+ "susler": [
+  {
+   "ad": "agac_meyve_1",
+   "x": 4.2,
+   "y": -2.5,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cit_ahsap",
+   "x": 4.2,
+   "y": -5.4,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cit_ahsap",
+   "x": 1.4,
+   "y": -5.4,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "odun_yigini",
+   "x": 3.6,
+   "y": 3.5,
+   "aci": 90,
+   "olcek": 1.0,
+   "renk": 0
   }
  ]
 }

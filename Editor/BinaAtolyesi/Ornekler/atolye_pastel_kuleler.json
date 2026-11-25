@@ -2,7 +2,10 @@
  "ad": "pastel_kuleler",
  "bolge": "eski",
  "tohum": 3,
- "dukkan": true,
+ "dukkan": false,
+ "tur": "dukkan",
+ "tabela": "TEA ROOM",
+ "tente": 4,
  "bloklar": [
   {
    "x": 1,
@@ -10,7 +13,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 1,
@@ -18,7 +22,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 1,
@@ -26,7 +31,8 @@
    "k": 2,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 1,
@@ -34,7 +40,8 @@
    "k": 3,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 1,
@@ -42,7 +49,8 @@
    "k": 4,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 1,
@@ -50,7 +58,8 @@
    "k": 5,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 3,
@@ -58,7 +67,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 1,
-   "cati": 2
+   "cati": 2,
+   "ct": 0
   },
   {
    "x": 3,
@@ -66,7 +76,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 1,
-   "cati": 2
+   "cati": 2,
+   "ct": 0
   },
   {
    "x": 3,
@@ -74,7 +85,8 @@
    "k": 2,
    "tarz": 0,
    "renk": 1,
-   "cati": 2
+   "cati": 2,
+   "ct": 0
   },
   {
    "x": 3,
@@ -82,7 +94,8 @@
    "k": 3,
    "tarz": 0,
    "renk": 1,
-   "cati": 2
+   "cati": 2,
+   "ct": 0
   },
   {
    "x": 3,
@@ -90,7 +103,8 @@
    "k": 4,
    "tarz": 0,
    "renk": 1,
-   "cati": 2
+   "cati": 2,
+   "ct": 0
   },
   {
    "x": 2,
@@ -98,7 +112,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 3,
-   "cati": 1
+   "cati": 1,
+   "ct": 0
   },
   {
    "x": 2,
@@ -106,7 +121,9 @@
    "k": 1,
    "tarz": 0,
    "renk": 3,
-   "cati": 1
+   "cati": 1,
+   "ct": 0
   }
- ]
+ ],
+ "susler": []
 }

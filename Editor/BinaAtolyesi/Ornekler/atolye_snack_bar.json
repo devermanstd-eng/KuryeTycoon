@@ -1,0 +1,30 @@
+{
+ "ad": "snack_bar",
+ "bolge": "karma",
+ "tohum": 30,
+ "dukkan": false,
+ "tur": "bufe",
+ "tabela": "",
+ "tente": 3,
+ "bloklar": [
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 9,
+   "cati": 1,
+   "ct": 4
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 9,
+   "cati": 1,
+   "ct": 4
+  }
+ ],
+ "susler": []
+}

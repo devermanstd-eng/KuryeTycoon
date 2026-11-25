@@ -1,0 +1,84 @@
+{
+ "ad": "butcher",
+ "bolge": "karma",
+ "tohum": 34,
+ "dukkan": false,
+ "tur": "kasap",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 7,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 7,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 7,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 7,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 7,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 7,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 7,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 7,
+   "cati": 0,
+   "ct": 0
+  }
+ ],
+ "susler": []
+}

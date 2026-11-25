@@ -1,0 +1,120 @@
+{
+ "ad": "pharmacy",
+ "bolge": "karma",
+ "tohum": 37,
+ "dukkan": false,
+ "tur": "eczane",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 0
+  }
+ ],
+ "susler": []
+}

@@ -1,0 +1,120 @@
+{
+ "ad": "dutch_gable",
+ "bolge": "eski",
+ "tohum": 62,
+ "dukkan": false,
+ "tur": "konut",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 0,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 0,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 2,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 0,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 3,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 0,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 0,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 0,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 2,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 0,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 3,
+   "tarz": 0,
+   "renk": 1,
+   "cati": 0,
+   "ct": 5
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 2,
+   "ct": 5
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 2,
+   "ct": 5
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 2,
+   "ct": 5
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 1,
+   "tarz": 0,
+   "renk": 0,
+   "cati": 2,
+   "ct": 5
+  }
+ ],
+ "susler": []
+}

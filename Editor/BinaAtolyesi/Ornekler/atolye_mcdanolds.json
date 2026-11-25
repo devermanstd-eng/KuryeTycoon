@@ -1,0 +1,111 @@
+{
+ "ad": "mcdanolds",
+ "bolge": "karma",
+ "tohum": 22,
+ "dukkan": false,
+ "tur": "mcdanolds",
+ "tabela": "",
+ "tente": 3,
+ "bloklar": [
+  {
+   "x": 0,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 0,
+   "ct": 4
+  },
+  {
+   "x": 0,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 0,
+   "ct": 4
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 0,
+   "ct": 4
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 0,
+   "ct": 4
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 0,
+   "ct": 4
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 0,
+   "ct": 4
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 0,
+   "ct": 4
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 0,
+   "ct": 4
+  },
+  {
+   "x": 4,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 9,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 4,
+   "y": 1,
+   "k": 1,
+   "tarz": 0,
+   "renk": 9,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 4,
+   "y": 1,
+   "k": 2,
+   "tarz": 0,
+   "renk": 9,
+   "cati": 0,
+   "ct": 0
+  }
+ ],
+ "susler": []
+}

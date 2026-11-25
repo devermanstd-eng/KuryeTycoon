@@ -1,0 +1,187 @@
+{
+ "ad": "bahceli_ev",
+ "bolge": "ev",
+ "tohum": 63,
+ "dukkan": false,
+ "tur": "konut",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 0
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 0
+  }
+ ],
+ "susler": [
+  {
+   "ad": "cit_ahsap",
+   "x": -5.6,
+   "y": -6.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cit_ahsap",
+   "x": -2.8,
+   "y": -6.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cit_ahsap",
+   "x": 2.8,
+   "y": -6.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cit_ahsap",
+   "x": 5.6,
+   "y": -6.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "sebze_bahcesi",
+   "x": -4.6,
+   "y": -2.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "agac_meyve_2",
+   "x": -5.0,
+   "y": 2.2,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "agac_meyve_3",
+   "x": -4.4,
+   "y": 5.2,
+   "aci": 0,
+   "olcek": 0.9,
+   "renk": 0
+  },
+  {
+   "ad": "odun_yigini",
+   "x": 5.9,
+   "y": 2.5,
+   "aci": 90,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "kuyu",
+   "x": 3.2,
+   "y": -4.3,
+   "aci": 0,
+   "olcek": 0.8,
+   "renk": 0
+  },
+  {
+   "ad": "cali_3",
+   "x": 0.2,
+   "y": -5.5,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cicek_obegi",
+   "x": -1.2,
+   "y": -4.2,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cicek_obegi",
+   "x": -0.4,
+   "y": -3.1,
+   "aci": 40,
+   "olcek": 1.0,
+   "renk": 1
+  },
+  {
+   "ad": "ot_obegi",
+   "x": 1.4,
+   "y": -3.4,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "koyun",
+   "x": -1.6,
+   "y": -1.2,
+   "aci": 200,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "kutuk",
+   "x": 5.5,
+   "y": -1.5,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  }
+ ]
+}

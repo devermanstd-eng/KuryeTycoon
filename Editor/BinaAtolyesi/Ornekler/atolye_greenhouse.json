@@ -1,0 +1,110 @@
+{
+ "ad": "greenhouse",
+ "bolge": "sanayi",
+ "tohum": 54,
+ "dukkan": false,
+ "tur": "sera",
+ "tabela": "",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 3,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  },
+  {
+   "x": 3,
+   "y": 3,
+   "k": 0,
+   "tarz": 0,
+   "renk": 6,
+   "cati": 3,
+   "ct": 2
+  }
+ ],
+ "susler": [
+  {
+   "ad": "sebze_bahcesi",
+   "x": -5.4,
+   "y": 0,
+   "aci": 90,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "kasalar",
+   "x": 5.3,
+   "y": -3,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  }
+ ]
+}

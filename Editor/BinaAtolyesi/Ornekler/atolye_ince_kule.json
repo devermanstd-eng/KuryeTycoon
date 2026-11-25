@@ -2,7 +2,10 @@
  "ad": "ince_kule",
  "bolge": "kule",
  "tohum": 19,
- "dukkan": true,
+ "dukkan": false,
+ "tur": "dukkan",
+ "tabela": "KIOSK",
+ "tente": 2,
  "bloklar": [
   {
    "x": 2,
@@ -10,7 +13,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 5,
-   "cati": 4
+   "cati": 4,
+   "ct": 0
   },
   {
    "x": 2,
@@ -18,7 +22,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 5,
-   "cati": 4
+   "cati": 4,
+   "ct": 0
   },
   {
    "x": 2,
@@ -26,7 +31,8 @@
    "k": 2,
    "tarz": 0,
    "renk": 5,
-   "cati": 4
+   "cati": 4,
+   "ct": 0
   },
   {
    "x": 2,
@@ -34,7 +40,8 @@
    "k": 3,
    "tarz": 0,
    "renk": 5,
-   "cati": 4
+   "cati": 4,
+   "ct": 0
   },
   {
    "x": 2,
@@ -42,7 +49,8 @@
    "k": 4,
    "tarz": 0,
    "renk": 5,
-   "cati": 4
+   "cati": 4,
+   "ct": 0
   },
   {
    "x": 2,
@@ -50,7 +58,8 @@
    "k": 5,
    "tarz": 0,
    "renk": 5,
-   "cati": 4
+   "cati": 4,
+   "ct": 0
   },
   {
    "x": 2,
@@ -58,7 +67,8 @@
    "k": 6,
    "tarz": 0,
    "renk": 5,
-   "cati": 4
+   "cati": 4,
+   "ct": 0
   },
   {
    "x": 2,
@@ -66,7 +76,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 2,
@@ -74,7 +85,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 3,
@@ -82,7 +94,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 0,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   },
   {
    "x": 1,
@@ -90,7 +103,9 @@
    "k": 0,
    "tarz": 0,
    "renk": 2,
-   "cati": 0
+   "cati": 0,
+   "ct": 0
   }
- ]
+ ],
+ "susler": []
 }
