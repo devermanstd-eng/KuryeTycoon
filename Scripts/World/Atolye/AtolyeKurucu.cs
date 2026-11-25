@@ -47,6 +47,7 @@ namespace KuryeTycoon
             public string[] ic;
             public int calisan, kepenk;      // kepenk = 1: dükkân (kepenk, sipariş poşeti, kurye)
         }
+        [Serializable] public class ZeminTurVeri { public string ad, etiket; }
         [Serializable]
         public class Kutuphane
         {
@@ -55,6 +56,10 @@ namespace KuryeTycoon
             public int izgara = 5;
             public int icSinir = 6;          // bir iç mekânda aynı mobilyadan en fazla kaç tane (parçada sinir yazmıyorsa)
             public string[] icYedek;         // türün listesi tükenince kullanılan dolgu mobilyaları
+            // sahne zemini (Sahne Atölyesi): kademe boyu, dış etek boyu, kaldırım üst kotu, zemin türleri, "sert" türler (istinat duvarı)
+            public float kademe = 1.2f, etek = 0.6f, kaldirimZ = 0.12f;
+            public ZeminTurVeri[] zeminTur;
+            public string[] sertZemin;
             public string[] duvarRenk, catiRenk, vurguRenk, tenteRenk, yaprakRenk, catiTarz;
             public TurVeri[] turler;
             public ParcaVeri[] parcalar, hafifler;
@@ -871,6 +876,147 @@ namespace KuryeTycoon
                 else if (hh == 1 && (ct == CtKirma || ct == CtMansart) && !kume.Contains(new Vector2Int(p.x, p.y - 1)) && orta >= 1 && !sade)
                     s.Koy("cati_penceresi", p.x, p.y, z, 0, r, 1f, 0f, -A);
             }
+        }
+
+        // ---------------------------------------------------------------- sahne zemini (pastel_parcalar.py: zemin_yerlesim)
+
+        static readonly Renkler SahneRenk = new Renkler
+        {
+            D = "#f6f0e2", d = "#e3dccb", C = "#c8553f", c = "#ad4835", K = "#3f7d74", T = "#c8553f", Y = "#8fbf7a", y = "#7da86b", k = "#42443d",
+        };
+
+        public static float Kademe => Kut != null ? Kut.kademe : 1.2f;
+        public static float KaldirimZ => Kut != null ? Kut.kaldirimZ : 0.12f;
+
+        /// <summary>Sahne hücresinin ortası (model ekseni, metre).</summary>
+        public static Vector2 SahneMerkezi(int n, int x, int y) => new Vector2((x - (n - 1) * 0.5f) * Hucre, (y - (n - 1) * 0.5f) * Hucre);
+
+        /// <summary>
+        /// Sahnenin zemin parçaları (pastel_parcalar.py: zemin_yerlesim ile AYNI, karma dahil). Boyanmamış hücre çim, kademe 0.
+        /// Yol: komşuya göre şerit / yaya geçidi / rögar; yol olmayan kenarına kaldırım şeridi + bordür. Su: taş rıhtım. Çit: komşu
+        /// çite kol. Kademe farkı olan kenara toprak yamaç ya da taş istinat duvarı; sahnenin dış kenarına toprak etek.
+        /// </summary>
+        static void ZeminYerlesim(SahneTasarimi sh, List<Yer> yerler)
+        {
+            int n = Mathf.Clamp(sh.n, 1, 64);
+            int tohum = sh.tohum;
+            var zt = new string[n, n];
+            var kad = new int[n, n];
+            for (int x = 0; x < n; x++) for (int y = 0; y < n; y++) zt[x, y] = "cim";
+            if (sh.zemin != null)
+                foreach (var h in sh.zemin)
+                {
+                    if (h.x < 0 || h.y < 0 || h.x >= n || h.y >= n) continue;
+                    zt[h.x, h.y] = Bos(h.t) ? "cim" : h.t;
+                    kad[h.x, h.y] = Mathf.Clamp(h.k, 0, 2);
+                }
+            var sert = new HashSet<string>(Kut.sertZemin ?? new[] { "yol", "kaldirim", "meydan", "su" });
+            float KADEME = Kut.kademe, ETEK = Kut.etek;
+
+            string Tur(int x, int y) => x < 0 || y < 0 || x >= n || y >= n ? null : zt[x, y];
+            void Koy(string ad, int x, int y, float z, int don = 0, float zs = 1f)
+            {
+                if (!parca.ContainsKey(ad)) return;
+                Vector2 orta = SahneMerkezi(n, x, y);
+                yerler.Add(new Yer { ad = ad, cx = orta.x, cy = orta.y, z = z, don = Mod(don, 4), zs = zs, kay = Vector2.zero, r = SahneRenk, olcek = 1f, aci = 0f, grup = "Govde", cam = 0 });
+            }
+
+            var yol = new bool[4];
+            var su = new bool[4];
+            for (int x = 0; x < n; x++)
+                for (int y = 0; y < n; y++)
+                {
+                    string t = zt[x, y];
+                    int k = kad[x, y];
+                    float z = k * KADEME;
+                    if (t == "yol")
+                    {
+                        Koy("z_yol", x, y, z);
+                        int c = 0;
+                        for (int i = 0; i < 4; i++) { yol[i] = Tur(x + Yon[i].x, y + Yon[i].y) == "yol"; if (yol[i]) c++; }
+                        bool yatay = yol[1] && yol[3], dikey = yol[0] && yol[2];
+                        int eksen = -1;                                  // 0: y ekseni boyunca (ön–arka), 1: x ekseni boyunca
+                        if (c == 1) eksen = (yol[0] || yol[2]) ? 0 : 1;
+                        else if (yatay != dikey) eksen = yatay ? 1 : 0;
+                        if (eksen >= 0)
+                        {
+                            bool kavsak = false;                         // yol boyunca komşu hücre kavşak içi mi
+                            for (int j = 0; j < 2; j++)
+                            {
+                                int i = eksen == 1 ? (j == 0 ? 1 : 3) : (j == 0 ? 0 : 2);
+                                if (!yol[i]) continue;
+                                int qx = x + Yon[i].x, qy = y + Yon[i].y;
+                                if (Tur(qx + Yon[0].x, qy + Yon[0].y) == "yol" && Tur(qx + Yon[2].x, qy + Yon[2].y) == "yol" &&
+                                    Tur(qx + Yon[1].x, qy + Yon[1].y) == "yol" && Tur(qx + Yon[3].x, qy + Yon[3].y) == "yol") kavsak = true;
+                            }
+                            bool yan0 = eksen == 1 ? yol[0] : yol[3], yan1 = eksen == 1 ? yol[2] : yol[1];
+                            if (kavsak) Koy("z_gecit", x, y, z, eksen);
+                            else if (!yan0 && !yan1) Koy("z_serit", x, y, z, eksen);                 // tek şeritli yol
+                            else if (yan1 && !yan0) Koy("z_serit_kenar", x, y, z, eksen == 1 ? 0 : 3);   // iki şerit arası çizgi (bir kez)
+                            if (!kavsak && Karma(x, y, 3, tohum) % 9 == 0) Koy("z_rogar", x, y, z, eksen);
+                        }
+                        for (int i = 0; i < 4; i++) if (!yol[i]) Koy("z_bordur", x, y, z, i);
+                        for (int i = 0; i < 4; i++)
+                        {
+                            var a = Yon[(i + 3) % 4];
+                            var b = Yon[i];
+                            bool ya = yol[(i + 3) % 4], yb = yol[i];
+                            if (!ya && !yb) Koy("z_bordur_kose", x, y, z, i);
+                            else if (ya && !yb) Koy("z_bordur_uc", x, y, z, i);
+                            else if (yb && !ya) Koy("z_bordur_son", x, y, z, (i + 3) % 4);
+                            else if (Tur(x + a.x + b.x, y + a.y + b.y) != "yol") Koy("z_bordur_kose", x, y, z, i);
+                        }
+                    }
+                    else if (t == "kaldirim") Koy("z_kaldirim", x, y, z);
+                    else if (t == "meydan") Koy("z_meydan_" + Sec(Karma(x, y, 5, tohum), 2), x, y, z);
+                    else if (t == "patika") Koy("z_patika", x, y, z, Sec(Karma(x, y, 6, tohum), 4));
+                    else if (t == "su")
+                    {
+                        Koy("z_su", x, y, z, Sec(Karma(x, y, 7, tohum), 4));
+                        for (int i = 0; i < 4; i++) su[i] = Tur(x + Yon[i].x, y + Yon[i].y) == "su";
+                        for (int i = 0; i < 4; i++) if (!su[i]) Koy("z_su_kenar", x, y, z, i);
+                        for (int i = 0; i < 4; i++)
+                        {
+                            var a = Yon[(i + 3) % 4];
+                            var b = Yon[i];
+                            if (!(su[(i + 3) % 4] && su[i] && Tur(x + a.x + b.x, y + a.y + b.y) == "su")) Koy("z_su_kose", x, y, z, i);
+                        }
+                    }
+                    else if (t == "tarh") Koy("z_tarh_" + Sec(Karma(x, y, 8, tohum), 2), x, y, z);
+                    else if (t == "cit")
+                    {
+                        Koy("z_cim_0", x, y, z);
+                        Koy("z_cit_orta", x, y, z);
+                        for (int i = 0; i < 4; i++) if (Tur(x + Yon[i].x, y + Yon[i].y) == "cit") Koy("z_cit_kol", x, y, z, i);
+                    }
+                    else Koy("z_cim_" + Sec(Karma(x, y, 1, tohum), 3), x, y, z, Sec(Karma(x, y, 2, tohum), 4));
+                    // yükselti kenarları ve sahnenin dış eteği
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int qx = x + Yon[i].x, qy = y + Yon[i].y;
+                        if (qx < 0 || qy < 0 || qx >= n || qy >= n) Koy("z_etek", x, y, z, i, z + ETEK);
+                        else if (kad[qx, qy] < k) Koy(sert.Contains(t) ? "z_istinat" : "z_yamac", x, y, z, i, (k - kad[qx, qy]) * KADEME);
+                    }
+                }
+        }
+
+        /// <summary>Sahnenin zemini + serbest süsleri tek mesh (binalar ayrı kurulur: AtolyeUretici.SahneKur). Kütüphane yoksa null.</summary>
+        public static Mesh ZeminKur(SahneTasarimi sh, out List<string> malzemeAdlari)
+        {
+            malzemeAdlari = new List<string>();
+            if (sh == null || Kut == null) return null;
+            var gecici = ScriptableObject.CreateInstance<BinaTasarimi>();
+            gecici.hideFlags = HideFlags.HideAndDontSave;
+            gecici.ad = "sahne";
+            gecici.tohum = sh.tohum;
+            gecici.tur = "konut";
+            if (sh.susler != null) gecici.susler.AddRange(sh.susler);
+            var s = Yerlesim(gecici);
+            UnityEngine.Object.DestroyImmediate(gecici);
+            ZeminYerlesim(sh, s.yerler);
+            var gruplar = Topla(s, false, g => "");
+            if (!gruplar.TryGetValue("", out var y)) return null;
+            return MeshYap(y, TemizAd(sh.ad) + "_zemin", 0f, out malzemeAdlari);
         }
 
         // ---------------------------------------------------------------- mesh

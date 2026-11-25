@@ -397,6 +397,8 @@ namespace KuryeTycoon.EditorTools
                     if (GUILayout.Button("JSON dışa aktar")) DisaAktar();
                     if (GUILayout.Button("Kamerayı getir")) KamerayiOdakla();
                 }
+                // Sahne modu: zemin (yol, çim, kaldırım, su, yükselti) + birden çok bina aynı sahnede (Editor/SahneAtolyesi.cs)
+                if (GUILayout.Button("Sahne Atölyesi'ni aç (zemin, yollar, birden çok bina)")) SahneAtolyesi.Ac();
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
 

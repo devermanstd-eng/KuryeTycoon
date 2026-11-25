@@ -180,6 +180,53 @@ namespace KuryeTycoon
             kurulan += n;
         }
 
+        // ---------------------------------------------------------------- sahne (zemin + binalar)
+
+        /// <summary>Tasarım adı → JSON metni (Resources/Atolye/Tasarimlar/atolye_&lt;ad&gt;). Bulunamazsa null.</summary>
+        public static string TasarimJson(string ad)
+        {
+            if (string.IsNullOrEmpty(ad)) return null;
+            var ta = Resources.Load<TextAsset>(AtolyeKurucu.TasarimKaynak + "/atolye_" + ad);
+            return ta != null ? ta.text : null;
+        }
+
+        /// <summary>
+        /// Sahneyi kurar: "Zemin" çocuğu (zemin + süsler, tek mesh) ve her bina için bir çocuk (şablonla aynı yapı; hücresine
+        /// taşınmış, 90°'lik dönüşüyle). Atölye penceresi önizleme için çağırır; dosya üretmez. Kurulamazsa null.
+        /// </summary>
+        public static GameObject SahneKur(SahneTasarimi sh, Transform ust = null)
+        {
+            if (sh == null || AtolyeKurucu.Kut == null) return null;
+            var kokGo = new GameObject("Sahne_" + AtolyeKurucu.TemizAd(sh.ad));
+            if (ust != null) kokGo.transform.SetParent(ust, false);
+            var zemin = AtolyeKurucu.ZeminKur(sh, out var adlar);
+            if (zemin != null) Parca(kokGo.transform, "Zemin", zemin, AtolyeKurucu.Malzemeler(adlar));
+            if (sh.binalar != null)
+                foreach (var b in sh.binalar) BinaKur(sh, b, kokGo.transform);
+            return kokGo;
+        }
+
+        /// <summary>Sahnedeki tek bir binayı kurup hücresine yerleştirir (tasarım bulunamazsa null).</summary>
+        public static GameObject BinaKur(SahneTasarimi sh, SahneTasarimi.Bina b, Transform ust)
+        {
+            var t = AtolyeKurucu.TasarimOku(TasarimJson(b.tasarim));
+            if (t == null) { Debug.LogWarning("Kurye Tycoon · sahne: tasarım bulunamadı: " + b.tasarim); return null; }
+            var go = new GameObject(AtolyeKurucu.ModelAdi(t));
+            go.transform.SetParent(ust, false);
+            try { Doldur(go, t, true); }
+            catch (System.Exception ex) { Debug.LogError("Kurye Tycoon · sahne: '" + b.tasarim + "' kurulamadı: " + ex); }
+            Yok(t);
+            Vector2 c = AtolyeKurucu.SahneMerkezi(sh.n, b.x, b.y);
+            float z = sh.Kademe(b.x, b.y) * AtolyeKurucu.Kademe + AtolyeKurucu.KaldirimZ;
+            go.transform.localPosition = AtolyePlani.Yerel(new Vector3(c.x, c.y, z));
+            // model ekseninde saat yönünün tersine 90° = Unity'de Y çevresinde −90° (eksen çevirisi x'i ters çevirir)
+            go.transform.localRotation = Quaternion.Euler(0f, -90f * (((b.don % 4) + 4) % 4), 0f);
+            // önizleme: kapalı dükkânın kepengi inik
+            var plan = go.GetComponent<AtolyePlani>();
+            if (b.kapali && plan != null && plan.kepenk != null) plan.kepenk.gameObject.SetActive(true);
+            return go;
+        }
+
         // ---------------------------------------------------------------- şablonu doldurma
 
         static MeshRenderer Parca(Transform ust, string ad, Mesh mesh, Material[] malzemeler)
