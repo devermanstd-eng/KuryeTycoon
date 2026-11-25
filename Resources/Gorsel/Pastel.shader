@@ -1,12 +1,14 @@
-// Kurye Tycoon — Pastel (elle çizilmiş, kâğıt üstü pastel boya) gölgelendiricisi: Bina Atölyesi'nin ürettiği binalar için.
-//  • Dokusuz düz renk; ışık yumuşak (yarım Lambert, sert ton sınırı yok), gölgeler koyulaşmak yerine soğuk mora kayar.
-//  • Kâğıt dokusu: dünya uzayında üç yönlü ince gürültü (tane) + büyük, hafif sulu boya lekeleri. Doku dosyası yok.
-//  • Gölgede tarama (hatching): ışık almayan ve gölgede kalan yüzeylerde ince çapraz kalem çizgileri; uzaklaşınca silinir.
-//  • Köşe rengi: mesh'in köşe rengi (COLOR) tabanla çarpılır (silme / kenar vurgusu ya da elle koyulaştırma için; yoksa beyaz).
+// Kurye Tycoon — Pastel (elle çizilmiş, kâğıt üstü pastel boya) gölgelendiricisi: Bina Atölyesi'nin ürettiği modeller için.
+//  • Dokusuz düz renk; ışık yumuşak (yarım Lambert). Gölge tarafı kararmaz: aydınlık rengin _GolgeRengi katı (varsayılan ~%80,
+//    hafif mor): pembe duvar gölgede gül kurusu olur. Ortam ışığı sıfır olan boş sahnede de böyle.
+//  • Kâğıt tanesi, boya lekesi ve kalem taraması MODEL uzayında (metre) hesaplanır: atölyede (1 birim = 1 m) ve oyunda
+//    (bina küçültülmüş) aynı görünür. Tarama gölgede belirgin, ışıkta çok hafif; uzaklaşınca silinir. Doku dosyası yok.
+//  • Cam modu (_Cam = 1; "Pastel_Cam_" malzemeleri): camın üstünde bir iki beyaz çapraz parlama çizgisi.
+//  • Köşe rengi (COLOR) tabanla çarpılır (atölye mesh'lerinde beyaz).
 //  • URP/Lit ve AnimeToon ile aynı özellik adları (_BaseColor, _EmissionColor, _Surface, _Cull ...): oyunun gece ışıkları,
 //    kilitli semt rengi, kar katmanı ve mevsim kodu değişmeden çalışır. Işıma her zaman eklenir.
-//  • Kontur bu gölgelendiricide değil: ekran geçişi (MurekkepCizgi) çizer.
-//  Malzemeler adla kurulur: "Pastel_<etiket>_<rrggbb>" (Editor/BinaAtolyesi.cs). Ölçek: 1 birim = bir kare (10 m).
+//  • Kontur bu gölgelendiricide değil: mesh'in "Pastel_Cizgi" alt-mesh'i (KuryeTycoon/PastelCizgi) ya da oyunda ekran geçişi.
+//  Malzemeler adla kurulur: "Pastel_<etiket>_<rrggbb>" (Editor/BinaAtolyesiKurucu.cs).
 Shader "KuryeTycoon/Pastel"
 {
     Properties
@@ -16,21 +18,25 @@ Shader "KuryeTycoon/Pastel"
         [HDR] _EmissionColor("Işıma", Color) = (0, 0, 0, 1)
 
         [Header(Isik)]
-        _GolgeRengi("Gölge rengi (çarpan)", Color) = (0.74, 0.72, 0.9, 1)
+        _GolgeRengi("Gölge tarafı (aydınlığın katı)", Color) = (0.80, 0.76, 0.86, 1)
         _IsikRengi("Aydınlık (çarpan)", Color) = (1.05, 1.03, 0.98, 1)
         _Yumusak("Işık yumuşaklığı", Range(0.05, 1)) = 0.6
         _Ortam("Ortam ışığı payı", Range(0, 2)) = 0.9
 
         [Header(Kagit)]
-        _KagitOlcek("Kâğıt tanesi ölçeği", Float) = 260
+        _KagitOlcek("Kâğıt tanesi ölçeği (1 / m)", Float) = 26
         _KagitGuc("Kâğıt tanesi", Range(0, 0.3)) = 0.07
-        _LekeOlcek("Boya lekesi ölçeği", Float) = 9
+        _LekeOlcek("Boya lekesi ölçeği (1 / m)", Float) = 0.9
         _LekeGuc("Boya lekesi", Range(0, 0.3)) = 0.06
 
         [Header(Tarama)]
-        _TaramaSiklik("Tarama sıklığı (çizgi / birim)", Float) = 70
-        _TaramaGuc("Gölgede tarama", Range(0, 1)) = 0.3
-        _TaramaKalinlik("Tarama çizgi kalınlığı", Range(0.05, 0.9)) = 0.32
+        _TaramaSiklik("Tarama sıklığı (çizgi / m)", Float) = 14
+        _TaramaGuc("Gölgede tarama", Range(0, 1)) = 0.16
+        _IsiktaTarama("Işıkta tarama", Range(0, 0.3)) = 0.035
+        _TaramaKalinlik("Tarama çizgi kalınlığı", Range(0.05, 0.9)) = 0.16
+
+        [Header(Cam)]
+        [Toggle] _Cam("Cam (çapraz parlama)", Float) = 0
 
         // URP/Lit uyumu (oyun kodu bu adları kullanıyor)
         [HideInInspector] _Smoothness("Smoothness", Range(0, 1)) = 0.1
@@ -63,6 +69,8 @@ Shader "KuryeTycoon/Pastel"
         float _TaramaSiklik;
         half _TaramaGuc;
         half _TaramaKalinlik;
+        half _IsiktaTarama;
+        half _Cam;
         half _Smoothness;
         half _Metallic;
         half _Surface;
@@ -140,6 +148,8 @@ Shader "KuryeTycoon/Pastel"
                 float2 uv : TEXCOORD2;
                 float fogCoord : TEXCOORD3;
                 half4 color : TEXCOORD4;
+                float3 positionOS : TEXCOORD5;
+                float3 normalOS : TEXCOORD6;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
                 UNITY_VERTEX_OUTPUT_STEREO
             };
@@ -157,6 +167,8 @@ Shader "KuryeTycoon/Pastel"
                 o.uv = TRANSFORM_TEX(v.uv, _BaseMap);
                 o.fogCoord = ComputeFogFactor(p.positionCS.z);
                 o.color = v.color;
+                o.positionOS = v.positionOS.xyz;
+                o.normalOS = v.normalOS;
                 return o;
             }
 
@@ -170,19 +182,28 @@ Shader "KuryeTycoon/Pastel"
                 float3 N = normalize(i.normalWS);
                 float3 pw = i.positionWS;
 
-                // ---- yüzey üstünde iki eksen (tarama ve kâğıt için): duvarda yatay + dikey, düz yüzeyde dünya X + Y
-                float yukari = dot(N, PS_YUKARI);
-                float3 t1 = abs(yukari) > 0.9 ? float3(1.0, 0.0, 0.0) : normalize(cross(PS_YUKARI, N));
-                float3 t2 = normalize(cross(N, t1));
-                float2 yuzey = float2(dot(pw, t1), dot(pw, t2));
+                // ---- yüzey üstünde iki eksen, MODEL uzayında (metre; model Y yukarı): duvarda yatay + dikey, düz yüzeyde X + Z
+                float3 po = i.positionOS;
+                float3 No = normalize(i.normalOS);
+                float3 t1 = abs(No.y) > 0.9 ? float3(1.0, 0.0, 0.0) : normalize(cross(float3(0.0, 1.0, 0.0), No));
+                float3 t2 = normalize(cross(No, t1));
+                float2 yuzey = float2(dot(po, t1), dot(po, t2));
+
+                // ---- cam: bir iki beyaz çapraz parlama çizgisi
+                if (_Cam > 0.5)
+                {
+                    float f = frac((yuzey.x + yuzey.y * 0.55) / 1.9);
+                    half bant = step(0.30, f) * step(f, 0.38) + step(0.44, f) * step(f, 0.47);
+                    taban = lerp(taban, half3(1.0, 1.0, 1.0), bant * 0.75h);
+                }
 
                 // ---- kâğıt: ince tane + büyük sulu boya lekesi (renge hafif açık / koyu oynama)
                 half tane = PS_Gurultu(float3(yuzey * _KagitOlcek, 1.7)) * 0.6h + PS_Gurultu(float3(yuzey * _KagitOlcek * 0.37, 5.3)) * 0.4h;
-                half leke = PS_Gurultu(pw * _LekeOlcek) * 0.65h + PS_Gurultu(pw * _LekeOlcek * 2.7 + 11.0) * 0.35h;
+                half leke = PS_Gurultu(po * _LekeOlcek) * 0.65h + PS_Gurultu(po * _LekeOlcek * 2.7 + 11.0) * 0.35h;
                 half taneGorunur = saturate(1.4h - fwidth(yuzey.x * _KagitOlcek) * 0.8h);     // uzakta tane kaybolur (kıpırdamasın)
                 taban *= 1.0h + (tane - 0.5h) * 2.0h * _KagitGuc * taneGorunur + (leke - 0.5h) * 2.0h * _LekeGuc;
 
-                // ---- ışık: yumuşak yarım Lambert; gölge (güneşin gölgesi dahil) soğuk mora kayar
+                // ---- ışık: yumuşak yarım Lambert. Gölge tarafı aydınlığın _GolgeRengi katı (koyulaşmaz, hafif mora kayar)
                 half3 ortam = max(SampleSH(N), 0.0h) * _Ortam;
                 float2 ekranUV = GetNormalizedScreenSpaceUV(i.positionCS);
                 #if defined(_SCREEN_SPACE_OCCLUSION)
@@ -193,15 +214,15 @@ Shader "KuryeTycoon/Pastel"
                 Light gunes = GetMainLight(golgeKoord);
                 half nl = dot(N, gunes.direction);
                 half isik = smoothstep(-_Yumusak, _Yumusak, nl) * gunes.shadowAttenuation * gunes.distanceAttenuation;
-                half3 golge = taban * _GolgeRengi.rgb * ortam;
-                half3 aydinlik = taban * _IsikRengi.rgb * (gunes.color * 0.75h + ortam * 0.45h);
+                half3 aydinlik = taban * _IsikRengi.rgb * (gunes.color * 0.8h + ortam * 0.5h);
+                half3 golge = aydinlik * _GolgeRengi.rgb;
                 half3 renk = lerp(golge, aydinlik, isik);
 
-                // ---- gölgede tarama: ince çapraz kalem çizgileri (titrek), ışıkta yok, uzakta silinir
+                // ---- kalem taraması: ince çapraz çizgiler (titrek); gölgede belirgin, ışıkta çok hafif, uzakta silinir
                 float c = (yuzey.x + yuzey.y) * _TaramaSiklik + (leke - 0.5) * 2.2;
-                half cizgi = 1.0h - smoothstep(_TaramaKalinlik * 0.5h, _TaramaKalinlik * 0.5h + 0.12h, abs(frac(c) - 0.5h));
-                half taramaGorunur = saturate(1.5h - fwidth(c) * 1.4h);
-                renk *= 1.0h - cizgi * (1.0h - isik) * _TaramaGuc * taramaGorunur;
+                half cizgi = 1.0h - smoothstep(_TaramaKalinlik * 0.5h, _TaramaKalinlik * 0.5h + 0.1h, abs(frac(c) - 0.5h));
+                half taramaGorunur = saturate(1.5h - fwidth(c) * 1.4h) * (1.0h - _Cam);
+                renk *= 1.0h - cizgi * ((1.0h - isik) * _TaramaGuc + _IsiktaTarama) * taramaGorunur;
 
                 // ---- ek ışıklar (sokak lambaları): yumuşak katkı
                 #if defined(_ADDITIONAL_LIGHTS)
