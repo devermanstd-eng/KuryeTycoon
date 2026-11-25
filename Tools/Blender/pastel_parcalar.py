@@ -1491,6 +1491,280 @@ def cicek_obegi(g):
         meyve(g, x, y, 0.2, 0.07, CICEK[i % len(CICEK)], n=5)
 
 
+# ================================== ZEMİN PARÇALARI (sahne: çim, yol, kaldırım, meydan, patika, su, tarh, çit, yükselti) ==================================
+# Hücre karoları yalnız üst yüzdür (yanları yok: yan yana karoların eki çizilmez); kenar parçaları on() cephe çerçevesindedir
+# (u: kenar boyunca 0…HUCRE, o: dışa) ve dönüşle dört kenara / köşeye konur. Kurallar: zemin_yerlesim() = AtolyeKurucu.ZeminYerlesim.
+
+KADEME = 1.2                 # bir yükselti kademesi (m)
+ETEK = 0.6                   # sahnenin dış kenarındaki toprak eteğin boyu (m)
+YOL_Z, KALDIRIM_Z, CIM_Z, SU_Z = 0.0, 0.12, 0.05, -0.38
+ZEMIN_TUR = [("cim", "Çim"), ("yol", "Yol (asfalt; kaldırımı kendiliğinden)"), ("kaldirim", "Kaldırım"), ("meydan", "Arnavut kaldırımı meydan"),
+             ("patika", "Toprak patika"), ("su", "Su / kanal (taş kenarlı)"), ("tarh", "Çiçek tarhı"), ("cit", "Çit bitkisi")]
+SERT_ZEMIN = ("yol", "kaldirim", "meydan", "su")
+CIM = [PM("Cim", "#bfe0a8"), PM("Cim", "#aed396"), PM("Cim", "#cfe8b8"), PM("Cim", "#9fc888")]
+ASFALT = PM("Asfalt", "#958f9c")
+ASFALT2 = PM("Asfalt", "#878190")
+KALDIRIM = PM("Kaldirim", "#e6dfd0")
+KALDIRIM2 = PM("Kaldirim", "#d8d0bf")
+TOPRAK = PM("Toprak", "#d9c09a")
+TOPRAK2 = PM("Toprak", "#c4a67c")
+SU = PM("Su", "#9fd0e0")
+SU2 = PM("Su", "#c4e6ee")
+
+
+def _z(aciklama):
+    return parca("zemin_karo", aciklama)
+
+
+def _ust(g, x0, x1, y0, y1, z, mat):
+    """Yalnız üst yüz (yukarı bakar)."""
+    g.yuz([(x0, y0, z), (x1, y0, z), (x1, y1, z), (x0, y1, z)], mat)
+    g.sid += 1
+
+
+def _tutam(g, x, y, z, rnd, mat):
+    """Çim tutamı: üç ince üçgen yaprak."""
+    for k in range(3):
+        a = rnd.uniform(0, math.pi)
+        dx, dy = math.cos(a) * 0.07, math.sin(a) * 0.07
+        h = rnd.uniform(0.16, 0.3)
+        tx, ty = rnd.uniform(-0.06, 0.06), rnd.uniform(-0.06, 0.06)
+        g.yuz([(x - dx, y - dy, z), (x + dx, y + dy, z), (x + tx, y + ty, z + h)], mat)
+        g.yuz([(x + dx, y + dy, z), (x - dx, y - dy, z), (x + tx, y + ty, z + h)], mat)
+    g.sid += 1
+
+
+def _cim(tohum, cicek=False, toprak=False):
+    def fn(g):
+        rnd = random.Random(tohum)
+        _ust(g, -A, A, -A, A, CIM_Z, CIM[0])
+        for i in range(3):                                   # renk lekeleri (düzgün olmayan dörtgenler)
+            cx, cy = rnd.uniform(-0.8, 0.8), rnd.uniform(-0.8, 0.8)
+            rx, ry = rnd.uniform(0.3, 0.6), rnd.uniform(0.22, 0.45)
+            pts = [(cx + rx * math.cos(a + 0.4) * rnd.uniform(0.75, 1.1), cy + ry * math.sin(a + 0.4) * rnd.uniform(0.75, 1.1), CIM_Z + 0.004 + i * 0.001)
+                   for a in (0, math.pi / 3, 2 * math.pi / 3, math.pi, 4 * math.pi / 3, 5 * math.pi / 3)]
+            g.yuz(pts, CIM[1 + i % 2])
+            g.sid += 1
+        for i in range(5):
+            _tutam(g, rnd.uniform(-1.2, 1.2), rnd.uniform(-1.2, 1.2), CIM_Z, rnd, CIM[3] if i % 2 else CIM[1])
+        if cicek:
+            for i in range(5):
+                meyve(g, rnd.uniform(-1.1, 1.1), rnd.uniform(-1.1, 1.1), CIM_Z, 0.06, CICEK[i % len(CICEK)], n=5, rz=0.1)
+        if toprak:
+            cx, cy = rnd.uniform(-0.5, 0.5), rnd.uniform(-0.5, 0.5)
+            pts = [(cx + 0.42 * math.cos(a) * rnd.uniform(0.7, 1.1), cy + 0.3 * math.sin(a) * rnd.uniform(0.7, 1.1), CIM_Z + 0.008) for a in [k * math.pi / 3 for k in range(6)]]
+            g.yuz(pts, TOPRAK)
+            g.sid += 1
+    return fn
+
+
+ekle("z_cim_0", "zemin_karo", "Çim (tutamlı)", _cim(1))
+ekle("z_cim_1", "zemin_karo", "Çim (çiçekli)", _cim(2, cicek=True))
+ekle("z_cim_2", "zemin_karo", "Çim (toprak lekeli)", _cim(3, toprak=True))
+
+
+@_z("Yol: asfalt")
+def z_yol(g):
+    _ust(g, -A, A, -A, A, YOL_Z, ASFALT)
+    rnd = random.Random(5)
+    for i in range(2):                                       # yama / leke
+        cx, cy = rnd.uniform(-0.6, 0.6), rnd.uniform(-0.6, 0.6)
+        g.yuz([(cx - 0.35, cy - 0.2, YOL_Z + 0.012), (cx + 0.3, cy - 0.26, YOL_Z + 0.012), (cx + 0.38, cy + 0.18, YOL_Z + 0.012), (cx - 0.28, cy + 0.24, YOL_Z + 0.012)], ASFALT2)
+        g.sid += 1
+
+
+@_z("Yol: şerit çizgisi (kesikli; y ekseni boyunca)")
+def z_serit(g):
+    for y0 in (-1.25, -0.25, 0.75):
+        _ust(g, -0.07, 0.07, y0, y0 + 0.6, YOL_Z + 0.025, SILME)
+
+
+@_z("Yol: iki şerit arası çizgi (x ekseni boyunca, hücrenin arka kenarında)")
+def z_serit_kenar(g):
+    for x0 in (-1.25, -0.25, 0.75):
+        _ust(g, x0, x0 + 0.6, A - 0.07, A + 0.07, YOL_Z + 0.025, SILME)
+
+
+@_z("Yol: yaya geçidi (y ekseni boyunca giden yolda)")
+def z_gecit(g):
+    for i in range(5):
+        x = -0.82 + i * 0.41
+        _ust(g, x - 0.13, x + 0.13, -0.8, 0.8, YOL_Z + 0.025, SILME)
+
+
+@_z("Yol: rögar kapağı")
+def z_rogar(g):
+    dsil(g, 0.45, 0.3, YOL_Z, YOL_Z + 0.012, 0.3, 10, DEMIR, kapak=(False, True))
+    for i in range(3):
+        _ust(g, 0.25, 0.65, 0.2 + i * 0.09, 0.24 + i * 0.09, YOL_Z + 0.016, ASFALT2)
+
+
+def _kaldirim_seridi(g, c, u0, u1):
+    """Yol kenarı: 60 cm kaldırım (iki tonlu karolar) + yola bakan bordür taşı."""
+    n = max(1, int(round((u1 - u0) / 0.8)))
+    for i in range(n):
+        a, b = u0 + (u1 - u0) * i / n, u0 + (u1 - u0) * (i + 1) / n
+        c.kutu(g, a, b, -0.46, 0.0, YOL_Z, KALDIRIM_Z, KALDIRIM if i % 2 == 0 else KALDIRIM2, arka=True)
+    c.kutu(g, u0, u1, -0.6, -0.46, YOL_Z, KALDIRIM_Z + 0.02, TAS3, arka=True)
+
+
+@parca("zemin_kenar", "Yol kenarı: kaldırım şeridi + bordür")
+def z_bordur(g):
+    _kaldirim_seridi(g, on(), 0.6, HUCRE - 0.6)
+
+
+@parca("zemin_kenar", "Yol kenarı: şeridin köşeye uzayan başı")
+def z_bordur_uc(g):
+    _kaldirim_seridi(g, on(), 0.0, 0.6)
+
+
+@parca("zemin_kenar", "Yol kenarı: şeridin köşeye uzayan sonu")
+def z_bordur_son(g):
+    _kaldirim_seridi(g, on(), HUCRE - 0.6, HUCRE)
+
+
+@parca("zemin_kenar", "Yol köşesi: kaldırım karesi + L bordür")
+def z_bordur_kose(g):
+    kutu(g, -A, -A + 0.46, -A, -A + 0.46, YOL_Z, KALDIRIM_Z, KALDIRIM, atla=("zn",))
+    kutu(g, -A + 0.46, -A + 0.6, -A, -A + 0.6, YOL_Z, KALDIRIM_Z + 0.02, TAS3, atla=("zn",))
+    kutu(g, -A, -A + 0.46, -A + 0.46, -A + 0.6, YOL_Z, KALDIRIM_Z + 0.02, TAS3, atla=("zn",))
+
+
+@_z("Kaldırım (karolu)")
+def z_kaldirim(g):
+    _ust(g, -A, A, -A, A, KALDIRIM_Z, KALDIRIM)
+    for i in range(4):
+        for j in range(4):
+            if (i + j) % 2 == 0:
+                _ust(g, -A + i * 0.7 + 0.03, -A + (i + 1) * 0.7 - 0.03, -A + j * 0.7 + 0.03, -A + (j + 1) * 0.7 - 0.03, KALDIRIM_Z + 0.004, KALDIRIM2)
+
+
+def _meydan(tohum):
+    def fn(g):
+        rnd = random.Random(tohum)
+        m = [PM("Meydan", "#d9cbb6"), PM("Meydan", "#cbbba3"), PM("Meydan", "#e3d7c4"), PM("Meydan", "#bfae96")]
+        _ust(g, -A, A, -A, A, KALDIRIM_Z, m[0])
+        for j in range(7):                                   # şaşırtmalı taş sıraları
+            y0 = -A + j * 0.4
+            x = -A + (0.0 if j % 2 == 0 else -0.2)
+            while x < A - 0.05:
+                w = rnd.uniform(0.3, 0.5)
+                a, b = max(-A, x + 0.03), min(A, x + w - 0.03)
+                if b - a > 0.12 and rnd.random() < 0.62:
+                    _ust(g, a, b, y0 + 0.03, y0 + 0.37, KALDIRIM_Z + 0.006, m[1 + rnd.randrange(3)])
+                x += w
+    return fn
+
+
+ekle("z_meydan_0", "zemin_karo", "Arnavut kaldırımı", _meydan(4))
+ekle("z_meydan_1", "zemin_karo", "Arnavut kaldırımı (varyant)", _meydan(9))
+
+
+@_z("Toprak patika (çim üstünde)")
+def z_patika(g):
+    _ust(g, -A, A, -A, A, CIM_Z, TOPRAK)
+    rnd = random.Random(6)
+    for i in range(4):
+        cx, cy = rnd.uniform(-0.9, 0.9), rnd.uniform(-0.9, 0.9)
+        g.yuz([(cx - 0.3, cy - 0.16, CIM_Z + 0.004), (cx + 0.26, cy - 0.2, CIM_Z + 0.004), (cx + 0.32, cy + 0.15, CIM_Z + 0.004), (cx - 0.22, cy + 0.2, CIM_Z + 0.004)], TOPRAK2)
+        g.sid += 1
+    for i in range(6):                                       # çakıl
+        meyve(g, rnd.uniform(-1.2, 1.2), rnd.uniform(-1.2, 1.2), CIM_Z, 0.06, TAS3, n=5, rz=0.05)
+    for i in range(3):
+        _tutam(g, rnd.choice((-1.25, 1.25)) + rnd.uniform(-0.08, 0.08), rnd.uniform(-1.2, 1.2), CIM_Z, rnd, CIM[3])
+
+
+@_z("Su (ince dalga çizgili)")
+def z_su(g):
+    _ust(g, -A, A, -A, A, SU_Z, SU)
+    rnd = random.Random(8)
+    for i in range(5):
+        cx, cy = rnd.uniform(-0.9, 0.7), -1.1 + i * 0.52 + rnd.uniform(-0.08, 0.08)
+        w = rnd.uniform(0.35, 0.7)
+        _ust(g, cx, cx + w, cy, cy + 0.035, SU_Z + 0.004, SU2)
+        _ust(g, cx + w * 0.5, cx + w * 1.3, cy + 0.1, cy + 0.13, SU_Z + 0.004, SU2)
+
+
+@parca("zemin_kenar", "Su kenarı: taş rıhtım duvarı")
+def z_su_kenar(g):
+    c = on()
+    c.kutu(g, 0.26, HUCRE - 0.26, -0.26, 0.0, SU_Z - 0.3, 0.06, TAS, arka=True)
+    for i in range(4):
+        a, b = 0.26 + (HUCRE - 0.52) * i / 4, 0.26 + (HUCRE - 0.52) * (i + 1) / 4
+        c.kutu(g, a + 0.015, b - 0.015, -0.3, 0.0, 0.06, 0.13, TAS3 if i % 2 else TAS2, arka=True)
+
+
+@parca("zemin_kenar", "Su kenarı: köşe babası")
+def z_su_kose(g):
+    kutu(g, -A, -A + 0.3, -A, -A + 0.3, SU_Z - 0.3, 0.2, TAS2, atla=("zn",))
+    kutu(g, -A - 0.0, -A + 0.34, -A - 0.0, -A + 0.34, 0.2, 0.27, TAS3, atla=())
+
+
+def _tarh(tohum):
+    def fn(g):
+        rnd = random.Random(tohum)
+        _ust(g, -A, A, -A, A, CIM_Z, CIM[0])
+        kutu(g, -1.15, 1.15, -1.15, 1.15, CIM_Z, CIM_Z + 0.14, TAS3, atla=("zn",))
+        kutu(g, -1.05, 1.05, -1.05, 1.05, CIM_Z + 0.14, CIM_Z + 0.17, PM("Toprak", "#8a6a52"), atla=("zn",))
+        for i in range(4):
+            for j in range(4):
+                x, y = -0.78 + i * 0.52 + rnd.uniform(-0.08, 0.08), -0.78 + j * 0.52 + rnd.uniform(-0.08, 0.08)
+                meyve(g, x, y, CIM_Z + 0.17, 0.16, YAPRAK, n=5, rz=0.2)
+                meyve(g, x, y, CIM_Z + 0.32, 0.09, CICEK[(i * 3 + j + tohum) % len(CICEK)], n=5)
+    return fn
+
+
+ekle("z_tarh_0", "zemin_karo", "Çiçek tarhı", _tarh(1))
+ekle("z_tarh_1", "zemin_karo", "Çiçek tarhı (varyant)", _tarh(2))
+
+
+@_z("Çit bitkisi: orta")
+def z_cit_orta(g):
+    kutu(g, -0.4, 0.4, -0.4, 0.4, CIM_Z, 1.05, YP, atla=("zn",))
+    kutu(g, -0.34, 0.34, -0.34, 0.34, 1.05, 1.13, YP2, atla=("zn",))
+
+
+@parca("zemin_kenar", "Çit bitkisi: komşu çite uzanan kol")
+def z_cit_kol(g):
+    c = on()
+    c.kutu(g, 1.0, 1.8, -1.0, 0.0, CIM_Z, 1.02, YP, arka=True)
+    c.kutu(g, 1.06, 1.74, -1.0, 0.0, 1.02, 1.1, YP2, arka=True)
+
+
+@parca("zemin_kenar", "Yükselti kenarı: toprak yamaç (boyu z ölçeğiyle)")
+def z_yamac(g):
+    c = on()
+    prizma(g, [c.p(0, 0, 0.0), c.p(0, 0.75, -1.0), c.p(0, -0.02, -1.0)], (c.u[0] * HUCRE, c.u[1] * HUCRE, 0), TOPRAK)
+    c.kutu(g, 0.0, HUCRE, -0.02, 0.1, -0.06, 0.012, CIM[1], arka=True)                       # üst kenarda sarkan çim
+    for i, (u, o, zz) in enumerate(((0.5, 0.25, -0.33), (1.5, 0.45, -0.6), (2.2, 0.2, -0.27), (1.0, 0.6, -0.8))):
+        p = c.p(u, o + 0.02, zz)
+        meyve(g, p[0], p[1], p[2], 0.1, TAS3 if i % 2 else CIM[3], n=5, rz=0.08)
+
+
+@parca("zemin_kenar", "Yükselti kenarı: taş istinat duvarı (boyu z ölçeğiyle)")
+def z_istinat(g):
+    c = on()
+    c.kutu(g, 0.0, HUCRE, -0.02, 0.16, -1.0, 0.0, TAS, arka=True)
+    rnd = random.Random(14)
+    for j in range(3):
+        zz = -0.95 + j * 0.32
+        u = 0.0 if j % 2 == 0 else -0.35
+        while u < HUCRE - 0.1:
+            w = rnd.uniform(0.5, 0.8)
+            a, b = max(0.0, u + 0.02), min(HUCRE, u + w - 0.02)
+            if b - a > 0.2:
+                c.kutu(g, a, b, 0.16, 0.19, zz, zz + 0.27, TAS2 if rnd.random() < 0.5 else TAS3)
+            u += w
+    c.kutu(g, -0.02, HUCRE + 0.02, -0.06, 0.22, 0.0, 0.09, TAS3, arka=True)                  # harpuşta
+
+
+@parca("zemin_kenar", "Sahne kenarı: toprak etek (boyu z ölçeğiyle)")
+def z_etek(g):
+    c = on()
+    c.kutu(g, 0.0, HUCRE, -0.06, 0.0, -1.0, 0.0, TOPRAK2, arka=True)
+    c.kutu(g, 0.0, HUCRE, -0.06, 0.012, -0.2, 0.0, TOPRAK, arka=True)
+
+
 # ================================== AYRINTI KATMANI (v4) ==================================
 # Aynı adlı parçalar burada yeniden tanımlanır (sonraki tanım geçerlidir): pencereler derin pervazlı, söveli, perdeli;
 # köşeler dişli taşlı; silmeler profilli; saçaklar konsollu ve oluklu; kiremitler kademeli ve oluklu; dükkân cepheleri
@@ -3685,6 +3959,267 @@ def ornekler():
 
 # ================================== JSON (Unity) ==================================
 
+# ================================== SAHNE (zemin + birden çok bina) ==================================
+
+SAHNE_RENK = dict(D="#f6f0e2", d="#e3dccb", C="#c8553f", c="#ad4835", K="#3f7d74", T="#c8553f", Y=YAPRAK_RENK[0], y=koyu(YAPRAK_RENK[0], 0.88), k=cizgi_rengi(YAPRAK_RENK[0]))
+
+
+def sahne_merkezi(n, x, y):
+    return ((x - (n - 1) / 2.0) * HUCRE, (y - (n - 1) / 2.0) * HUCRE)
+
+
+def zemin_yerlesim(sh):
+    """Sahnenin zemin parçaları (yer listesi; biçim yerlesim() ile aynı). Boyanmamış hücre çim, kademe 0.
+    Yol: komşuya göre şerit / yaya geçidi / rögar; yol olmayan kenarına kaldırım şeridi + bordür. Su: taş rıhtım. Çit: komşu çite kol.
+    Kademe farkı olan kenara toprak yamaç (çim, patika, tarh, çit) ya da taş istinat duvarı (yol, kaldırım, meydan, su); dış kenara etek.
+    C# karşılığı: AtolyeKurucu.ZeminYerlesim (karma dahil AYNI)."""
+    n = sh.get("n", 16)
+    tohum = sh.get("tohum", 1)
+    hz = {}
+    for x in range(n):
+        for y in range(n):
+            hz[(x, y)] = ("cim", 0)
+    for h in sh.get("zemin") or []:
+        if (h["x"], h["y"]) in hz:
+            hz[(h["x"], h["y"])] = (h.get("t") or "cim", max(0, min(2, h.get("k", 0))))
+    yerler = []
+    r = SAHNE_RENK
+
+    def tur(x, y):
+        v = hz.get((x, y))
+        return v[0] if v else None
+
+    def koy(ad, x, y, z, don=0, zs=1.0):
+        cx, cy = sahne_merkezi(n, x, y)
+        yerler.append((ad, cx, cy, z, don % 4, zs, (0.0, 0.0), r, 1.0, 0.0, "Govde", 0))
+
+    for (x, y) in sorted(hz):
+        t, k = hz[(x, y)]
+        z = k * KADEME
+        kom = [tur(x + dx, y + dy) for dx, dy in YON]
+        if t == "yol":
+            koy("z_yol", x, y, z)
+            yol = [v == "yol" for v in kom]
+            c = sum(yol)
+            yatay, dikey = yol[1] and yol[3], yol[0] and yol[2]
+            eksen = None                                         # 0: y ekseni boyunca (ön–arka), 1: x ekseni boyunca
+            if c == 1:
+                eksen = 0 if (yol[0] or yol[2]) else 1
+            elif yatay != dikey:
+                eksen = 1 if yatay else 0
+            if eksen is not None:
+                kavsak = False                                   # yol boyunca komşu hücre kavşak içi mi (iki yönde de süren yol)
+                for i in ((1, 3) if eksen == 1 else (0, 2)):
+                    if yol[i]:
+                        qx, qy = x + YON[i][0], y + YON[i][1]
+                        q = [tur(qx + dx, qy + dy) == "yol" for dx, dy in YON]
+                        if q[0] and q[2] and q[1] and q[3]:
+                            kavsak = True
+                yan0, yan1 = (yol[0], yol[2]) if eksen == 1 else (yol[3], yol[1])
+                if kavsak:
+                    koy("z_gecit", x, y, z, eksen)
+                elif not yan0 and not yan1:
+                    koy("z_serit", x, y, z, eksen)               # tek şeritli yol: ortada kesikli çizgi
+                elif yan1 and not yan0:
+                    koy("z_serit_kenar", x, y, z, 0 if eksen == 1 else 3)   # iki şeritli yol: çizgi iki hücrenin sınırında (bir kez)
+                if not kavsak and karma(x, y, 3, tohum) % 9 == 0:
+                    koy("z_rogar", x, y, z, eksen)
+            for i in range(4):
+                if not yol[i]:
+                    koy("z_bordur", x, y, z, i)
+            for i in range(4):
+                (ax, ay), (bx, by) = YON[(i + 3) % 4], YON[i]
+                a, b = yol[(i + 3) % 4], yol[i]
+                if not a and not b:
+                    koy("z_bordur_kose", x, y, z, i)
+                elif a and not b:
+                    koy("z_bordur_uc", x, y, z, i)
+                elif b and not a:
+                    koy("z_bordur_son", x, y, z, (i + 3) % 4)
+                elif tur(x + ax + bx, y + ay + by) != "yol":
+                    koy("z_bordur_kose", x, y, z, i)
+        elif t == "kaldirim":
+            koy("z_kaldirim", x, y, z)
+        elif t == "meydan":
+            koy("z_meydan_%d" % (karma(x, y, 5, tohum) % 2), x, y, z)
+        elif t == "patika":
+            koy("z_patika", x, y, z, karma(x, y, 6, tohum) % 4)
+        elif t == "su":
+            koy("z_su", x, y, z, karma(x, y, 7, tohum) % 4)
+            su = [v == "su" for v in kom]
+            for i in range(4):
+                if not su[i]:
+                    koy("z_su_kenar", x, y, z, i)
+            for i in range(4):
+                (ax, ay), (bx, by) = YON[(i + 3) % 4], YON[i]
+                if not (su[(i + 3) % 4] and su[i] and tur(x + ax + bx, y + ay + by) == "su"):
+                    koy("z_su_kose", x, y, z, i)
+        elif t == "tarh":
+            koy("z_tarh_%d" % (karma(x, y, 8, tohum) % 2), x, y, z)
+        elif t == "cit":
+            koy("z_cim_0", x, y, z)
+            koy("z_cit_orta", x, y, z)
+            for i in range(4):
+                if kom[i] == "cit":
+                    koy("z_cit_kol", x, y, z, i)
+        else:
+            koy("z_cim_%d" % (karma(x, y, 1, tohum) % 3), x, y, z, karma(x, y, 2, tohum) % 4)
+        # yükselti kenarları ve sahnenin dış eteği
+        for i, (dx, dy) in enumerate(YON):
+            v = hz.get((x + dx, y + dy))
+            if v is None:
+                koy("z_etek", x, y, z, i, z + ETEK)
+            elif v[1] < k:
+                koy("z_istinat" if t in SERT_ZEMIN else "z_yamac", x, y, z, i, (k - v[1]) * KADEME)
+    return yerler
+
+
+def _yer_ekle(g, yer, hafif=False):
+    """Bir yerleşimi geometriye ekler (bina() ile aynı dönüşüm)."""
+    ad, cx, cy, z, don, zs, kay, r, olcek, aci, ygrup, cam = yer
+    pg = hafif_parca(ad) if hafif else parca_g(ad)
+    ca, sa = math.cos(aci), math.sin(aci)
+    for f, mi in zip(pg.f, pg.fm):
+        pts = []
+        for i in f:
+            px, py, pz = pg.v[i]
+            px, py, pz = px * olcek, py * olcek, pz * olcek
+            if aci:
+                px, py = px * ca - py * sa, px * sa + py * ca
+            px, py = px + kay[0], py + kay[1]
+            for _ in range(don):
+                px, py = -py, px
+            pts.append((cx + px, cy + py, z + pz * zs))
+        g.yuz(pts, _renkli(pg.mats[mi], r, cam))
+    g.sid += 1
+
+
+def sahne_kademe(sh, x, y):
+    for h in sh.get("zemin") or []:
+        if h["x"] == x and h["y"] == y:
+            return max(0, min(2, h.get("k", 0)))
+    return 0
+
+
+def sahne(sh, tasarimlar=None, gece=None):
+    """Sahnenin tek geometrisi: zemin + binalar (tasarım adıyla; 5 × 5 arsanın ortası verilen hücrede, don × 90° döner) + süsler.
+    g.cizgiler: kalem çizgileri. gece: (malzeme, bina sırası, açık mı) → malzeme adı çeviren işlev (gece önizlemesi)."""
+    n = sh.get("n", 16)
+    tasarimlar = tasarimlar or {t["ad"]: t for t in ornekler()}
+    g = G(sh.get("ad", "sahne"))
+    zg = G("zemin")
+    for yer in zemin_yerlesim(sh):
+        _yer_ekle(zg, yer)
+    susler = sh.get("susler") or []
+    if susler:
+        sg = bina(dict(ad="sus", tohum=sh.get("tohum", 1), tur="konut", bloklar=[], susler=susler))
+        for f, mi in zip(sg.f, sg.fm):
+            zg.yuz([sg.v[j] for j in f], sg.mats[mi])
+    cz = kenarlar(zg)
+    for f, mi in zip(zg.f, zg.fm):
+        g.yuz([zg.v[j] for j in f], gece(zg.mats[mi], -1, True) if gece else zg.mats[mi])
+    if gece:
+        cz = [(a, b, "#15131f", w) for a, b, c, w in cz]
+    for bi, b in enumerate(sh.get("binalar") or []):
+        t = tasarimlar.get(b["tasarim"])
+        if not t:
+            continue
+        acik = not b.get("kapali")
+        bg = bina(t, gizle=GIZLI_GRUP if acik else ("Ic", "Ampul", "Poset"))
+        ox, oy = sahne_merkezi(n, b["x"], b["y"])
+        oz = sahne_kademe(sh, b["x"], b["y"]) * KADEME + KALDIRIM_Z
+        don = b.get("don", 0) % 4
+
+        def cevir(p):
+            px, py = p[0], p[1]
+            for _ in range(don):
+                px, py = -py, px
+            return (ox + px, oy + py, oz + p[2])
+        for f, mi in zip(bg.f, bg.fm):
+            g.yuz([cevir(bg.v[j]) for j in f], gece(bg.mats[mi], bi, acik) if gece else bg.mats[mi])
+        cz += [(cevir(a), cevir(b2), "#15131f" if gece else c, w) for a, b2, c, w in bg.cizgiler]
+    g.cizgiler = cz
+    return g
+
+
+def _dikdortgen(x0, x1, y0, y1, t, k=0):
+    return [dict(x=x, y=y, t=t, k=k) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)]
+
+
+def _zemin_birlestir(*parcalar):
+    """Sonraki boya öncekinin üstüne yazar."""
+    d = {}
+    for l in parcalar:
+        for h in l:
+            d[(h["x"], h["y"])] = h
+    return [d[k] for k in sorted(d)]
+
+
+def _b(tasarim, x, y, don=0, kapali=False):
+    v = dict(tasarim=tasarim, x=x, y=y, don=don)
+    if kapali:
+        v["kapali"] = True
+    return v
+
+
+def sahneler():
+    """Örnek sahneler (16 × 16 hücre = 44,8 m). y = 0 ön (kameraya yakın)."""
+    S = []
+    # 1) Kasaba meydanı: ortada arnavut kaldırımı meydan + çeşme, çevresinde yol, dükkânlar, köşede park
+    z = _zemin_birlestir(
+        _dikdortgen(0, 15, 6, 7, "yol"), _dikdortgen(5, 6, 0, 15, "yol"),
+        _dikdortgen(7, 15, 8, 15, "kaldirim"), _dikdortgen(7, 12, 0, 5, "meydan"), _dikdortgen(0, 4, 8, 15, "kaldirim"),
+        _dikdortgen(13, 15, 0, 5, "cim"), _dikdortgen(0, 4, 0, 5, "cim"), _dikdortgen(1, 3, 2, 2, "patika"), _dikdortgen(2, 2, 0, 5, "patika"),
+        _dikdortgen(0, 0, 0, 5, "cit"), _dikdortgen(0, 4, 0, 0, "cit"), [dict(x=2, y=0, t="patika", k=0)], _dikdortgen(3, 4, 4, 5, "tarh"),
+        _dikdortgen(13, 15, 4, 5, "tarh"))
+    S.append(dict(ad="kasaba_meydani", n=16, tohum=3, zemin=z,
+                  binalar=[_b("burger_queen", 8, 9), _b("starbocks", 12, 10), _b("books", 2, 9), _b("pastel_kuleler", 2, 13, kapali=True),
+                           _b("old_pub", 8, 13), _b("dutch_gable", 13, 14), _b("flowers", 14, 2, 3)],
+                  susler=[_sus("cesme", 2.8, -12.6), _sus("bank", 0.0, -15.2, 0), _sus("bank", 5.6, -15.2, 0), _sus("sokak_lambasi", -1.0, -8.6),
+                          _sus("sokak_lambasi", 7.6, -8.6), _sus("agac_yuvarlak_1", -19.0, -14.0), _sus("agac_yuvarlak_2", -11.5, -19.0),
+                          _sus("agac_meyve_1", -12.0, -10.0), _sus("bank", -15.2, -16.0, 90), _sus("agac_yuvarlak_3", 18.5, -17.0), _sus("masa", 4.0, -9.4),
+                          _sus("cop_kutusu", -1.6, -10.2), _sus("heykel", 9.8, -16.5)]))
+    # 2) Nehir kenarı: önde kanal, rıhtım kaldırımı, arkada sıra evler ve kafe; köprü yerine iskele
+    z = _zemin_birlestir(
+        _dikdortgen(0, 15, 2, 4, "su"), _dikdortgen(0, 15, 5, 6, "kaldirim"), _dikdortgen(0, 15, 7, 8, "yol"), _dikdortgen(0, 15, 9, 15, "kaldirim"),
+        _dikdortgen(0, 15, 0, 1, "cim"), _dikdortgen(10, 11, 0, 8, "yol"), _dikdortgen(10, 11, 2, 4, "meydan"), _dikdortgen(13, 15, 12, 15, "cim"),
+        _dikdortgen(13, 15, 12, 12, "cit"), _dikdortgen(0, 2, 0, 0, "tarh"))
+    S.append(dict(ad="nehir_kenari", n=16, tohum=5, zemin=z,
+                  binalar=[_b("terrace_houses", 2, 12), _b("fish_ships", 7, 12), _b("dutch_gable", 13, 10, kapali=True), _b("fachwerk_ev", 14, 14)],
+                  susler=[_sus("kayik", -14.0, -14.2, 80), _sus("kayik", 2.0, -13.6, 100), _sus("iskele", -6.0, -9.8), _sus("sokak_lambasi", -18.0, -7.6),
+                          _sus("sokak_lambasi", -4.0, -7.6), _sus("bank", -11.0, -7.4, 180), _sus("agac_yuvarlak_1", -19.5, -20.0), _sus("agac_yuvarlak_2", -8.0, -20.5),
+                          _sus("agac_meyve_1", 18.0, -20.0), _sus("fici", 1.0, -7.0), _sus("kasalar", 3.4, -6.8), _sus("bisiklet_park", 17.0, -7.2)]))
+    # 3) Banliyö sokağı: ortada yol, iki yanında bahçeli evler, çitler, patikalar
+    z = _zemin_birlestir(
+        _dikdortgen(0, 15, 7, 8, "yol"), _dikdortgen(7, 8, 0, 6, "patika"), _dikdortgen(0, 15, 6, 6, "kaldirim"), _dikdortgen(0, 15, 9, 9, "kaldirim"),
+        _dikdortgen(0, 15, 5, 5, "cit"), [dict(x=7, y=5, t="patika", k=0), dict(x=8, y=5, t="patika", k=0)],
+        _dikdortgen(2, 2, 10, 10, "patika"), _dikdortgen(8, 8, 10, 10, "patika"), _dikdortgen(13, 13, 10, 10, "patika"),
+        _dikdortgen(0, 1, 0, 1, "tarh"), _dikdortgen(14, 15, 0, 1, "tarh"), _dikdortgen(5, 5, 11, 15, "cit"), _dikdortgen(11, 11, 11, 15, "cit"))
+    S.append(dict(ad="banliyo_sokagi", n=16, tohum=7, zemin=z,
+                  binalar=[_b("bahceli_ev", 2, 13), _b("kucuk_ev", 8, 13), _b("fachwerk_ev", 13, 13), _b("kucuk_ev", 3, 2, 2), _b("bahceli_ev", 12, 2, 2)],
+                  susler=[_sus("sokak_lambasi", -15.0, 0.2), _sus("sokak_lambasi", 5.0, 0.2), _sus("posta_kutusu", -9.0, 5.2), _sus("agac_yuvarlak_1", -1.0, 17.0),
+                          _sus("agac_meyve_1", 20.0, 17.5), _sus("agac_yuvarlak_3", -2.0, -17.0), _sus("agac_meyve_2", 3.5, -19.0), _sus("durak", 12.0, -3.4, 180),
+                          _sus("cop_kutusu", 9.6, -3.4), _sus("koyun", 0.0, -12.0, 40)]))
+    # 4) Tepe kasabası: arkada iki kademe yükselen teraslar (istinat duvarı, yamaç), önde yol ve su
+    z = _zemin_birlestir(
+        _dikdortgen(0, 15, 0, 1, "su"), _dikdortgen(0, 15, 2, 2, "kaldirim"), _dikdortgen(0, 15, 3, 4, "yol"), _dikdortgen(0, 15, 5, 9, "kaldirim"),
+        _dikdortgen(0, 15, 10, 15, "cim", 1), _dikdortgen(0, 6, 10, 15, "meydan", 1), _dikdortgen(9, 15, 13, 15, "cim", 2), _dikdortgen(7, 8, 10, 12, "tarh", 1),
+        _dikdortgen(12, 13, 5, 9, "cim"), _dikdortgen(12, 12, 5, 9, "cit"))
+    S.append(dict(ad="tepe_kasabasi", n=16, tohum=9, zemin=z,
+                  binalar=[_b("town_hall", 3, 13), _b("tas_kule", 12, 14), _b("bakery", 2, 7), _b("pharmacy", 8, 7), _b("kaideli_ev", 14, 7)],
+                  susler=[_sus("agac_yuvarlak_1", 8.0, 8.0), _sus("agac_yuvarlak_2", 20.0, 9.0), _sus("agac_meyve_1", 16.0, 14.0), _sus("sokak_lambasi", -8.0, -15.4),
+                          _sus("sokak_lambasi", 8.0, -15.4), _sus("bank", 0.0, -15.6, 180), _sus("kayik", -12.0, -20.4, 90), _sus("kuyu", 17.5, -3.0)]))
+    return S
+
+
+def sahne_json_yaz(klasor):
+    os.makedirs(klasor, exist_ok=True)
+    for sh in sahneler():
+        with open(os.path.join(klasor, "sahne_%s.json" % sh["ad"]), "w", encoding="utf-8") as f:
+            json.dump(sh, f, ensure_ascii=False, separators=(",", ":"))
+    print("YAZILDI", klasor, len(sahneler()), "sahne")
+
+
 def _unity_parca(ad, g):
     """Parçayı Unity'nin okuyacağı düz listelere çevirir. Koordinatlar MODEL ekseninde (metre, Z yukarı, ön −Y) kalır:
     eksen çevirisini C# tarafı yapar. Yüzler üçgenlenir; her malzeme bir alt-mesh."""
@@ -3706,7 +4241,8 @@ def json_yaz(yol):
     parcalar = [_unity_parca(ad, parca_g(ad)) for ad in PARCA]
     hafifler = [_unity_parca(ad, hafif_parca(ad)) for ad in PARCA]
     veri = dict(surum=3, hucre=HUCRE, kat=KAT, izgara=IZGARA, duvarRenk=DUVAR_RENK, catiRenk=CATI_RENK, vurguRenk=VURGU_RENK,
-                tenteRenk=TENTE_RENK, yaprakRenk=YAPRAK_RENK, icSinir=IC_SINIR_VARSAYILAN, icYedek=IC_YEDEK, catiTarz=CATI_TARZ_AD, turler=TURLER, parcalar=parcalar, hafifler=hafifler)
+                tenteRenk=TENTE_RENK, yaprakRenk=YAPRAK_RENK, icSinir=IC_SINIR_VARSAYILAN, icYedek=IC_YEDEK,
+                kademe=KADEME, etek=ETEK, kaldirimZ=KALDIRIM_Z, zeminTur=[dict(ad=a, etiket=e) for a, e in ZEMIN_TUR], sertZemin=list(SERT_ZEMIN), catiTarz=CATI_TARZ_AD, turler=TURLER, parcalar=parcalar, hafifler=hafifler)
     os.makedirs(os.path.dirname(yol), exist_ok=True)
     with open(yol, "w", encoding="utf-8") as f:
         json.dump(veri, f, ensure_ascii=False, separators=(",", ":"))
@@ -3842,6 +4378,61 @@ def onizleme(klasor, sec=None):
         _kolaj(res, adlar, 6, 700, os.path.join(klasor, "ic_mekan_hepsi.jpg"))
     if not sec or "gece" in sec:
         _gece(klasor, orn)
+    if sec and "sahne" in sec:
+        # örnek sahneler: gündüz + (ilki) gece. Yavaş: yalnız istenince (--onizleme <klasör> sahne [ad])
+        for sh in sahneler():
+            if len(sec) > 1 and sh["ad"] not in sec:
+                continue
+            sahne_ciz(sh).save(os.path.join(klasor, "sahne_%s.jpg" % sh["ad"]), quality=90)
+            print(os.path.join(klasor, "sahne_%s.jpg" % sh["ad"]))
+            if "gece" in sec or sh["ad"] == "kasaba_meydani":
+                sahne_ciz(sh, gece=True).save(os.path.join(klasor, "sahne_%s_gece.jpg" % sh["ad"]), quality=90)
+
+
+def gece_cevirici():
+    """(işlev, renk sözlüğü): malzemeyi gece hâline çevirir. Pencereler üç grupta (bina sırasına göre bir kısmı sönük), açık
+    dükkânın vitrini ve tabelası yanık, kapalınınki karanlık; sokak lambaları ve iç ışıklar yanık; geri kalan lacivert tonlu."""
+    gece_hex = {}
+
+    def cevir(mat, i, acik):
+        hexv = HEX[mat]
+        c = [int(hexv[j:j + 2], 16) for j in (1, 3, 5)]
+        isik = None
+        if mat.startswith("Pastel_Cam3_"):
+            isik = None if (i % 2 == 0 or not acik) else (255, 214, 140)
+        elif mat.startswith("Pastel_Cam2_"):
+            isik = (255, 226, 160) if acik or i % 3 else None
+        elif mat.startswith("Pastel_Cam_"):
+            isik = (255, 236, 180) if acik else ((255, 226, 160) if i % 2 else None)
+        elif mat.startswith("Pastel_Vitrin_"):
+            isik = (255, 240, 200) if acik else None
+        elif mat.startswith("Pastel_Isik_"):
+            isik = (255, 240, 190)
+        elif mat.startswith("Pastel_Yazi_"):
+            isik = (255, 246, 220) if acik else (150, 150, 170)
+        if isik is None:
+            c = (int(c[0] * 0.30 + 8), int(c[1] * 0.33 + 10), int(c[2] * 0.47 + 22))
+            ad = "G_%02x%02x%02x" % c
+        else:
+            c = isik
+            ad = "GI_%02x%02x%02x" % c
+        gece_hex[ad] = "#%02x%02x%02x" % c
+        return ad
+    return cevir, gece_hex
+
+
+def sahne_ciz(sh, boy=2200, gece=False, az=30, el=33):
+    """Sahnenin önizleme resmi (gündüz ya da gece)."""
+    from bolge_onizleme import render
+    if gece:
+        cevir, hx = gece_cevirici()
+        g = sahne(sh, gece=cevir)
+        arka = (24, 28, 44)
+        im = render(g, hx, size=int(boy * 1.25), az=az, el=el, arka=arka, pastel=True, cizgiler=g.cizgiler)
+        return _kirp(im, boy, arka)
+    g = sahne(sh)
+    im = render(g, HEX, size=int(boy * 1.25), az=az, el=el, arka=ARKA, pastel=True, cizgiler=g.cizgiler)
+    return _kirp(im, boy)
 
 
 def _gece(klasor, orn):
@@ -3909,6 +4500,8 @@ if __name__ == "__main__":
         i = sys.argv.index("--ornekler")
         hedef = sys.argv[i + 1] if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("--") else os.path.join(depo_koku(), "Resources", "Atolye", "Tasarimlar")
         ornek_json_yaz(hedef)
+    if "--sahneler" in sys.argv:
+        sahne_json_yaz(os.path.join(depo_koku(), "Resources", "Atolye", "Sahneler"))
     if "--onizleme" in sys.argv:
         i = sys.argv.index("--onizleme")
         onizleme(sys.argv[i + 1], sys.argv[i + 2:] or None)
