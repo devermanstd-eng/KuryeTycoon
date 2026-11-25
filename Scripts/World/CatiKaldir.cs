@@ -37,8 +37,29 @@ namespace KuryeTycoon
         bool sifirla;                          // gizlenip yeniden görünen binada çatı ilk karede yerine konur
         float sonrakiKontrol;
 
-        /// <summary>Şu an çatısı açık (ya da açılmakta) olan bina var mı? (Hata raporu / test için.)</summary>
+        /// <summary>Çatı açık ya da açılmakta mı (hedef durum).</summary>
         public bool Acik => hedefAcik;
+        /// <summary>Çatı şu an tam kapalı değil mi (iç mekân görünüyor mu).</summary>
+        public bool IcGorunur => t > 0f;
+        /// <summary>Dükkân seçiliyken (bina kartı açık) çatı yakınlık şartı aranmadan açık tutulur (BakkalCanli ayarlar).</summary>
+        [System.NonSerialized] public bool zorlaAcik;
+        /// <summary>"İçeri gir" kamerası bu binanın içinde: çatı kapalı tutulur ama iç mekân etkin kalır (BakkalCanli ayarlar).</summary>
+        [System.NonSerialized] public bool iceriModu;
+        /// <summary>Modelin kökü (çatı, gövde ve iç mekân objelerinin ebeveyni) ve iç mekân objesi.</summary>
+        public Transform Kok => cati != null ? cati.parent : null;
+        public Transform Ic => ic;
+        /// <summary>Son kontrolde bir karenin ekran yüksekliğine oranı ve binanın ekran ortasına uzaklığı (BakkalCanli de kullanır).</summary>
+        public float SonBoy { get; private set; }
+        public float SonMerkez { get; private set; } = 9f;
+        public const string CanliAd = "Canli";
+
+        /// <summary>Kar katmanı kurulmayacak parça mı: iç mekân objesi, onun çocukları ya da canlı figürler.</summary>
+        public static bool KarYok(Transform tr)
+        {
+            for (int i = 0; i < 5 && tr != null; i++, tr = tr.parent)
+                if (tr.name.EndsWith(IcEki) || tr.name == CanliAd) return true;
+            return false;
+        }
 
         /// <summary>Modelde "_Cati" ile biten bir çocuk varsa bileşeni ekler. Yoksa null döner (çoğu bina).</summary>
         public static CatiKaldir Tak(GameObject inst)
@@ -87,6 +108,11 @@ namespace KuryeTycoon
         {
             if (cati == null) return;
             if (sifirla) { sifirla = false; Uygula(0f); }
+            if (ic != null)
+            {
+                bool icGoster = t > 0f || iceriModu;
+                if (ic.gameObject.activeSelf != icGoster) ic.gameObject.SetActive(icGoster);
+            }
             float simdi = Time.unscaledTime;
             if (simdi >= sonrakiKontrol)
             {
@@ -103,6 +129,8 @@ namespace KuryeTycoon
         {
             var mc = MapCamera.I;
             var cam = Camera.main;
+            SonBoy = 0f; SonMerkez = 9f;
+            if (iceriModu) return false;                              // kamera içeride: çatı yerinde
             if (mc == null || cam == null) return false;
             if (mc.Tilt01 < 0.9f) return false;                       // binalar yatık / yükseliyor
             Vector3 p = transform.position;
@@ -113,6 +141,8 @@ namespace KuryeTycoon
             float boy = Mathf.Abs(v2.x - v.x) * cam.aspect;
             float dx = (v.x - 0.5f) * cam.aspect, dy = v.y - 0.5f;
             float merkez = Mathf.Sqrt(dx * dx + dy * dy);
+            SonBoy = boy; SonMerkez = merkez;
+            if (zorlaAcik) return true;                               // seçili dükkân: uzaktan da açık
             return acikti ? boy >= KapatBoy && merkez <= KapatMerkez
                           : boy >= AcBoy && merkez <= AcMerkez;
         }
@@ -122,7 +152,8 @@ namespace KuryeTycoon
         {
             t = Mathf.Clamp01(yeni);
             bool kapali = t <= 0f, tamAcik = t >= 1f;
-            if (ic != null && ic.gameObject.activeSelf == kapali) ic.gameObject.SetActive(!kapali);
+            bool icAcik = !kapali || iceriModu;
+            if (ic != null && ic.gameObject.activeSelf != icAcik) ic.gameObject.SetActive(icAcik);
             if (cati.gameObject.activeSelf == tamAcik) cati.gameObject.SetActive(!tamAcik);
             if (kapali)
             {

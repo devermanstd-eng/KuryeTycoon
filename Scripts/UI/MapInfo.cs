@@ -34,7 +34,12 @@ namespace KuryeTycoon
 
         bool InfoOpen => infoShop != null || infoBuilding;
 
-        void CloseInfo() { infoShop = null; infoBuilding = false; }
+        void CloseInfo()
+        {
+            if (BakkalCanli.Iceride != null) BakkalCanli.Iceride.Cik();   // "İçeri gir" kamerası kartla birlikte kapanır
+            infoShop = null;
+            infoBuilding = false;
+        }
 
         /// <summary>Fare altındaki dükkan ya da müşteri binası. Önde (kameraya yakın) olan seçilir.</summary>
         bool PickBuilding(Vector2 m, out Shop shop, out Vector2Int tile)
@@ -85,6 +90,13 @@ namespace KuryeTycoon
         /// <summary>Haritada sol tık: kurye yoksa bina / dükkan kartını açar, boş yere tıklayınca kapatır.</summary>
         bool HandleInfoClick(Vector2 m)
         {
+            // Kartı açık canlı bakkalın içindeki nesneye (raf, kasa, soğutucu, vitrin) tıklama
+            var bakkal = BakkalCanli.Bul(infoShop);
+            if (bakkal != null && bakkal.NesneTikla(Camera.main, GuiToScreenPx(m)))
+            {
+                binaKirli = true;
+                return true;
+            }
             if (PickBuilding(m, out var shop, out var tile))
             {
                 infoShop = shop;

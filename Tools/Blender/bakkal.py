@@ -9,15 +9,19 @@ Oyundaki "Corner Shop" dükkânının binası: köşesi pahlı, kiremit çatıl�
 Geometri çekirdeği bolge_modelleri.py'den gelir (saf Python; bpy yalnızca mesh + FBX dışa aktarmada kullanılır).
 
 Çıktı (Modeller/Binalar):
-  Dukkan_bakkal_1.fbx        üç obje: Dukkan_bakkal_1_Govde (duvarlar, dış detaylar, zemin)
+  Dukkan_bakkal_1.fbx        34 obje: Dukkan_bakkal_1_Govde (bel altı duvarlar, dış detaylar, tente, direkler)
                                       Dukkan_bakkal_1_Ic    (iç mekân: yalnızca çatı kalkınca görünür)
-                                      Dukkan_bakkal_1_Cati  (tavan, saçak, çatı, baca, anten: kalkan parça)
-  Dukkan_bakkal_1_Hafif.fbx  tek obje, uzak görünüm: gövde + çatı, küçük parçalar ve iç mekân yok
+                                      Dukkan_bakkal_1_Cati  (tavan, saçak, çatı, baca, saçak tabelası: kalkan parça)
+                                      ve hareketli / değişen adlı parçalar (aşağıda "HAREKETLİ PARÇALAR"): _Kapi, _Kepenk1-3,
+                                      _Duvar_On/Pah/Sag/Arka/Sol, _Urun_<raf>_<1-3>, _Ampul, _Poset, _Kamyonet, _Koliler,
+                                      _Kasa2, _Sogutucu4, _Vitrin2
+  Dukkan_bakkal_1_Hafif.fbx  tek obje, uzak görünüm: gövde + duvarlar + çatı, küçük parçalar ve iç mekân yok
 
 Çalıştırma:
   • Unity: Kurye Tycoon > Blender > Bakkalı üret   (bitince prefab adımı kendiliğinden çalışır)
   • Terminal: blender -b --factory-startup -P Tools/Blender/bakkal.py
-  • Blender'sız göz kontrolü: python3 Tools/Blender/bakkal.py --onizleme klasor   (PNG'ler + bakkal_kolaj.jpg)
+  • Blender'sız göz kontrolü: python3 Tools/Blender/bakkal.py --onizleme klasor   (PNG'ler + bakkal_kolaj.jpg + bakkal_canli_kolaj.jpg)
+  • C# tablosu (yol noktaları, pivotlar): python3 Tools/Blender/bakkal.py --tablo   → Scripts/World/BakkalCanli.cs
 
 Kurallar bolge_modelleri.py ile aynı: ölçü metre, ön (sokak) −Y, arsa 14 × 14 m ve ortada, zemin z = 0,08 (ZL).
 Malzeme adı "Etiket_rrggbb"; Vitrin_ / Cam_ / Yazi_ / Isik_ geceleri yanar. Duvar_ / Cati_ / Kapi_ / Panjur_ adlı
@@ -73,6 +77,7 @@ PAH = 1.9
 T = 0.22                    # duvar kalınlığı
 ZF = 0.26                   # dükkân zemini (kaldırımdan bir basamak yukarıda)
 ZT = 3.36                   # duvar üstü; bunun üstündeki her şey çatı objesinde
+ZB = ZF + 0.6               # bel hizası: kameraya bakan duvarların bunun üstü oyunda iner (Duvar_* objeleri), altı sabit kalır
 ZC = ZT + 0.08              # tavan döşemesinin üstü: çatı buradan başlar
 SACAK = 0.36                # çatı saçağının duvardan taşması (ön saçağın önünde tabela durur)
 IX0, IX1, IY0, IY1 = X0 + T, X1 - T, Y0 + T, Y1 - T
@@ -82,6 +87,63 @@ PAH_IC = (X1 - PAH) - Y0 - T * math.sqrt(2.0)   # iç pah çizgisi: x − y = PA
 URUN = ["#d94f3d", "#e8a23a", "#f2d04a", "#5a9a4a", "#2f7d8c", "#3d5a8a", "#8a4a6b", "#f4f0e6", "#c46a2b", "#7ab8d6",
         "#e07a9a", "#6b4a32"]
 SISE = ["#4a2a1c", "#3f7d4a", "#bfe0ee", "#f08a2a", "#c8342f", "#f2e6a0"]
+
+
+# ================================== HAREKETLİ PARÇALAR VE YOL NOKTALARI ==================================
+# Oyunda hareket eden / açılıp kapanan her şey ayrı, adlı bir objedir (Scripts/World/BakkalCanli.cs adla bulur):
+#   Kapi (menteşede döner) · Kepenk1-3 (üstten sarılır) · Poset (tezgâhtaki sipariş poşeti) · Kamyonet, Koliler (sabah
+#   tedariki) · Urun_<raf>_<1-3> (raflar boşaldıkça gizlenen ürün grupları) · Ampul (kapalıyken söner) ·
+#   Kasa2, Sogutucu4, Vitrin2 (kozmetik yükseltmeler).
+# Objenin kökü (pivot) EK_PIVOT'taki noktadadır; C# tarafı dört objenin pivotundan model → Unity dönüşümünü kendisi çıkarır
+# (eksen çevirisine ve ölçeğe bağlı kalmaz), bu yüzden aşağıdaki tablo ile BakkalCanli.cs'teki tablo AYNI olmalı:
+# değiştirince `python3 bakkal.py --tablo` çıktısını C#'a yapıştır.
+EK = {}                     # ad -> G (bakkal() her çağrıda sıfırlar)
+URUN_HEDEF = None           # ürün dizilirken: [sabit G, seviye 1, seviye 2, seviye 3] (None: hepsi verilen G'ye)
+KAPI_KAPALI_YON = (-S2, -S2)   # kapalı kanadın menteşeden uca yönü; içeri açılırken (−S2, +S2) yönüne döner
+POSET_YER = (2.98, 1.6, ZF + 0.95)
+KAMYONET_YER = (-2.6, 6.15, ZL)
+KOLI_YER = (-0.2, 6.4, ZL)
+RAFLAR = ("G1", "G2", "G3", "DR", "SG")      # üç gondol, duvar rafı, soğutucular
+# Yol noktaları: ad -> (x, y, z). Kenarlar NOKTA_KENAR'da. Metre, model ekseni (ön −Y).
+_KX = (-3.8, -1.92, 0.03)
+NOKTA = {
+    "S1": (5.6, -6.5, ZL), "S2": (-1.5, -6.6, ZL), "ON": (3.3, -5.3, ZL), "ESIK": (3.75, -3.65, ZF), "KAPI": (3.85, -2.65, ZF),
+    "GIR": (3.25, -2.3, ZF), "K3": (2.2, -2.25, ZF), "B3": (2.2, 2.95, ZF),
+    "Q3": (2.2, -1.0, ZF), "Q2": (2.2, -0.1, ZF), "Q1": (2.2, 0.8, ZF), "Q0": (2.2, 1.7, ZF), "KUR": (2.2, 2.4, ZF),
+    "KC": (3.75, 3.0, ZF), "KAS": (3.95, 1.75, ZF), "AI": (3.05, 3.8, ZF), "AD": (3.0, 5.45, ZL), "KV": (0.55, 6.3, ZL),
+}
+NOKTA_KENAR = [("S1", "ON"), ("S2", "ON"), ("ON", "ESIK"), ("ESIK", "KAPI"), ("KAPI", "GIR"), ("GIR", "K3"),
+               ("K3", "Q3"), ("Q3", "Q2"), ("Q2", "Q1"), ("Q1", "Q0"), ("Q0", "KUR"), ("KUR", "B3"),
+               ("B3", "KC"), ("KC", "KAS"), ("B3", "AI"), ("AI", "AD"), ("AD", "KV")]
+for _i, _x in enumerate(_KX):
+    NOKTA["K%d" % _i] = (_x, -2.25, ZF)
+    NOKTA["B%d" % _i] = (_x, 2.95, ZF)
+    for _j, _y in enumerate((-0.8, 0.4, 1.6)):
+        NOKTA["A%d%s" % (_i, "abc"[_j])] = (_x, _y, ZF)
+    NOKTA_KENAR += [("K%d" % _i, "A%da" % _i), ("A%da" % _i, "A%db" % _i), ("A%db" % _i, "A%dc" % _i), ("A%dc" % _i, "B%d" % _i),
+                    ("K%d" % _i, "K%d" % (_i + 1)), ("B%d" % _i, "B%d" % (_i + 1))]
+
+
+def ek(ad, pivot=(0.0, 0.0, 0.0)):
+    """Adlı ek parça (yoksa oluşturur). pivot: objenin kökü (dışa aktarımda köşeler buna göre kaydırılır)."""
+    g = EK.get(ad)
+    if g is None:
+        g = EK[ad] = G(AD + "_" + ad)
+        g.pivot = pivot
+    return g
+
+
+def urun_g(g, rnd):
+    """Bir ürün grubunun gideceği geometri: raf boşalırken sırayla gizlenen üç seviyeden biri ya da hep duran sabit kısım."""
+    if URUN_HEDEF is None:
+        return g
+    return URUN_HEDEF[rnd.randrange(len(URUN_HEDEF))]
+
+
+def dondur(g, pivot, aci):
+    """Önizleme için: geometriyi pivotun çevresinde Z ekseninde döndürür (kapıyı açık göstermek gibi)."""
+    ca, sa = math.cos(aci), math.sin(aci)
+    g.v = [(pivot[0] + (p[0] - pivot[0]) * ca - (p[1] - pivot[1]) * sa, pivot[1] + (p[0] - pivot[0]) * sa + (p[1] - pivot[1]) * ca, p[2]) for p in g.v]
 
 
 # ================================== KÜÇÜK YARDIMCILAR ==================================
@@ -227,8 +289,48 @@ def duvar(g, c, z0, z1, dis, ic, ust, acikliklar):
     if u < c.L - 1e-6:
         parcalar.append((u, c.L, z0, z1, False))
     for a, b, p, q, alt_parca in parcalar:
-        # boşluğun altındaki parçanın üstü (denizlik altı) iç duvar renginde; diğerlerinin üstü kesit rengi
-        c.kutu(g, a, b, -T, 0.0, p, q, {"*": ic, "1+": dis, "2+": ic if alt_parca else ust, "2-": ic}, arka=True)
+        # boşluğun altındaki parçanın üstü (denizlik altı) iç duvar renginde; diğerlerinin üstü kesit rengi.
+        # Bel hizasını (ZB) geçen parça ikiye bölünür: üstü ayrı objeye gider (duvar_ayir), altı yerinde kalır.
+        dilimler = [(p, q)] if not (p < ZB - 1e-6 < q - 1e-6) else [(p, ZB), (ZB, q)]
+        for p2, q2 in dilimler:
+            kesit_ust = ust if (q2 >= z1 - 1e-6 or (q2 == ZB and q > ZB)) else ic
+            c.kutu(g, a, b, -T, 0.0, p2, q2, {"*": ic, "1+": dis, "2+": kesit_ust, "2-": ic}, arka=True)
+
+
+def duvar_ayir(g, izler):
+    """Gövdenin cepheye bağlı, bel hizasının üstünde kalan katılarını Duvar_<cephe> objelerine taşır.
+    izler: (katı numarası, cephe adı ya da None) listesi; bir iz, kendinden sonraki katıların cephesini belirler."""
+    sinir = {}
+    for f, sd in zip(g.f, g.fs):
+        b = sinir.get(sd)
+        for i in f:
+            z = g.v[i][2]
+            if b is None:
+                b = sinir[sd] = [z, z]
+            else:
+                if z < b[0]: b[0] = z
+                if z > b[1]: b[1] = z
+
+    def cephe(sd):
+        ad = None
+        for bas, a in izler:
+            if sd > bas:
+                ad = a
+            else:
+                break
+        return ad
+    kalan = ([], [], [])
+    for f, m, sd in zip(g.f, g.fm, g.fs):
+        ad = cephe(sd)
+        zmin, zmax = sinir[sd]
+        ustte = zmin >= ZB - 0.012 or (zmin + zmax) / 2 > ZB + 0.05
+        if ad is None or not ustte:
+            kalan[0].append(f); kalan[1].append(m); kalan[2].append(sd)
+            continue
+        h = ek("Duvar_" + ad, (0.0, 0.0, ZB))
+        h.sid = sd
+        h.yuz([g.v[i] for i in f], g.mats[m])
+    g.f, g.fm, g.fs = list(kalan[0]), list(kalan[1]), list(kalan[2])
 
 
 def cam_bosluk(g, c, u0, u1, z0, z1, cam_mat, kasa_mat, bolme=(), yatay=(), t=0.07, dis=0.05, ic=0.03):
@@ -301,12 +403,20 @@ def govde_kur(g, R, rnd):
              (X1 + 0.05, Y1 + 0.05, ZL), (X0 - 0.05, Y1 + 0.05, ZL)]
     prizma(g, taban, (0, 0, ZF - ZL - 0.03), R["kaide"], kapak=R["kaide"])
 
+    # Cepheye bağlı parçalar: iz(ad) çağrısından sonraki katılar o cephenin sayılır; bel hizasının üstünde kalanları
+    # sonda duvar_ayir Duvar_<ad> objesine taşır (oyunda kameraya bakan duvar iner). iz(None): yerinde kalır.
+    izler = []
+
+    def iz(ad):
+        izler.append((g.sid, ad))
+
     # ---- duvarlar (gerçek boşluklu)
-    duvar(g, on, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [V1, V2])
-    duvar(g, pah, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [KAPI])
-    duvar(g, sag, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [SAG_P])
-    duvar(g, arka, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [DEPO, ARKA_P])
-    duvar(g, sol, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [SOL_P1, SOL_P2])
+    iz("On"); duvar(g, on, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [V1, V2])
+    iz("Pah"); duvar(g, pah, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [KAPI])
+    iz("Sag"); duvar(g, sag, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [SAG_P])
+    iz("Arka"); duvar(g, arka, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [DEPO, ARKA_P])
+    iz("Sol"); duvar(g, sol, ZF, ZT, R["duvar"], R["ic_duvar"], R["duvar_ust"], [SOL_P1, SOL_P2])
+    iz(None)
 
     # ---- süpürgelik (taş kaide bandı) ve köşe taşları
     def kaide(c, aralar, h=0.5):
@@ -333,9 +443,10 @@ def govde_kur(g, R, rnd):
                 c.kutu(g, c.L - w, c.L, 0, 0.035, z + 0.02, z + 0.26, R["trim"])
             z += 0.28
             i += 1
-    kose_tasi(on, True); kose_tasi(sol, False)
-    kose_tasi(sol, True); kose_tasi(arka, False)
-    kose_tasi(arka, True); kose_tasi(sag, False)
+    iz("On"); kose_tasi(on, True)
+    iz("Sol"); kose_tasi(sol, False); kose_tasi(sol, True)
+    iz("Arka"); kose_tasi(arka, False); kose_tasi(arka, True)
+    iz("Sag"); kose_tasi(sag, False)
 
     # =================================================== ÖN CEPHE: vitrinler
     dg, dg2 = R["ahsap_boya"], R["ahsap_boya2"]
@@ -343,11 +454,13 @@ def govde_kur(g, R, rnd):
         u0, u1, z0, z1 = v
         um = (u0 + u1) / 2
         zk = z0 + (z1 - z0) * 0.74
+        iz("On")
         # ahşap vitrin çerçevesi: geniş dış kasa, orta kayıt, üst vasistas bandı
         cam_bosluk(g, on, u0, u1, z0, z1, R["vitrin"], dg, bolme=(um,), yatay=(zk,), t=0.09, dis=0.07)
         for uu in (u0 + (um - u0) / 2, um + (u1 - um) / 2):
             on.kutu(g, uu - 0.02, uu + 0.02, -T / 2 - 0.04, -T / 2 + 0.04, zk + 0.03, z1 - 0.09, dg, arka=True)
-        # dış söve (pilastr) ve başlıklar
+        # dış söve (pilastr) ve başlıklar: duvar inince de ayakta kalır, lentoyu ve tenteyi taşır
+        iz(None)
         for uu in (u0 - 0.13, u1 + 0.01):
             on.kutu(g, uu, uu + 0.12, 0, 0.09, ZF - 0.03, z1 + 0.1, dg)
             on.kutu(g, uu - 0.02, uu + 0.14, 0, 0.11, ZF - 0.03, ZF + 0.14, dg2)
@@ -362,30 +475,52 @@ def govde_kur(g, R, rnd):
         # denizlik
         on.kutu(g, u0 - 0.14, u1 + 0.14, 0, 0.16, z0 - 0.06, z0, R["trim"])
         # cama yapıştırılmış kampanya kâğıtları
+        iz("On")
         on.kutu(g, u0 + 0.22, u0 + 0.72, -T / 2 + 0.015, -T / 2 + 0.03, z0 + 0.55, z0 + 0.95, M("Afis", "#f2d04a"))
         on.kutu(g, u0 + 0.27, u0 + 0.67, -T / 2 + 0.03, -T / 2 + 0.04, z0 + 0.79, z0 + 0.88, M("Afis", "#c8342f"))
         on.kutu(g, u1 - 0.62, u1 - 0.2, -T / 2 + 0.015, -T / 2 + 0.03, z0 + 0.2, z0 + 0.52, M("Afis", "#f4f0e6"))
         on.kutu(g, u1 - 0.57, u1 - 0.25, -T / 2 + 0.03, -T / 2 + 0.04, z0 + 0.3, z0 + 0.38, M("Afis", "#2f7d8c"))
 
+    iz(None)
+    # kepenkler (Kepenk1, Kepenk2: vitrinler; Kepenk3: kapı): kapalı hâlde modellenir, kökleri üst ortada; oyunda
+    # dükkân kapalıyken iner. Sarıldıkları kutular gövdede sabit durur.
+    for i, (c, v) in enumerate(((on, V1), (on, V2), (pah, KAPI))):
+        ua, ub, za, zb = v
+        if c is pah:
+            za, zb = ZF - 0.02, zb + 0.04
+        o0, o1 = 0.085, 0.12
+        gkp = ek("Kepenk%d" % (i + 1), c.p((ua + ub) / 2, (o0 + o1) / 2, zb + 0.04))
+        n = int((zb + 0.04 - za) / 0.115)
+        dz = (zb + 0.04 - za) / n
+        for k in range(n):
+            c.kutu(gkp, ua, ub, o0, o1 if k % 2 else o1 - 0.012, za + k * dz, za + (k + 1) * dz,
+                   M("Kepenk", "#aab1b5") if k % 2 else M("Kepenk", "#8f979c"), arka=True)
+        c.kutu(gkp, ua + (ub - ua) * 0.42, ua + (ub - ua) * 0.58, o1, o1 + 0.02, za + 0.06, za + 0.14, R["demir"])
+        c.kutu(g, ua - 0.02, ub + 0.02, 0.07, 0.15, zb + 0.02, zb + 0.13, R["metal_koyu"])
+
     # ön cephede vitrinlerin üstünde ahşap lento (asıl tabela saçakta, çatı objesinde: çatıyla birlikte kalkar)
     zs0, zs1 = ZF + 2.4, ZF + 2.98
     on.kutu(g, 0.12, on.L + 0.02, 0, 0.1, zs0 - 0.04, zs0 + 0.28, dg)
     on.kutu(g, 0.08, on.L + 0.04, 0, 0.14, zs0 + 0.28, zs0 + 0.34, dg2)
+    iz("Pah")
     # pah üstünde küçük tabela (sundurmanın altında)
     pah.kutu(g, -0.02, pah.L + 0.02, 0, 0.12, zs0, zs1, R["tabela"])
     pah.kutu(g, -0.04, pah.L + 0.04, 0, 0.16, zs1, zs1 + 0.07, dg2)
     pah.kutu(g, -0.04, pah.L + 0.04, 0, 0.16, zs0 - 0.06, zs0, dg2)
     yazi(g, pah, pah.L / 2, (zs0 + zs1) / 2, "OPEN", 0.07, 0.12, 0.155, R["yazi"])
 
+    iz(None)
     # çizgili tente (iki vitrini örter) + demir kollar
     B.tente(g, on, 0.35, on.L - 0.25, zs0 + 0.26, 1.55, R["tente1"], R["tente2"], dusus=0.52)
     for uu in (0.37, on.L / 2 + 0.05, on.L - 0.27):
         cubuk(g, on.p(uu, 0.02, zs0 - 0.5), on.p(uu, 1.5, zs0 - 0.3), 0.03, R["demir"])
 
+    iz("On")
     # duvar fenerleri (ön cephede üç ayak üstünde)
     for uu in (0.33, (V1[1] + V2[0]) / 2, V2[1] + 0.42):
         lamba_fener(g, on, uu, ZF + 1.72, R)
 
+    iz(None)
     # bayrak tabela: sol ön köşede, sokağa dik
     ub = 0.16
     on.kutu(g, ub - 0.03, ub + 0.03, 0, 1.0, zs1 + 0.02, zs1 + 0.07, R["demir"])
@@ -402,22 +537,21 @@ def govde_kur(g, R, rnd):
         on.kutu(g, ub - 0.01, ub + 0.01, oo - 0.01, oo + 0.01, zs1 - 0.04, zs1 + 0.02, R["demir"], arka=True)
 
     # =================================================== PAH: cam kapı
+    iz("Pah")
     u0, u1, z0, z1 = KAPI
     t = 0.08
     pah.kutu(g, u0 - t, u0, -T - 0.03, 0.07, z0, z1 + t, dg, arka=True)
     pah.kutu(g, u1, u1 + t, -T - 0.03, 0.07, z0, z1 + t, dg, arka=True)
     pah.kutu(g, u0, u1, -T - 0.03, 0.07, z1, z1 + t, dg, arka=True)
     pah.kutu(g, u0, u1, -T, 0.02, ZF - 0.03, ZF + 0.02, R["pirinc"], arka=True)      # eşik
-    # kapı kanadı: menteşe u0'da, içeri doğru aralık (yaklaşık 38°)
-    aci = math.radians(38)
-    mx, my = pah.p(u0 + 0.02, -T / 2, 0)[:2]
-    du = (pah.u[0] * math.cos(aci) - pah.n[0] * math.sin(aci), pah.u[1] * math.cos(aci) - pah.n[1] * math.sin(aci))
-    dn = (-du[1], du[0])
+    # kapı kanadı ayrı obje (Kapi): kapalı hâlde modellenir, menteşe u1 ucunda; oyunda içeri doğru açılır
+    hinge = pah.p(u1 - 0.02, -T / 2, ZF)
+    gk = ek("Kapi", hinge)
     kw = u1 - u0 - 0.04
-    kanat = C((mx, my), du, dn, kw)
+    kanat = C((hinge[0], hinge[1]), (-pah.u[0], -pah.u[1]), (-pah.n[0], -pah.n[1]), kw)
 
     def kk(a, b, p, q, mat, o0=-0.025, o1=0.025):
-        kanat.kutu(g, a, b, o0, o1, p, q, mat, arka=True)
+        kanat.kutu(gk, a, b, o0, o1, p, q, mat, arka=True)
     kk(0, 0.09, z0 + 0.02, z1 - 0.02, R["kapi"])
     kk(kw - 0.09, kw, z0 + 0.02, z1 - 0.02, R["kapi"])
     kk(0.09, kw - 0.09, z0 + 0.02, z0 + 0.3, R["kapi"])
@@ -425,8 +559,8 @@ def govde_kur(g, R, rnd):
     kk(0.09, kw - 0.09, z0 + 1.0, z0 + 1.07, R["kapi"])
     kk(0.09, kw - 0.09, z0 + 0.3, z1 - 0.12, R["vitrin"], -0.01, 0.01)
     kk(kw - 0.13, kw - 0.09, z0 + 0.85, z0 + 1.25, R["pirinc"], -0.07, 0.07)       # kulp
-    kk(0.3, 0.72, z0 + 1.35, z0 + 1.6, M("Afis", "#f4f0e6"), 0.01, 0.022)          # "açık" kartı
-    kk(0.34, 0.68, z0 + 1.43, z0 + 1.52, M("Afis", "#c8342f"), 0.022, 0.03)
+    kk(0.3, 0.72, z0 + 1.35, z0 + 1.6, M("Afis", "#f4f0e6"), -0.022, -0.01)        # "açık" kartı (dış yüzde)
+    kk(0.34, 0.68, z0 + 1.43, z0 + 1.52, M("Afis", "#c8342f"), -0.03, -0.022)
     # kapı üstü: fener ve zil
     lamba_fener(g, pah, (u0 + u1) / 2, z1 + 0.04, R)
     zp = pah.p(u1 + 0.05, -T - 0.12, z1 - 0.08)
@@ -440,6 +574,7 @@ def govde_kur(g, R, rnd):
             pah.kutu(g, a + 0.08, b - 0.1 - 0.06 * (i % 2), 0.04, 0.048, ZF + 1.02 + i * 0.23, ZF + 1.18 + i * 0.23,
                      M("Afis", ("#f4f0e6", "#f2d04a", "#7ab8d6")[i]))
 
+    iz(None)
     # pah önü: taş sahanlık, basamak, köşe direği (saçağı taşır)
     sah = [(X1 - PAH + 0.02, Y0 - 0.05, ZL), (X1 + 0.05, Y0 - 0.05, ZL), (X1 + 0.05, Y0 + PAH - 0.02, ZL)]
     prizma(g, sah, (0, 0, ZF - ZL - 0.03), R["basamak"], kapak=R["tas"])
@@ -462,6 +597,7 @@ def govde_kur(g, R, rnd):
     dkutu(g, pm[0], pm[1], ZF - 0.005, ZF + 0.002, 0.82, 0.38, math.radians(45), R["paspas2"])
 
     # =================================================== SAĞ CEPHE
+    iz("Sag")
     u0, u1, z0, z1 = SAG_P
     cam_bosluk(g, sag, u0, u1, z0, z1, R["cam"], R["trim"], bolme=((u0 + u1) / 2,), yatay=(z0 + (z1 - z0) * 0.68,))
     sag.kutu(g, u0 - 0.12, u1 + 0.12, 0, 0.16, z0 - 0.08, z0, R["tas"])
@@ -489,9 +625,11 @@ def govde_kur(g, R, rnd):
     for i, r in enumerate(("#f06a8a", "#f4f0e6", "#8a5a3a")):
         meyve(g, pc[0] + 0.012, pc[1] + (i - 1) * 0.1, ZF + 1.58 + (0.1 if i == 1 else 0), 0.11, M("Afis", r))
     # yağmur borusu (arka sağ köşe)
+    iz(None)
     yagmur_borusu(g, X1 + 0.07, Y1 - 0.25, R)
 
     # =================================================== ARKA CEPHE
+    iz("Arka")
     u0, u1, z0, z1 = DEPO
     t = 0.08
     arka.kutu(g, u0 - t, u0, -T - 0.02, 0.06, z0, z1 + t, R["tas_koyu"], arka=True)
@@ -504,7 +642,9 @@ def govde_kur(g, R, rnd):
         arka.kutu(g, u0 + 0.06, u1 - 0.06, -T / 2 + 0.03, -T / 2 + 0.045, zz - 0.02, zz + 0.02, M("Kapi", "#4a5a60"))
         arka.kutu(g, u0 + 0.06, u1 - 0.06, -T / 2 - 0.045, -T / 2 - 0.03, zz - 0.02, zz + 0.02, M("Kapi", "#4a5a60"), arka=True)
     arka.kutu(g, u1 - 0.2, u1 - 0.1, -T / 2 - 0.09, -T / 2 + 0.09, z0 + 0.95, z0 + 1.02, R["metal"], arka=True)
+    iz(None)
     arka.kutu(g, u0 - 0.2, u1 + 0.2, 0, 0.5, ZL, ZF - 0.03, R["basamak"])               # arka basamak
+    iz("Arka")
     arka.kutu(g, u0 - 0.3, u1 + 0.3, 0, 0.75, z1 + 0.22, z1 + 0.28, R["metal_koyu"])       # sundurma
     for uu in (u0 - 0.25, u1 + 0.25):
         cubuk(g, arka.p(uu, 0.7, z1 + 0.22), arka.p(uu, 0.02, z1 - 0.15), 0.03, R["demir"])
@@ -526,16 +666,21 @@ def govde_kur(g, R, rnd):
         arka.kutu(g, 5.36, 6.04, 0.05, 0.065, ZF + 0.43 + i * 0.1, ZF + 0.47 + i * 0.1, R["metal_koyu"])
 
     # =================================================== SOL CEPHE
+    iz("Sol")
     for v in (SOL_P1, SOL_P2):
         u0, u1, z0, z1 = v
         cam_bosluk(g, sol, u0, u1, z0, z1, R["cam2"] if v is SOL_P1 else R["cam"], R["trim"], bolme=((u0 + u1) / 2,))
         sol.kutu(g, u0 - 0.1, u1 + 0.1, 0, 0.14, z0 - 0.08, z0, R["tas"])
         sol.kutu(g, u0 - 0.12, u1 + 0.12, 0, 0.09, z1, z1 + 0.13, R["trim"])
+    iz(None)
     yagmur_borusu(g, X0 - 0.07, Y1 - 0.3, R)
+    iz("Sol")
     # duvara boyanmış eski reklam: soluk çerçeve ve şerit
     sol.kutu(g, 3.3, 5.2, 0, 0.02, ZF + 0.85, ZF + 1.85, M("Afis", "#e9cfa0"))
     sol.kutu(g, 3.4, 5.1, 0.02, 0.03, ZF + 1.48, ZF + 1.72, M("Afis", "#c8452f"))
     yazi(g, sol, 4.25, ZF + 1.17, "COLA", 0.045, 0.02, 0.03, M("Afis", "#8a2f2a"))
+    iz(None)
+    duvar_ayir(g, izler)
 
     return f
 
@@ -832,12 +977,12 @@ def dis_esyalar(g, R, rnd, f):
                              ("#3f8a4a", "#e0b23a", "#c8342f", "#2f5a9a")[(i + k) % 4], rnd, dolu=(k == kat - 1 and i % 2 == 0), kapak="#6a8a5a")
     el_arabasi(g, X1 - 3.45, Y1 + 0.2, math.pi, R)
     # tekerlekli çöp konteyneri
-    kx, ky = X0 + 1.5, Y1 + 0.75
-    kutu(g, kx - 0.55, kx + 0.55, ky - 0.4, ky + 0.4, ZL + 0.12, ZL + 1.05, M("Plastik", "#3f6b45"))
-    obox(g, (kx, ky - 0.02, ZL + 1.09), (0.6, 0, 0), (0, 0.45, 0.03), (0, -0.003, 0.035), M("Plastik", "#2f5a3a"))
-    for sx_ in (-0.42, 0.42):
-        for sy_ in (-0.3, 0.3):
-            silindir(g, (kx + sx_ - 0.03, ky + sy_, ZL + 0.08), (kx + sx_ + 0.03, ky + sy_, ZL + 0.08), 0.08, 0.08, 6, R["lastik"])
+    kx, ky = X0 - 1.15, Y1 - 0.75        # sol yan geçidin arka ucunda (arka avlu tedarik kamyonetine kalır)
+    kutu(g, kx - 0.4, kx + 0.4, ky - 0.55, ky + 0.55, ZL + 0.12, ZL + 1.05, M("Plastik", "#3f6b45"))
+    obox(g, (kx + 0.02, ky, ZL + 1.09), (0.45, 0, 0.03), (0, 0.6, 0), (-0.003, 0, 0.035), M("Plastik", "#2f5a3a"))
+    for sx_ in (-0.3, 0.3):
+        for sy_ in (-0.42, 0.42):
+            silindir(g, (kx + sx_, ky + sy_ - 0.03, ZL + 0.08), (kx + sx_, ky + sy_ + 0.03, ZL + 0.08), 0.08, 0.08, 6, R["lastik"])
     # tüp (gaz) ve kova, süpürge
     dsil(g, X0 + 3.2, Y1 + 0.3, ZL, ZL + 0.55, 0.16, 8, M("Metal", "#3d6a9a"), kapak=(False, True))
     dsil(g, X0 + 3.2, Y1 + 0.3, ZL + 0.55, ZL + 0.65, 0.09, 6, R["metal_koyu"], kapak=(False, True))
@@ -933,6 +1078,8 @@ def urun_dizisi(g, c, u0, u1, od, z, hmax, rnd, tur=None, dp=0.16):
         renk = rnd.choice(URUN)
         m = M("Urun", renk)
         adet = rnd.randint(2, 5)
+        gs = g
+        g = urun_g(gs, rnd)          # bu grup hangi stok seviyesinde (raf boşalırken gizlenir)
         if t == "kutu":
             w = rnd.uniform(0.11, 0.2)
             h = min(hmax - 0.04, rnd.uniform(0.16, 0.3))
@@ -996,6 +1143,7 @@ def urun_dizisi(g, c, u0, u1, od, z, hmax, rnd, tur=None, dp=0.16):
                     c.kutu(g, u + 0.005 * k, u + w - 0.02, od - dp, od - 0.02, z + k * 0.065, z + k * 0.065 + 0.058,
                            m if k % 2 == 0 else M("Urun", koyu(renk, 0.85)), arka=True)
                 u += w
+        g = gs
         u += rnd.uniform(0.02, 0.05)
 
 
@@ -1058,7 +1206,10 @@ def sogutucu(g, c, u0, w, R, rnd, renk, ic_tur=0):
         sr, kr = setler[(i + ic_tur) % len(setler)]
         sm, km = M("Sise", sr), M("Kapak", kr)
         n = int((w - 0.16) / 0.105)
+        gs = g
         for j in range(n):
+            if j % 2 == 0:
+                g = urun_g(gs, rnd)      # ikişer ikişer aynı stok seviyesinde
             uu = u0 + 0.08 + (w - 0.16) * (j + 0.5) / n
             if (i + ic_tur) % 3 == 2:            # kutu içecekler (iki kat)
                 p = c.p(uu, d - 0.12, 0)
@@ -1067,6 +1218,7 @@ def sogutucu(g, c, u0, w, R, rnd, renk, ic_tur=0):
             else:
                 p = c.p(uu, d - 0.12, 0)
                 sise(g, p[0], p[1], zz, 0.3, 0.04, sm, km)
+        g = gs
     # kapı çerçevesi ve kulp
     t = 0.035
     c.kutu(g, u0 + 0.05, u0 + 0.05 + t, d - 0.03, d + 0.01, z + 0.26, z + h - 0.32, R["metal_koyu"], arka=True)
@@ -1127,6 +1279,7 @@ def market_sepeti(g, x, y, z, aci, R, dolu=False, rnd=None, renk="#c8342f"):
 
 
 def ic_kur(g, R, rnd):
+    global URUN_HEDEF
     # ---- karo zemin: açık renk taban + dama deseni + duvar dibinde koyu bordür
     ic_taban = [(X0 + 0.02, Y0 + 0.02, ZF - 0.03), (X1 - PAH - 0.01, Y0 + 0.02, ZF - 0.03), (X1 - 0.02, Y0 + PAH + 0.01, ZF - 0.03),
                 (X1 - 0.02, Y1 - 0.02, ZF - 0.03), (X0 + 0.02, Y1 - 0.02, ZF - 0.03)]
@@ -1170,7 +1323,7 @@ def ic_kur(g, R, rnd):
             cubuk(g, (lx, by, ZT - 0.2), (lx, by, ZT - 0.72), 0.02, R["demir"])
             dsil(g, lx, by, ZT - 0.95, ZT - 0.74, 0.24, 8, M("Emaye", "#2f6b57"), r1=0.06, kapak=(False, True))
             dsil(g, lx, by, ZT - 0.97, ZT - 0.95, 0.245, 8, R["trim"], kapak=(True, False))
-            meyve(g, lx, by, ZT - 0.99 + 0.0, 0.08, R["isik"], n=6, rz=-0.1)
+            meyve(ek("Ampul"), lx, by, ZT - 0.99 + 0.0, 0.08, R["isik"], n=6, rz=-0.1)
 
     # =================================================== SOL DUVAR: yüksek raf + şarküteri
     ya, yb = IY0 + 0.25, 1.15
@@ -1180,7 +1333,9 @@ def ic_kur(g, R, rnd):
         c.kutu(g, uu, uu + 0.04, 0.03, 0.46 if uu in (0.0, c.L - 0.04) else 0.3, ZF, ZF + 1.98, R["raf_govde"], arka=True)
     c.kutu(g, 0, c.L, 0.03, 0.46, ZF, ZF + 0.1, R["raf_govde"], arka=True)
     c.kutu(g, 0, c.L, 0, 0.2, ZF + 1.98, ZF + 2.03, R["raf_govde"], arka=True)
+    URUN_HEDEF = [g] + [ek("Urun_DR_%d" % k) for k in (1, 2, 3)]
     raf_yuzu(g, c, R, rnd, (0.13, 0.5, 0.86, 1.2, 1.52), 0.44, 0.06, 0.3)
+    URUN_HEDEF = None
     # rafın tepesinde koliler
     for i in range(4):
         uu = 0.3 + i * 1.05
@@ -1249,7 +1404,9 @@ def ic_kur(g, R, rnd):
     dondurma_dolabi(g, cb, 0.0, 1.7, R, rnd)
     cs = cer((-1.95, IY1), (0, -1), 4.2)
     for i, renk in enumerate(("#c8342f", "#2f5a9a", "#3f8a4a")):
+        URUN_HEDEF = [g] + [ek("Urun_SG_%d" % k) for k in (1, 2, 3)]
         sogutucu(g, cs, 0.02 + i * 1.32, 1.28, R, rnd, renk, ic_tur=i * 2)
+        URUN_HEDEF = None
         # tepesinde koliler
         p = cs.p(0.66 + i * 1.32, 0.34, 0)
         dkutu(g, p[0] - 0.2, p[1], ZF + 2.08, ZF + 2.38, 0.5, 0.4, 0.1 * (i - 1), R["karton"])
@@ -1269,8 +1426,8 @@ def ic_kur(g, R, rnd):
     kutu(g, dxm - 0.012, dxm + 0.012, IY1 - 0.05, IY1 - 0.04, ZF + 2.62, ZF + 2.76, R["demir"], atla=())
     kutu(g, dxm, dxm + 0.1, IY1 - 0.05, IY1 - 0.04, ZF + 2.608, ZF + 2.632, R["demir"], atla=())
     # depo kapısının yanında koliler, süpürge
-    for i, (dx, dy, w, d, h) in enumerate(((0.55, -0.4, 0.5, 0.42, 0.4), (0.6, -0.9, 0.46, 0.4, 0.34), (0.56, -0.42, 0.42, 0.36, 0.3))):
-        zz = ZF if i < 2 else ZF + 0.4
+    for i, (dx, dy, w, d, h) in enumerate(((0.5, -0.36, 0.5, 0.42, 0.4), (0.5, -0.38, 0.42, 0.36, 0.3))):
+        zz = ZF if i < 1 else ZF + 0.4
         dkutu(g, IX1 - dx, IY1 + dy, zz, zz + h, w, d, 0.08 * i, R["karton"] if i != 1 else R["karton2"])
         dkutu(g, IX1 - dx, IY1 + dy, zz + h, zz + h + 0.004, w * 0.16, d, 0.08 * i, M("Bant", "#e8dcc0"))
     # iç paspas (depo kapısı)
@@ -1278,7 +1435,9 @@ def ic_kur(g, R, rnd):
 
     # =================================================== ORTA: üç gondol
     for i, xc in enumerate((-2.9, -0.95, 1.0)):
+        URUN_HEDEF = [g] + [ek("Urun_G%d_%d" % (i + 1, k)) for k in (1, 2, 3)]
         gondol(g, xc, -1.35, 2.25, R, rnd, ("#c8452f", "#2f6b57", "#e0b23a")[i])
+        URUN_HEDEF = None
 
     # =================================================== ÖN: vitrin içi teşhir setleri
     for v, tur in ((V1, "ekmek"), (V2, "meyve")):
@@ -1397,10 +1556,7 @@ def ic_kur(g, R, rnd):
     kutu(g, p[0] - 0.1, p[0] + 0.1, p[1] - 0.2, p[1] + 0.2, ZF + 0.89, ZF + 1.0, M("Kasa", "#6b452a"))
     cubuk(g, (p[0], p[1] + 0.17, ZF + 1.0), (p[0] + 0.05, p[1] + 0.3, ZF + 1.0 + 0.0), 0.012, R["metal"])
 
-    # kasiyer (tezgâhın arkasında, müşteriye dönük) ve müşteri
-    insan(g, 3.95, 1.75, ZF, math.pi, "#f4f0e6", "#3d5a8a", "#4a2f20", R, onluk="#2f6b57")
-    insan(g, 2.25, 1.55, ZF, 0.0, "#e8a23a", "#4a4d52", "#2b2d31", R, sepet=True)
-    insan(g, -1.95, 0.6, ZF, math.pi / 2 + 2.0, "#7ab8d6", "#6b452a", "#c9a24a", R, ten="#f0c8a0")
+    # (kasiyer ve müşteriler modelde yok: oyunda BakkalCanli hareketli figürleri kurar; önizlemede onizleme_insanlari çizer)
     kutu(g, 3.6, 4.3, 1.35, 2.2, ZF + 0.02, ZF + 0.035, M("Paspas", "#5d6b6b"))              # kasiyerin ayak paspası
     # tabure
     dsil(g, 4.2, 2.55, ZF + 0.55, ZF + 0.6, 0.17, 8, R["ahsap_acik"], kapak=(True, True))
@@ -1426,12 +1582,12 @@ def ic_kur(g, R, rnd):
             meyve(g, p[0] + math.cos(q * 1.6 + i) * 0.07, p[1] + math.sin(q * 1.6 + i) * 0.07, ZF + 0.86, 0.06,
                   M("Cicek", ("#e0525a", "#f2d04a", "#ffffff", "#f06a8a", "#b07ad8")[(q + i * 2) % 5]), n=5)
     # su kolileri (girişte, ortaya doğru): 6'lı paketler üst üste
-    for i, (dx, dy) in enumerate(((0, 0), (0.46, 0.0), (0.0, 0.36), (0.46, 0.36))):
-        for k in range(3 if i != 3 else 2):
-            x, y, zz = 1.25 + dx, -2.5 + dy, ZF + k * 0.27
+    for i, (dx, dy) in enumerate(((0, 0), (0.0, 0.34))):
+        for k in range(3 if i != 1 else 2):
+            x, y, zz = -1.2 + dx, -3.17 + dy, ZF + k * 0.27
             kutu(g, x - 0.2, x + 0.2, y - 0.15, y + 0.15, zz, zz + 0.24, M("Kristal", "#bfe0ee"))
             kutu(g, x - 0.205, x + 0.205, y - 0.155, y + 0.155, zz + 0.07, zz + 0.16, M("Urun", "#2f5a9a"), atla=("zn", "zp"))
-            if k == (2 if i != 3 else 1):
+            if k == (2 if i != 1 else 1):
                 for a in range(3):
                     for b in range(2):
                         dsil(g, x - 0.13 + a * 0.13, y - 0.07 + b * 0.14, zz + 0.24, zz + 0.275, 0.025, 5, M("Kapak", "#2f5a9a"))
@@ -1440,7 +1596,7 @@ def ic_kur(g, R, rnd):
 def ic_ekler(g, R, rnd):
     """İç mekânın küçük zenginlikleri: kartpostal standı, tavan pervanesi, yangın tüpü, ecza dolabı."""
     # dönen kartpostal / dergi standı (girişte)
-    sx, sy = 0.45, -2.35
+    sx, sy = 3.9, -0.95
     dsil(g, sx, sy, ZF, ZF + 0.06, 0.22, 8, R["demir"])
     cubuk(g, (sx, sy, ZF + 0.06), (sx, sy, ZF + 1.6), 0.04, R["demir"])
     dsil(g, sx, sy, ZF + 1.6, ZF + 1.68, 0.16, 6, M("Raf", "#c8452f"), r1=0.03, kapak=(True, False))
@@ -1460,16 +1616,12 @@ def ic_ekler(g, R, rnd):
         a = i * math.pi / 2 + 0.5
         dkutu(g, fx + math.cos(a) * 0.2, fy + math.sin(a) * 0.2, ZT - 0.485, ZT - 0.465, 0.22, 0.05, a, R["demir"], alt=True)
         dkutu(g, fx + math.cos(a) * 0.52, fy + math.sin(a) * 0.52, ZT - 0.49, ZT - 0.47, 0.46, 0.15, a, R["ahsap_acik"], alt=True)
-    # yangın tüpü ve ecza dolabı (sağ duvar, arka köşe)
-    dsil(g, IX1 - 0.12, 3.35, ZF + 0.75, ZF + 1.25, 0.08, 8, M("Plastik", "#c8342f"), kapak=(True, True))
-    dsil(g, IX1 - 0.12, 3.35, ZF + 1.25, ZF + 1.33, 0.035, 6, R["demir"], kapak=(False, True))
-    kutu(g, IX1 - 0.12, IX1, 3.65, 4.05, ZF + 1.35, ZF + 1.75, R["beyaz"], atla=())
-    kutu(g, IX1 - 0.13, IX1 - 0.12, 3.82, 3.88, ZF + 1.43, ZF + 1.67, M("Plastik", "#c8342f"), atla=())
-    kutu(g, IX1 - 0.13, IX1 - 0.12, 3.74, 3.96, ZF + 1.52, ZF + 1.58, M("Plastik", "#c8342f"), atla=())
-    # tezgâhın müşteri tarafında yerde gazete / dergi sepeti ve şemsiyelik
-    kutu(g, 2.3, 2.7, 3.0, 3.55, ZF, ZF + 0.35, M("Hasir", "#c49a6c"))
-    for i in range(5):
-        kutu(g, 2.33, 2.67, 3.04 + i * 0.1, 3.1 + i * 0.1, ZF + 0.35, ZF + 0.5 - (i % 2) * 0.04, R["kagit"] if i % 2 else M("Urun", URUN[i * 2]), atla=())
+    # yangın tüpü ve ecza dolabı (arka duvar, depo kapısının sağı)
+    dsil(g, 4.05, IY1 - 0.12, ZF + 0.75, ZF + 1.25, 0.08, 8, M("Plastik", "#c8342f"), kapak=(True, True))
+    dsil(g, 4.05, IY1 - 0.12, ZF + 1.25, ZF + 1.33, 0.035, 6, R["demir"], kapak=(False, True))
+    kutu(g, 3.95, 4.35, IY1 - 0.12, IY1, ZF + 1.45, ZF + 1.85, R["beyaz"], atla=())
+    kutu(g, 4.12, 4.18, IY1 - 0.13, IY1 - 0.12, ZF + 1.53, ZF + 1.77, M("Plastik", "#c8342f"), atla=())
+    kutu(g, 4.04, 4.26, IY1 - 0.13, IY1 - 0.12, ZF + 1.62, ZF + 1.68, M("Plastik", "#c8342f"), atla=())
 
 
 def _kirp(pts, lim):
@@ -1491,6 +1643,129 @@ def _kirp(pts, lim):
     if len(temiz) > 1 and abs(temiz[0][0] - temiz[-1][0]) + abs(temiz[0][1] - temiz[-1][1]) <= 1e-6:
         temiz.pop()
     return temiz
+
+
+# ================================== CANLI PARÇALAR ==================================
+
+def poset(g, x, y, z, R, w=0.26, d=0.17, h=0.32):
+    """Kraft kâğıt sipariş poşeti: aşağı doğru daralan gövde, katlanmış ağız, iki sap, şirket etiketi."""
+    kg = M("Karton", "#c49a6c")
+    pts = [(x - w * 0.44, y - d * 0.44, z), (x + w * 0.44, y - d * 0.44, z), (x + w * 0.44, y + d * 0.44, z), (x - w * 0.44, y + d * 0.44, z),
+           (x - w / 2, y - d / 2, z + h), (x + w / 2, y - d / 2, z + h), (x + w / 2, y + d / 2, z + h), (x - w / 2, y + d / 2, z + h)]
+    kati(g, pts, [[4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]], kg)
+    kutu(g, x - w / 2 - 0.006, x + w / 2 + 0.006, y - d * 0.2, y + d * 0.2, z + h - 0.05, z + h + 0.012, M("Karton", "#a8824f"), atla=())
+    for s_ in (-1, 1):
+        cubuk(g, (x - 0.06, y + s_ * 0.03, z + h), (x - 0.04, y + s_ * 0.03, z + h + 0.09), 0.014, R["ahsap_koyu"])
+        cubuk(g, (x + 0.06, y + s_ * 0.03, z + h), (x + 0.04, y + s_ * 0.03, z + h + 0.09), 0.014, R["ahsap_koyu"])
+        cubuk(g, (x - 0.045, y + s_ * 0.03, z + h + 0.088), (x + 0.045, y + s_ * 0.03, z + h + 0.088), 0.014, R["ahsap_koyu"])
+    kutu(g, x - 0.07, x + 0.07, y - d / 2 - 0.004, y - d / 2 + 0.002, z + 0.1, z + 0.22, M("Afis", "#2f6b57"), atla=())
+
+
+def kamyonet(g, x, y, z, R):
+    """Tedarik kamyoneti: burnu −X'e bakar, kasası +X'te (arka kapakları depo kapısına yakın). Kök: gövdenin ortası, yerde."""
+    by, yk, ys = R["beyaz"], M("Plastik", "#2f6b57"), R["lastik"]
+    kutu(g, x - 0.75, x + 1.85, y - 0.82, y + 0.82, z + 0.42, z + 2.05, by)                       # kasa
+    kutu(g, x - 0.75, x + 1.85, y - 0.83, y + 0.83, z + 0.95, z + 1.3, yk, atla=("zn", "zp"))     # yeşil kuşak
+    kutu(g, x - 1.55, x - 0.75, y - 0.78, y + 0.78, z + 0.42, z + 1.62, by)                       # kabin
+    kutu(g, x - 1.95, x - 1.55, y - 0.78, y + 0.78, z + 0.42, z + 1.02, by)                       # motor kaputu
+    obox(g, (x - 1.57, y, z + 1.3), (0.015, 0, 0.02), (0, 0.7, 0), (-0.11, 0, 0.27), R["kristal"])   # ön cam (eğik)
+    for s_ in (-1, 1):
+        kutu(g, x - 1.45, x - 0.9, y + s_ * 0.78, y + s_ * 0.795, z + 1.05, z + 1.5, R["kristal"], atla=())
+        kutu(g, x - 1.97, x - 1.95, y + s_ * 0.5 - 0.12, y + s_ * 0.5 + 0.12, z + 0.72, z + 0.86, M("Isik", "#fff2c8"), atla=())
+        kutu(g, x + 1.85, x + 1.87, y + s_ * 0.66 - 0.07, y + s_ * 0.66 + 0.07, z + 0.6, z + 0.8, M("Plastik", "#c8342f"), atla=())
+        for wx in (-1.3, 1.15):
+            silindir(g, (x + wx, y + s_ * 0.62, z + 0.33), (x + wx, y + s_ * 0.84, z + 0.33), 0.33, 0.33, 10, ys, kapak_mat=R["metal"])
+    kutu(g, x - 2.0, x - 1.9, y - 0.8, y + 0.8, z + 0.36, z + 0.52, R["metal_koyu"])               # tampon
+    kutu(g, x + 1.85, x + 1.9, y - 0.8, y + 0.8, z + 0.36, z + 0.5, R["metal_koyu"])
+    # arka kapaklar açık (iki yana) ve kasanın içi koyu
+    kutu(g, x + 1.855, x + 1.865, y - 0.74, y + 0.74, z + 0.5, z + 1.98, M("Dolgu", "#3a3d42"), atla=())
+    for s_ in (-1, 1):
+        obox(g, (x + 2.2, y + s_ * 1.05, z + 1.24), (0.37, s_ * 0.25, 0), (0.012, -s_ * 0.018, 0), (0, 0, 0.74), by)
+    yazi(g, cer((x - 0.75, y - 0.83), (0, -1), 2.6), 1.3, z + 1.65, "MARKET", 0.05, 0.0, 0.012, yk)
+    yazi(g, cer((x + 1.85, y + 0.83), (0, 1), 2.6), 1.3, z + 1.65, "MARKET", 0.05, 0.0, 0.012, yk)
+
+
+def koliler(g, x, y, z, R, rnd):
+    """Kamyonetten indirilen koli ve kasalar (kök: yığının ortası, yerde)."""
+    for i, (dx, dy, k) in enumerate(((-0.24, -0.22, 3), (0.24, -0.2, 2), (-0.22, 0.24, 2), (0.25, 0.25, 3))):
+        zz = z
+        for j in range(k):
+            h = 0.3 + 0.06 * ((i + j) % 2)
+            dkutu(g, x + dx, y + dy, zz, zz + h, 0.44, 0.4, 0.07 * (j - 1), R["karton"] if (i + j) % 2 else R["karton2"])
+            dkutu(g, x + dx, y + dy, zz + h, zz + h + 0.004, 0.07, 0.4, 0.07 * (j - 1), M("Bant", "#e8dcc0"))
+            zz += h
+    sise_sandigi(g, x + 0.72, y - 0.05, z, 0.2, "#c8342f", rnd, kapak="#f4f0e6")
+    sise_sandigi(g, x + 0.72, y - 0.05, z + 0.27, 0.1, "#2f5a9a", rnd, kapak="#7ab8d6")
+
+
+def canli_parcalar(R, rnd):
+    """Oyunda hareket eden ya da açılıp kapanan parçalar (adlı ek objeler): poşet, kamyonet, koliler ve kozmetik yükseltmeler."""
+    global URUN_HEDEF
+    poset(ek("Poset", POSET_YER), POSET_YER[0], POSET_YER[1], POSET_YER[2], R)
+    kamyonet(ek("Kamyonet", KAMYONET_YER), KAMYONET_YER[0], KAMYONET_YER[1], KAMYONET_YER[2], R)
+    koliler(ek("Koliler", KOLI_YER), KOLI_YER[0], KOLI_YER[1], KOLI_YER[2], R, rnd)
+
+    # ---- Kasa2: tezgâhın kapıya bakan ucuna eklenen ikinci kasa
+    g = ek("Kasa2")
+    x0, x1, y0, y1, zt = 2.75, 3.4, -0.5, 0.31, ZF + 0.95
+    kutu(g, x0, x1, y0, y1, ZF, zt - 0.04, R["ahsap_boya"])
+    kutu(g, x0 - 0.04, x1 + 0.03, y0 - 0.04, y1, zt - 0.04, zt, R["ahsap_acik"], atla=())
+    kutu(g, x0 - 0.015, x0, y0 + 0.1, y1 - 0.1, ZF + 0.5, ZF + 0.82, R["ahsap_boya2"], atla=())
+    kx, ky = 3.05, -0.1
+    kutu(g, kx - 0.2, kx + 0.2, ky - 0.2, ky + 0.2, zt, zt + 0.12, M("Kasa", "#3a3d42"))
+    obox(g, (kx + 0.04, ky, zt + 0.17), (0.14, 0, 0.05), (0, 0.18, 0), (-0.02, 0, 0.05), M("Kasa", "#4a4d52"))
+    kutu(g, kx - 0.19, kx - 0.11, ky - 0.15, ky + 0.15, zt + 0.12, zt + 0.3, M("Kasa", "#2b2d31"))
+    kutu(g, kx - 0.195, kx - 0.19, ky - 0.11, ky + 0.11, zt + 0.17, zt + 0.27, M("Isik", "#8fe0a0"), atla=())
+    kutu(g, 2.86, 2.95, -0.42, -0.3, zt, zt + 0.035, M("Kasa", "#2b2d31"))
+    cubuk(g, (3.3, -0.4, zt), (3.3, -0.4, zt + 0.5), 0.03, R["metal"])
+    kutu(g, 3.14, 3.34, -0.44, -0.36, zt + 0.5, zt + 0.62, M("Raf", "#e0b23a"), atla=())      # "2" numaralı kasa levhası
+    kutu(g, 3.6, 4.3, -0.45, 0.3, ZF + 0.02, ZF + 0.035, M("Paspas", "#5d6b6b"))
+
+    # ---- Sogutucu4: sağ duvarın arka köşesine dördüncü içecek soğutucusu
+    g = ek("Sogutucu4")
+    URUN_HEDEF = None
+    sogutucu(g, cer((IX1, IY1 - 0.02), (-1, 0), 1.32), 0.02, 1.28, R, rnd, "#e0b23a", ic_tur=1)
+
+    # ---- Vitrin2: yenilenmiş vitrin (içeriden ampul dizisi, ışıklı yazı, süslü sepetler)
+    g = ek("Vitrin2")
+    for v in (V1, V2):
+        xa, xb = X0 + v[0] + 0.1, X0 + v[1] - 0.1
+        cubuk(g, (xa, IY0 + 0.05, v[3] - 0.12), (xb, IY0 + 0.05, v[3] - 0.12), 0.015, R["demir"])
+        n = 11
+        for i in range(n):
+            x = xa + 0.08 + (xb - xa - 0.16) * i / (n - 1)
+            meyve(g, x, IY0 + 0.05, v[3] - 0.13, 0.045, M("Isik", ("#ffe2a0", "#ff9ab0", "#a0e0ff")[i % 3]), n=5, rz=-0.09)
+        for i in range(2):                                     # kaideli hediye sepetleri
+            cx = xa + 0.75 + i * 1.3
+            kutu(g, cx - 0.2, cx + 0.2, IY0 + 0.12, IY0 + 0.52, ZF + 0.6, ZF + 0.95, R["trim"])
+            dsil(g, cx, IY0 + 0.32, ZF + 0.95, ZF + 1.12, 0.17, 8, M("Hasir", "#c49a6c"), r1=0.22, kapak=(False, True), kapak_mat=M("Dolgu", "#8a6a42"))
+            for q in range(5):
+                a = q * 1.26 + i
+                meyve(g, cx + math.cos(a) * 0.1, IY0 + 0.32 + math.sin(a) * 0.1, ZF + 1.11, 0.07,
+                      M("Meyve", ("#d8402f", "#f08a2a", "#8ab84a", "#f2d04a", "#7a3a6a")[q]))
+            kutu(g, cx - 0.23, cx + 0.23, IY0 + 0.3, IY0 + 0.34, ZF + 1.12, ZF + 1.3, M("Afis", "#e8527a"), atla=())
+    yazi(g, cer((X0 + V2[1] - 0.5, IY0 + 0.02), (0, 1), 2.0), 1.0, V2[2] + 0.95, "OPEN", 0.04, 0.0, 0.015, M("Isik", "#ff9ab0"))
+
+
+def onizleme_insanlari(R, durum="dukkan"):
+    """Önizleme resimleri için sabit figürler (oyunda bunların yerine BakkalCanli'nin hareketli figürleri var)."""
+    g = G("insanlar")
+    n = NOKTA
+    insan(g, n["KAS"][0], n["KAS"][1], ZF, math.pi, "#f4f0e6", "#3d5a8a", "#4a2f20", R, onluk="#2f6b57")
+    insan(g, n["Q0"][0], n["Q0"][1], ZF, 0.0, "#e8a23a", "#4a4d52", "#2b2d31", R, sepet=True)
+    insan(g, n["Q1"][0], n["Q1"][1], ZF, math.pi / 2, "#8a4a6b", "#3a3d42", "#6b452a", R, sepet=True)
+    insan(g, n["A1b"][0], n["A1b"][1], ZF, math.pi, "#7ab8d6", "#6b452a", "#c9a24a", R, ten="#f0c8a0")
+    insan(g, n["B2"][0], n["B2"][1] + 0.1, ZF, math.pi / 2, "#5a9a4a", "#3d5a8a", "#2b2d31", R)
+    insan(g, n["A0c"][0], n["A0c"][1], ZF, math.pi, "#f2d04a", "#4a4d52", "#8a5a3a", R, sepet=True)
+    insan(g, n["ESIK"][0], n["ESIK"][1] - 0.5, ZL, math.pi / 2, "#d94f3d", "#3a3d42", "#2b2d31", R)
+    # kurye: şirket renginde mont, sırtında çanta; poşeti almaya gelmiş
+    kx, ky = n["KUR"][0], n["KUR"][1]
+    insan(g, kx, ky, ZF, 0.0, "#009ede", "#2b2d31", "#2b2d31", R)
+    kutu(g, kx - 0.42, kx - 0.14, ky - 0.2, ky + 0.2, ZF + 0.95, ZF + 1.45, M("Giysi", "#009ede"))
+    if durum == "tedarik":
+        insan(g, n["AD"][0], n["AD"][1] + 0.5, ZL, -math.pi / 2, "#3f8a4a", "#3a3d42", "#6b452a", R)
+        kutu(g, n["AD"][0] - 0.2, n["AD"][0] + 0.2, n["AD"][1] + 0.05, n["AD"][1] + 0.4, ZL + 0.95, ZL + 1.25, R["karton"])
+    return g
 
 
 # ================================== ÇATI ==================================
@@ -1619,7 +1894,7 @@ def birlestir(ad, *parcalar):
 # Oyunda adına göre özel davranan malzeme etiketleri (dışarıda korunur): renk çeşitlemesi (Duvar, Cati, Kapi, Panjur),
 # gece ışığı (Cam*, Vitrin, Yazi, Isik), mevsim ve kar (Cati, Tas, Toprak, Cali, Cicek, Tente).
 # Kesit: duvarların çatı kalkınca görünen üst yüzü (kar katmanı tutmaz: City3D.KarTutmaz).
-ANLAMLI = ("Duvar", "Cati", "Kapi", "Panjur", "Cam", "Cam2", "Cam3", "Vitrin", "Yazi", "Isik", "Cali", "Cicek", "Tas", "Toprak", "Tente", "Kesit")
+ANLAMLI = ("Duvar", "Cati", "Kapi", "Panjur", "Cam", "Cam2", "Cam3", "Vitrin", "Yazi", "Isik", "Cali", "Cicek", "Tas", "Toprak", "Tente", "Kesit", "Kepenk")
 ISIKLI = ("Cam", "Cam2", "Cam3", "Vitrin", "Yazi", "Isik")
 RENK_ESIK = 30.0      # bu kadar yakın renkler (RGB uzaklığı, 0–441) tek malzemede birleşir
 
@@ -1688,24 +1963,36 @@ def temizle(g):
 
 
 def bakkal():
-    """(gövde, iç, çatı) geometrileri."""
+    """(gövde, iç, çatı) geometrileri. Adlı ek parçalar (kapı, kepenk, ürün grupları ...) EK sözlüğünde."""
     rnd = random.Random(TOHUM)
     R = renkler()
+    EK.clear()
     gv, ic, ct = G(AD + "_Govde"), G(AD + "_Ic"), G(AD + "_Cati")
     f = govde_kur(gv, R, rnd)
     dis_esyalar(gv, R, rnd, f)
     ic_kur(ic, R, rnd)
     ic_ekler(ic, R, rnd)
     cati_kur(ct, R, rnd)
-    for g in (gv, ic, ct):
+    canli_parcalar(R, rnd)
+    for g in [gv, ic, ct] + list(EK.values()):
         temizle(g)
-    sadelestir(((gv, False), (ic, True), (ct, False)))
+    # dışarıda duran ek parçalar mevsim / kar etiketlerini korur; içeridekiler "Boya" olur
+    sadelestir([(gv, False), (ic, True), (ct, False)] + [(g, ad not in DIS_EK) for ad, g in EK.items()])
     return gv, ic, ct
+
+
+DIS_EK = ("Kapi", "Kepenk1", "Kepenk2", "Kepenk3", "Kamyonet", "Koliler", "Duvar_On", "Duvar_Pah", "Duvar_Sag", "Duvar_Arka", "Duvar_Sol")     # dışarıda görünen ek parçalar
+IC_EK_ONEK = ("Urun_", "Ampul", "Poset", "Kasa2", "Sogutucu4", "Vitrin2")     # çatı açıkken görünenler
+
+
+def duvarlar(haric=()):
+    """Duvarların bel üstü objeleri (haric: inmiş sayılacak cepheler, ör. ("On", "Pah"))."""
+    return [g for ad, g in EK.items() if ad.startswith("Duvar_") and ad[6:] not in haric]
 
 
 def hafif_surum(gv, ct):
     """Uzak görünüm: gövde + çatı tek objede; küçük parçalar atılır, iç mekân hiç yok."""
-    h = B.hafif(birlestir(AD, gv, ct), esik=0.36)
+    h = B.hafif(birlestir(AD, gv, ct, EK["Kapi"], *duvarlar()), esik=0.36)
     h.ad = AD + "_Hafif"
     # tabela harfleri küçük oldukları için atıldı: yerlerine kelime başına tek açık renk blok (uzaktan yazı gibi okunur)
     tx0, tx1 = X0 + 0.35, X1 - PAH - 0.15
@@ -1732,14 +2019,26 @@ def main():
         bpy.context.scene.collection.children.link(k)
     gv, ic, ct = bakkal()
     hf = hafif_surum(gv, ct)
-    for dosya, parcalar in ((AD, (gv, ic, ct)), (AD + "_Hafif", (hf,))):
-        obler = [B.blender_obje(g, g.ad, k) for g in parcalar]
+    for dosya, parcalar in ((AD, [gv, ic, ct] + list(EK.values())), (AD + "_Hafif", [hf])):
+        obler = []
+        for g in parcalar:
+            pv = getattr(g, "pivot", (0.0, 0.0, 0.0))
+            if pv != (0.0, 0.0, 0.0):
+                # kök pivotta dursun: köşeler pivota göre yazılır, obje pivota taşınır
+                g2 = G(g.ad)
+                g2.v = [(p[0] - pv[0], p[1] - pv[1], p[2] - pv[2]) for p in g.v]
+                g2.f, g2.fm, g2.mats = g.f, g.fm, g.mats
+                ob = B.blender_obje(g2, g.ad, k)
+                ob.location = pv
+            else:
+                ob = B.blender_obje(g, g.ad, k)
+            obler.append(ob)
         B.fbx_kaydet(obler, os.path.join(klasor, dosya + ".fbx"))
         for ob in obler:
             me = ob.data
             bpy.data.objects.remove(ob, do_unlink=True)
             bpy.data.meshes.remove(me)
-        print("KAYDEDILDI", dosya, " + ".join("%s %d" % (g.ad, g.ucgen()) for g in parcalar), "ucgen")
+        print("KAYDEDILDI", dosya, "%d obje, %d ucgen" % (len(parcalar), sum(g.ucgen() for g in parcalar)))
     print("BAKKAL BITTI -> %s" % klasor)
 
 
@@ -1760,6 +2059,20 @@ def _kirp_resim(im, boy, arka=(236, 232, 224)):
     return kare.resize((boy, boy), Image.LANCZOS)
 
 
+def _kopya(g, ad=None):
+    h = G(ad or g.ad)
+    h.v, h.f, h.fm, h.fs, h.mats, h.sid = list(g.v), list(g.f), list(g.fm), list(g.fs), list(g.mats), g.sid
+    h._mi = dict(g._mi)
+    return h
+
+
+def _kapi_acik(derece):
+    """Kapı kanadının önizleme kopyası (oyundaki gibi içeri doğru açılmış)."""
+    k = _kopya(EK["Kapi"])
+    dondur(k, EK["Kapi"].pivot, -math.radians(derece))
+    return k
+
+
 def onizleme(klasor):
     sys.path.insert(0, os.path.dirname(os.path.abspath(B.__file__)))
     from bolge_onizleme import render
@@ -1767,32 +2080,79 @@ def onizleme(klasor):
     os.makedirs(klasor, exist_ok=True)
     gv, ic, ct = bakkal()
     hf = hafif_surum(gv, ct)
-    tam = birlestir("tam", gv, ct)
-    acik_ = birlestir("acik", gv, ic)
-    print("ucgen: govde %d, ic %d, cati %d, toplam %d, hafif %d; malzeme %d" %
-          (gv.ucgen(), ic.ucgen(), ct.ucgen(), gv.ucgen() + ic.ucgen() + ct.ucgen(), hf.ucgen(), len(set(gv.mats) | set(ic.mats) | set(ct.mats))))
+    R = renkler()
+    urunler = [g for ad, g in EK.items() if ad.startswith("Urun_")]
+    kapi = _kapi_acik(38)
+    gv_alt = gv                                   # yalnız bel altı ve cepheden bağımsız parçalar
+    gv = birlestir(gv.ad, gv, *duvarlar())        # önizlemelerde gövde = bütün duvarlar yerinde
+    tam = birlestir("tam", gv, ct, kapi)
+    dolu = [gv, ic, EK["Ampul"]] + urunler
+    acik_ = birlestir("acik", *(dolu + [kapi]))
+    ek_ucgen = sum(g.ucgen() for g in EK.values())
+    print("ucgen: govde %d, ic %d, cati %d, ek parcalar %d (%d obje), toplam %d, hafif %d; malzeme %d" %
+          (gv.ucgen(), ic.ucgen(), ct.ucgen(), ek_ucgen, len(EK), gv.ucgen() + ic.ucgen() + ct.ucgen() + ek_ucgen, hf.ucgen(),
+           len(set(gv.mats) | set(ic.mats) | set(ct.mats) | set(m for g in EK.values() for m in g.mats))))
     B_ = 900
-    kareler = [
+
+    def ciz(liste, kolaj_adi, sutun):
+        resimler = []
+        for ad, g, az, el in liste:
+            yol = os.path.join(klasor, "bakkal_%s.png" % ad)
+            im = render(g, B.HEX, size=int(B_ * 1.5), az=az, el=el, kenar=0.12, normal_kenar=True)
+            im = _kirp_resim(im, B_)
+            im.save(yol)
+            resimler.append(im)
+            print(yol)
+        satir = (len(resimler) + sutun - 1) // sutun
+        kolaj = Image.new("RGB", (B_ * sutun, B_ * satir), (236, 232, 224))
+        for i, im in enumerate(resimler):
+            kolaj.paste(im, ((i % sutun) * B_, (i // sutun) * B_))
+        kolaj.save(os.path.join(klasor, kolaj_adi), quality=90)
+        print(os.path.join(klasor, kolaj_adi))
+
+    ciz([
         ("1_on_capraz", tam, 35, 24), ("2_on_sol", tam, -40, 26), ("3_arka_capraz", tam, 145, 28), ("4_arka_sol", tam, -150, 28),
         ("5_oyun_acisi", tam, 30, 46), ("6_catisiz_tepeden", acik_, 0, 80), ("7_catisiz_capraz", acik_, 35, 46),
         ("8_catisiz_arka", acik_, -145, 48), ("9_hafif", hf, 35, 30),
-    ]
-    resimler = []
-    for ad, g, az, el in kareler:
-        yol = os.path.join(klasor, "bakkal_%s.png" % ad)
-        im = render(g, B.HEX, size=int(B_ * 1.5), az=az, el=el, kenar=0.12, normal_kenar=True)
-        im = _kirp_resim(im, B_)
-        im.save(yol)
-        resimler.append(im)
-        print(yol)
-    kolaj = Image.new("RGB", (B_ * 3, B_ * 3), (236, 232, 224))
-    for i, im in enumerate(resimler):
-        kolaj.paste(im, ((i % 3) * B_, (i // 3) * B_))
-    kolaj.save(os.path.join(klasor, "bakkal_kolaj.jpg"), quality=90)
-    print(os.path.join(klasor, "bakkal_kolaj.jpg"))
+    ], "bakkal_kolaj.jpg", 3)
+
+    # ---- canlı durumlar (oyunda BakkalCanli'nin kurduğu sahnelerin durağan karşılıkları)
+    kapali = birlestir("kapali", gv, ct, EK["Kapi"], EK["Kepenk1"], EK["Kepenk2"], EK["Kepenk3"])
+    tedarik = birlestir("tedarik", gv, ct, kapi, EK["Kamyonet"], EK["Koliler"], onizleme_insanlari(R, "tedarik"))
+    canli = birlestir("canli", *(dolu + [_kapi_acik(80), EK["Poset"], onizleme_insanlari(R)]))
+    bos = birlestir("bos", gv, ic, kapi, EK["Ampul"], *[g for ad, g in EK.items() if ad.startswith("Urun_") and ad.endswith("_1")])
+    yukseltme = birlestir("yukseltme", *(dolu + [kapi, EK["Kasa2"], EK["Sogutucu4"], EK["Vitrin2"]]))
+    inik = birlestir("inik", gv_alt, ic, EK["Ampul"], EK["Poset"], onizleme_insanlari(R), *(urunler + duvarlar(("On", "Pah", "Sag"))))
+    ciz([
+        ("16_on_duvarlar_inik", inik, 35, 40),
+        ("10_kepenk_kapali", kapali, 35, 24), ("11_tedarik_kamyoneti", tedarik, 150, 36), ("12_canli_capraz", canli, 35, 48),
+        ("13_canli_tepeden", canli, 0, 80), ("14_raflar_bosalmis", bos, 35, 48), ("15_yukseltmeler", yukseltme, -150, 50),
+    ], "bakkal_canli_kolaj.jpg", 3)
+
+
+def tablo():
+    """BakkalCanli.cs'e yapıştırılacak C# tablosu (yol noktaları, kenarlar, referans pivotlar)."""
+    bakkal()
+    def v3(p):
+        return "new Vector3(%sf, %sf, %sf)" % tuple(("%.3f" % a).rstrip("0").rstrip(".") if "." in ("%.3f" % a) else "%.3f" % a for a in p)
+    print("        // ---- bakkal.py --tablo çıktısı (elle değiştirme) ----")
+    print("        static readonly (string ad, Vector3 p)[] Noktalar =\n        {")
+    for ad in sorted(NOKTA):
+        print("            (\"%s\", %s)," % (ad, v3(NOKTA[ad])))
+    print("        };")
+    print("        static readonly string[] Kenarlar =\n        {")
+    print("            " + ", ".join("\"%s-%s\"" % k for k in NOKTA_KENAR))
+    print("        };")
+    print("        static readonly (string ek, Vector3 p)[] Pivotlar =\n        {")
+    for ad in ("Kapi", "Kepenk1", "Kamyonet", "Poset", "Kepenk2", "Kepenk3", "Koliler"):
+        print("            (\"_%s\", %s)," % (ad, v3(EK[ad].pivot)))
+    print("        };")
+    print("        // ---- tablo sonu ----")
 
 
 if B.IN_BLENDER and __name__ == "__main__":
     main()
 elif __name__ == "__main__" and "--onizleme" in sys.argv:
     onizleme(sys.argv[sys.argv.index("--onizleme") + 1])
+elif __name__ == "__main__" and "--tablo" in sys.argv:
+    tablo()

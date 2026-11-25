@@ -77,6 +77,8 @@ namespace KuryeTycoon
 
         void UiBinaKartiYenile(bool agir)
         {
+            // Canlı bakkal: kartı açık dükkânın çatısı kalkar (World/BakkalCanli)
+            BakkalCanli.SeciliDukkan = InfoOpen ? infoShop : null;
             bool gor = InfoOpen && CityMap.I != null && OrderManager.I != null && GameClock.I != null;
             U.Goster(binaKok, gor);
             if (!gor) { binaKirli = true; return; }
@@ -183,6 +185,8 @@ namespace KuryeTycoon
             y.Kutu("Bu ay", s.monthOrders.ToString());
             y.Kutu("Toplam", s.ordersTotal.ToString());
             y.KutularBitir();
+            BakkalKarti(y, s);
+            if (BakkalCanli.Iceride != null && BakkalCanli.Iceride == BakkalCanli.Bul(s)) return;   // içerideyken kart kısa kalır
 
             if (s.mutfak) BinaMutfak(y);
             else if (s.isletme) BinaIsletme(y, s);

@@ -1771,7 +1771,7 @@ namespace KuryeTycoon
         {
             if (r == null || r is ParticleSystemRenderer || r is SkinnedMeshRenderer || r.isPartOfStaticBatch) return;
             if (karKoku != null && r.transform.IsChildOf(karKoku)) return;
-            if (r.name.EndsWith(CatiKaldir.IcEki)) return;   // iç mekân (çatı kalkınca görünen): içeriye kar yağmaz
+            if (CatiKaldir.KarYok(r.transform)) return;   // iç mekân (çatı kalkınca görünen) ve canlı figürler: içeriye kar yağmaz
             var mf = r.GetComponent<MeshFilter>();
             if (mf == null || mf.sharedMesh == null) return;
             var mesh = mf.sharedMesh;
@@ -1952,7 +1952,12 @@ namespace KuryeTycoon
             if (targetHeight <= 0f && registerHeight) heightByTile[tile] = height * mul;
             Tint(renderers, !CityMap.I.IsUnlocked(tile), seed);
             // İçi modelli binalar ("_Cati" çocuğu olanlar, ör. mahalle bakkalı): kamera yaklaşınca çatı kalkar
-            if (ownModel) CatiKaldir.Tak(inst);
+            // Bakkalın canlı hâli (BakkalCanli): müşteriler, kasiyer, sipariş poşeti, kepenk, tedarik kamyoneti
+            if (ownModel)
+            {
+                var catiKaldir = CatiKaldir.Tak(inst);
+                if (catiKaldir != null) BakkalCanli.Tak(inst, shop, catiKaldir);
+            }
         }
 
         // ---------- Renk: ortak malzeme kopyaları (performans) ----------
