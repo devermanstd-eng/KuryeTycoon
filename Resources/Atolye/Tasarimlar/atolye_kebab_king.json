@@ -1,7 +1,7 @@
 {
  "ad": "kebab_king",
  "bolge": "karma",
- "tohum": 25,
+ "tohum": 26,
  "dukkan": false,
  "tur": "doner",
  "tabela": "",
@@ -11,109 +11,109 @@
    "x": 1,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 1,
-   "ct": 0
+   "tarz": 6,
+   "renk": 13,
+   "cati": 6,
+   "ct": 1
   }
  ],
  "susler": []

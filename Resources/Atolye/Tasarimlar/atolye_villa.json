@@ -1,7 +1,7 @@
 {
  "ad": "villa",
  "bolge": "ev",
- "tohum": 61,
+ "tohum": 63,
  "dukkan": false,
  "tur": "villa",
  "tabela": "",
@@ -11,168 +11,168 @@
    "x": 1,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 3,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 3,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 3,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 3,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 3,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 3,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 0,
-   "ct": 0
+   "tarz": 7,
+   "renk": 14,
+   "cati": 6,
+   "ct": 1
   }
  ],
  "susler": [
   {
-   "ad": "agac_sogut_1",
+   "ad": "agac_cinar_1",
    "x": -5.3,
    "y": 4.5,
    "aci": 0.0,

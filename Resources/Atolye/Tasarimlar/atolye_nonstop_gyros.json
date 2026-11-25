@@ -1,11 +1,11 @@
 {
  "ad": "nonstop_gyros",
  "bolge": "karma",
- "tohum": 26,
+ "tohum": 27,
  "dukkan": false,
  "tur": "gyros",
  "tabela": "",
- "tente": 2,
+ "tente": 8,
  "bloklar": [
   {
    "x": 1,
@@ -13,8 +13,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 0,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 1,
@@ -22,8 +22,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 0,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 1,
@@ -31,8 +31,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 0,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 1,
@@ -40,8 +40,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 0,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 2,
@@ -49,8 +49,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 0,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 2,
@@ -58,8 +58,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 0,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 2,
@@ -67,8 +67,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 0,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 2,
@@ -76,8 +76,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 0,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   }
  ],
  "susler": []

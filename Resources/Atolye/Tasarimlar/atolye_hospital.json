@@ -1,7 +1,7 @@
 {
  "ad": "hospital",
  "bolge": "karma",
- "tohum": 45,
+ "tohum": 47,
  "dukkan": false,
  "tur": "hastane",
  "tabela": "",
@@ -11,406 +11,406 @@
    "x": 0,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 0,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 0,
    "y": 1,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 0,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 0,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 0,
    "y": 2,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 0,
    "y": 3,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 0,
    "y": 3,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 0,
    "y": 3,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 1,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 2,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 3,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 3,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 1,
    "y": 3,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 1,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 2,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 3,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 3,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 2,
    "y": 3,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 1,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 2,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 3,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 3,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 3,
    "y": 3,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 1,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 1,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 2,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 3,
    "k": 0,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 3,
    "k": 1,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   },
   {
    "x": 4,
    "y": 3,
    "k": 2,
-   "tarz": 0,
-   "renk": 6,
-   "cati": 1,
-   "ct": 4
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
   }
  ],
  "susler": []

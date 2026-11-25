@@ -1,7 +1,7 @@
 {
  "ad": "greenhouse",
  "bolge": "sanayi",
- "tohum": 54,
+ "tohum": 56,
  "dukkan": false,
  "tur": "sera",
  "tabela": "",
@@ -13,7 +13,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   },
   {
@@ -22,7 +22,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   },
   {
@@ -31,7 +31,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   },
   {
@@ -40,7 +40,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   },
   {
@@ -49,7 +49,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   },
   {
@@ -58,7 +58,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   },
   {
@@ -67,7 +67,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   },
   {
@@ -76,7 +76,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   },
   {
@@ -85,7 +85,7 @@
    "k": 0,
    "tarz": 0,
    "renk": 6,
-   "cati": 3,
+   "cati": 7,
    "ct": 2
   }
  ],

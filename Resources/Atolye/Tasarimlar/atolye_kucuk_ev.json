@@ -11,87 +11,97 @@
    "x": 1,
    "y": 1,
    "k": 0,
-   "tarz": 1,
-   "renk": 5,
-   "cati": 3,
-   "ct": 0
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
   },
   {
    "x": 1,
    "y": 2,
    "k": 0,
-   "tarz": 1,
-   "renk": 5,
-   "cati": 3,
-   "ct": 0
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
   },
   {
    "x": 1,
-   "y": 3,
-   "k": 0,
-   "tarz": 1,
-   "renk": 5,
-   "cati": 3,
-   "ct": 0
+   "y": 2,
+   "k": 1,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
   },
   {
    "x": 2,
    "y": 1,
    "k": 0,
-   "tarz": 1,
-   "renk": 5,
-   "cati": 3,
-   "ct": 0
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
   },
   {
    "x": 2,
    "y": 2,
    "k": 0,
-   "tarz": 1,
-   "renk": 5,
-   "cati": 3,
-   "ct": 0
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
   },
   {
    "x": 2,
-   "y": 3,
-   "k": 0,
-   "tarz": 1,
-   "renk": 5,
-   "cati": 3,
-   "ct": 0
+   "y": 2,
+   "k": 1,
+   "tarz": 6,
+   "renk": 10,
+   "cati": 6,
+   "ct": 2
   }
  ],
  "susler": [
   {
    "ad": "agac_meyve_1",
    "x": 4.2,
-   "y": -2.5,
+   "y": -1.5,
    "aci": 0.0,
    "olcek": 1.0,
    "renk": 0
   },
   {
-   "ad": "cit_ahsap",
+   "ad": "cit_bitki",
    "x": 4.2,
-   "y": -5.4,
+   "y": -5.9,
    "aci": 0.0,
    "olcek": 1.0,
    "renk": 0
   },
   {
-   "ad": "cit_ahsap",
-   "x": 1.4,
-   "y": -5.4,
-   "aci": 0.0,
-   "olcek": 1.0,
-   "renk": 0
-  },
-  {
-   "ad": "odun_yigini",
+   "ad": "cali_2",
    "x": 3.6,
    "y": 3.5,
-   "aci": 90,
+   "aci": 0.0,
    "olcek": 1.0,
    "renk": 0
   }

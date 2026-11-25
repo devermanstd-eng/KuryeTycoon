@@ -13,11 +13,17 @@ birleştirme kurallarının Python hâli. Geometri çekirdeği bolge_modelleri.p
   • Unity tarafı parçaları FBX'ten değil, bu betiğin yazdığı JSON'dan okur (Resources/Atolye/pastel_parcalar.json):
     Blender gerekmez, araç parçaları anında kurar. Köşeler yüz başına ayrıdır (düz gölgeleme); normalleri Unity hesaplar. Parça değişince:  python3 Tools/Blender/pastel_parcalar.py --json
   • Birleştirme kuralları (bina()) Scripts/World/Atolye/AtolyeKurucu.cs'teki C# birleştiricisiyle AYNI olmalı: birini değiştirince öbürünü de.
+  • v6 (Londra mimarisi): sanat stili aynı, mimari Londra. Eski parçalar aynı adla Londra hâlini aldı (giyotin pencere,
+    Victoria tarzı dükkân cephesi, sade arduvaz çatı); bloğun tarz alanı 5 ve üstü Londra üsluplarıdır (USLUPLAR tablosu:
+    Georgian, Victorian, beyaz sıva, mews, Portland taşı, gotik, tuğla depo); çatı tarzı 7 parapet arkasında mansart.
+    Kalem çizgisi inceldi; "Pastel_Iz_*" malzemeli yüzeyler (tuğla / arduvaz sırası izi, cam kayıtları) kontur almaz.
+    Ayrıntı: dosyada "LONDRA MİMARİSİ (v6)" bölümü.
 
 Çalıştırma (Blender gerekmez):
   python3 Tools/Blender/pastel_parcalar.py --json                 parça kütüphanesini Unity için yazar
   python3 Tools/Blender/pastel_parcalar.py --onizleme klasor      parça kataloğu + örnek binalar (PNG, kolaj)
   python3 Tools/Blender/pastel_parcalar.py --ornekler klasor      örnek tasarımları JSON olarak yazar (araçta "İçe aktar")
+  python3 Tools/Blender/pastel_parcalar.py --sahneler             örnek sahneleri Resources/Atolye/Sahneler altına yazar
 
 Ölçek: oyunda bölge binaları 14 m arsaya göre sabit ölçekle yerleşir (City3D.ArsaOlculu). 5 × 5 hücre = 14 m: bir hücre bir
 pencere aksı kadar (2,8 m), kat 3 m; Bolge_* binalarıyla (kat ~3,05–3,3 m) yan yana aynı ölçüde durur.
@@ -68,12 +74,21 @@ DK = 0.2                    # duvar panelinin kalınlığı (hücrenin içine do
 
 # Bloğun tarzı
 APARTMAN, FACHWERK, TAS, KAIDE, MERDIVEN = 0, 1, 2, 3, 4
-TARZ_AD = ["Pastel apartman", "Yarı ahşap (fachwerk) ev", "Taş kule", "Taş kaide / teras", "Taş merdiven"]
+# 5 ve üstü Londra üslupları (USLUPLAR tablosu; tarz − USLUP_TABAN = tablo sırası)
+USLUP_TABAN = 5
+GEORGIAN, VICTORIAN, SIVA_TERAS, MEWS, PORTLAND_T, GOTIK, DEPO = 5, 6, 7, 8, 9, 10, 11
+TARZ_AD = ["Boyalı sıva teras (pastel)", "Yarı ahşap (Tudor) ev", "Taş kule", "Taş kaide / teras", "Taş merdiven"]
 
-DUVAR_RENK = ["#bcd9ea", "#f3c6cf", "#d9c8ea", "#f6ecc9", "#c5e6d0", "#f7d9b5", "#f4f1e8", "#e9b9a6", "#cfd6e6", "#f2e3a1"]
-CATI_RENK = ["#c8553f", "#e08a45", "#5f8fb8", "#6fa37a", "#8a5a78", "#7d7f8c"]
-VURGU_RENK = ["#3f7d74", "#b5524a", "#3f5f8a", "#8a6247", "#6b4a7a", "#d9a441"]
-TENTE_RENK = ["#c8553f", "#3f7d74", "#3f5f8a", "#d9a441", "#8a5a78", "#5a8f4a"]
+# 0–9 pastel boyalı sıva (Notting Hill); 10–16 Londra (v6): 10 sarı "London stock" tuğla · 11 koyu stock · 12 kırmızı tuğla ·
+# 13 koyu kırmızı tuğla · 14 krem-beyaz sıva (stucco) · 15 Portland taşı · 16 kahve tuğla (depo, mews)
+DUVAR_RENK = ["#bcd9ea", "#f3c6cf", "#d9c8ea", "#f6ecc9", "#c5e6d0", "#f7d9b5", "#f4f1e8", "#e9b9a6", "#cfd6e6", "#f2e3a1",
+              "#dcc594", "#cfb384", "#d3927a", "#c58069", "#f4efe2", "#e6e2d8", "#bfa98f"]
+# 0–5 eski; 6 gri-mavi arduvaz · 7 açık arduvaz · 8 kırmızımsı kiremit (bazı Victorian evler) · 9 kurşun grisi
+CATI_RENK = ["#c8553f", "#e08a45", "#5f8fb8", "#6fa37a", "#8a5a78", "#7d7f8c", "#8795a8", "#a3adba", "#b9705a", "#7f8c90"]
+# kapı renkleri (Londra): kırmızı, lacivert, siyah, yeşil, sarı, petrol, mürdüm, gök mavisi
+VURGU_RENK = ["#b8382f", "#2c3d70", "#34333a", "#2f6048", "#e2b33c", "#3f7d74", "#6b4a7a", "#5f8fb8"]
+# 0–5 eski; 6 koyu yeşil · 7 bordo · 8 lacivert · 9 krem (düz renk tenteler)
+TENTE_RENK = ["#c8553f", "#3f7d74", "#3f5f8a", "#d9a441", "#8a5a78", "#5a8f4a", "#2f6048", "#7a2f38", "#2c3d70", "#efe6cf"]
 # yaz açık / yaz koyu / ilkbahar / sonbahar turuncu / kızıl / sarı / çiçekli pembe / kış (karlı)
 YAPRAK_RENK = ["#8fbf7a", "#6fa968", "#a9c96a", "#e0a04a", "#c9603f", "#e8c95a", "#f2b6c8", "#dfe3e6"]
 TAS_RENK = "#cfc8ba"
@@ -3036,6 +3051,1645 @@ for _tip, _n, _acik, _hedef in AGAC_TIP:
         ekle(_ad, "agac", "%s %d" % (_acik, _i), (lambda g, t=_tip, s=_i: _agac(g, t, s)), _hedef, hafif=(lambda g, t=_tip, s=_i: _agac(g, t, s, True)))
 
 
+# ================================== LONDRA MİMARİSİ (v6) ==================================
+# Sanat stili aynı (pastel renk, kalem kontur, kâğıt); binaların MİMARİSİ Londra. Bu bölüm:
+#   • ortak yardımcılar: konturu çizilmeyen ince "iz" yüzeyleri (Pastel_Iz_*: tuğla / arduvaz sırası, cam kayıtları, demir
+#     çubuklar), tek yüzlü levhalar, giyotin (sash) pencere, kemerler, mızrak başlı dökme demir korkuluk, bodrum aydınlığı;
+#   • eski parçaların Londra hâli (aynı adla: pencereler, dükkân cephesi, tabela panosu, tente, çatı karoları, saçak, baca…);
+#   • yeni duvar üslupları (bloğun tarz alanı 5 ve üstü, USLUP tablosu): Georgian sıra ev, Victorian tuğla, beyaz sıva
+#     (Belgravia), mews, Portland taşı (neoklasik), Victorian gotik, tuğla depo;
+#   • parapet arkasında arduvaz mansart çatı (CT_PARAPET) ve sıra bacalar; Londra sokak donatıları.
+# Kural değişiklikleri (yerlesim / _cati / kenarlar) AtolyeKurucu.cs ile aynı tutulur; USLUP tablosu JSON'a yazılır.
+
+DEMIR_S = PM("Demir", "#3b3a42")            # siyah dökme demir (saf siyah değil)
+SIVA_L = PM("Siva", "#f4efe2")              # krem-beyaz sıva (stucco)
+SIVA_L2 = PM("Siva", "#e4dccb")
+PORTLAND = PM("Tas", "#e6e2d8")             # Portland taşı
+PORTLAND2 = PM("Tas", "#d3cec2")
+KURSUN = PM("Kursun", "#aab2ba")            # kurşun kaplama (çatı penceresi, cumba üstü)
+KULAH = PM("Kulah", "#d39472")              # seramik baca külahı
+KULAH2 = PM("Kulah", "#e6caa0")
+BOYA_SARI = PM("Boya", "#f0c94a")
+KIRMIZI = PM("Kirmizi", "#c8413a")          # telefon kulübesi, posta kutusu
+IZ_D = ROL("Iz", "d", "#a9c6d8")            # duvarın koyusu (tuğla sırası izi)
+IZ_C = ROL("Iz", "c", "#ad4835")            # çatının koyusu (arduvaz sırası izi)
+IZ_BEYAZ = PM("Iz", "#fbf7ee")              # cam kayıtları
+IZ_SIVA = PM("Iz", "#dcd4c2")               # sıva derzi (rustika)
+IZ_TAS = PM("Iz", "#c9c3b6")
+IZ_DEMIR = PM("Iz", "#3b3a42")              # korkuluk çubukları
+IZ_GOLGE = PM("Iz", "#77727e")              # bodrum aydınlığının tabanı
+IZ_PERDE = [PM("Iz", "#f3e7cf"), PM("Iz", "#e6c6bd"), PM("Iz", "#c8dac3"), PM("Iz", "#d6cde3")]
+IZ_KARO = [PM("Iz", "#3b3a42"), PM("Iz", "#f4efe2"), PM("Iz", "#c98a72")]
+IZ_PIRINC = PM("Iz", "#d9b45a")
+IZ_KABARTMA = PM("Iz", "#d8d2dc")           # kapı panellerinin ışık alan kenarı
+CAM_BUZLU = PM("Cam", "#dbe7e6")            # pub'ın buzlu camı
+
+
+def levha(g, pts, mat, cift=False):
+    """Tek yüzlü ince levha (kendi katısı). cift: arka yüzü de çizilir."""
+    g.sid += 1
+    g.yuz(list(pts), mat)
+    if cift:
+        g.yuz(list(pts)[::-1], mat)
+    g.sid += 1
+
+
+def cokgen(g, c, uz, mat, o=0.03, cift=False):
+    """Cephe düzleminde levha: (u, z) köşeleri dışarıdan bakınca saat yönünün tersine."""
+    levha(g, [c.p(u, o, z) for u, z in uz], mat, cift)
+
+
+def iz(g, c, u0, u1, z0, z1, mat, o=0.012):
+    """Cephe yüzünde dikdörtgen iz (malzemesi Pastel_Iz_* ise konturu çizilmez)."""
+    cokgen(g, c, [(u0, z0), (u1, z0), (u1, z1), (u0, z1)], mat, o)
+
+
+def yer_levha(g, c, u0, u1, o0, o1, z, mat):
+    """Yukarı bakan yatay levha (cephe ekseninde: u boyunca, o dışarı)."""
+    levha(g, [c.p(u0, o1, z), c.p(u1, o1, z), c.p(u1, o0, z), c.p(u0, o0, z)], mat)
+
+
+def tugla_izi(g, c, tohum, n=4, u0=0.12, u1=HUCRE - 0.12, z0=0.15, z1=KAT - 0.2, yasak=None, mat=None):
+    """Çok hafif tuğla dokusu: birkaç kısa sıra izi (iki sıra, yarım tuğla kaydırmalı). yasak: (u0, u1, z0, z1) pencere boşluğu."""
+    rnd = random.Random(tohum)
+    for i in range(n):
+        w = rnd.uniform(0.3, 0.55)
+        u = rnd.uniform(u0, u1 - w - 0.15)
+        z = z0 + (z1 - z0) * (i + rnd.uniform(0.15, 0.85)) / n
+        if yasak and u + w + 0.15 > yasak[0] - 0.12 and u < yasak[1] + 0.12 and z + 0.12 > yasak[2] - 0.2 and z < yasak[3] + 0.35:
+            continue
+        iz(g, c, u, u + w, z, z + 0.018, mat or IZ_D)
+        iz(g, c, u + 0.13, u + w * 0.6 + 0.13, z + 0.085, z + 0.103, mat or IZ_D)
+
+
+def rustika(g, c, u0=0.0, u1=HUCRE, z0=0.0, z1=KAT - 0.12, adim=0.44, yasak=None, mat=None):
+    """Rustika bantları: sıvada yatay derz izleri. yasak: (u0, u1, z0, z1) boşluk (derz iki parçaya bölünür)."""
+    z = z0 + adim
+    while z < z1 - 0.1:
+        if yasak and yasak[2] - 0.05 < z < yasak[3] + 0.05:
+            if yasak[0] - u0 > 0.1:
+                iz(g, c, u0, yasak[0] - 0.06, z, z + 0.022, mat or IZ_SIVA)
+            if u1 - yasak[1] > 0.1:
+                iz(g, c, yasak[1] + 0.06, u1, z, z + 0.022, mat or IZ_SIVA)
+        else:
+            iz(g, c, u0, u1, z, z + 0.022, mat or IZ_SIVA)
+        z += adim
+
+
+def _yay(um, zs, r, tip="yarim", n=6):
+    """Kemer eğrisinin (u, z) noktaları: sağ üzengiden tepeye, oradan sol üzengiye.
+    tip: yarim (yarım daire) · basik (basık yay) · sivri (gotik sivri kemer)."""
+    pts = []
+    if tip == "sivri":
+        m = max(2, n // 2)
+        for i in range(m + 1):
+            a = (math.pi / 3) * i / m
+            pts.append((um - r + 2 * r * math.cos(a), zs + 2 * r * math.sin(a)))
+        for i in range(1, m + 1):
+            a = 2 * math.pi / 3 + (math.pi / 3) * i / m
+            pts.append((um + r + 2 * r * math.cos(a), zs + 2 * r * math.sin(a)))
+        return pts
+    k = 0.32 if tip == "basik" else 1.0
+    for i in range(n + 1):
+        a = math.pi * i / n
+        pts.append((um + r * math.cos(a), zs + r * k * math.sin(a)))
+    return pts
+
+
+def kemer_halka(g, c, um, zs, r, t, mat, tip="yarim", n=6, o=0.05):
+    """Kemer sövesi: iç yarıçap r, kalınlık t; dilim dilim levha (konturu çizilir)."""
+    ic = _yay(um, zs, r, tip, n)
+    f = (r + t) / r
+    dis = [(um + (u - um) * f, zs + (z - zs) * f) for u, z in ic]
+    g.sid += 1
+    for i in range(len(ic) - 1):
+        g.yuz([c.p(ic[i][0], o, ic[i][1]), c.p(dis[i][0], o, dis[i][1]), c.p(dis[i + 1][0], o, dis[i + 1][1]), c.p(ic[i + 1][0], o, ic[i + 1][1])], mat)
+    g.sid += 1
+
+
+def sash(g, c, u0, u1, z0, z1, bolme=(3, 2), bas="duz", perde=1, cam=CAM, t=0.06, d=0.05, denizlik=True, cerceve=SILME):
+    """Giyotin (sash) pencere: ince beyaz kasa, ortada buluşma kaydı, cam kayıtları iz olarak (6/6 → bolme=(3, 2),
+    2/2 → (2, 1), 1/1 → (1, 1)), taş denizlik. bas: duz · yarim · basik · sivri (kemerli baş; z1 üzengi kotu).
+    perde: 0 yok · 1 stor (üstte) · 2 iki yanda perde."""
+    w = u1 - u0
+    um = (u0 + u1) / 2
+    govde = [(u0 - t / 2, z0 - t / 2), (u1 + t / 2, z0 - t / 2)]
+    if bas == "duz":
+        cokgen(g, c, govde + [(u1 + t / 2, z1 + t / 2), (u0 - t / 2, z1 + t / 2)], cam, 0.012)
+    else:
+        cokgen(g, c, govde + _yay(um, z1, w / 2 + t / 2, bas, 6), cam, 0.012)
+    pm = IZ_PERDE[int(round(u0 * 10 + z1 * 7 + w * 3)) % len(IZ_PERDE)]
+    if perde == 1:
+        iz(g, c, u0, u1, z1 - (z1 - z0) * 0.3, z1, pm, 0.016)
+    elif perde == 2:
+        iz(g, c, u0, u0 + w * 0.2, z0, z1, pm, 0.016)
+        iz(g, c, u1 - w * 0.2, u1, z0, z1, pm, 0.016)
+    zm = (z0 + z1) / 2 if bas == "duz" else z0 + (z1 - z0) * 0.56
+    nx, ny = bolme
+    for i in range(1, nx):                                    # düşey cam kayıtları
+        uu = u0 + w * i / nx
+        iz(g, c, uu - 0.014, uu + 0.014, z0, z1, IZ_BEYAZ, 0.02)
+    for a, b in ((z0, zm), (zm, z1)):                         # her kanatta yatay kayıtlar
+        for j in range(1, ny):
+            zz = a + (b - a) * j / ny
+            iz(g, c, u0, u1, zz - 0.014, zz + 0.014, IZ_BEYAZ, 0.02)
+    c.kutu(g, u0 - t, u0, 0, d, z0 - t, z1, cerceve)
+    c.kutu(g, u1, u1 + t, 0, d, z0 - t, z1, cerceve)
+    c.kutu(g, u0, u1, 0, d, z0 - t, z0, cerceve)
+    c.kutu(g, u0, u1, 0.012, d + 0.012, zm - 0.03, zm + 0.03, cerceve)      # buluşma kaydı
+    if bas == "duz":
+        c.kutu(g, u0 - t, u1 + t, 0, d, z1, z1 + t, cerceve)
+    else:
+        kemer_halka(g, c, um, z1, w / 2, t, cerceve, bas, 6, d)
+    if denizlik:
+        c.kutu(g, u0 - t - 0.06, u1 + t + 0.06, 0, 0.14, z0 - t - 0.07, z0 - t, PORTLAND)
+
+
+def duz_kemer(g, c, u0, u1, z, h=0.24, mat=None):
+    """Düz tuğla kemer (gauged arch): pencerenin üstünde yelpaze kesimli lento (levha; konturu çizilir)."""
+    cokgen(g, c, [(u0 - 0.06, z), (u1 + 0.06, z), (u1 + 0.17, z + h), (u0 - 0.17, z + h)], mat or D2, 0.022)
+
+
+def tas_lento(g, c, u0, u1, z, h=0.2, mat=None):
+    c.kutu(g, u0 - 0.14, u1 + 0.14, 0, 0.07, z, z + h, mat or PORTLAND)
+
+
+def sacak_lento(g, c, u0, u1, z, alinlik=False, mat=None):
+    """Sıva pencere başlığı: konsollu düz korniş (alinlik: üstünde üçgen alınlık)."""
+    m = mat or SIVA_L
+    c.kutu(g, u0 - 0.12, u1 + 0.12, 0, 0.07, z, z + 0.12, m)
+    c.kutu(g, u0 - 0.2, u1 + 0.2, 0, 0.16, z + 0.12, z + 0.19, m)
+    if alinlik:
+        c.prizma_uc(g, u0 - 0.2, u1 + 0.2, 0, 0.13, z + 0.19, 0.26, m)
+
+
+def parmaklik(g, c, u0, u1, o, z0=0.0, h=1.05, aralik=0.2, kaide=True):
+    """Siyah dökme demir korkuluk (cepheye paralel): alçak taş kaide, alt ve üst ray, mızrak başlı çubuklar.
+    Çubuklar iki yüzlü ince iz levhalarıdır (konturu çizilmez; uzak görünümde atılır)."""
+    zb = z0
+    if kaide:
+        c.kutu(g, u0, u1, o - 0.08, o + 0.08, z0, z0 + 0.14, PORTLAND2, arka=True)
+        zb = z0 + 0.14
+    zt = z0 + h - 0.14
+    c.kutu(g, u0, u1, o - 0.02, o + 0.02, zt, zt + 0.04, DEMIR_S, arka=True)
+    c.kutu(g, u0, u1, o - 0.02, o + 0.02, zb + 0.07, zb + 0.11, DEMIR_S, arka=True)
+    n = max(2, int(round((u1 - u0) / aralik)))
+    g.sid += 1
+    for i in range(n):
+        uu = u0 + (u1 - u0) * (i + 0.5) / n
+        govde = [c.p(uu - 0.014, o, zb), c.p(uu + 0.014, o, zb), c.p(uu + 0.014, o, zt + 0.1), c.p(uu - 0.014, o, zt + 0.1)]
+        uc = [c.p(uu - 0.04, o, zt + 0.1), c.p(uu + 0.04, o, zt + 0.1), c.p(uu, o, zt + 0.24)]
+        for pts in (govde, uc):
+            g.yuz(pts, IZ_DEMIR)
+            g.yuz(pts[::-1], IZ_DEMIR)
+    g.sid += 1
+
+
+def parmaklik_yan(g, c, u, o0, o1, z0=0.0, z1=None, h=1.05, n=4):
+    """Cepheye dik korkuluk (basamak yanı): eğimli üst ray + dikmeler. z0: o0'daki taban kotu, z1: o1'deki."""
+    z1 = z0 if z1 is None else z1
+    cubuk(g, c.p(u, o0, z0 + h - 0.12), c.p(u, o1, z1 + h - 0.12), 0.04, DEMIR_S)
+    for i in range(n):
+        f = i / float(n - 1)
+        oo, zz = o0 + (o1 - o0) * f, z0 + (z1 - z0) * f
+        cubuk(g, c.p(u, oo, zz), c.p(u, oo, zz + h - 0.02), 0.03 if 0 < i < n - 1 else 0.045, DEMIR_S)
+
+
+AVLU = 1.15          # bodrum aydınlığının derinliği: cepheden kaldırım korkuluğuna
+
+
+def avlu(g, c, u0, u1, pencere_u=None, korkuluk=True):
+    """Bodrum aydınlığı (light well): koyu çukur tabanı, bodrum penceresinin görünen üstü, kaldırım kenarında korkuluk."""
+    yer_levha(g, c, u0, u1, 0.0, AVLU - 0.08, 0.03, IZ_GOLGE)
+    if pencere_u:
+        a, b = pencere_u
+        cokgen(g, c, [(a, 0.04), (b, 0.04), (b, 0.5), (a, 0.5)], CAM2, 0.012)
+        c.kutu(g, a - 0.06, b + 0.06, 0, 0.06, 0.5, 0.57, SILME)
+        iz(g, c, (a + b) / 2 - 0.014, (a + b) / 2 + 0.014, 0.04, 0.5, IZ_BEYAZ, 0.02)
+    if korkuluk:
+        parmaklik(g, c, u0, u1, AVLU)
+
+
+def panelli_kapi(g, c, u0, u1, z0, z1, mat=None, cift=False, cam_ust=False):
+    """Panelli ahşap kapı kanadı (parlak renkli): kabartma paneller, pirinç tokmak ve mektup ağzı."""
+    m = mat or VR
+    c.kutu(g, u0, u1, 0, 0.05, z0, z1, m)
+    w, h = u1 - u0, z1 - z0
+    sutun = ((0.1, 0.46), (0.54, 0.9))
+    for a, b in sutun:
+        for p, q in ((0.07, 0.36), (0.42, 0.7), (0.76, 0.93)):
+            if cam_ust and p > 0.7:
+                cokgen(g, c, [(u0 + w * a, z0 + h * p), (u0 + w * b, z0 + h * p), (u0 + w * b, z0 + h * q), (u0 + w * a, z0 + h * q)], CAM2, 0.056)
+            else:
+                c.kutu(g, u0 + w * a, u0 + w * b, 0.05, 0.068, z0 + h * p, z0 + h * q, m)
+                # kabartmanın ışık alan kenarı (koyu kapıda kontur görünmez: açık renkli ince iz)
+                iz(g, c, u0 + w * a, u0 + w * b, z0 + h * q - 0.016, z0 + h * q, IZ_KABARTMA, 0.07)
+                iz(g, c, u0 + w * a, u0 + w * a + 0.016, z0 + h * p, z0 + h * q, IZ_KABARTMA, 0.07)
+    if cift:
+        iz(g, c, (u0 + u1) / 2 - 0.012, (u0 + u1) / 2 + 0.012, z0, z1, IZ_DEMIR, 0.056)
+    c.kutu(g, u0 + w * 0.47, u0 + w * 0.53, 0.05, 0.11, z0 + h * 0.5, z0 + h * 0.56, PIRINC)      # tokmak
+    iz(g, c, u0 + w * 0.36, u0 + w * 0.64, z0 + h * 0.385, z0 + h * 0.41, IZ_PIRINC, 0.07)         # mektup ağzı
+
+
+def yelpaze(g, c, um, z, r, mat=CAM):
+    """Yarım daire yelpaze ışıklık (fanlight): cam + ışınsal kayıtlar + kemer sövesi."""
+    cokgen(g, c, _yay(um, z, r, "yarim", 6), mat, 0.012)
+    for a in (math.pi / 4, math.pi / 2, 3 * math.pi / 4):
+        p0, p1 = (um + 0.12 * math.cos(a), z + 0.12 * math.sin(a)), (um + r * math.cos(a), z + r * math.sin(a))
+        nx, nz = -math.sin(a) * 0.013, math.cos(a) * 0.013
+        cokgen(g, c, [(p0[0] + nx, p0[1] + nz), (p0[0] - nx, p0[1] - nz), (p1[0] - nx, p1[1] - nz), (p1[0] + nx, p1[1] + nz)], IZ_BEYAZ, 0.02)
+    cokgen(g, c, _yay(um, z, 0.13, "yarim", 4), IZ_BEYAZ, 0.021)
+    kemer_halka(g, c, um, z, r, 0.09, SILME, "yarim", 6, 0.06)
+
+
+def basamaklar(g, c, u0, u1, o1, z, n=3, mat=None):
+    """Kapıya çıkan basamaklar: sahanlık (cephede, z kotunda) + n basamak, o1'de kaldırıma iner."""
+    do = (o1 - 0.42) / n
+    c.kutu(g, u0, u1, 0, 0.42, 0.0, z, mat or PORTLAND)
+    for i in range(n):
+        c.kutu(g, u0, u1, 0.42 + i * do, 0.42 + (i + 1) * do, 0.0, z * (n - i) / (n + 1.0), PORTLAND2 if i % 2 == 0 else (mat or PORTLAND))
+
+
+def saksi_k(g, x, y, z=0.0, r=0.16, cicek=0):
+    dsil(g, x, y, z, z + 0.3, r * 0.8, 6, SAKSI, r1=r, kapak=(False, True), kapak_mat=AHSAP2)
+    meyve(g, x, y, z + 0.3, r * 1.25, YAPRAK, n=6, rz=r * 1.6)
+    meyve(g, x, y, z + 0.3 + r * 1.1, r * 0.5, CICEK[cicek % len(CICEK)], n=5)
+
+
+def asili_sepet(g, x, y, z, cicek=0):
+    """Asılı çiçek sepeti (pub): askı + yarım küre sepet + çiçekler."""
+    cubuk(g, (x, y, z), (x, y, z + 0.4), 0.02, DEMIR_S)
+    dsil(g, x, y, z - 0.22, z, 0.1, 6, AHSAP2, r1=0.24, kapak=(False, False))
+    meyve(g, x, y, z - 0.02, 0.27, YAPRAK, n=6, rz=0.26)
+    for i in range(3):
+        a = i * 2.1 + 0.4
+        meyve(g, x + math.cos(a) * 0.17, y + math.sin(a) * 0.17, z + 0.06, 0.09, CICEK[(cicek + i) % len(CICEK)], n=5)
+
+
+# ---------------------------------------------------------------- eski parçaların Londra hâli (aynı adla)
+
+for _ad in ("kose_dis", "kose_boru", "silme", "kaide", "sacak", "cati_egim", "cati_kose", "cati_semer", "tabela_bant", "duvar_duz", "baca", "cati_penceresi"):
+    PARCA_HAFIF.pop(_ad, None)          # uzak görünüm artık yeni (sade) Londra parçalarından türetilir
+
+
+def pencere(g, c, u0, u1, z0, z1, kemer=False, bolme=1, yatay=True, cam=CAM, t=0.12, perde=1, sove=True):
+    """Pastel apartman (boyalı sıva teras) pencereleri de giyotin: eski çağrılar aynı imzayla Londra penceresi çizer."""
+    w = u1 - u0
+    nx = 3 if w >= 1.0 else 2 if w >= 0.7 else 1
+    if kemer:
+        sash(g, c, u0, u1, z0, z1, (nx, 2), "yarim", 1 if perde else 0, cam)
+    else:
+        sash(g, c, u0, u1, z0, z1, (nx, 2 if yatay else 1), "duz", 2 if perde == 1 and w >= 1.0 else 1 if perde else 0, cam)
+        if sove:
+            c.kutu(g, u0 - 0.13, u1 + 0.13, 0, 0.08, z1 + 0.06, z1 + 0.17, SILME)       # sıva başlık
+
+
+@parca("duvar", "Tek giyotin pencere")
+def duvar_pencere(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.88, 1.92, 0.85, 2.45)
+
+
+@parca("duvar", "Çift giyotin pencere")
+def duvar_cift(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.42, 1.2, 0.85, 2.45, perde=2)
+    pencere(g, c, 1.6, 2.38, 0.85, 2.45, perde=2)
+
+
+@parca("duvar", "Yarım daire başlı pencere")
+def duvar_kemerli(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.9, 1.9, 0.85, 2.0, kemer=True)
+
+
+@parca("duvar", "Saksılı pencere")
+def duvar_saksi(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.88, 1.92, 0.95, 2.45)
+    cicek_kutusu(g, c, 0.8, 2.0, 0.86)
+
+
+@parca("duvar", "Giyotin pencere (2/2)")
+def duvar_panjur(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.9, 1.9, 0.85, 2.45, (2, 1), perde=1)
+    c.kutu(g, 0.77, 2.03, 0, 0.08, 2.51, 2.62, SILME)
+
+
+@parca("duvar", "Giyotin pencere (storu inik)")
+def duvar_panjur_kapali(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.9, 1.9, 0.85, 2.45, (2, 1), perde=0)
+    iz(g, c, 0.9, 1.9, 1.5, 2.45, IZ_PERDE[0], 0.016)
+    c.kutu(g, 0.77, 2.03, 0, 0.08, 2.51, 2.62, SILME)
+
+
+@parca("duvar", "Pencere + demir saksılık")
+def duvar_stor(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.85, 1.95, 0.95, 2.45)
+    c.kutu(g, 0.7, 2.1, 0.2, 0.23, 0.5, 0.8, DEMIR_S)
+    for uu in (0.7, 2.07):
+        c.kutu(g, uu, uu + 0.03, 0, 0.22, 0.5, 0.8, DEMIR_S)
+    for i in range(3):
+        p = c.p(0.95 + i * 0.45, 0.11, 0.7)
+        meyve(g, p[0], p[1], 0.68, 0.13, YAPRAK, n=5)
+        meyve(g, p[0], p[1], 0.8, 0.07, CICEK[i % len(CICEK)], n=5)
+
+
+@parca("duvar", "Alınlıklı pencere (sıva başlık + üçgen alınlık)")
+def duvar_alinlik(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.88, 1.92, 0.8, 2.3, (3, 2), perde=2)
+    sacak_lento(g, c, 0.88, 1.92, 2.36, alinlik=True, mat=SILME)
+
+
+@parca("duvar", "Balkonlu uzun pencere (dökme demir korkuluk)")
+def duvar_balkon(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.85, 1.95, 0.3, 2.5, (2, 2), perde=2, denizlik=False)
+    c.kutu(g, 0.45, 2.35, 0, 0.5, 0.1, 0.2, SILME2)
+    parmaklik(g, c, 0.48, 2.32, 0.46, 0.2, 0.95, 0.17, kaide=False)
+    for uu in (0.48, 2.32):
+        cubuk(g, c.p(uu, 0.02, 1.03), c.p(uu, 0.46, 1.03), 0.035, DEMIR_S)
+
+
+@parca("duvar", "İki dar pencere")
+def duvar_dar(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.52, 1.08, 0.8, 2.5, (1, 2), perde=1)
+    sash(g, c, 1.72, 2.28, 0.8, 2.5, (1, 2), perde=1)
+
+
+@parca("duvar", "Geniş atölye penceresi (küçük camlı)")
+def duvar_genis(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.4, 2.4, 0.9, 2.5, (6, 2), perde=0)
+
+
+@parca("duvar", "Yuvarlak pencere (öküz gözü)")
+def duvar_yuvarlak(g):
+    c = on()
+    panel(g, c)
+    pts = [(1.4 + 0.45 * math.cos(2 * math.pi * i / 10), 1.75 + 0.45 * math.sin(2 * math.pi * i / 10)) for i in range(10)]
+    cokgen(g, c, pts, CAM, 0.012)
+    for i in range(10):
+        a0, a1 = 2 * math.pi * i / 10, 2 * math.pi * (i + 1) / 10
+        cokgen(g, c, [(1.4 + 0.45 * math.cos(a0), 1.75 + 0.45 * math.sin(a0)), (1.4 + 0.56 * math.cos(a0), 1.75 + 0.56 * math.sin(a0)),
+                      (1.4 + 0.56 * math.cos(a1), 1.75 + 0.56 * math.sin(a1)), (1.4 + 0.45 * math.cos(a1), 1.75 + 0.45 * math.sin(a1))], SILME, 0.05)
+    iz(g, c, 1.386, 1.414, 1.3, 2.2, IZ_BEYAZ, 0.02)
+    iz(g, c, 0.95, 1.85, 1.736, 1.764, IZ_BEYAZ, 0.02)
+
+
+@parca("duvar", "Düz duvar (kör pencere nişi)")
+def duvar_duz(g):
+    c = on()
+    panel(g, c)
+    cokgen(g, c, [(0.9, 0.85), (1.9, 0.85), (1.9, 2.45), (0.9, 2.45)], D2, 0.012)
+    c.kutu(g, 0.82, 1.98, 0, 0.1, 0.72, 0.79, SILME2)
+
+
+@parca("duvar", "Düz duvar (tuğla izi, sokak adı levhası)")
+def duvar_duz_tugla(g):
+    c = on()
+    panel(g, c)
+    tugla_izi(g, c, 31, 5)
+    c.kutu(g, 0.5, 1.5, 0, 0.03, 2.2, 2.52, SILME)
+    iz(g, c, 0.58, 1.42, 2.3, 2.42, IZ_DEMIR, 0.034)
+
+
+@parca("duvar", "Düz duvar (iniş borusu, havalandırma)")
+def duvar_duz_kutu(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 2.2, 2.3, 0, 0.1, 0.0, KAT, DEMIR_S)
+    c.kutu(g, 2.16, 2.34, 0, 0.13, 2.3, 2.5, DEMIR_S)
+    c.kutu(g, 0.6, 1.0, 0, 0.04, 0.4, 0.7, PORTLAND2)
+    tugla_izi(g, c, 37, 3, u1=2.0)
+
+
+@parca("zemin", "Zemin kat penceresi (giyotin, pencere korkuluklu)")
+def zemin_pencere(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.85, 1.95, 0.95, 2.35, (3, 2), perde=1)
+    c.kutu(g, 0.72, 2.08, 0, 0.08, 2.41, 2.52, SILME)
+    parmaklik(g, c, 0.78, 2.02, 0.16, 0.88, 0.55, 0.16, kaide=False)
+
+
+@parca("kose", "Dış köşe: sıva köşe taşları (quoin)")
+def kose_dis(g):
+    z, i = 0.02, 0
+    while z < KAT - 0.2:
+        w = 0.44 if i % 2 == 0 else 0.3
+        kutu(g, -A - 0.035, -A + w, -A - 0.035, -A + (0.74 - w), z, z + 0.4, SILME, atla=())
+        z += 0.5
+        i += 1
+
+
+@parca("kose", "Dış köşe: köşe taşları + dökme demir iniş borusu")
+def kose_boru(g):
+    PARCA["kose_dis"](g)
+    x, y = -A + 0.6, -A - 0.07
+    kutu(g, x - 0.05, x + 0.05, y - 0.05, y + 0.05, 0.0, KAT, DEMIR_S)
+    kutu(g, x - 0.09, x + 0.09, y - 0.07, -A, 2.1, 2.16, DEMIR_S, atla=())
+
+
+@parca("bant", "Kat silmesi (sıva)")
+def silme(g):
+    c = on()
+    c.kutu(g, -0.04, HUCRE + 0.04, 0, 0.07, -0.16, -0.05, SILME)
+    c.kutu(g, -0.07, HUCRE + 0.07, 0, 0.13, -0.05, 0.0, SILME2)
+
+
+@parca("bant", "Taş kaide (sade)")
+def kaide(g):
+    c = on()
+    c.kutu(g, -0.05, HUCRE + 0.05, 0, 0.06, 0.0, 0.4, PORTLAND2)
+    c.kutu(g, -0.07, HUCRE + 0.07, 0, 0.09, 0.4, 0.46, PORTLAND)
+
+
+@parca("cati", "Saçak (korniş, saçak tahtası, dökme demir oluk)")
+def sacak(g):
+    c = on()
+    c.kutu(g, -0.02, HUCRE + 0.02, 0, 0.12, -0.22, -0.08, SILME2)
+    c.kutu(g, -0.02, HUCRE + 0.02, 0, 0.26, -0.08, 0.02, SILME)
+    c.kutu(g, -0.02, HUCRE + 0.02, 0.2, 0.34, -0.02, 0.09, CT2)                # kalın saçak ucu (arduvazın bittiği yer)
+    c.kutu(g, -0.02, HUCRE + 0.02, 0.26, 0.4, -0.1, -0.02, DEMIR_S)            # oluk
+
+
+@parca("cati", "Saçak köşesi")
+def sacak_kose(g):
+    kutu(g, -A - 0.34, -A, -A - 0.34, -A, -0.02, 0.09, CT2, atla=())
+    kutu(g, -A - 0.26, -A, -A - 0.26, -A, -0.22, -0.02, SILME, atla=())
+
+
+def _sira_izi(g, yuzler, n=2):
+    """Çatı yüzünde birkaç çok ince yatay sıra izi (kontursuz). yuzler: (eşleyici, satırın x başlangıcı, ters mi)."""
+    for es, x0, ters in yuzler:
+        for i in range(n):
+            v = A * (i + 0.8) / (n + 0.6)
+            e = 0.02
+            pts = [es(x0(v), v, v / A + e), es(A, v, v / A + e), es(A, v + 0.026, (v + 0.026) / A + e), es(x0(v + 0.026), v + 0.026, (v + 0.026) / A + e)]
+            levha(g, pts[::-1] if ters else pts, IZ_C)
+
+
+@parca("cati", "Çatı karosu: eğim (düz renk arduvaz, ince sıra izleri)")
+def cati_egim(g):
+    _cati_yuzu(g, 0, 0, 1, 1, 0)
+    _sira_izi(g, [(lambda u, v, z: (u, v, z), lambda v: 0.0, False)])
+
+
+@parca("cati", "Çatı karosu: dış köşe (kırma, mahya şeritli)")
+def cati_kose(g):
+    _cati_yuzu(g, 0, 0, 1, 0, 0)
+    cubuk(g, (0, 0, 0.03), (A, A, 1.03), 0.16, CT2, 0.1)
+    _sira_izi(g, [(lambda u, v, z: (u, v, z), lambda v: v + 0.1, False), (lambda u, v, z: (v, u, z), lambda v: v + 0.1, True)], 1)
+
+
+@parca("cati", "Çatı karosu: semer (mahya şeritli)")
+def cati_semer(g):
+    _cati_yuzu(g, 1, 0, 1, 0, 1)
+    cubuk(g, (0, 0, 1.03), (A, A, 1.03), 0.16, CT2, 0.1)
+
+
+@parca("ayrinti", "Baca (tuğla gövde, taş başlık, seramik külahlar)")
+def baca(g):
+    kutu(g, -0.36, 0.36, -0.26, 0.26, -1.2, 1.5, D)
+    kutu(g, -0.4, 0.4, -0.3, 0.3, 1.26, 1.36, D2, atla=())
+    kutu(g, -0.42, 0.42, -0.32, 0.32, 1.5, 1.6, PORTLAND, atla=())
+    for i, sx in enumerate((-0.2, 0.2)):
+        dsil(g, sx, 0, 1.6, 1.98, 0.11, 6, KULAH if i == 0 else KULAH2, r1=0.085, kapak=(False, True), kapak_mat=DEMIR_S)
+
+
+@parca("ayrinti", "Sıra baca (ortak duvarda: uzun tuğla kütle, sıra sıra külahlar)")
+def baca_sira(g):
+    kutu(g, -0.27, 0.27, -0.95, 0.95, -0.4, 2.55, D)
+    kutu(g, -0.31, 0.31, -0.99, 0.99, 2.25, 2.35, D2, atla=())
+    kutu(g, -0.33, 0.33, -1.01, 1.01, 2.55, 2.66, PORTLAND, atla=())
+    for i in range(5):
+        y = -0.72 + i * 0.36
+        dsil(g, 0, y, 2.66, 3.02 + (0.08 if i % 2 else 0.0), 0.12, 6, KULAH if i % 3 else KULAH2, r1=0.09, kapak=(False, True), kapak_mat=DEMIR_S)
+
+
+def _baca_sira_hafif(g):
+    kutu(g, -0.27, 0.27, -0.95, 0.95, -0.4, 2.6, D)
+    kutu(g, -0.12, 0.12, -0.8, 0.8, 2.6, 2.98, KULAH, atla=())
+
+
+PARCA_HAFIF["baca_sira"] = _baca_sira_hafif
+
+
+@parca("ayrinti", "Çatı penceresi (kurşun kaplı, giyotin)")
+def cati_penceresi(g):
+    kutu(g, -0.55, 0.55, 0.2, 1.6, 0.0, 1.22, KURSUN, atla=("zn", "yp"))
+    kutu(g, -0.63, 0.63, 0.12, 1.6, 1.22, 1.3, KURSUN, atla=())
+    c = C((-0.55, 0.2), (1, 0), (0, -1), 1.1)
+    sash(g, c, 0.2, 0.9, 0.28, 1.08, (2, 1), perde=1, t=0.05, d=0.04, denizlik=False)
+    kutu(g, -0.6, 0.6, 0.1, 0.2, 0.12, 0.2, SILME, atla=())
+
+
+@parca("ayrinti", "Mansart penceresi (parapetin arkasında, kurşun kaplı)")
+def mansart_penceresi(g):
+    # kök: hücrenin ön kenarının ortası, çatı tabanı; parapetin arkasında mansart eğimine oturur
+    kutu(g, -0.5, 0.5, 0.42, 1.7, 0.3, 1.5, KURSUN, atla=("zn", "yp"))
+    kutu(g, -0.57, 0.57, 0.35, 1.7, 1.5, 1.57, KURSUN, atla=())
+    c = C((-0.5, 0.42), (1, 0), (0, -1), 1.0)
+    sash(g, c, 0.18, 0.82, 0.62, 1.36, (2, 1), perde=1, t=0.05, d=0.04, denizlik=False)
+
+
+@parca("cati", "Parapet (korniş + alçak duvar + taş harpuşta)")
+def parapet(g):
+    c = on()
+    c.kutu(g, -0.03, HUCRE + 0.03, 0, 0.1, -0.26, -0.12, PORTLAND2)
+    c.kutu(g, -0.05, HUCRE + 0.05, 0, 0.22, -0.12, -0.02, PORTLAND)             # korniş
+    c.kutu(g, 0, HUCRE, -DK, 0, -0.02, 0.78, D, arka=True)
+    c.kutu(g, -0.03, HUCRE + 0.03, -DK - 0.04, 0.05, 0.78, 0.87, PORTLAND, arka=True)   # harpuşta
+
+
+@parca("cati", "Parapet köşesi")
+def parapet_kose(g):
+    kutu(g, -A - 0.22, -A, -A - 0.22, -A, -0.12, -0.02, PORTLAND, atla=())
+    kutu(g, -A - 0.1, -A, -A - 0.1, -A, -0.26, -0.12, PORTLAND2, atla=())
+    kutu(g, -A - 0.05, -A + DK + 0.04, -A - 0.05, -A + DK + 0.04, 0.78, 0.87, PORTLAND, atla=())
+
+
+@parca("cati", "Korkuluk duvarı (düz çatı parapeti, taş harpuştalı)")
+def korkuluk(g):
+    c = on()
+    c.kutu(g, -0.03, HUCRE + 0.03, 0, 0.16, -0.12, -0.02, PORTLAND)
+    c.kutu(g, 0, HUCRE, -DK, 0, -0.02, 0.7, D, arka=True)
+    c.kutu(g, -0.03, HUCRE + 0.03, -DK - 0.04, 0.05, 0.7, 0.79, PORTLAND, arka=True)
+
+
+@parca("ayrinti", "Baca (düz çatıda: kısa tuğla baca, tek külah)")
+def baca_ince(g):
+    # kök çatıdan 0,9 m yukarıda (kural öyle koyar): gövde çatıya iner
+    kutu(g, -0.24, 0.24, -0.24, 0.24, -1.0, 0.1, D)
+    kutu(g, -0.29, 0.29, -0.29, 0.29, 0.1, 0.2, PORTLAND, atla=())
+    dsil(g, 0, 0, 0.2, 0.56, 0.11, 6, KULAH, r1=0.085, kapak=(False, True), kapak_mat=DEMIR_S)
+
+
+@parca("cati", "Düz çatı (kurşun / asfalt kaplama)")
+def duz_cati(g):
+    kutu(g, -A, A, -A, A, 0.0, 0.08, PM("Teras", "#b9bfc4"))
+
+
+@parca("cati", "Demir korkuluk (mızrak başlı)")
+def korkuluk_demir(g):
+    parmaklik(g, on(), 0, HUCRE, -0.08, 0.0, 1.05, 0.2, kaide=False)
+
+
+@parca("cati", "Kule tepesi: arduvaz külah")
+def kule_sivri(g):
+    e = A + 0.2
+    kutu(g, -e, e, -e, e, -0.14, 0.04, PORTLAND, atla=())
+    kati(g, [(-e, -e, 0.04), (e, -e, 0.04), (e, e, 0.04), (-e, e, 0.04), (0, 0, 4.6)], [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]], CT)
+    for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+        cubuk(g, (sx * e, sy * e, 0.08), (0, 0, 4.64), 0.1, CT2, 0.08)
+    cubuk(g, (0, 0, 4.5), (0, 0, 5.3), 0.05, DEMIR_S)
+    meyve(g, 0, 0, 4.95, 0.11, PIRINC)
+
+
+@parca("cati", "Kule tepesi: kurşun kubbe (fenerli)")
+def kule_kubbe(g):
+    e = A + 0.15
+    kutu(g, -e, e, -e, e, -0.14, 0.04, PORTLAND, atla=())
+    profil = [(1.3, 0.04), (1.25, 0.7), (1.0, 1.4), (0.6, 1.9), (0.3, 2.1)]
+    for (r0, z0), (r1, z1) in zip(profil, profil[1:]):
+        dsil(g, 0, 0, z0, z1, r0, 8, CT, r1=r1, kapak=(False, False))
+    dsil(g, 0, 0, 2.1, 2.7, 0.26, 8, PORTLAND, kapak=(False, True))
+    dsil(g, 0, 0, 2.7, 3.1, 0.34, 8, CT, r1=0.03, kapak=(True, False))
+    cubuk(g, (0, 0, 3.05), (0, 0, 3.6), 0.04, DEMIR_S)
+    meyve(g, 0, 0, 3.45, 0.1, PIRINC)
+
+
+# ---------------------------------------------------------------- dükkân cephesi (Victoria tarzı shopfront)
+
+def _dukkan_pilastr(g, c, z1=2.3):
+    """Hücrenin iki ucunda yarım pilastr (komşu hücreninkiyle birleşir): kaide + gövde."""
+    for a, b in ((0.0, 0.12), (HUCRE - 0.12, HUCRE)):
+        c.kutu(g, a, b, 0, 0.13, 0.0, z1, VR)
+        c.kutu(g, a, b, 0, 0.16, 0.0, 0.5, VR)
+
+
+def _kaide_panel(g, c, u0, u1, z1, n=2):
+    """Vitrin altındaki alçak kaide (stall riser): boyalı ahşap, kabartma panolu."""
+    c.kutu(g, u0, u1, 0, 0.1, 0.0, z1, VR)
+    for i in range(n):
+        a, b = u0 + (u1 - u0) * i / n + 0.08, u0 + (u1 - u0) * (i + 1) / n - 0.08
+        cokgen(g, c, [(a, 0.1), (b, 0.1), (b, z1 - 0.1), (a, z1 - 0.1)], VR, 0.115)
+    c.kutu(g, u0 - 0.02, u1 + 0.02, 0, 0.16, z1, z1 + 0.05, SILME2)             # vitrin eşiği
+
+
+def _vitrin_ici(g, c, u0, u1, z, tohum, n=5):
+    """Vitrindeki ürün dizisi: birkaç renkli iz (kontursuz)."""
+    rnd = random.Random(tohum)
+    renk = ("#d94f3d", "#e8a23a", "#f2d04a", "#5a9a4a", "#2f7d8c", "#8a4a6b", "#f4f0e6", "#7ab8d6")
+    for i in range(n):
+        a = u0 + (u1 - u0) * (i + 0.15) / n
+        b = u0 + (u1 - u0) * (i + 0.8) / n
+        iz(g, c, a, b, z, z + rnd.uniform(0.16, 0.36), PM("Iz", rnd.choice(renk)), 0.02)
+
+
+@parca("zemin", "Dükkân vitrini (ahşap çerçeve, bölmeli cam, kaide panel)")
+def vitrin(g):
+    c = on()
+    panel(g, c)
+    _dukkan_pilastr(g, c)
+    _kaide_panel(g, c, 0.12, HUCRE - 0.12, 0.55)
+    cokgen(g, c, [(0.12, 0.6), (HUCRE - 0.12, 0.6), (HUCRE - 0.12, 2.2), (0.12, 2.2)], VIT, 0.02)
+    c.kutu(g, 0.12, HUCRE - 0.12, 0, 0.1, 2.2, 2.3, VR)
+    c.kutu(g, 0.12, HUCRE - 0.12, 0.02, 0.07, 1.76, 1.81, VR)                     # üst ışıklık kaydı (transom)
+    for uu in (0.97, 1.83):
+        c.kutu(g, uu - 0.025, uu + 0.025, 0.02, 0.07, 0.6, 2.2, VR)
+    for uu in (0.4, 0.69, 1.26, 1.54, 2.11, 2.4):                                  # üst ışıklıkların küçük camları
+        iz(g, c, uu - 0.012, uu + 0.012, 1.81, 2.2, IZ_BEYAZ, 0.03)
+    _vitrin_ici(g, c, 0.2, HUCRE - 0.2, 0.62, 21, 6)
+
+
+@parca("zemin", "Geniş vitrin (tek cam, alçak kaide)")
+def vitrin_genis(g):
+    c = on()
+    panel(g, c)
+    _dukkan_pilastr(g, c)
+    _kaide_panel(g, c, 0.12, HUCRE - 0.12, 0.38, 3)
+    cokgen(g, c, [(0.12, 0.43), (HUCRE - 0.12, 0.43), (HUCRE - 0.12, 2.2), (0.12, 2.2)], VIT, 0.02)
+    c.kutu(g, 0.12, HUCRE - 0.12, 0, 0.1, 2.2, 2.3, VR)
+    c.kutu(g, 0.12, HUCRE - 0.12, 0.02, 0.07, 1.86, 1.91, VR)
+    c.kutu(g, 1.375, 1.425, 0.02, 0.07, 0.43, 2.2, VR)
+    iz(g, c, 0.45, 1.05, 1.1, 1.62, PM("Iz", "#f5c84a"), 0.024)                    # kampanya kâğıdı
+    _vitrin_ici(g, c, 0.2, HUCRE - 0.2, 0.45, 22, 6)
+
+
+@parca("zemin", "Dükkân kapısı (girintili, camlı, üst ışıklıklı, karo eşikli)")
+def kapi_vitrin(g):
+    c = on()
+    panel(g, c)
+    _dukkan_pilastr(g, c)
+    _kaide_panel(g, c, 0.12, 0.88, 0.55, 1)
+    _kaide_panel(g, c, 1.92, HUCRE - 0.12, 0.55, 1)
+    cokgen(g, c, [(0.12, 0.6), (0.88, 0.6), (0.88, 2.2), (0.12, 2.2)], VIT, 0.02)
+    cokgen(g, c, [(1.92, 0.6), (HUCRE - 0.12, 0.6), (HUCRE - 0.12, 2.2), (1.92, 2.2)], VIT, 0.02)
+    c.kutu(g, 0.12, HUCRE - 0.12, 0, 0.1, 2.2, 2.3, VR)
+    for uu in (0.88, 1.86):
+        c.kutu(g, uu, uu + 0.06, 0, 0.1, 0.0, 2.2, VR)
+    # kapı kanadı: alt panel + büyük cam + üst ışıklık
+    cokgen(g, c, [(0.94, 0.08), (1.86, 0.08), (1.86, 2.2), (0.94, 2.2)], VIT, 0.014)
+    c.kutu(g, 0.94, 1.86, 0.014, 0.05, 0.08, 0.62, VR)
+    c.kutu(g, 0.94, 1.86, 0.014, 0.05, 1.84, 1.9, VR)
+    for uu in (0.94, 1.78):
+        c.kutu(g, uu, uu + 0.08, 0.014, 0.05, 0.62, 1.84, VR)
+    cokgen(g, c, [(1.04, 0.16), (1.76, 0.16), (1.76, 0.54), (1.04, 0.54)], VR, 0.062)
+    c.kutu(g, 1.68, 1.74, 0.05, 0.11, 1.05, 1.3, PIRINC)
+    iz(g, c, 1.2, 1.6, 1.36, 1.52, PM("Iz", "#f4f0e6"), 0.03)                      # "OPEN" kartı
+    c.kutu(g, 0.9, 1.9, 0, 0.3, 0.0, 0.08, PORTLAND)                               # eşik
+    for i in range(4):                                                             # karo eşik (dama)
+        for j in range(2):
+            a, b = 0.94 + i * 0.23, 0.94 + (i + 1) * 0.23
+            yer_levha(g, c, a, b, 0.3 + j * 0.22, 0.52 + j * 0.22, 0.02, IZ_KARO[(i + j) % 2])
+    _vitrin_ici(g, c, 0.18, 0.84, 0.62, 23, 2)
+    _vitrin_ici(g, c, 1.96, HUCRE - 0.18, 0.62, 24, 2)
+
+
+@parca("zemin", "Tabela panosu (fascia: korniş, iki uçta konsol)")
+def tabela_bant(g):
+    c = on()
+    c.kutu(g, 0.0, HUCRE, 0, 0.13, 2.3, 2.78, VR)
+    c.kutu(g, 0.0, HUCRE, 0, 0.2, 2.78, 2.86, SILME)                              # korniş
+    c.kutu(g, 0.0, HUCRE, 0, 0.16, 2.26, 2.3, SILME2)
+    for a, b in ((0.0, 0.11), (HUCRE - 0.11, HUCRE)):                              # konsollar
+        c.kutu(g, a, b, 0, 0.19, 2.3, 2.9, VR)
+        c.kutu(g, a, b, 0, 0.24, 2.62, 2.92, SILME)
+
+
+def _tabela_bant_hafif(g):
+    c = on()
+    c.kutu(g, 0.0, HUCRE, 0, 0.14, 2.28, 2.86, VR)
+
+
+PARCA_HAFIF["tabela_bant"] = _tabela_bant_hafif
+
+
+@parca("zemin", "Tente (düz renk, katlanır kollu)")
+def tente(g):
+    c = on()
+    pts = [c.p(0.06, 0.12, 2.26), c.p(HUCRE - 0.06, 0.12, 2.26), c.p(HUCRE - 0.06, 1.05, 1.92), c.p(0.06, 1.05, 1.92)]
+    q = [(p[0], p[1], p[2] - 0.035) for p in pts]
+    kati(g, pts + q, [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]], TN)
+    c.kutu(g, 0.06, HUCRE - 0.06, 1.03, 1.05, 1.74, 1.92, TN)                      # düz etek
+    for uu in (0.1, HUCRE - 0.1):                                                  # katlanır kollar
+        cubuk(g, c.p(uu, 0.1, 1.62), c.p(uu, 1.0, 1.9), 0.028, DEMIR_S)
+    c.kutu(g, 0.04, HUCRE - 0.04, 0.02, 0.13, 2.17, 2.27, AHSAP2)                  # tente kutusu (tabelanın altında)
+
+
+@parca("zemin", "Ahşap kapı (panelli, dikdörtgen üst ışıklık, basamak)")
+def kapi_ahsap(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.78, 0.9, 0, 0.09, 0.0, 2.62, SILME)
+    c.kutu(g, 1.9, 2.02, 0, 0.09, 0.0, 2.62, SILME)
+    c.kutu(g, 0.72, 2.08, 0, 0.14, 2.62, 2.74, SILME)
+    panelli_kapi(g, c, 0.9, 1.9, 0.12, 2.12)
+    cokgen(g, c, [(0.9, 2.18), (1.9, 2.18), (1.9, 2.62), (0.9, 2.62)], CAM, 0.012)
+    c.kutu(g, 0.9, 1.9, 0, 0.06, 2.12, 2.18, SILME)
+    for uu in (1.23, 1.57):
+        iz(g, c, uu - 0.013, uu + 0.013, 2.18, 2.62, IZ_BEYAZ, 0.02)
+    c.kutu(g, 0.6, 2.2, 0, 0.5, 0.0, 0.12, PORTLAND)
+    p = c.p(2.36, 0.16, 1.9)                                                       # duvar feneri
+    kutu(g, p[0] - 0.07, p[0] + 0.07, p[1] - 0.07, p[1] + 0.07, 1.9, 2.12, ISIK, atla=())
+    kutu(g, p[0] - 0.1, p[0] + 0.1, p[1] - 0.1, p[1] + 0.1, 2.12, 2.16, DEMIR_S, atla=())
+    c.kutu(g, 2.34, 2.38, 0, 0.16, 2.16, 2.2, DEMIR_S)
+
+
+@parca("zemin", "Garaj / depo kapısı (çift kanat ahşap, demir menteşeli)")
+def kapi_garaj(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.28, 0.4, 0, 0.08, 0.0, 2.5, PORTLAND)
+    c.kutu(g, 2.4, 2.52, 0, 0.08, 0.0, 2.5, PORTLAND)
+    c.kutu(g, 0.22, 2.58, 0, 0.1, 2.5, 2.66, PORTLAND)
+    c.kutu(g, 0.4, 2.4, 0, 0.05, 0.03, 2.5, VR)
+    iz(g, c, 1.388, 1.412, 0.03, 2.5, IZ_DEMIR, 0.056)
+    for a, b in ((0.5, 1.3), (1.5, 2.3)):
+        cokgen(g, c, [(a, 0.15), (b, 0.15), (b, 1.5), (a, 1.5)], VR, 0.066)
+        cokgen(g, c, [(a, 1.65), (b, 1.65), (b, 2.35), (a, 2.35)], CAM2, 0.056)
+        iz(g, c, (a + b) / 2 - 0.012, (a + b) / 2 + 0.012, 1.65, 2.35, IZ_BEYAZ, 0.06)
+        iz(g, c, a, b, 1.99, 2.012, IZ_BEYAZ, 0.06)
+
+
+@parca("konut", "Cumba (çokgen bay window, giyotin camlı)")
+def bay_window(g):
+    _cumba(g, on(), alt=True, ust_kapak=True)
+
+
+@parca("konut", "Merdivenli kapı (yelpaze ışıklıklı, korkuluklu)")
+def kapi_merdivenli(g):
+    PARCA["g_kapi"](g)
+
+
+# ---------------------------------------------------------------- pub
+
+@parca("zemin", "Pub cephesi (cilalı koyu ahşap, buzlu cam, asılı çiçek sepeti)")
+def pub_cephe(g):
+    c = on()
+    panel(g, c)
+    _dukkan_pilastr(g, c)
+    for a, b in ((0.0, 0.12), (HUCRE - 0.12, HUCRE)):                              # altın başlıklar
+        c.kutu(g, a, b, 0, 0.17, 2.12, 2.24, PIRINC)
+    c.kutu(g, 0.12, HUCRE - 0.12, 0, 0.1, 0.0, 1.0, VR)                            # yüksek ahşap kaide
+    for i in range(3):
+        a, b = 0.22 + i * 0.82, 0.22 + i * 0.82 + 0.7
+        cokgen(g, c, [(a, 0.14), (b, 0.14), (b, 0.86), (a, 0.86)], VR, 0.115)
+    c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.15, 1.0, 1.05, VR)
+    cokgen(g, c, [(0.12, 1.05), (HUCRE - 0.12, 1.05), (HUCRE - 0.12, 2.2), (0.12, 2.2)], CAM_BUZLU, 0.02)
+    iz(g, c, 0.3, HUCRE - 0.3, 1.2, 1.7, PM("Iz", "#c5d6d4"), 0.024)               # buzlu camın oymalı bandı
+    c.kutu(g, 0.12, HUCRE - 0.12, 0, 0.1, 2.2, 2.3, VR)
+    c.kutu(g, 0.12, HUCRE - 0.12, 0.02, 0.07, 1.82, 1.87, VR)
+    for uu in (0.97, 1.83):
+        c.kutu(g, uu - 0.03, uu + 0.03, 0.02, 0.08, 1.05, 2.2, VR)
+    p = c.p(1.4, 0.55, 0)
+    cubuk(g, c.p(1.4, 0.13, 2.25), c.p(1.4, 0.55, 2.25), 0.03, DEMIR_S)
+    asili_sepet(g, p[0], p[1], 1.85, 0)
+
+
+@parca("zemin", "Pub kapısı (çift kanat, pirinç, fener, asılı resimli tabela)")
+def pub_kapi(g):
+    c = on()
+    panel(g, c)
+    _dukkan_pilastr(g, c)
+    for a, b in ((0.0, 0.12), (HUCRE - 0.12, HUCRE)):
+        c.kutu(g, a, b, 0, 0.17, 2.12, 2.24, PIRINC)
+    c.kutu(g, 0.12, 0.8, 0, 0.1, 0.0, 2.3, VR)
+    c.kutu(g, 2.0, HUCRE - 0.12, 0, 0.1, 0.0, 2.3, VR)
+    cokgen(g, c, [(0.22, 0.14), (0.7, 0.14), (0.7, 0.86), (0.22, 0.86)], VR, 0.115)
+    cokgen(g, c, [(2.1, 0.14), (2.58, 0.14), (2.58, 0.86), (2.1, 0.86)], VR, 0.115)
+    cokgen(g, c, [(0.24, 1.1), (0.68, 1.1), (0.68, 2.1), (0.24, 2.1)], CAM_BUZLU, 0.105)
+    cokgen(g, c, [(2.12, 1.1), (2.56, 1.1), (2.56, 2.1), (2.12, 2.1)], CAM_BUZLU, 0.105)
+    c.kutu(g, 0.8, 2.0, 0, 0.1, 2.08, 2.3, VR)
+    panelli_kapi(g, c, 0.86, 1.94, 0.1, 2.08, cift=True, cam_ust=True)
+    c.kutu(g, 0.7, 2.1, 0, 0.42, 0.0, 0.1, PORTLAND)
+    # asılı resimli tabela: hücrenin sol ucunda, cepheye dik
+    cubuk(g, c.p(0.14, 0.14, 2.74), c.p(0.14, 1.12, 2.74), 0.045, DEMIR_S)
+    cubuk(g, c.p(0.14, 0.14, 2.42), c.p(0.14, 0.62, 2.72), 0.03, DEMIR_S)
+    c.kutu(g, 0.11, 0.17, 0.4, 1.06, 1.92, 2.66, VR, arka=True)
+    for s, uu in ((-1, 0.105), (1, 0.175)):
+        cy = C(c.p(uu, 0.4, 0)[:2], (0, -1), (s, 0), 0.66)
+        pts = [(0.07, 1.99), (0.59, 1.99), (0.59, 2.59), (0.07, 2.59)]
+        levha(g, [cy.p(u, 0, z) for u, z in (pts if s < 0 else pts[::-1])], PM("Iz", "#efe2c2"))
+        daire = [(0.33 + 0.17 * math.cos(2 * math.pi * i / 8), 2.33 + 0.17 * math.sin(2 * math.pi * i / 8)) for i in range(8)]
+        levha(g, [cy.p(u, 0.004, z) for u, z in (daire if s < 0 else daire[::-1])], IZ_PIRINC)
+    for zz in (2.66, 2.7):
+        cubuk(g, c.p(0.14, 0.5, zz), c.p(0.14, 0.5, zz + 0.04), 0.02, DEMIR_S)
+    p = c.p(HUCRE - 0.2, 0.3, 0)                                                    # fener
+    cubuk(g, c.p(HUCRE - 0.2, 0.13, 2.2), c.p(HUCRE - 0.2, 0.3, 2.2), 0.03, DEMIR_S)
+    kutu(g, p[0] - 0.08, p[0] + 0.08, p[1] - 0.08, p[1] + 0.08, 1.9, 2.14, ISIK, atla=())
+    kutu(g, p[0] - 0.11, p[0] + 0.11, p[1] - 0.11, p[1] + 0.11, 2.14, 2.19, DEMIR_S, atla=())
+
+
+# ---------------------------------------------------------------- Georgian / Regency sıra ev (g_)
+# Zemin kat beyaz sıva + rustika; üst katlar tuğla (bloğun duvar rengi), üst katlara doğru küçülen 6/6 giyotin pencereler;
+# önde bodrum aydınlığı ve mızrak başlı demir korkuluk; kapı parlak renkli, yelpaze ışıklıklı, basamaklı.
+
+@parca("konut", "Georgian zemin (ön): sıva + rustika, 6/6 pencere, bodrum aydınlığı, demir korkuluk")
+def g_zemin(g):
+    c = on()
+    panel(g, c, SIVA_L)
+    rustika(g, c, yasak=(0.82, 1.98, 1.05, 2.7))
+    sash(g, c, 0.88, 1.92, 1.15, 2.55, (3, 2), perde=1)
+    cokgen(g, c, [(0.8, 2.61), (2.0, 2.61), (2.12, 2.84), (0.68, 2.84)], SIVA_L2, 0.02)      # sıva kemer taşları
+    avlu(g, c, 0.0, HUCRE, (1.0, 1.8))
+
+
+@parca("konut", "Georgian zemin (yan / arka): sıva + rustika, 6/6 pencere")
+def g_zemin_yan(g):
+    c = on()
+    panel(g, c, SIVA_L)
+    rustika(g, c, yasak=(0.82, 1.98, 0.9, 2.6))
+    sash(g, c, 0.88, 1.92, 1.0, 2.45, (3, 2), perde=1)
+    c.kutu(g, -0.04, HUCRE + 0.04, 0, 0.07, 0.0, 0.36, SIVA_L2)
+
+
+@parca("konut", "Georgian kapı: parlak renkli panelli kapı, yelpaze ışıklık, pilastrlar, basamak, korkuluk, bodrum aydınlığı")
+def g_kapi(g):
+    c = on()
+    panel(g, c, SIVA_L)
+    rustika(g, c, yasak=(0.66, 2.14, 0.0, 3.0))
+    zk = 0.45
+    panelli_kapi(g, c, 0.9, 1.9, zk, 2.4)
+    yelpaze(g, c, 1.4, 2.4, 0.5)
+    for a, b in ((0.76, 0.9), (1.9, 2.04)):                                          # pilastrlar
+        c.kutu(g, a, b, 0, 0.09, zk, 2.4, SILME)
+        c.kutu(g, a - 0.03, b + 0.03, 0, 0.12, 2.32, 2.42, SILME2)
+    basamaklar(g, c, 0.78, 2.02, AVLU, zk)
+    for uu in (0.74, 2.06):
+        parmaklik_yan(g, c, uu, 0.06, AVLU, zk, 0.0)
+    avlu(g, c, 0.0, 0.7)
+    avlu(g, c, 2.1, HUCRE)
+    p = c.p(2.36, 0.12, 0)                                                            # fener
+    kutu(g, p[0] - 0.06, p[0] + 0.06, p[1] - 0.06, p[1] + 0.06, 2.0, 2.2, ISIK, atla=())
+    kutu(g, p[0] - 0.085, p[0] + 0.085, p[1] - 0.085, p[1] + 0.085, 2.2, 2.24, DEMIR_S, atla=())
+
+
+def _g_ust(g, z0, z1, bolme, tohum, korkuluk=False):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.88, 1.92, z0, z1, bolme, perde=1)
+    duz_kemer(g, c, 0.88, 1.92, z1 + 0.06)
+    tugla_izi(g, c, tohum, 4, yasak=(0.88, 1.92, z0, z1))
+    if korkuluk:
+        parmaklik(g, c, 0.8, 2.0, 0.17, z0 - 0.13, 0.62, 0.15, kaide=False)
+
+
+ekle("g_kat1", "konut", "Georgian birinci kat: uzun 6/6 pencere, düz tuğla kemer", lambda g: _g_ust(g, 0.55, 2.5, (3, 2), 11))
+ekle("g_kat1_korkuluk", "konut", "Georgian birinci kat: uzun pencere + dökme demir pencere korkuluğu", lambda g: _g_ust(g, 0.55, 2.5, (3, 2), 12, True))
+ekle("g_ust", "konut", "Georgian üst kat: 6/6 pencere", lambda g: _g_ust(g, 0.8, 2.35, (3, 2), 13))
+ekle("g_tavan", "konut", "Georgian en üst kat: küçük 3/3 pencere", lambda g: _g_ust(g, 1.0, 2.1, (3, 1), 14))
+
+
+@parca("konut", "Georgian düz duvar: tuğla, kör pencere")
+def g_duz(g):
+    c = on()
+    panel(g, c)
+    cokgen(g, c, [(0.88, 0.8), (1.92, 0.8), (1.92, 2.35), (0.88, 2.35)], D2, 0.012)
+    duz_kemer(g, c, 0.88, 1.92, 2.35)
+    c.kutu(g, 0.8, 2.0, 0, 0.1, 0.72, 0.79, PORTLAND)
+    tugla_izi(g, c, 15, 4, yasak=(0.88, 1.92, 0.8, 2.35))
+
+
+@parca("bant", "Georgian zemin kat silmesi (sıva bant)")
+def g_silme(g):
+    c = on()
+    c.kutu(g, -0.03, HUCRE + 0.03, 0, 0.06, -0.14, -0.02, SIVA_L)
+    c.kutu(g, -0.05, HUCRE + 0.05, 0, 0.11, -0.02, 0.06, SIVA_L2)
+
+
+@parca("kose", "Georgian zemin köşesi (sıva köşe taşları)")
+def g_kose(g):
+    z, i = 0.02, 0
+    while z < KAT - 0.3:
+        w = 0.44 if i % 2 == 0 else 0.3
+        kutu(g, -A - 0.03, -A + w, -A - 0.03, -A + (0.74 - w), z, z + 0.38, SIVA_L2, atla=())
+        z += 0.44
+        i += 1
+
+
+# ---------------------------------------------------------------- beyaz sıva teras (Belgravia) (s_)
+# Tamamı krem / beyaz sıva (bloğun duvar rengi), sütunlu portiko, birinci kat boyunca sürekli demir balkon.
+
+def _s_zemin(g, on_yuz):
+    c = on()
+    panel(g, c)
+    z0 = 1.1 if on_yuz else 0.95
+    rustika(g, c, yasak=(0.8, 2.0, z0 - 0.1, z0 + 1.6), mat=IZ_D)
+    sash(g, c, 0.9, 1.9, z0, z0 + 0.95, (3, 2), "yarim", perde=1)
+    if on_yuz:
+        avlu(g, c, 0.0, HUCRE, (1.0, 1.8))
+    else:
+        c.kutu(g, -0.04, HUCRE + 0.04, 0, 0.07, 0.0, 0.36, D2)
+
+
+ekle("s_zemin", "konut", "Sıva teras zemin (ön): rustika, kemerli pencere, bodrum aydınlığı, korkuluk", lambda g: _s_zemin(g, True))
+ekle("s_zemin_yan", "konut", "Sıva teras zemin (yan / arka)", lambda g: _s_zemin(g, False))
+
+
+@parca("konut", "Sıva teras kapısı: sütunlu portiko, basamak, siyah kapı, korkuluk")
+def s_kapi(g):
+    c = on()
+    panel(g, c)
+    zk = 0.45
+    panelli_kapi(g, c, 0.92, 1.88, zk, 2.2, mat=VR)
+    cokgen(g, c, [(0.92, 2.26), (1.88, 2.26), (1.88, 2.5), (0.92, 2.5)], CAM, 0.012)
+    c.kutu(g, 0.8, 0.92, 0, 0.08, zk, 2.56, SILME)
+    c.kutu(g, 1.88, 2.0, 0, 0.08, zk, 2.56, SILME)
+    c.kutu(g, 0.92, 1.88, 0, 0.06, 2.2, 2.26, SILME)
+    basamaklar(g, c, 0.62, 2.18, AVLU + 0.25, zk)
+    for uu in (0.5, 2.3):                                                             # Dor sütunlar
+        p = c.p(uu, 1.02, 0)
+        kutu(g, p[0] - 0.2, p[0] + 0.2, p[1] - 0.2, p[1] + 0.2, 0.0, zk + 0.12, D)
+        dsil(g, p[0], p[1], zk + 0.12, 2.42, 0.15, 8, D, r1=0.13, kapak=(False, False))
+        kutu(g, p[0] - 0.19, p[0] + 0.19, p[1] - 0.19, p[1] + 0.19, 2.42, 2.52, D, atla=())
+    c.kutu(g, 0.26, 2.54, 0, 1.24, 2.52, 2.8, D)                                      # saçaklık
+    c.kutu(g, 0.2, 2.6, 0, 1.3, 2.8, 2.9, SILME2)
+    avlu(g, c, 0.0, 0.28)
+    avlu(g, c, 2.52, HUCRE)
+
+
+def _s_ust(g, z0, z1, bolme, alinlik, balkon=False, tohum=0):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.88, 1.92, z0, z1, bolme, perde=2 if z1 - z0 > 1.6 else 1, denizlik=not balkon)
+    for a, b in ((0.74, 0.82), (1.98, 2.06)):                                         # sıva söve
+        c.kutu(g, a, b, 0, 0.06, z0 - 0.06, z1 + 0.06, SILME)
+    sacak_lento(g, c, 0.88, 1.92, z1 + 0.06, alinlik, SILME)
+    if balkon:
+        c.kutu(g, -0.02, HUCRE + 0.02, 0, 0.62, 0.02, 0.14, SILME2)                  # sürekli balkon tablası
+        parmaklik(g, c, 0.0, HUCRE, 0.57, 0.14, 1.0, 0.18, kaide=False)
+        for uu in (0.5, 2.3):                                                         # konsollar
+            prizma(g, [c.p(uu, 0, 0.02), c.p(uu, 0.5, 0.02), c.p(uu, 0, -0.3)], (c.u[0] * 0.12, c.u[1] * 0.12, 0), SILME2)
+
+
+ekle("s_kat1", "konut", "Sıva teras birinci kat (ön): uzun pencere, alınlıklı başlık, sürekli demir balkon", lambda g: _s_ust(g, 0.2, 2.2, (2, 2), True, True))
+ekle("s_kat1_yan", "konut", "Sıva teras birinci kat (yan / arka): alınlıklı pencere", lambda g: _s_ust(g, 0.7, 2.2, (3, 2), True))
+ekle("s_ust", "konut", "Sıva teras üst kat: kornişli pencere", lambda g: _s_ust(g, 0.8, 2.3, (3, 2), False))
+ekle("s_tavan", "konut", "Sıva teras en üst kat: küçük pencere", lambda g: _s_ust(g, 1.0, 2.05, (3, 1), False))
+
+
+@parca("konut", "Sıva düz duvar (kör niş)")
+def s_duz(g):
+    c = on()
+    panel(g, c)
+    cokgen(g, c, [(0.88, 0.8), (1.92, 0.8), (1.92, 2.3), (0.88, 2.3)], D2, 0.012)
+    sacak_lento(g, c, 0.88, 1.92, 2.36, False, SILME)
+
+
+# ---------------------------------------------------------------- Victorian / Edwardian tuğla ev (v_)
+# Kırmızı tuğla (bloğun duvar rengi) + beyaz taş söveler; zemin ve birinci katta çokgen cumba; kemerli giriş, karo yol,
+# alçak bahçe duvarı + korkuluk.
+
+BAHCE = 1.75         # ön bahçe duvarının cepheden uzaklığı
+
+
+def bahce_duvari(g, c, u0, u1):
+    """Alçak tuğla bahçe duvarı + taş harpuşta + kısa demir korkuluk."""
+    c.kutu(g, u0, u1, BAHCE - 0.09, BAHCE + 0.09, 0.0, 0.48, D, arka=True)
+    c.kutu(g, u0, u1, BAHCE - 0.12, BAHCE + 0.12, 0.48, 0.56, PORTLAND, arka=True)
+    parmaklik(g, c, u0, u1, BAHCE, 0.56, 0.5, 0.2, kaide=False)
+
+
+def _cumba(g, c, alt=True, ust_kapak=True, bahce=False, tohum=5):
+    """Çokgen cumba (canted bay): tuğla etek, taş denizlik ve lento, üç yüzde giyotin cam. ust_kapak: üstü arduvaz / kurşun
+    kırma çatıcıkla biter; değilse düz taş kornişle (üst kattaki cumba üstüne oturur)."""
+    panel(g, c)
+    dis = [(0.34, 0.0), (0.86, 0.66), (1.94, 0.66), (2.46, 0.0)]
+    ic = [(0.4, 0.0), (0.9, 0.6), (1.9, 0.6), (2.4, 0.0)]
+    zb = 0.82 if alt else 0.7
+
+    def kat(nokta, z0, z1, mat):
+        prizma(g, [c.p(u, o, z0) for u, o in nokta], (0, 0, z1 - z0), mat)
+    kat(ic, 0.0, zb, D)
+    kat(dis, zb, zb + 0.09, PORTLAND)
+    kat(ic, zb + 0.09, 2.4, CAM)
+    kat(dis, 2.4, 2.64, PORTLAND)
+    for u, o in ic:                                                                   # taş dikmeler
+        p = c.p(u, o, 0)
+        kutu(g, p[0] - 0.07, p[0] + 0.07, p[1] - 0.07, p[1] + 0.07, zb + 0.09, 2.4, PORTLAND, atla=("zn", "zp"))
+    zm = zb + 0.09 + (2.31 - zb) * 0.55
+    for (ua, oa), (ub, ob) in zip(ic, ic[1:]):                                        # buluşma kayıtları
+        cubuk(g, c.p(ua, oa + 0.012, zm), c.p(ub, ob + 0.012, zm), 0.05, SILME)
+    iz(g, c, 1.386, 1.414, zb + 0.09, zm, IZ_BEYAZ, 0.61)
+    iz(g, c, 1.386, 1.414, zm, 2.4, IZ_BEYAZ, 0.61)
+    if ust_kapak:
+        taban = [c.p(u, o, 2.64) for u, o in dis]
+        tepe = [c.p(0.7, 0.0, 2.98), c.p(2.1, 0.0, 2.98)]
+        kati(g, taban + tepe, [[0, 1, 4], [1, 2, 5, 4], [2, 3, 5]], KURSUN, ic=c.p(1.4, 0.2, 2.6))
+    else:
+        kat(ic, 2.64, KAT, D)
+    tugla_izi(g, c, tohum, 2, u0=0.1, u1=HUCRE - 0.1, z0=2.5, z1=2.9)
+    if bahce:
+        bahce_duvari(g, c, 0.0, HUCRE)
+
+
+ekle("v_cumba", "konut", "Victorian zemin: çokgen cumba, önde alçak bahçe duvarı + korkuluk", lambda g: _cumba(g, on(), True, False, True, 5))
+ekle("v_cumba_ust", "konut", "Victorian birinci kat: cumbanın devamı, üstü kurşun çatıcık", lambda g: _cumba(g, on(), False, True, False, 6))
+ekle("v_cumba_tek", "konut", "Victorian zemin: tek katlı cumba (üstü kurşun çatıcık), bahçe duvarı", lambda g: _cumba(g, on(), True, True, True, 7))
+
+
+@parca("konut", "Victorian kapı: taş kemerli giriş, vitray camlı kapı, karo yol, bahçe kapısı babaları")
+def v_kapi(g):
+    c = on()
+    panel(g, c)
+    zk = 0.24
+    for a, b in ((0.72, 0.9), (1.9, 2.08)):                                           # taş söveler
+        c.kutu(g, a, b, 0, 0.1, 0.0, 2.1, PORTLAND)
+        c.kutu(g, a - 0.03, b + 0.03, 0, 0.13, 2.0, 2.12, PORTLAND2)
+    kemer_halka(g, c, 1.4, 2.1, 0.5, 0.2, PORTLAND, "yarim", 6, 0.1)
+    c.kutu(g, 1.31, 1.49, 0, 0.14, 2.56, 2.86, PORTLAND2)                            # kilit taşı
+    panelli_kapi(g, c, 0.9, 1.9, zk, 2.1, cam_ust=True)
+    cokgen(g, c, _yay(1.4, 2.1, 0.5, "yarim", 6), CAM2, 0.012)
+    iz(g, c, 1.386, 1.414, 2.1, 2.6, IZ_BEYAZ, 0.02)
+    c.kutu(g, 0.7, 2.1, 0, 0.5, 0.0, zk, PORTLAND)
+    c.kutu(g, 0.76, 2.04, 0.5, 0.78, 0.0, zk / 2, PORTLAND2)
+    for i in range(4):                                                                # karo yol (dama)
+        for j in range(3):
+            yer_levha(g, c, 0.95 + j * 0.3, 1.25 + j * 0.3, 0.8 + i * 0.22, 1.02 + i * 0.22, 0.02, IZ_KARO[0 if (i + j) % 2 == 0 else 2])
+    for a, b in ((0.66, 0.9), (1.9, 2.14)):                                           # bahçe kapısı babaları
+        c.kutu(g, a, b, BAHCE - 0.12, BAHCE + 0.12, 0.0, 0.95, D, arka=True)
+        c.kutu(g, a - 0.03, b + 0.03, BAHCE - 0.15, BAHCE + 0.15, 0.95, 1.04, PORTLAND, arka=True)
+    bahce_duvari(g, c, 0.0, 0.66)
+    bahce_duvari(g, c, 2.14, HUCRE)
+    tugla_izi(g, c, 8, 2, z0=2.6, z1=2.9)
+
+
+def _v_ust(g, cift, tohum, z0=0.8, z1=2.4):
+    c = on()
+    panel(g, c)
+    if cift:
+        sash(g, c, 0.5, 1.22, z0, z1, (1, 1), perde=1)
+        sash(g, c, 1.58, 2.3, z0, z1, (1, 1), perde=1)
+        c.kutu(g, 1.28, 1.52, 0, 0.07, z0 - 0.06, z1 + 0.06, PORTLAND)             # taş orta dikme
+        tas_lento(g, c, 0.5, 2.3, z1 + 0.06)
+        yasak = (0.5, 2.3, z0, z1)
+    else:
+        sash(g, c, 0.9, 1.9, z0, z1, (2, 1), perde=1)
+        tas_lento(g, c, 0.9, 1.9, z1 + 0.06)
+        c.kutu(g, 1.32, 1.48, 0, 0.1, z1 + 0.04, z1 + 0.32, PORTLAND2)             # kilit taşı
+        yasak = (0.9, 1.9, z0, z1)
+    tugla_izi(g, c, tohum, 4, yasak=yasak)
+
+
+ekle("v_ust", "konut", "Victorian pencere: 2/2 giyotin, taş lento ve kilit taşı", lambda g: _v_ust(g, False, 21))
+ekle("v_ust_cift", "konut", "Victorian çift pencere: taş orta dikmeli", lambda g: _v_ust(g, True, 22))
+ekle("v_zemin", "konut", "Victorian zemin (yan / arka): 2/2 giyotin", lambda g: _v_ust(g, False, 23, 0.95, 2.4))
+
+
+@parca("konut", "Victorian düz duvar: tuğla, taş bant")
+def v_duz(g):
+    c = on()
+    panel(g, c)
+    iz(g, c, 0.0, HUCRE, 1.5, 1.58, IZ_TAS, 0.012)
+    tugla_izi(g, c, 24, 5)
+
+
+@parca("bant", "Victorian kat silmesi (ince taş bant)")
+def v_silme(g):
+    c = on()
+    c.kutu(g, -0.03, HUCRE + 0.03, 0, 0.07, -0.1, 0.0, PORTLAND)
+
+
+# ---------------------------------------------------------------- mews evi (m_)
+# Arnavut kaldırımlı dar sokakta iki katlı: altta garaj kapısı, pastel boyalı tuğla, saksılar.
+
+@parca("konut", "Mews zemin: çift kanatlı garaj kapısı (camlı üst), basık tuğla kemer, saksı")
+def m_garaj(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.3, 2.5, 0, 0.05, 0.03, 2.3, VR)
+    iz(g, c, 1.388, 1.412, 0.03, 2.3, IZ_DEMIR, 0.056)
+    for a, b in ((0.4, 1.3), (1.5, 2.4)):
+        cokgen(g, c, [(a, 0.15), (b, 0.15), (b, 1.45), (a, 1.45)], VR, 0.066)
+        cokgen(g, c, [(a, 1.6), (b, 1.6), (b, 2.2), (a, 2.2)], CAM2, 0.056)
+        for k in (1, 2):
+            uu = a + (b - a) * k / 3
+            iz(g, c, uu - 0.012, uu + 0.012, 1.6, 2.2, IZ_BEYAZ, 0.06)
+    c.kutu(g, 0.2, 0.3, 0, 0.07, 0.0, 2.3, SILME)
+    c.kutu(g, 2.5, 2.6, 0, 0.07, 0.0, 2.3, SILME)
+    cokgen(g, c, [(0.2, 2.3), (2.6, 2.3), (2.68, 2.56), (0.12, 2.56)], D2, 0.03)         # düz tuğla kemer
+    p = c.p(0.12, 0.28, 0)
+    saksi_k(g, p[0], p[1], 0.0, 0.17, 1)
+
+
+@parca("konut", "Mews kapısı: boyalı kapı, küçük pencere, saksılar, fener")
+def m_kapi(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.42, 0.52, 0, 0.07, 0.0, 2.3, SILME)
+    c.kutu(g, 1.42, 1.52, 0, 0.07, 0.0, 2.3, SILME)
+    c.kutu(g, 0.42, 1.52, 0, 0.09, 2.3, 2.4, SILME)
+    panelli_kapi(g, c, 0.52, 1.42, 0.08, 2.3, cam_ust=True)
+    c.kutu(g, 0.4, 1.54, 0, 0.4, 0.0, 0.08, PORTLAND)
+    sash(g, c, 1.85, 2.45, 1.1, 2.1, (2, 1), perde=1)
+    for uu, ci in ((0.24, 0), (1.72, 3)):
+        p = c.p(uu, 0.3, 0)
+        saksi_k(g, p[0], p[1], 0.0, 0.16, ci)
+    p = c.p(1.66, 0.14, 0)
+    kutu(g, p[0] - 0.06, p[0] + 0.06, p[1] - 0.06, p[1] + 0.06, 1.95, 2.15, ISIK, atla=())
+    kutu(g, p[0] - 0.085, p[0] + 0.085, p[1] - 0.085, p[1] + 0.085, 2.15, 2.19, DEMIR_S, atla=())
+
+
+@parca("konut", "Mews üst kat: giyotin pencere + çiçek kutusu")
+def m_ust(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.9, 1.9, 0.9, 2.25, (2, 2), perde=2)
+    cokgen(g, c, [(0.84, 2.31), (1.96, 2.31), (2.04, 2.52), (0.76, 2.52)], D2, 0.022)
+    cicek_kutusu(g, c, 0.82, 1.98, 0.8)
+
+
+@parca("konut", "Mews üst kat: samanlık kapısı (uzun pencere, demir korkuluk)")
+def m_ust_kapi(g):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.85, 1.95, 0.25, 2.3, (2, 2), perde=2, denizlik=False)
+    cokgen(g, c, [(0.79, 2.36), (2.01, 2.36), (2.09, 2.57), (0.71, 2.57)], D2, 0.022)
+    parmaklik(g, c, 0.75, 2.05, 0.14, 0.2, 0.9, 0.16, kaide=False)
+
+
+@parca("konut", "Mews düz duvar (boyalı tuğla)")
+def m_duz(g):
+    c = on()
+    panel(g, c)
+    tugla_izi(g, c, 41, 4)
+
+
+@parca("bant", "Mews silmesi (dişli tuğla sırası)")
+def m_silme(g):
+    c = on()
+    c.kutu(g, -0.02, HUCRE + 0.02, 0, 0.05, -0.12, 0.0, D2)
+
+
+# ---------------------------------------------------------------- Portland taşı neoklasik (p_)
+# Açık gri taş (bloğun duvar rengi): rustika zemin, pilastrlı üst katlar, alınlıklı pencereler, üstte saçaklık ve tavan arası.
+
+def _pilastr(g, c, z0=0.0, z1=KAT):
+    for a, b in ((0.0, 0.17), (HUCRE - 0.17, HUCRE)):
+        c.kutu(g, a, b, 0, 0.1, z0, z1, D)
+        c.kutu(g, a, b, 0, 0.14, z0, z0 + 0.16, D2)
+
+
+def _p_zemin(g, kapi=False):
+    c = on()
+    panel(g, c)
+    rustika(g, c, yasak=(0.7, 2.1, 0.5, 2.7), mat=IZ_D, adim=0.4)
+    sash(g, c, 0.88, 1.92, 0.85, 1.85, (3, 2), "yarim", perde=1)
+    kemer_halka(g, c, 1.4, 1.85, 0.58, 0.2, D2, "yarim", 6, 0.03)
+    c.kutu(g, 1.31, 1.49, 0, 0.1, 2.36, 2.7, D2)                                      # kilit taşı
+    c.kutu(g, -0.05, HUCRE + 0.05, 0, 0.08, 0.0, 0.42, D2)
+
+
+ekle("p_zemin", "kamu", "Portland zemin: rustika, kemerli pencere, kilit taşı", lambda g: _p_zemin(g))
+
+
+def _p_ust(g, z0, z1, alinlik, pilastr=True, sacaklik=False):
+    c = on()
+    panel(g, c)
+    if pilastr:
+        _pilastr(g, c, 0.0, KAT)
+    if sacaklik:                                                                      # tavan arası: altta saçaklık (korniş)
+        c.kutu(g, -0.03, HUCRE + 0.03, 0, 0.12, 0.0, 0.2, D2)
+        c.kutu(g, -0.06, HUCRE + 0.06, 0, 0.3, 0.2, 0.32, D)
+    sash(g, c, 0.9, 1.9, z0, z1, (3, 2) if z1 - z0 > 1.2 else (3, 1), perde=1)
+    for a, b in ((0.76, 0.84), (1.96, 2.04)):
+        c.kutu(g, a, b, 0, 0.06, z0 - 0.06, z1 + 0.06, D2)
+    sacak_lento(g, c, 0.9, 1.9, z1 + 0.06, alinlik, D2)
+
+
+ekle("p_kat1", "kamu", "Portland birinci kat: pilastrlar, alınlıklı uzun pencere", lambda g: _p_ust(g, 0.55, 2.25, True))
+ekle("p_ust", "kamu", "Portland üst kat: pilastrlar, kornişli pencere", lambda g: _p_ust(g, 0.75, 2.25, False))
+ekle("p_tavan", "kamu", "Portland tavan arası: saçaklık üstünde küçük pencere", lambda g: _p_ust(g, 1.05, 2.05, False, False, True))
+
+
+@parca("kamu", "Portland düz duvar: pilastrlar, kör niş")
+def p_duz(g):
+    c = on()
+    panel(g, c)
+    _pilastr(g, c)
+    cokgen(g, c, [(0.9, 0.75), (1.9, 0.75), (1.9, 2.25), (0.9, 2.25)], D2, 0.012)
+    sacak_lento(g, c, 0.9, 1.9, 2.31, False, D2)
+
+
+@parca("bant", "Portland zemin kat silmesi")
+def p_silme(g):
+    c = on()
+    c.kutu(g, -0.03, HUCRE + 0.03, 0, 0.08, -0.16, -0.04, D2)
+    c.kutu(g, -0.06, HUCRE + 0.06, 0, 0.16, -0.04, 0.05, D)
+
+
+@parca("kose", "Portland köşe: rustika köşe taşları")
+def p_kose(g):
+    z, i = 0.02, 0
+    while z < KAT - 0.2:
+        w = 0.5 if i % 2 == 0 else 0.34
+        kutu(g, -A - 0.04, -A + w, -A - 0.04, -A + (0.84 - w), z, z + 0.42, D2, atla=())
+        z += 0.5
+        i += 1
+
+
+@parca("kamu", "Sütunlu cephe (Portland taşı sütun dizisi, arkada kemerli pencere)")
+def sutunlu(g):
+    c = on()
+    panel(g, c, PORTLAND)
+    sash(g, c, 0.95, 1.85, 0.7, 1.5, (3, 2), "yarim", perde=1)
+    for uu in (0.0, HUCRE):                                                           # hücre sınırında sütun (komşununkiyle çakışır)
+        p = c.p(uu, 0.62, 0)
+        kutu(g, p[0] - 0.21, p[0] + 0.21, p[1] - 0.21, p[1] + 0.21, 0.0, 0.2, PORTLAND2)
+        dsil(g, p[0], p[1], 0.2, 1.98, 0.16, 8, PORTLAND, r1=0.135, kapak=(False, False))
+        kutu(g, p[0] - 0.2, p[0] + 0.2, p[1] - 0.2, p[1] + 0.2, 1.98, 2.1, PORTLAND, atla=())
+    # saçaklık tabela panosunun (2,3 m) altında biter: yazı frizde görünür
+    c.kutu(g, 0.0, HUCRE, 0, 0.84, 2.1, 2.26, PORTLAND)
+    c.kutu(g, 0.0, HUCRE, 0, 0.84, 0.0, 0.08, PORTLAND2)
+
+
+@parca("kamu", "Sütunlu giriş (portiko: sütunlar, alınlık, çift kanat kapı, basamaklar)")
+def kapi_sutunlu(g):
+    c = on()
+    panel(g, c, PORTLAND)
+    c.kutu(g, 0.8, 0.92, 0, 0.1, 0.24, 2.1, PORTLAND2)
+    c.kutu(g, 1.88, 2.0, 0, 0.1, 0.24, 2.1, PORTLAND2)
+    panelli_kapi(g, c, 0.92, 1.88, 0.24, 2.08, cift=True, cam_ust=True)
+    for uu in (0.0, HUCRE):
+        p = c.p(uu, 0.62, 0)
+        kutu(g, p[0] - 0.21, p[0] + 0.21, p[1] - 0.21, p[1] + 0.21, 0.0, 0.42, PORTLAND2)
+        dsil(g, p[0], p[1], 0.42, 1.98, 0.16, 8, PORTLAND, r1=0.135, kapak=(False, False))
+        kutu(g, p[0] - 0.2, p[0] + 0.2, p[1] - 0.2, p[1] + 0.2, 1.98, 2.1, PORTLAND, atla=())
+    c.kutu(g, 0.0, HUCRE, 0, 0.84, 2.1, 2.26, PORTLAND)
+    for i in range(3):
+        c.kutu(g, 0.22, HUCRE - 0.22, 0, 0.84 + 0.3 * (2 - i) - 0.3, 0.08 * i, 0.08 * (i + 1), PORTLAND if i % 2 else PORTLAND2)
+
+
+@parca("kamu", "Alınlık (çatıda: taş kaide, üçgen alınlık, madalyon, bayrak direği)")
+def alinlik_tas(g):
+    # kök: kapı hücresinin ortasından 0,3 m içeride, çatı tabanı. Cephe hizasında, parapetin üstüne oturur.
+    c = C((-A, -A - 0.3), (1, 0), (0, -1), HUCRE)
+    c.kutu(g, -0.02, HUCRE + 0.02, -0.5, 0.08, -0.02, 0.95, PORTLAND, arka=True)
+    c.kutu(g, -0.1, HUCRE + 0.1, -0.5, 0.2, 0.95, 1.07, PORTLAND2, arka=True)
+    c.prizma_uc(g, -0.1, HUCRE + 0.1, -0.5, 0.14, 1.07, 0.9, PORTLAND)
+    p = c.p(1.4, 0.14, 1.4)
+    silindir(g, p, (p[0], p[1] - 0.04, p[2]), 0.24, 0.24, 10, VR)
+    cubuk(g, (0, -A, 1.9), (0, -A, 4.3), 0.06, PM("Metal", "#c9ccd0"))
+    meyve(g, 0, -A, 4.3, 0.08, PIRINC)
+    kutu(g, 0.04, 1.2, -A - 0.02, -A + 0.02, 3.5, 4.2, VR, atla=())
+    kutu(g, 0.04, 1.2, -A - 0.026, -A + 0.026, 3.76, 3.94, SILME, atla=())
+
+
+@parca("kamu", "Cephe saati (taş çerçeveli, siyah akrepli)")
+def saat_cephe(g):
+    c = on()
+    p = c.p(1.4, 0.0, 1.7)
+    silindir(g, p, (p[0], p[1] - 0.1, p[2]), 0.82, 0.82, 12, PORTLAND2)
+    silindir(g, (p[0], p[1] - 0.1, p[2]), (p[0], p[1] - 0.13, p[2]), 0.66, 0.66, 12, SILME)
+    iz(g, c, 1.375, 1.425, 1.7, 2.2, IZ_DEMIR, 0.14)
+    iz(g, c, 1.4, 1.75, 1.675, 1.725, IZ_DEMIR, 0.14)
+    for i in range(12):
+        a = i * math.pi / 6
+        u, z = 1.4 + 0.56 * math.cos(a), 1.7 + 0.56 * math.sin(a)
+        s = 0.045 if i % 3 == 0 else 0.022
+        iz(g, c, u - s, u + s, z - s, z + s, IZ_DEMIR, 0.14)
+
+
+# ---------------------------------------------------------------- Victorian gotik (gt_): gar, kütüphane, okul
+# Kırmızı tuğla + taş süsler: sivri kemerli pencereler, taş bantlar, payandalı köşeler, dik arduvaz çatı.
+
+def _gt_duvar(g, c, tohum):
+    panel(g, c)
+    iz(g, c, 0.0, HUCRE, 0.5, 0.58, IZ_TAS, 0.012)
+    iz(g, c, 0.0, HUCRE, 2.72, 2.8, IZ_TAS, 0.012)
+    tugla_izi(g, c, tohum, 2, z0=0.7, z1=2.6, u0=0.1, u1=0.9)
+
+
+def _gt_pencere(g, c, u0, u1, z0, zs, cam=CAM):
+    """Sivri kemerli pencere + taş söve."""
+    r = (u1 - u0) / 2
+    sash(g, c, u0, u1, z0, zs, (2, 2), "sivri", perde=0, cam=cam, cerceve=PORTLAND)
+    kemer_halka(g, c, (u0 + u1) / 2, zs, r + 0.06, 0.1, PORTLAND2, "sivri", 6, 0.07)
+
+
+@parca("kamu", "Gotik pencere: sivri kemerli, taş söveli")
+def gt_ust(g):
+    c = on()
+    _gt_duvar(g, c, 51)
+    _gt_pencere(g, c, 0.95, 1.85, 0.8, 1.75)
+
+
+@parca("kamu", "Gotik çift pencere: iki sivri kemer + üstte gül pencere")
+def gt_ust_cift(g):
+    c = on()
+    _gt_duvar(g, c, 52)
+    _gt_pencere(g, c, 0.62, 1.22, 0.8, 1.6)
+    _gt_pencere(g, c, 1.58, 2.18, 0.8, 1.6)
+    pts = [(1.4 + 0.2 * math.cos(2 * math.pi * i / 8), 2.42 + 0.2 * math.sin(2 * math.pi * i / 8)) for i in range(8)]
+    cokgen(g, c, pts, CAM2, 0.012)
+    pts2 = [(1.4 + 0.29 * math.cos(2 * math.pi * i / 8), 2.42 + 0.29 * math.sin(2 * math.pi * i / 8)) for i in range(8)]
+    for i in range(8):
+        j = (i + 1) % 8
+        cokgen(g, c, [pts[i], pts2[i], pts2[j], pts[j]], PORTLAND, 0.05)
+
+
+@parca("kamu", "Gotik zemin: sivri kemerli pencere, taş kaide")
+def gt_zemin(g):
+    c = on()
+    _gt_duvar(g, c, 53)
+    _gt_pencere(g, c, 0.95, 1.85, 0.95, 1.8)
+    c.kutu(g, -0.05, HUCRE + 0.05, 0, 0.08, 0.0, 0.44, PORTLAND2)
+
+
+@parca("kamu", "Gotik kapı: sivri kemerli taş portal, demir menteşeli ahşap kapı, basamak")
+def gt_kapi(g):
+    c = on()
+    _gt_duvar(g, c, 54)
+    um, zs, r = 1.4, 1.75, 0.62
+    cokgen(g, c, [(um - r, 0.16), (um + r, 0.16)] + _yay(um, zs, r, "sivri", 6), AHSAP2, 0.03)
+    iz(g, c, um - 0.013, um + 0.013, 0.16, zs + r * 1.7, IZ_DEMIR, 0.036)
+    for zz in (0.6, 1.5):
+        iz(g, c, um - r + 0.06, um + r - 0.06, zz, zz + 0.05, IZ_DEMIR, 0.036)
+    for a, b in ((um - r - 0.2, um - r), (um + r, um + r + 0.2)):
+        c.kutu(g, a, b, 0, 0.14, 0.0, zs, PORTLAND)
+    kemer_halka(g, c, um, zs, r, 0.2, PORTLAND, "sivri", 6, 0.14)
+    kemer_halka(g, c, um, zs, r + 0.2, 0.09, PORTLAND2, "sivri", 6, 0.08)
+    c.kutu(g, 0.4, 2.4, 0, 0.6, 0.0, 0.16, PORTLAND)
+    c.kutu(g, 0.3, 2.5, 0.6, 0.9, 0.0, 0.08, PORTLAND2)
+
+
+@parca("kamu", "Gotik düz duvar: tuğla, taş bantlar, haç biçimli taş süs")
+def gt_duz(g):
+    c = on()
+    _gt_duvar(g, c, 55)
+    cokgen(g, c, [(1.3, 1.2), (1.5, 1.2), (1.5, 2.2), (1.3, 2.2)], PORTLAND, 0.02)
+    cokgen(g, c, [(1.0, 1.65), (1.8, 1.65), (1.8, 1.85), (1.0, 1.85)], PORTLAND, 0.021)
+
+
+@parca("kose", "Gotik köşe: kademeli taş payanda")
+def gt_kose(g):
+    kutu(g, -A - 0.16, -A + 0.3, -A - 0.16, -A + 0.3, 0.0, 1.9, D)
+    kutu(g, -A - 0.2, -A + 0.34, -A - 0.2, -A + 0.34, 1.9, 2.04, PORTLAND, atla=())
+    kutu(g, -A - 0.08, -A + 0.24, -A - 0.08, -A + 0.24, 2.04, KAT, D)
+    kutu(g, -A - 0.2, -A + 0.34, -A - 0.2, -A + 0.34, 0.0, 0.44, PORTLAND2)
+
+
+@parca("kose", "Gotik üst köşe: ince payanda + taş başlık")
+def gt_kose_ust(g):
+    kutu(g, -A - 0.08, -A + 0.24, -A - 0.08, -A + 0.24, 0.0, KAT, D)
+    kutu(g, -A - 0.12, -A + 0.28, -A - 0.12, -A + 0.28, KAT - 0.3, KAT - 0.18, PORTLAND, atla=())
+
+
+# ---------------------------------------------------------------- tuğla depo / atölye (d_)
+
+def _d_pencere(g, z0, zs, tohum):
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.7, 2.1, z0, zs, (4, 2), "basik", perde=0, cerceve=SILME2)
+    kemer_halka(g, c, 1.4, zs, 0.76, 0.18, D2, "basik", 6, 0.03)
+    tugla_izi(g, c, tohum, 3, yasak=(0.7, 2.1, z0, zs + 0.3))
+
+
+ekle("d_ust", "sanayi", "Depo penceresi: basık kemerli, küçük camlı", lambda g: _d_pencere(g, 0.9, 2.0, 61))
+ekle("d_zemin", "sanayi", "Depo zemin penceresi: basık kemerli, yüksek", lambda g: _d_pencere(g, 1.2, 2.1, 62))
+
+
+@parca("sanayi", "Depo düz duvar: tuğla, taş bant")
+def d_duz(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.0, HUCRE, 0, 0.04, 2.0, 2.12, PORTLAND2)
+    tugla_izi(g, c, 63, 5, z1=1.9)
+
+
+@parca("kose", "Depo köşesi: tuğla pilastr")
+def d_kose(g):
+    kutu(g, -A - 0.06, -A + 0.3, -A - 0.06, -A + 0.3, 0.0, KAT, D2)
+
+
+# ---------------------------------------------------------------- Londra sokak donatıları
+
+def kare_yuz(n, e):
+    """Merkezi kökte, yarı kenarı e olan karenin n yönüne bakan yüzünün cephe çerçevesi (u: 0…2e)."""
+    return C((n[1] * e + n[0] * e, -n[0] * e + n[1] * e), (-n[1], n[0]), n, 2 * e)
+
+
+@_cevre("Kırmızı telefon kulübesi (K6)", "donati:ilan_sutunu")
+def telefon_kulubesi(g):
+    e = 0.46
+    kutu(g, -e - 0.04, e + 0.04, -e - 0.04, e + 0.04, 0.0, 0.1, DEMIR_S)
+    kutu(g, -e, e, -e, e, 0.1, 2.3, KIRMIZI)
+    kati(g, [(-e - 0.03, -e - 0.03, 2.3), (e + 0.03, -e - 0.03, 2.3), (e + 0.03, e + 0.03, 2.3), (-e - 0.03, e + 0.03, 2.3),
+             (-e * 0.5, -e * 0.5, 2.5), (e * 0.5, -e * 0.5, 2.5), (e * 0.5, e * 0.5, 2.5), (-e * 0.5, e * 0.5, 2.5)],
+         [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [4, 5, 6, 7], [0, 1, 2, 3]], KIRMIZI)
+    for i, n in enumerate(YON):
+        cy = kare_yuz(n, e)
+        cokgen(g, cy, [(0.1, 0.35), (2 * e - 0.1, 0.35), (2 * e - 0.1, 1.98), (0.1, 1.98)], CAM2, 0.012)
+        for k in (1, 2):
+            uu = 0.1 + (2 * e - 0.2) * k / 3
+            iz(g, cy, uu - 0.012, uu + 0.012, 0.35, 1.98, PM("Iz", "#c8413a"), 0.02)
+        for k in range(1, 6):
+            zz = 0.35 + 1.63 * k / 6
+            iz(g, cy, 0.1, 2 * e - 0.1, zz - 0.012, zz + 0.012, PM("Iz", "#c8413a"), 0.02)
+        iz(g, cy, 0.14, 2 * e - 0.14, 2.06, 2.22, PM("Iz", "#fbf7ee"), 0.012)           # "TELEPHONE" levhası
+
+
+@_cevre("Kırmızı posta kutusu (pillar box)", "donati:posta_kutusu")
+def posta_kutusu(g):
+    dsil(g, 0, 0, 0.0, 0.16, 0.27, 10, DEMIR_S)
+    dsil(g, 0, 0, 0.16, 1.2, 0.24, 10, KIRMIZI, kapak=(False, False))
+    dsil(g, 0, 0, 1.2, 1.3, 0.29, 10, KIRMIZI)
+    dsil(g, 0, 0, 1.3, 1.42, 0.27, 10, KIRMIZI, r1=0.1)
+    c = C((-0.14, -0.245), (1, 0), (0, -1), 0.28)
+    iz(g, c, 0.02, 0.26, 1.0, 1.06, IZ_DEMIR, 0.01)
+    iz(g, c, 0.05, 0.23, 0.62, 0.86, PM("Iz", "#fbf7ee"), 0.01)
+
+
+@_cevre("Siyah Victoria sokak lambası", "donati:lamba_klasik")
+def sokak_lambasi(g):
+    dsil(g, 0, 0, 0, 0.5, 0.17, 8, DEMIR_S, r1=0.1)
+    dsil(g, 0, 0, 0.5, 0.62, 0.13, 8, DEMIR_S)
+    dsil(g, 0, 0, 0.62, 3.0, 0.065, 6, DEMIR_S, r1=0.045, kapak=(False, False))
+    cubuk(g, (-0.3, 0, 2.62), (0.3, 0, 2.62), 0.035, DEMIR_S)                          # merdiven kolu
+    dsil(g, 0, 0, 3.0, 3.08, 0.12, 6, DEMIR_S)
+    kati(g, [(-0.11, -0.11, 3.08), (0.11, -0.11, 3.08), (0.11, 0.11, 3.08), (-0.11, 0.11, 3.08),
+             (-0.2, -0.2, 3.5), (0.2, -0.2, 3.5), (0.2, 0.2, 3.5), (-0.2, 0.2, 3.5)],
+         [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [0, 1, 2, 3], [4, 5, 6, 7]], ISIK)
+    kati(g, [(-0.24, -0.24, 3.5), (0.24, -0.24, 3.5), (0.24, 0.24, 3.5), (-0.24, 0.24, 3.5), (0, 0, 3.74)],
+         [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]], DEMIR_S)
+    meyve(g, 0, 0, 3.72, 0.05, DEMIR_S, n=5, rz=0.16)
+
+
+def _sokak_lambasi_hafif(g):
+    cubuk(g, (0, 0, 0), (0, 0, 3.1), 0.12, DEMIR_S)
+    kutu(g, -0.17, 0.17, -0.17, 0.17, 3.1, 3.55, ISIK, atla=())
+
+
+PARCA_HAFIF["sokak_lambasi"] = _sokak_lambasi_hafif
+
+
+@_cevre("Siyah dökme demir bollard", "donati:baba")
+def bollard(g):
+    dsil(g, 0, 0, 0.0, 0.12, 0.13, 8, DEMIR_S)
+    dsil(g, 0, 0, 0.12, 0.8, 0.09, 8, DEMIR_S, r1=0.075, kapak=(False, False))
+    dsil(g, 0, 0, 0.62, 0.7, 0.085, 8, SILME, kapak=(False, False))
+    dsil(g, 0, 0, 0.8, 0.86, 0.11, 8, DEMIR_S)
+    meyve(g, 0, 0, 0.86, 0.09, DEMIR_S, n=6, rz=0.12)
+
+
+@_cevre("Yeşil bank (dökme demir ayaklı)", "donati:bank")
+def bank(g):
+    ys = PM("Boya", "#4f7a5d")
+    for sx in (-0.72, 0.72):
+        kutu(g, sx - 0.04, sx + 0.04, -0.24, 0.24, 0, 0.44, DEMIR_S)
+        kutu(g, sx - 0.04, sx + 0.04, 0.16, 0.24, 0.44, 0.92, DEMIR_S)
+        kutu(g, sx - 0.05, sx + 0.05, -0.26, 0.2, 0.6, 0.65, DEMIR_S, atla=())          # kolçak
+    kutu(g, -0.8, 0.8, -0.24, 0.18, 0.44, 0.5, ys, atla=())
+    kutu(g, -0.8, 0.8, 0.15, 0.2, 0.58, 0.92, ys, atla=())
+
+
+@_cevre("Belisha feneri (zebra geçidi; siyah-beyaz direk, turuncu küre)")
+def belisha(g):
+    for i in range(6):
+        dsil(g, 0, 0, i * 0.38, (i + 1) * 0.38, 0.055, 6, DEMIR_S if i % 2 == 0 else SILME, kapak=(False, i == 5))
+    top(g, (0, 0, 2.46), 0.2, 0.2, 0.2, PM("Isik", "#f7a83e"))
+    dsil(g, 0, 0, 0.0, 0.08, 0.1, 6, DEMIR_S)
+
+
+def _belisha_hafif(g):
+    cubuk(g, (0, 0, 0), (0, 0, 2.3), 0.1, SILME)
+    kutu(g, -0.17, 0.17, -0.17, 0.17, 2.28, 2.62, PM("Isik", "#f7a83e"), atla=())
+
+
+PARCA_HAFIF["belisha"] = _belisha_hafif
+
+
+@_cevre("Otobüs durağı (direk + kırmızı yuvarlak levha, camlı sığınak)", "donati:durak")
+def durak(g):
+    for sx in (-1.3, 1.3):
+        cubuk(g, (sx, 0.5, 0), (sx, 0.5, 2.35), 0.07, DEMIR_S)
+        cubuk(g, (sx, -0.35, 2.3), (sx, 0.5, 2.35), 0.05, DEMIR_S)
+    kutu(g, -1.45, 1.45, -0.5, 0.6, 2.35, 2.43, KIRMIZI, atla=())
+    levha(g, [(-1.26, 0.5, 0.45), (1.26, 0.5, 0.45), (1.26, 0.5, 2.25), (-1.26, 0.5, 2.25)], CAM2, cift=True)
+    kutu(g, -1.0, 1.0, 0.1, 0.42, 0.42, 0.48, KIRMIZI, atla=())
+    for sx in (-0.8, 0.8):
+        kutu(g, sx - 0.04, sx + 0.04, 0.12, 0.4, 0, 0.42, DEMIR_S)
+    cubuk(g, (1.9, 0, 0), (1.9, 0, 2.75), 0.07, DEMIR_S)                               # durak direği
+    kutu(g, 1.94, 2.5, -0.025, 0.025, 2.2, 2.75, SILME, atla=())
+    for s in (-1, 1):                                                                  # kırmızı yuvarlak levha (iki yüzde)
+        pts = [(2.22 + 0.19 * math.cos(2 * math.pi * i / 10) * s, s * 0.03, 2.5 + 0.19 * math.sin(2 * math.pi * i / 10)) for i in range(10)]
+        levha(g, pts[::-1], PM("Iz", "#c8413a"))
+        levha(g, [(2.0, s * 0.034, 2.47), (2.44, s * 0.034, 2.47), (2.44, s * 0.034, 2.53), (2.0, s * 0.034, 2.53)][::(-1 if s > 0 else 1)], PM("Iz", "#27386b"))
+    kutu(g, 1.78, 2.02, -0.03, 0.03, 1.1, 1.7, SILME, atla=())                         # sefer çizelgesi
+
+
+@_cevre("Siyah demir korkuluk (bir hücre; mızrak başlı, taş kaideli)")
+def demir_korkuluk(g):
+    parmaklik(g, C((-A, 0.0), (1, 0), (0, -1), HUCRE), 0.0, HUCRE, 0.0, 0.0, 1.25, 0.2)
+
+
+@_cevre("Demir bahçe kapısı (taş babalar, alçak kapı)")
+def demir_kapi(g):
+    c = C((-A, 0.0), (1, 0), (0, -1), HUCRE)
+    for a, b in ((0.0, 0.7), (2.1, HUCRE)):
+        parmaklik(g, c, a, b, 0.0, 0.0, 1.25, 0.2)
+    for uu in (0.82, 1.98):
+        p = c.p(uu, 0, 0)
+        kutu(g, p[0] - 0.13, p[0] + 0.13, p[1] - 0.13, p[1] + 0.13, 0.0, 1.35, PORTLAND)
+        kutu(g, p[0] - 0.17, p[0] + 0.17, p[1] - 0.17, p[1] + 0.17, 1.35, 1.45, PORTLAND2, atla=())
+        meyve(g, p[0], p[1], 1.45, 0.12, PORTLAND, n=6)
+
+
+@_cevre("Polis feneri (mavi)")
+def polis_feneri(g):
+    dsil(g, 0, 0, 0, 0.3, 0.13, 6, DEMIR_S, r1=0.08)
+    dsil(g, 0, 0, 0.3, 2.6, 0.05, 6, DEMIR_S, kapak=(False, False))
+    kutu(g, -0.15, 0.15, -0.15, 0.15, 2.6, 3.0, PM("Isik", "#6f9be0"), atla=())
+    kutu(g, -0.19, 0.19, -0.19, 0.19, 3.0, 3.06, DEMIR_S, atla=())
+
+
+@_cevre("Çöp kutusu (siyah, altın bantlı)", "donati:cop_kutusu")
+def cop_kutusu(g):
+    dsil(g, 0, 0, 0, 0.85, 0.25, 8, DEMIR_S, r1=0.27, kapak=(False, True), kapak_mat=IZ_GOLGE)
+    dsil(g, 0, 0, 0.6, 0.68, 0.275, 8, PIRINC, kapak=(False, False))
+    dsil(g, 0, 0, 0.85, 0.9, 0.3, 8, DEMIR_S, kapak=(True, True))
+
+
+def _cinar(g, tohum, hafif=False):
+    """Londra çınarı (plane tree): uzun, benekli gövde; yüksekte geniş, çok öbekli taç."""
+    rnd = random.Random(tohum * 17 + 3)
+    h = rnd.uniform(3.1, 3.7)
+    k = 0.19
+    kutu(g, -k, k, -k, k, 0.0, h, GOVDE)
+    if not hafif:
+        benek = (PM("Iz", "#d9d2b8"), PM("Iz", "#b9b59a"), PM("Iz", "#a58a72"))
+        for i, n in enumerate(YON):
+            cy = kare_yuz(n, k)
+            for j in range(4):
+                u, z = rnd.uniform(0.03, 0.2), 0.3 + j * (h - 0.6) / 4 + rnd.uniform(0, 0.3)
+                w, hh = rnd.uniform(0.1, 0.16), rnd.uniform(0.22, 0.45)
+                cokgen(g, cy, [(u, z), (u + w, z + 0.05), (u + w * 0.9, z + hh), (u + 0.02, z + hh * 0.8)], benek[(i + j + tohum) % 3], 0.008)
+        for i in range(3):                                                             # ana dallar
+            a = i * 2.1 + rnd.uniform(-0.3, 0.3)
+            cubuk(g, (0, 0, h - 0.5), (math.cos(a) * 1.0, math.sin(a) * 1.0, h + 0.7), 0.16, GOVDE)
+    bulut(g, (0, 0, h + 1.5), 1.7, 1.65, 1.35, tohum, kabuk=not hafif)
+    if not hafif:
+        for i in range(3):
+            a = i * 2.1 + rnd.uniform(-0.3, 0.3)
+            bulut(g, (math.cos(a) * 1.25, math.sin(a) * 1.25, h + 0.9 + rnd.uniform(0, 0.7)), 1.05, 1.0, 0.85, tohum + i + 7, mat=YP2 if i % 2 else YP)
+
+
+for _i in range(1, 4):
+    ekle("agac_cinar_%d" % _i, "agac", "Ağaç: Londra çınarı (benekli gövde) %d" % _i, (lambda g, s=_i: _cinar(g, s)), "agac", hafif=(lambda g, s=_i: _cinar(g, s, True)))
+
+
+# ---- yol: zebra geçidi, çift sarı çizgi
+
+@_z("Yol: zebra geçidi (y ekseni boyunca giden yolda)")
+def z_gecit(g):
+    for i in range(4):
+        x = -0.78 + i * 0.52
+        _ust(g, x - 0.15, x + 0.15, -1.25, 1.25, YOL_Z + 0.025, SILME)
+
+
+def _sari_cizgi(g, c, u0, u1):
+    """Yol kenarında çift sarı çizgi (bordürün hemen önünde, asfaltta)."""
+    for o in (-0.7, -0.82):
+        levha(g, [c.p(u0, o, YOL_Z + 0.02), c.p(u1, o, YOL_Z + 0.02), c.p(u1, o - 0.06, YOL_Z + 0.02), c.p(u0, o - 0.06, YOL_Z + 0.02)], PM("Iz", "#f0c94a"))
+
+
+@parca("zemin_kenar", "Yol kenarı: kaldırım şeridi + bordür + çift sarı çizgi")
+def z_bordur(g):
+    _kaldirim_seridi(g, on(), 0.6, HUCRE - 0.6)
+    _sari_cizgi(g, on(), 0.6, HUCRE - 0.6)
+
+
+@parca("zemin_kenar", "Yol kenarı: şeridin köşeye uzayan başı")
+def z_bordur_uc(g):
+    _kaldirim_seridi(g, on(), 0.0, 0.6)
+    _sari_cizgi(g, on(), 0.0, 0.6)
+
+
+@parca("zemin_kenar", "Yol kenarı: şeridin köşeye uzayan sonu")
+def z_bordur_son(g):
+    _kaldirim_seridi(g, on(), HUCRE - 0.6, HUCRE)
+    _sari_cizgi(g, on(), HUCRE - 0.6, HUCRE)
+
+
 # ================================== KULLANIM TÜRLERİ ==================================
 # Her türün zemin katına kendine özgü parçalar gelir. Tablo JSON'a yazılır; Unity aynı tabloyu okur (kurallar ortak).
 #   onek   : prefab adının başı (City3D havuzları ada bakar). "Bolge": Bolge_<bölge>. Dükkân adları oyundaki ShopModel önekleri.
@@ -3101,7 +4755,7 @@ _D = dict(on="vitrin", kapi="kapi_vitrin", tente=1)
 _Y = dict(on="vitrin_genis", kapi="kapi_vitrin", tente=1)
 TURLER = [
     _tur("konut", "Konut (genel)", "Konut", bolge="eski"),
-    _tur("sira_evi", "Sıra evi (cumbalı, merdivenli)", "Konut", onek="Konut", on="bay_window", kapi="kapi_merdivenli", bolge="eski"),
+    _tur("sira_evi", "Sıra evi (üsluba göre: Georgian, Victorian, sıva, mews)", "Konut", onek="Konut", bolge="eski"),
     _tur("villa", "Villa", "Konut", onek="Konut_villa", kapi="kapi_sutunlu", bolge="ev"),
     _tur("dukkan", "Dükkân (genel)", "Dükkân", tabela="SHOP", simge="simge_yildiz", **_D),
     _tur("burger", "Fast food: Burger Queen", "Dükkân", onek="FastFood_burger_queen", tabela="BURGER QUEEN", simge="simge_burger", vurgu="#d9522b", aks=("masa", "menu_panosu"), **_Y),
@@ -3115,7 +4769,7 @@ TURLER = [
     _tur("balik", "Fish & chips: Fish & Ships", "Dükkân", onek="Dukkan_fish_ships", tabela="FISH & SHIPS", simge="simge_balik", vurgu="#3f6f9a", aks=("fici", "menu_panosu"), **_D),
     _tur("bufe", "Büfe: Station Snack Bar", "Dükkân", onek="Dukkan_otogar_bufe", tabela="SNACK BAR", simge="simge_fincan", vurgu="#d9a441", aks=("cop_kutusu",), **_D),
     _tur("bistro", "Bistro: Villa Gourmet", "Dükkân", onek="Dukkan_villa_gourmet", tabela="VILLA GOURMET", simge="simge_bardak", vurgu="#6b4a7a", aks=("masa", "saksi"), **_D),
-    _tur("pub", "Pub", "Dükkân", tabela="THE OLD PUB", simge="simge_bardak", vurgu="#7a3f35", aks=("fici", "masa"), on="vitrin", kapi="kapi_ahsap"),
+    _tur("pub", "Pub", "Dükkân", tabela="THE OLD PUB", simge="simge_bardak", vurgu="#2f4f40", aks=("fici", "masa"), on="pub_cephe", kapi="pub_kapi"),
     _tur("firin", "Fırın / pastane", "Dükkân", tabela="BAKERY", simge="simge_ekmek", vurgu="#c98a4a", aks=("kasalar",), **_D),
     _tur("kasap", "Kasap / şarküteri", "Dükkân", tabela="BUTCHER", simge="simge_et", vurgu="#a8342f", **_D),
     _tur("cicekci", "Çiçekçi", "Dükkân", tabela="FLOWERS", simge="simge_cicek", vurgu="#8a5a78", aks=("cicek_kovalari", "saksi"), **_D),
@@ -3127,22 +4781,22 @@ TURLER = [
     _tur("supermarket", "Süpermarket: InterSparx", "Market", onek="Market_interszpar", tabela="INTERSPARX", simge="simge_sepet", vurgu="#c8342f", on="vitrin_genis", kapi="kapi_otomatik", aks=("araba_yeri", "", "araba_yeri")),
     _tur("market24", "Market: Market 24", "Market", onek="Market_market_24", tabela="MARKET 24", simge="simge_sepet", vurgu="#3f6fd0", on="vitrin_genis", kapi="kapi_otomatik", aks=("kasalar",)),
     _tur("bio", "Market: BioSparx", "Market", onek="Dukkan_bioszpar", tabela="BIOSPARX", simge="simge_cicek", vurgu="#5a8f4a", aks=("kasalar", "saksi"), **_D),
-    _tur("belediye", "Belediye", "Kamu", onek="Kamu", tabela="TOWN HALL", on="sutunlu", kapi="kapi_sutunlu", cephe="saat_cephe", tepe="bayrak", vurgu="#3f5f8a"),
+    _tur("belediye", "Belediye", "Kamu", onek="Kamu", tabela="TOWN HALL", on="sutunlu", kapi="kapi_sutunlu", cephe="saat_cephe", tepe="alinlik_tas", vurgu="#2c3d70"),
     _tur("hastane", "Hastane", "Kamu", onek="Kamu", tabela="HOSPITAL", simge="simge_hac", kapi="kapi_otomatik", cephe="hac_cephe", vurgu="#c8342f"),
     _tur("itfaiye", "İtfaiye", "Kamu", onek="Kamu", tabela="FIRE STATION", on="kapi_garaj", kapi="kapi_ahsap", vurgu="#c8342f", tepe="bayrak"),
-    _tur("polis", "Polis", "Kamu", onek="Kamu", tabela="POLICE", simge="simge_yildiz", kapi="kapi_vitrin", vurgu="#2f4f9a", aks=("sokak_lambasi",)),
-    _tur("postane", "Postane", "Kamu", onek="Kamu", tabela="POST OFFICE", kapi="kapi_vitrin", on="vitrin", vurgu="#d9a441", aks=("posta_kutusu",)),
-    _tur("okul", "Okul", "Kamu", onek="Kamu", tabela="SCHOOL", kapi="kapi_kemerli", cephe="saat_cephe", tepe="bayrak", vurgu="#8a6247", aks=("cit_ahsap",)),
-    _tur("kutuphane", "Kütüphane", "Kamu", onek="Kamu", tabela="LIBRARY", simge="simge_kitap", on="sutunlu", kapi="kapi_sutunlu", vurgu="#6b4a7a"),
-    _tur("depo", "Depo", "Sanayi", onek="Sanayi_depo", tabela="DEPOT", duvar="sac_duvar", on="kapi_garaj", kapi="kapi_garaj", vurgu="#5f6f7d", aks=("kasalar",), bolge="sanayi"),
+    _tur("polis", "Polis", "Kamu", onek="Kamu", tabela="POLICE", simge="simge_yildiz", kapi="kapi_ahsap", vurgu="#2c3d70", aks=("polis_feneri",)),
+    _tur("postane", "Postane", "Kamu", onek="Kamu", tabela="POST OFFICE", kapi="kapi_vitrin", on="vitrin", vurgu="#b8382f", aks=("posta_kutusu",)),
+    _tur("okul", "Okul", "Kamu", onek="Kamu", tabela="SCHOOL", cephe="saat_cephe", tepe="bayrak", vurgu="#2f6048", aks=("demir_korkuluk",)),
+    _tur("kutuphane", "Kütüphane", "Kamu", onek="Kamu", tabela="LIBRARY", simge="simge_kitap", vurgu="#6b4a7a"),
+    _tur("depo", "Depo", "Sanayi", onek="Sanayi_depo", tabela="DEPOT", on="kapi_garaj", kapi="kapi_garaj", vurgu="#2f6048", aks=("kasalar",), bolge="sanayi"),
     _tur("garaj", "Garaj / tamirhane", "Sanayi", onek="Sanayi_garaj", tabela="GARAGE", on="garaj_acik", kapi="kapi_ahsap", vurgu="#d9822b", aks=("fici",), bolge="sanayi"),
-    _tur("fabrika", "Fabrika", "Sanayi", onek="Sanayi_fabrika", tabela="FACTORY", on="duvar_genis", kapi="kapi_garaj", tepe="baca_fabrika", vurgu="#5f6f7d", bolge="sanayi"),
+    _tur("fabrika", "Fabrika", "Sanayi", onek="Sanayi_fabrika", tabela="FACTORY", kapi="kapi_garaj", tepe="baca_fabrika", vurgu="#2c3d70", bolge="sanayi"),
     _tur("sera", "Sera", "Sanayi", onek="Sanayi_sera", duvar="sera_cam", kapi="kapi_vitrin", vurgu="#5a8f4a", bolge="sanayi"),
-    _tur("gar", "Gar", "Simge", tabela="CENTRAL STATION", on="kemer_cam", kapi="kapi_kemerli", cephe="saat_cephe", tepe="bayrak", vurgu="#8a6247"),
+    _tur("gar", "Gar", "Simge", tabela="CENTRAL STATION", cephe="saat_cephe", vurgu="#2f6048"),
     _tur("otel", "Otel", "Simge", tabela="GRAND HOTEL", simge="simge_yildiz", on="vitrin", kapi="kapi_vitrin", tente=1, tepe="bayrak", vurgu="#8a5a78", aks=("saksi",)),
     _tur("avm", "Büyük mağaza / AVM", "Simge", tabela="DEPARTMENT STORE", on="vitrin_genis", kapi="kapi_otomatik", tente=1, vurgu="#3f7d74", bolge="avm"),
     _tur("pazar", "Kapalı pazar", "Simge", tabela="MARKET HALL", on="kemer_cam", kapi="kapi_kemerli", vurgu="#c46a2b", aks=("kasalar", "cicek_kovalari")),
-    _tur("opera", "Opera / tiyatro", "Simge", tabela="OPERA", on="sutunlu", kapi="kapi_sutunlu", vurgu="#8a2f4a", tepe="bayrak"),
+    _tur("opera", "Opera / tiyatro", "Simge", tabela="OPERA", on="sutunlu", kapi="kapi_sutunlu", vurgu="#8a2f4a", tepe="alinlik_tas"),
 ]
 TUR = {t["ad"]: t for t in TURLER}
 
@@ -3212,16 +4866,18 @@ def karma(a, b, c, d):
 
 
 YON = [(0, -1), (1, 0), (0, 1), (-1, 0)]       # ön, sağ, arka, sol (dönüş 0, 1, 2, 3 × 90°)
-APT_UST = ["duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_yuvarlak",
+APT_UST = ["duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_pencere",
            "duvar_alinlik", "duvar_panjur_kapali", "duvar_stor"]
 FW_UST = ["fachwerk_pencere", "fachwerk_capraz", "fachwerk_saksi", "fachwerk_x", "fachwerk_pencere"]
 TAS_UST = ["tas_duvar", "tas_mazgal", "tas_kemerli", "tas_duvar"]
 SAKSI_ALIR = ("duvar_pencere", "duvar_cift", "duvar_panjur", "duvar_panjur_kapali")
 # Çatı tarzı (bloğun ct alanı): 0 tarza göre · 1 kırma · 2 beşik · 3 mansart · 4 düz teras · 5 basamaklı alınlık · 6 testere
-CT_OTO, CT_KIRMA, CT_BESIK, CT_MANSART, CT_TERAS, CT_BASAMAK, CT_TESTERE = range(7)
-CATI_TARZ_AD = ["Tarza göre", "Kırma", "Beşik", "Mansart", "Düz teras (korkuluklu)", "Basamaklı alınlık (Hollanda)", "Testere (sanayi)"]
+#                · 7 parapet arkasında arduvaz mansart (Londra): saçak yerine parapet, ortak duvarlarda sıra baca
+CT_OTO, CT_KIRMA, CT_BESIK, CT_MANSART, CT_TERAS, CT_BASAMAK, CT_TESTERE, CT_PARAPET = range(8)
+CATI_TARZ_AD = ["Tarza göre", "Kırma", "Beşik", "Mansart", "Düz teras (parapetli)", "Basamaklı alınlık (Hollanda)", "Testere (sanayi)",
+                "Parapet arkasında mansart (Londra)"]
 CATI_H = {CT_KIRMA: [0.0, 0.85, 1.7, 2.55, 3.4], CT_BESIK: [0.0, 1.25, 2.5, 3.75, 5.0], CT_MANSART: [0.0, 2.0, 2.45, 2.9, 3.35],
-          CT_BASAMAK: [0.0, 1.25, 2.5, 3.75, 5.0]}
+          CT_BASAMAK: [0.0, 1.25, 2.5, 3.75, 5.0], CT_PARAPET: [0.0, 1.3, 1.6, 1.9, 2.2]}
 # köşe yükseklik deseni (h00, h10, h11, h01) → (karo, dönüş)
 CATI_DESEN = {
     (0, 0, 0, 0): ("cati_duz", 0),
@@ -3231,6 +4887,53 @@ CATI_DESEN = {
     (1, 0, 1, 0): ("cati_semer", 0), (0, 1, 0, 1): ("cati_semer", 1),
 }
 CATI_KAROLARI = ("cati_duz", "cati_egim", "cati_kose", "cati_vadi", "cati_semer")
+
+
+# Londra duvar üslupları (bloğun tarz alanı USLUP_TABAN + sıra). Tablo JSON'a yazılır (usluplar); kurallar yerlesim() ve
+# AtolyeKurucu.Yerlesim'de aynı:
+#   kapi        : kapı hücresinin yüzü (türün kendi kapısı yoksa) ve konutta her kapiAralik hücrede bir yinelenen ek kapı
+#   onZemin     : zemin katın öne (sokağa, −Y) bakan yüzleri (boşsa zemin)       zemin : zemin katın öbür yüzleri
+#   onKat1/kat1 : birinci kat (ön / öbür yüzler; boşsa ust)                       ust   : ikinci kat ve üstü
+#   tavan       : sütunun en üst katı (ikinci kat ve üstünde; boşsa ust)         duz   : cephe süsünün (saat…) arkasındaki düz duvar
+#   koseZemin / kose : dış köşe parçası (boşsa yok)     kaide : zemin kat kaidesi     silmeZemin / silme : kat üstü silmesi
+#   cati        : çatı tarzı "Tarza göre" iken kullanılan tarz
+# Listelerden seçim sütun boyunca aynı karma ile yapılır (pencereler üst üste hizalı).
+def _uslup(ad, etiket, kapi, zemin, ust, duz, on_zemin=(), kat1=(), on_kat1=(), tavan=(), kose="", kose_zemin="", kaide="",
+           silme="", silme_zemin="", kapi_aralik=0, cati=CT_KIRMA):
+    return dict(ad=ad, etiket=etiket, kapi=kapi, zemin=list(zemin), onZemin=list(on_zemin), kat1=list(kat1), onKat1=list(on_kat1),
+                ust=list(ust), tavan=list(tavan), duz=duz, kose=kose, koseZemin=kose_zemin, kaide=kaide, silme=silme,
+                silmeZemin=silme_zemin, kapiAralik=kapi_aralik, cati=cati)
+
+
+USLUPLAR = [
+    _uslup("georgian", "Georgian sıra ev (tuğla, sıva zemin, parapet)", "g_kapi", ["g_zemin_yan"], ["g_ust"], "g_duz", on_zemin=["g_zemin"],
+           kat1=["g_kat1", "g_kat1", "g_kat1_korkuluk"], tavan=["g_tavan"], kose_zemin="g_kose", silme_zemin="g_silme", kapi_aralik=2, cati=CT_PARAPET),
+    _uslup("victorian", "Victorian tuğla ev (cumbalı, taş söveli)", "v_kapi", ["v_zemin"], ["v_ust", "v_ust", "v_ust_cift"], "v_duz",
+           on_zemin=["v_cumba"], on_kat1=["v_cumba_ust"], kaide="kaide", silme="v_silme", silme_zemin="v_silme", kapi_aralik=2, cati=CT_KIRMA),
+    _uslup("siva", "Beyaz sıva teras (Belgravia: portiko, sürekli balkon)", "s_kapi", ["s_zemin_yan"], ["s_ust"], "s_duz", on_zemin=["s_zemin"],
+           kat1=["s_kat1_yan"], on_kat1=["s_kat1"], tavan=["s_tavan"], kose="kose_dis", kose_zemin="kose_dis", silme="silme", silme_zemin="silme",
+           kapi_aralik=2, cati=CT_PARAPET),
+    _uslup("mews", "Mews evi (garaj kapılı, boyalı tuğla)", "m_kapi", ["m_duz", "m_ust"], ["m_ust", "m_ust_kapi", "m_ust"], "m_duz",
+           on_zemin=["m_garaj"], silme="m_silme", silme_zemin="m_silme", kapi_aralik=2, cati=CT_PARAPET),
+    _uslup("portland", "Portland taşı (neoklasik, pilastrlı)", "kapi_sutunlu", ["p_zemin"], ["p_ust"], "p_duz", kat1=["p_kat1"], tavan=["p_tavan"],
+           kose="p_kose", kose_zemin="p_kose", silme_zemin="p_silme", cati=CT_PARAPET),
+    _uslup("gotik", "Victorian gotik (kırmızı tuğla, sivri kemer)", "gt_kapi", ["gt_zemin"], ["gt_ust", "gt_ust_cift"], "gt_duz",
+           kose="gt_kose_ust", kose_zemin="gt_kose", silme="v_silme", silme_zemin="v_silme", cati=CT_BESIK),
+    _uslup("depo", "Tuğla depo / atölye", "kapi_garaj", ["d_zemin", "d_zemin", "d_duz"], ["d_ust"], "d_duz", kose="d_kose", kose_zemin="d_kose",
+           kaide="kaide", silme="v_silme", silme_zemin="v_silme", cati=CT_BESIK),
+]
+TARZ_AD += [u["etiket"] for u in USLUPLAR]
+
+
+def uslup(tarz):
+    """Tarzın Londra üslubu (tabloda yoksa None: eski tarzlar). C#: AtolyeKurucu.Uslup."""
+    i = tarz - USLUP_TABAN
+    return USLUPLAR[i] if 0 <= i < len(USLUPLAR) else None
+
+
+def govdeli(tarz):
+    """İçi olan, kapı alabilen gövde tarzı mı (kaide ve merdiven değil). C#: AtolyeKurucu.Govdeli."""
+    return tarz in (APARTMAN, FACHWERK, TAS) or uslup(tarz) is not None
 
 
 def _kafes(p):
@@ -3245,7 +4948,7 @@ def cizgi_rengi(hexv):
     """Kalem çizgisi rengi: yüzey renginin koyusu ile sıcak koyu mor-kahvenin ortası (saf siyah değil)."""
     h = hexv.lstrip("#")
     c = [int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
-    r = [c[i] * 0.45 * 0.5 + k * 0.5 for i, k in enumerate((0.27, 0.2, 0.27))]
+    r = [c[i] * 0.33 + k for i, k in enumerate((0.17, 0.14, 0.18))]        # v6: daha açık (siyaha yakın değil)
     return "#%02x%02x%02x" % tuple(int(v * 255) for v in r)
 
 
@@ -3258,7 +4961,7 @@ def ic_plan(blok, kapi, T):
     yürüme koridorudur. Kapı sütunu (kapıdan arkaya) boş "geçit"tir; koridorlardan ulaşılamayan hücre kalırsa önündeki
     hücre de geçit olur (blok şekli ne olursa olsun kapıdan her hücreye yol açık). C# karşılığı: AtolyeKurucu.IcPlan.
     Dönen: hucreler (sıralı), gecit (küme), mobilya {hücre: parça}, kasa (hücre ya da None), kapi (x, y)."""
-    Z = sorted((x, y) for (x, y, k), b in blok.items() if k == 0 and b["tarz"] in (APARTMAN, FACHWERK, TAS))
+    Z = sorted((x, y) for (x, y, k), b in blok.items() if k == 0 and govdeli(b["tarz"]))
     plan = dict(hucreler=Z, gecit=set(), mobilya={}, kasa=None, kapi=(0, 0))
     if not kapi or not Z:
         plan["hucreler"] = []
@@ -3374,7 +5077,7 @@ def yerlesim(t):
 
     def on_acik(x, y):
         b = blok.get((x, y, 0))
-        return b is not None and b["tarz"] in (APARTMAN, FACHWERK, TAS) and not dolu(x, y - 1, 0)
+        return b is not None and govdeli(b["tarz"]) and not dolu(x, y - 1, 0)
 
     # ---- kapı hücresi: sokağa (y küçük) en yakın, zemindeki açık ön yüzlerden biri
     on_yuzler = sorted((b["y"], b["x"]) for b in bloklar if b["k"] == 0 and on_acik(b["x"], b["y"]))
@@ -3404,6 +5107,8 @@ def yerlesim(t):
         if alt_bos:
             koy("taban", x, y, z, 0, r)
         kapi_hucresi = kapi == (y, x)
+        U = uslup(tarz)
+        sade = bool(T["duvar"]) and tarz == APARTMAN
         if tarz == KAIDE and k == 0 and dolu(x, y, 1):
             koy("taban", x, y, KAT, 0, r, olcek=0.97, grup="Govde")      # üst katlar kalkınca kaidenin üstü açık kalmasın
         for i, (dx, dy) in enumerate(YON):
@@ -3414,16 +5119,31 @@ def yerlesim(t):
             hk = karma(x * 4 + i, y, tohum + k * 31, 17)
             kapi_yuzu = k == 0 and i == 0 and kapi_hucresi
             on_zemin = k == 0 and i == 0 and tarz != KAIDE
+            cephe_yuzu = bool(T["cephe"]) and kapi_hucresi and i == 0 and k == kapi_ust and k > 0
+            ek_kapi = False
             if tarz == KAIDE:
                 ad = "tas_duvar"
             elif kapi_yuzu:
-                ad = T["kapi"] or ("kapi_kemerli" if tarz == TAS else "kapi_ahsap")
+                ad = T["kapi"] or (U["kapi"] if U else "kapi_kemerli" if tarz == TAS else "kapi_ahsap")
             elif on_zemin and T["on"]:
                 ad = T["on"]
-            elif T["cephe"] and kapi_hucresi and i == 0 and k == kapi_ust and k > 0:
-                ad = "duvar_duz"
-            elif T["duvar"] and tarz == APARTMAN:
+            elif cephe_yuzu:
+                ad = U["duz"] if U else "duvar_duz"
+            elif sade:
                 ad = T["duvar"]
+            elif U:
+                # Londra üslubu: kat ve yöne göre liste; konutta kapı sırasında her kapiAralik hücrede bir ek kapı
+                if k == 0:
+                    ek_kapi = (i == 0 and T["grup"] == "Konut" and U["kapiAralik"] > 0 and kapi is not None and y == kapi[0]
+                               and (x - kapi[1]) % U["kapiAralik"] == 0)
+                    liste = [U["kapi"]] if ek_kapi else (U["onZemin"] if i == 0 and U["onZemin"] else U["zemin"])
+                elif k == 1:
+                    liste = (U["onKat1"] if i == 0 and U["onKat1"] else U["kat1"]) or U["ust"]
+                elif not dolu(x, y, k + 1):
+                    liste = U["tavan"] or U["ust"]
+                else:
+                    liste = U["ust"]
+                ad = liste[h % len(liste)]
             elif tarz == TAS:
                 ad = TAS_UST[(h + (hk % 3 == 0)) % len(TAS_UST)]
             elif tarz == FACHWERK:
@@ -3435,10 +5155,10 @@ def yerlesim(t):
                 if ad == "duvar_balkon" and hk % 2:
                     ad = "duvar_pencere"
             cizilen = ad
-            if ad == "duvar_duz" and tarz == APARTMAN and not T["duvar"] and not (T["cephe"] and kapi_hucresi and i == 0 and k == kapi_ust and k > 0):
+            if ad == "duvar_duz" and tarz == APARTMAN and not T["duvar"] and not cephe_yuzu:
                 cizilen = duz_varyant(x, y, i, k, tohum)
             koy(cizilen, x, y, z, i, r, grup=dg)
-            if ad == "duvar_duz" and T["cephe"] and kapi_hucresi and i == 0 and k == kapi_ust and k > 0:
+            if cephe_yuzu and tarz != KAIDE:
                 koy(T["cephe"], x, y, z, i, r)
             if ad in SAKSI_ALIR and hk % 5 == 0:
                 koy("cicek_kutusu_p", x, y, z, i, r, grup=dg)
@@ -3446,10 +5166,16 @@ def yerlesim(t):
                 koy("tente", x, y, z, i, r, grup=dg)
             if T["kepenk"] and on_zemin and (kapi_yuzu or T["on"]):
                 koy("kepenk", x, y, z, i, r, grup="Kepenk")
-            # bantlar
-            if k == 0 and tarz != KAIDE and not (T["duvar"] and tarz == APARTMAN):
-                koy("kaide", x, y, z, i, r, grup=dg)
-            if tarz == APARTMAN and not T["duvar"]:
+            # bantlar. Kaide: kapı, dükkân cephesi ve ek kapı yüzlerinde yok (o parçaların kendi eteği var)
+            if k == 0 and tarz != KAIDE and not sade and not kapi_yuzu and not (on_zemin and T["on"]) and not ek_kapi:
+                kd = U["kaide"] if U else "kaide"
+                if kd:
+                    koy(kd, x, y, z, i, r, grup=dg)
+            if U:
+                sm = U["silmeZemin"] if k == 0 else U["silme"]
+                if sm:
+                    koy(sm, x, y, z + KAT, i, r)
+            elif tarz == APARTMAN and not T["duvar"]:
                 koy("silme", x, y, z + KAT, i, r)
             elif tarz == FACHWERK and k > 0:
                 koy("silme_ahsap", x, y, z, i, r)
@@ -3462,7 +5188,7 @@ def yerlesim(t):
                     koy("saksi", x, y, z, i, r, kay=(-0.8, -A - 0.38))
                 elif a == 2 and ad == "duvar_duz":
                     koy("sarmasik", x, y, z, i, r, grup=dg)
-            if kapi_yuzu:
+            if kapi_yuzu and not U:
                 koy("paspas", x, y, z, i, r, kay=(0.0, -A - 0.75))
             if k == 0 and tarz == APARTMAN and ad == "zemin_pencere" and karma(x, y, i, tohum + 9) % 5 == 0:
                 koy("fener", x, y, z, i, r, kay=(1.15, 0.0), grup=dg)
@@ -3471,13 +5197,17 @@ def yerlesim(t):
             (ax, ay), (bx, by) = YON[(i + 3) % 4], YON[i]
             a_bos, b_bos = not dolu(x + ax, y + ay, k), not dolu(x + bx, y + by, k)
             if a_bos and b_bos:
-                if T["duvar"] and tarz == APARTMAN:
+                if sade:
                     continue
-                kose = "kose_tas" if tarz in (TAS, KAIDE) else "kose_ahsap" if (tarz == FACHWERK and k > 0) else "kose_dis"
-                if kose == "kose_dis" and karma(x, y, i, tohum + 71) % 4 == 0:
-                    kose = "kose_boru"          # sütun boyunca aynı: yağmur iniş borusu çatıdan yere iner
-                koy(kose, x, y, z, i, r)
-            elif not a_bos and not b_bos and not dolu(x + ax + bx, y + ay + by, k):
+                if U:
+                    kose = U["koseZemin"] if k == 0 else U["kose"]
+                else:
+                    kose = "kose_tas" if tarz in (TAS, KAIDE) else "kose_ahsap" if (tarz == FACHWERK and k > 0) else "kose_dis"
+                    if kose == "kose_dis" and karma(x, y, i, tohum + 71) % 4 == 0:
+                        kose = "kose_boru"          # sütun boyunca aynı: yağmur iniş borusu çatıdan yere iner
+                if kose:
+                    koy(kose, x, y, z, i, r)
+            elif not U and not a_bos and not b_bos and not dolu(x + ax + bx, y + ay + by, k):
                 koy("kose_ic", x, y, z, i, r)
         # altı boş: kemerli geçit
         if alt_bos and not blok.get((x, y, k - 1)):
@@ -3589,15 +5319,17 @@ def _cati(bolge, b0, k, tohum, koy, renk, cokgenler, kutular, dolu, blok, sade):
     r = renk(b0)
 
     def kenar_parcasi(ad, kose_ad=None):
+        # kenar parçası hücrenin kendi rengini alır (farklı renkli sıra evlerde parapet / saçak eve göre)
         for (x, y) in bolge:
+            rr = renk(blok[(x, y, k)])
             for i, (dx, dy) in enumerate(YON):
                 if (x + dx, y + dy) not in kume:
-                    koy(ad, x, y, z, i, r)
+                    koy(ad, x, y, z, i, rr)
             if kose_ad:
                 for i in range(4):
                     (ax, ay), (bx, by) = YON[(i + 3) % 4], YON[i]
                     if (x + ax, y + ay) not in kume and (x + bx, y + by) not in kume:
-                        koy(kose_ad, x, y, z, i, r)
+                        koy(kose_ad, x, y, z, i, rr)
 
     if tarz == KAIDE:
         for (x, y) in bolge:
@@ -3621,7 +5353,8 @@ def _cati(bolge, b0, k, tohum, koy, renk, cokgenler, kutular, dolu, blok, sade):
                 koy("duz_cati", x, y, z, 0, r)
             kenar_parcasi("dama")
             return
-        ct = CT_BESIK if tarz == FACHWERK else CT_KIRMA
+        U = uslup(tarz)
+        ct = U["cati"] if U else (CT_BESIK if tarz == FACHWERK else CT_KIRMA)
     if ct == CT_TERAS:
         for (x, y) in bolge:
             koy("duz_cati", x, y, z, 0, r)
@@ -3673,8 +5406,9 @@ def _cati(bolge, b0, k, tohum, koy, renk, cokgenler, kutular, dolu, blok, sade):
                     d[q] = adim
                     yeni.append(q)
         kuyruk = yeni
+    ust_sinir = 2 if ct == CT_PARAPET else 4          # parapet arkası: iki kademeden sonra düz kurşun tepe (çapraz kırık çizgileri olmasın)
     for p in d:
-        d[p] = min(d[p] or 0, 4)
+        d[p] = min(d[p] or 0, ust_sinir)
 
     cm = "Pastel_Cati_" + r["C"].lstrip("#")
     for (x, y) in bolge:
@@ -3693,6 +5427,26 @@ def _cati(bolge, b0, k, tohum, koy, renk, cokgenler, kutular, dolu, blok, sade):
                 ad, don = CATI_DESEN[desen]
                 zs = (Hh[h0 + 1] - Hh[h0]) if h0 < 4 else 1.0
                 koy(ad, x, y, z + Hh[h0], don, r, zs=zs, kay=(-A + i * A, -A + j * A))
+    if ct == CT_PARAPET:
+        # Londra: saçak yerine parapet; ortak duvar hizalarında sıra baca; ön kenarda mansart pencereleri
+        kenar_parcasi("parapet", "parapet_kose")
+        a0, a1 = (min(xs), max(xs)) if eksen == 0 else (min(ys), max(ys))            # mahya ekseni boyunca
+        c0, c1 = (min(ys), max(ys)) if eksen == 0 else (min(xs), max(xs))            # mahyaya dik
+        cb = (c0 + c1) // 2
+        kayma = ((c0 + c1) / 2.0 - cb) * HUCRE                                       # bölge çift sıra derinse baca mahya çizgisinde
+        for a in range(a0, a1 + 1):
+            hx, hy = (a, cb) if eksen == 0 else (cb, a)
+            if (hx, hy) not in kume:
+                continue
+            ky = kayma if eksen == 0 else -kayma
+            if (a - a0) % 2 == 0:
+                koy("baca_sira", hx, hy, z, eksen, r, kay=(-A + 0.3, ky))
+            if a == a1:
+                koy("baca_sira", hx, hy, z, eksen, r, kay=(A - 0.3, ky))
+        for (x, y) in bolge:
+            if karma(x, y, k, tohum + 21) % 2 == 0 and (x, y - 1) not in kume and d[(2 * x + 1, 2 * y + 1)] >= 1 and not sade:
+                koy("mansart_penceresi", x, y, z, 0, r, kay=(0.0, -A))
+        return
     kenar_parcasi("sacak", "sacak_kose")
     # alınlıklar: bölgenin dış kenarında çatı sıfırdan yüksekse dik duvar (basamaklı tarzda çatıyı aşan kalın basamaklar)
     am = "Pastel_Siva_f6f0e2" if tarz == FACHWERK else "Pastel_Duvar_" + r["D"].lstrip("#")
@@ -3747,7 +5501,9 @@ def _renkli(ad, r, cam=0):
 
 
 EN_KISA = 0.13        # bundan kısa kenar çizilmez (yakın görünüm). C#: AtolyeKurucu.EnKisa
-KALIN_BOY, KALIN, INCE = 2.0, 1.25, 0.62      # 2 m ve uzun kenarlar kalın (× 1,25), kısalar ince (× 0,62). C#: AtolyeKurucu aynı sabitler
+# v6: çizgiler inceldi. 1,35 m ve uzun kenarlar (bina köşesi, saçak, mahya, kat çizgisi) × 1,0; ayrıntı kenarları × 0,45.
+# "Pastel_Iz_" malzemeli yüzeyler (tuğla / arduvaz sırası izi, cam kayıtları, korkuluk çubukları) hiç kontur almaz.
+KALIN_BOY, KALIN, INCE = 1.35, 1.0, 0.45      # C#: AtolyeKurucu aynı sabitler
 
 
 def kenarlar(g, en_kisa=EN_KISA):
@@ -3756,7 +5512,7 @@ def kenarlar(g, en_kisa=EN_KISA):
     kayit = {}
     for f, mi in zip(g.f, g.fm):
         mat = g.mats[mi]
-        if "_Kabuk_" in mat or "_Yazi_" in mat:
+        if "_Kabuk_" in mat or "_Yazi_" in mat or "_Iz_" in mat:
             continue
         pts = [g.v[i] for i in f]
         n = B.norm(B.newell(pts))
@@ -3871,89 +5627,112 @@ def _o(ad, tur, bloklar, tohum=1, tente=0, tabela="", susler=(), bolge=None):
                 bloklar=bloklar, susler=list(susler))
 
 
+def _th(n, hedef, bas=1):
+    """Kapının ön sıradaki n aday hücreden hedef sıradakine (soldan, 0'dan) denk geldiği ilk tohum (bas ve sonrası).
+    Kapı seçimi yerlesim()'deki karma ile aynı; bulunan tohum tasarıma yazılır (Unity'de ayrıca hesap yok)."""
+    t = bas
+    while karma(t, n, 3, 1) % n != hedef:
+        t += 1
+    return t
+
+
 def ornekler():
+    """53 örnek tasarım: Londra mimarisi (v6). Adlar, türler ve tabela adları v4 ile aynı; bloklar Londra üsluplarında."""
+    P = CT_PARAPET
     o = []
     # ---- ilk sekiz (konut ve karışık)
-    o.append(_o("pastel_kuleler", "dukkan", _yigin(1, 2, 6, APARTMAN, 0, 0) + _yigin(3, 2, 5, APARTMAN, 1, 2) + _yigin(2, 2, 2, APARTMAN, 3, 1), 3, 4, "TEA ROOM", bolge="eski"))
-    o.append(_o("fachwerk_ev", "konut", _blok(1, 3, 1, 2, 2, FACHWERK, 3, 0) + _yigin(3, 3, 1, FACHWERK, 3, 0), 5))
-    o.append(_o("kucuk_ev", "konut", _blok(1, 2, 1, 3, 1, FACHWERK, 5, 3), 2, bolge="ev",
-                susler=[_sus("agac_meyve_1", 4.2, -2.5), _sus("cit_ahsap", 4.2, -5.4), _sus("cit_ahsap", 1.4, -5.4), _sus("odun_yigini", 3.6, 3.5, 90)]))
+    # Notting Hill: üç pastel boyalı sıra ev, altta çay salonu
+    o.append(_o("pastel_kuleler", "dukkan", _blok(1, 1, 1, 2, 3, APARTMAN, 1, 6, P) + _blok(2, 2, 1, 2, 3, APARTMAN, 0, 6, P) + _blok(3, 3, 1, 2, 3, APARTMAN, 3, 6, P),
+                _th(3, 1, 3), 9, "TEA ROOM", bolge="eski"))
+    # banliyö: altı tuğla, üstü yarı ahşap (Tudor taklidi) ev
+    o.append(_o("fachwerk_ev", "konut", _blok(1, 3, 1, 2, 1, VICTORIAN, 12, 8) + _blok(1, 3, 1, 2, 1, FACHWERK, 3, 8, k0=1), _th(3, 1, 5)))
+    # işçi kulübesi: iki katlı küçük tuğla ev, ön bahçe
+    o.append(_o("kucuk_ev", "konut", _blok(1, 2, 1, 2, 2, VICTORIAN, 10, 6, CT_BESIK), _th(2, 0, 2), bolge="ev",
+                susler=[_sus("agac_meyve_1", 4.2, -1.5), _sus("cit_bitki", 4.2, -5.9), _sus("cali_2", 3.6, 3.5)]))
+    # mews girişi: iki yanda mews evleri, ortada kemerli geçit
     b = []
     for y in (1, 2):
-        b += _yigin(0, y, 3, APARTMAN, 2, 0) + _yigin(1, y, 3, APARTMAN, 2, 0) + _yigin(4, y, 3, APARTMAN, 4, 0) + _yigin(3, y, 3, APARTMAN, 4, 0)
-        b += _yigin(2, y, 2, APARTMAN, 6, 0, k0=1)
-    o.append(_o("kemerli_gecit", "konut", b, 7))
-    b = _blok(1, 3, 1, 3, 1, KAIDE) + [dict(x=2, y=0, k=0, tarz=MERDIVEN, renk=0, cati=0, ct=0)] + _blok(1, 2, 2, 3, 2, APARTMAN, 1, 1, k0=1)
-    o.append(_o("kaideli_ev", "konut", b, 11))
-    o.append(_o("tas_kule", "konut", _yigin(1, 2, 5, TAS, 0, 0) + _blok(2, 3, 2, 3, 2, FACHWERK, 6, 4), 13))
-    o.append(_o("kose_apartmani", "dukkan", _blok(0, 3, 1, 2, 3, APARTMAN, 4, 2) + _blok(0, 1, 3, 4, 3, APARTMAN, 4, 2), 17, 1, "CORNER CAFE", bolge="karma"))
-    o.append(_o("ince_kule", "dukkan", _yigin(2, 2, 7, APARTMAN, 5, 4) + _yigin(2, 1, 2, APARTMAN, 0, 0) + _yigin(3, 1, 1, APARTMAN, 0, 0) + _yigin(1, 1, 1, APARTMAN, 2, 0), 19, 2, "KIOSK", bolge="kule"))
-    # ---- dükkân ve restoranlar
-    o.append(_o("burger_queen", "burger", _blok(1, 3, 1, 2, 2, APARTMAN, 7, 0, CT_MANSART), 21, 0))
-    o.append(_o("mcdanolds", "mcdanolds", _blok(0, 3, 1, 2, 1, APARTMAN, 6, 0, CT_TERAS) + _yigin(4, 1, 3, APARTMAN, 9, 0), 22, 3))
-    o.append(_o("kfg", "kfg", _blok(1, 3, 1, 2, 1, APARTMAN, 6, 0, CT_TERAS), 23, 0))
-    o.append(_o("pizza_hat", "pizza", _blok(1, 2, 1, 2, 3, APARTMAN, 3, 0), 24, 0))
-    o.append(_o("kebab_king", "doner", _blok(1, 3, 1, 2, 2, APARTMAN, 5, 1), 25, 3))
-    o.append(_o("nonstop_gyros", "gyros", _blok(1, 2, 1, 2, 2, APARTMAN, 0, 2), 26, 2))
-    o.append(_o("sushi_samurai", "sushi", _blok(1, 3, 1, 2, 2, APARTMAN, 6, 5, CT_TERAS), 27, 4))
-    o.append(_o("starbocks", "kafe", _blok(0, 3, 1, 2, 2, APARTMAN, 4, 3) + _blok(3, 3, 3, 3, 2, APARTMAN, 4, 3), 28, 1,
-                susler=[_sus("agac_yuvarlak_2", -5.4, 4.5), _sus("saksi", 5.6, -4.6), _sus("sokak_lambasi", 5.8, -5.9, 90)]))
-    o.append(_o("fish_ships", "balik", _blok(1, 3, 1, 2, 2, FACHWERK, 0, 2), 29, 2))
-    o.append(_o("snack_bar", "bufe", _blok(2, 3, 1, 1, 1, APARTMAN, 9, 1, CT_TERAS), 30, 3))
-    o.append(_o("villa_gourmet", "bistro", _blok(1, 3, 1, 2, 3, APARTMAN, 2, 5, CT_MANSART), 31, 4))
-    o.append(_o("old_pub", "pub", _blok(1, 3, 1, 2, 2, FACHWERK, 3, 0), 32))
-    o.append(_o("bakery", "firin", _blok(1, 2, 1, 2, 2, APARTMAN, 5, 1), 33, 3))
-    o.append(_o("butcher", "kasap", _blok(2, 3, 1, 2, 2, APARTMAN, 7, 0), 34, 0))
-    o.append(_o("flowers", "cicekci", _blok(1, 2, 1, 2, 2, APARTMAN, 1, 3), 35, 4))
-    o.append(_o("books", "kitapci", _blok(1, 2, 1, 2, 3, APARTMAN, 2, 2, CT_BASAMAK), 36, 2))
-    o.append(_o("pharmacy", "eczane", _blok(1, 3, 1, 2, 2, APARTMAN, 6, 3), 37))
-    o.append(_o("corner_store_247", "bakkal24", _blok(1, 3, 1, 2, 2, APARTMAN, 3, 0), 38, 1))
-    o.append(_o("mini_mart", "minimart", _blok(1, 2, 1, 2, 2, APARTMAN, 8, 1), 39, 3))
+        b += _yigin(0, y, 2, MEWS, 1, 6, 0, P) + _yigin(1, y, 2, MEWS, 4, 6, 0, P) + _yigin(3, y, 2, MEWS, 0, 6, 0, P) + _yigin(4, y, 2, MEWS, 3, 6, 0, P)
+        b += _yigin(2, y, 1, MEWS, 6, 6, k0=1, ct=P)
+    o.append(_o("kemerli_gecit", "konut", b, _th(4, 1, 7)))
+    # Belgravia: beyaz sıva teras, sütunlu portikolar, sürekli balkon
+    o.append(_o("kaideli_ev", "konut", _blok(0, 4, 1, 2, 4, SIVA_TERAS, 14, 6, P), _th(5, 0, 11)))
+    # Victorian gotik kuleli ev
+    o.append(_o("tas_kule", "konut", _yigin(1, 2, 5, GOTIK, 12, 6) + _blok(2, 3, 2, 3, 2, GOTIK, 12, 6, CT_BESIK), _th(1, 0, 13)))
+    o.append(_o("kose_apartmani", "dukkan", _blok(0, 3, 1, 2, 3, GEORGIAN, 10, 6, P) + _blok(0, 1, 3, 4, 3, GEORGIAN, 10, 6, P), _th(4, 1, 17), 6, "CORNER CAFE", bolge="karma"))
+    # dar, yüksek kırmızı tuğla "mansion block", iki yanında tek katlı büfe kanatları
+    o.append(_o("ince_kule", "dukkan", _blok(2, 2, 1, 2, 5, VICTORIAN, 12, 6, CT_BASAMAK) + _yigin(3, 1, 1, VICTORIAN, 12, 6, 0, CT_TERAS) + _yigin(1, 1, 1, VICTORIAN, 12, 6, 0, CT_TERAS),
+                _th(3, 1, 19), 8, "KIOSK", bolge="kule"))
+    # ---- dükkân ve restoranlar (altta Victoria tarzı dükkân cephesi, üstte Londra evi)
+    o.append(_o("burger_queen", "burger", _blok(1, 3, 1, 2, 3, GEORGIAN, 10, 6, P), _th(3, 1, 21), 0))
+    o.append(_o("mcdanolds", "mcdanolds", _blok(0, 3, 1, 2, 2, VICTORIAN, 12, 6, P) + _yigin(4, 1, 3, VICTORIAN, 12, 6), _th(5, 1, 22), 3))
+    o.append(_o("kfg", "kfg", _blok(1, 3, 1, 2, 2, SIVA_TERAS, 14, 6, P), _th(3, 1, 23), 0))
+    o.append(_o("pizza_hat", "pizza", _blok(1, 2, 1, 2, 3, GEORGIAN, 11, 6, P), _th(2, 0, 24), 7))
+    o.append(_o("kebab_king", "doner", _blok(1, 3, 1, 2, 2, VICTORIAN, 13, 6, CT_KIRMA), _th(3, 1, 25), 3))
+    o.append(_o("nonstop_gyros", "gyros", _blok(1, 2, 1, 2, 2, APARTMAN, 0, 6, P), _th(2, 1, 26), 8))
+    o.append(_o("sushi_samurai", "sushi", _blok(1, 3, 1, 2, 2, SIVA_TERAS, 14, 6, P), _th(3, 1, 27), 9))
+    o.append(_o("starbocks", "kafe", _blok(0, 3, 1, 2, 2, GEORGIAN, 11, 6, P) + _blok(3, 3, 3, 3, 2, GEORGIAN, 11, 6, P), _th(4, 1, 28), 6,
+                susler=[_sus("agac_cinar_2", -5.4, 4.5), _sus("bollard", 5.9, -5.6), _sus("sokak_lambasi", 5.8, -6.4)]))
+    o.append(_o("fish_ships", "balik", _blok(1, 3, 1, 2, 2, VICTORIAN, 12, 6, CT_BESIK), _th(3, 1, 29), 8))
+    o.append(_o("snack_bar", "bufe", _blok(2, 3, 1, 1, 1, VICTORIAN, 10, 6, CT_TERAS), _th(2, 0, 30), 3))
+    o.append(_o("villa_gourmet", "bistro", _blok(1, 3, 1, 2, 3, SIVA_TERAS, 14, 6, P), _th(3, 1, 31), 7))
+    o.append(_o("old_pub", "pub", _blok(1, 3, 1, 2, 2, VICTORIAN, 13, 6, CT_KIRMA), _th(3, 1, 32)))
+    o.append(_o("bakery", "firin", _blok(1, 2, 1, 2, 2, APARTMAN, 5, 6, P), _th(2, 0, 33), 9))
+    o.append(_o("butcher", "kasap", _blok(2, 3, 1, 2, 2, VICTORIAN, 12, 6, CT_BESIK), _th(2, 1, 34), 0))
+    o.append(_o("flowers", "cicekci", _blok(1, 2, 1, 2, 2, APARTMAN, 1, 6, P), _th(2, 0, 35), 6))
+    o.append(_o("books", "kitapci", _blok(1, 2, 1, 2, 3, VICTORIAN, 13, 6, CT_BASAMAK), _th(2, 1, 36), 8))
+    o.append(_o("pharmacy", "eczane", _blok(1, 3, 1, 2, 2, GEORGIAN, 11, 6, P), _th(3, 1, 37)))
+    o.append(_o("corner_store_247", "bakkal24", _blok(1, 3, 1, 2, 2, VICTORIAN, 10, 6, CT_KIRMA), _th(3, 1, 38), 6))
+    o.append(_o("mini_mart", "minimart", _blok(1, 2, 1, 2, 2, APARTMAN, 4, 6, P), _th(2, 0, 39), 3))
     # ---- marketler
-    o.append(_o("sparx_express", "market", _blok(0, 3, 1, 3, 1, APARTMAN, 6, 3, CT_TERAS), 40))
-    o.append(_o("intersparx", "supermarket", _blok(0, 4, 1, 3, 1, APARTMAN, 6, 0, CT_TERAS) + _blok(1, 3, 2, 3, 1, APARTMAN, 6, 0, CT_TERAS, k0=1), 41))
-    o.append(_o("market_24", "market24", _blok(1, 3, 1, 2, 2, APARTMAN, 0, 2), 42))
-    o.append(_o("biosparx", "bio", _blok(1, 3, 1, 2, 2, FACHWERK, 4, 3), 43, 5))
+    o.append(_o("sparx_express", "market", _blok(0, 3, 1, 3, 1, VICTORIAN, 10, 6, CT_TERAS), _th(4, 1, 40)))
+    o.append(_o("intersparx", "supermarket", _blok(0, 4, 1, 3, 1, VICTORIAN, 12, 6, CT_TERAS) + _blok(1, 3, 2, 3, 1, VICTORIAN, 12, 6, CT_TERAS, k0=1), _th(5, 2, 41)))
+    o.append(_o("market_24", "market24", _blok(1, 3, 1, 2, 2, GEORGIAN, 10, 6, P), _th(3, 1, 42)))
+    o.append(_o("biosparx", "bio", _blok(1, 3, 1, 2, 2, APARTMAN, 4, 6, P), _th(3, 1, 43), 5))
     # ---- kamu
-    o.append(_o("town_hall", "belediye", _blok(0, 4, 1, 2, 2, APARTMAN, 3, 4) + _yigin(2, 1, 2, APARTMAN, 3, 4, k0=2), 44))
-    o.append(_o("hospital", "hastane", _blok(0, 4, 1, 3, 3, APARTMAN, 6, 1, CT_TERAS), 45))
-    o.append(_o("fire_station", "itfaiye", _blok(0, 3, 1, 2, 2, APARTMAN, 9, 0) + _yigin(4, 2, 4, TAS, 0, 0), 46))
-    o.append(_o("police", "polis", _blok(1, 3, 1, 2, 2, APARTMAN, 8, 2), 47))
-    o.append(_o("post_office", "postane", _blok(1, 3, 1, 2, 2, APARTMAN, 5, 0, CT_MANSART), 48))
-    o.append(_o("school", "okul", _blok(0, 4, 1, 2, 2, APARTMAN, 3, 0, CT_BESIK), 49,
-                susler=[_sus("agac_yuvarlak_1", -5.2, 4.6), _sus("agac_yuvarlak_3", 5.0, 4.8), _sus("bank", 0, 3.6, 180)]))
-    o.append(_o("library", "kutuphane", _blok(0, 4, 1, 3, 2, APARTMAN, 6, 5), 50))
-    # ---- sanayi
-    o.append(_o("depot", "depo", _blok(0, 4, 1, 3, 1, APARTMAN, 8, 5, CT_BESIK), 51))
-    o.append(_o("garage", "garaj", _blok(1, 3, 1, 2, 1, APARTMAN, 6, 1, CT_TERAS), 52))
-    o.append(_o("factory", "fabrika", _blok(0, 4, 1, 3, 2, APARTMAN, 7, 5, CT_TESTERE), 53))
-    o.append(_o("greenhouse", "sera", _blok(1, 3, 1, 3, 1, APARTMAN, 6, 3, CT_BESIK), 54,
+    o.append(_o("town_hall", "belediye", _blok(0, 4, 1, 2, 3, PORTLAND_T, 15, 6, P), _th(5, 2, 44)))
+    o.append(_o("hospital", "hastane", _blok(0, 4, 1, 3, 3, VICTORIAN, 12, 6, CT_KIRMA), _th(5, 2, 45)))
+    o.append(_o("fire_station", "itfaiye", _blok(0, 3, 1, 2, 2, VICTORIAN, 13, 6, CT_BESIK) + _yigin(4, 2, 4, VICTORIAN, 13, 6), _th(4, 3, 46)))
+    o.append(_o("police", "polis", _blok(1, 3, 1, 2, 2, VICTORIAN, 12, 6, P), _th(3, 1, 47)))
+    o.append(_o("post_office", "postane", _blok(1, 3, 1, 2, 2, PORTLAND_T, 15, 6, P), _th(3, 1, 48), 7))
+    o.append(_o("school", "okul", _blok(0, 4, 1, 2, 2, GOTIK, 12, 6, CT_BESIK), _th(5, 2, 49),
+                susler=[_sus("agac_cinar_1", -5.2, 4.6), _sus("agac_cinar_3", 5.0, 4.8), _sus("bank", 0, 3.6, 180)]))
+    o.append(_o("library", "kutuphane", _blok(0, 4, 1, 2, 2, GOTIK, 13, 6, CT_BESIK) + _blok(1, 3, 3, 3, 2, GOTIK, 13, 6, CT_BESIK), _th(5, 2, 50)))
+    # ---- sanayi (tuğla depo ve atölyeler)
+    o.append(_o("depot", "depo", _blok(0, 4, 1, 3, 1, DEPO, 16, 6, CT_BESIK), _th(5, 2, 51)))
+    o.append(_o("garage", "garaj", _blok(1, 3, 1, 2, 1, DEPO, 10, 6, CT_TERAS), _th(3, 2, 52)))
+    o.append(_o("factory", "fabrika", _blok(0, 4, 1, 3, 2, DEPO, 16, 9, CT_TESTERE), _th(5, 2, 53)))
+    o.append(_o("greenhouse", "sera", _blok(1, 3, 1, 3, 1, APARTMAN, 6, 7, CT_BESIK), _th(3, 1, 54),
                 susler=[_sus("sebze_bahcesi", -5.4, 0, 90), _sus("kasalar", 5.3, -3)]))
     # ---- simge yapılar (14 m arsaya sığan boyda)
-    o.append(_o("central_station", "gar", _blok(0, 4, 1, 2, 2, APARTMAN, 3, 5, CT_MANSART) + _yigin(2, 1, 1, APARTMAN, 3, 5, k0=2), 55))
-    o.append(_o("grand_hotel", "otel", _blok(1, 3, 1, 2, 5, APARTMAN, 1, 5, CT_MANSART), 56, 4, bolge="kule"))
-    o.append(_o("department_store", "avm", _blok(0, 4, 1, 3, 3, APARTMAN, 6, 3, CT_TERAS), 57, 1))
-    o.append(_o("market_hall", "pazar", _blok(0, 4, 1, 3, 1, APARTMAN, 5, 0, CT_BESIK), 58))
-    o.append(_o("opera", "opera", _blok(0, 4, 1, 3, 2, APARTMAN, 6, 4) + _blok(1, 3, 2, 3, 1, APARTMAN, 6, 4, k0=2), 59))
+    o.append(_o("central_station", "gar", _blok(0, 4, 1, 2, 2, GOTIK, 12, 6, CT_BESIK) + _yigin(2, 1, 2, GOTIK, 12, 6, k0=2), _th(5, 2, 55)))
+    o.append(_o("grand_hotel", "otel", _blok(1, 3, 1, 2, 5, SIVA_TERAS, 14, 6, P), _th(3, 1, 56), 7, bolge="kule"))
+    o.append(_o("department_store", "avm", _blok(0, 4, 1, 3, 3, PORTLAND_T, 15, 6, P), _th(5, 2, 57), 6))
+    o.append(_o("market_hall", "pazar", _blok(0, 4, 1, 3, 1, VICTORIAN, 12, 7, CT_BESIK), _th(5, 2, 58)))
+    o.append(_o("opera", "opera", _blok(0, 4, 1, 3, 2, PORTLAND_T, 15, 6, P) + _blok(1, 3, 2, 3, 1, PORTLAND_T, 15, 9, P, k0=2), _th(5, 2, 59)))
     # ---- konut çeşitleri
-    o.append(_o("terrace_houses", "sira_evi", _blok(0, 1, 1, 2, 3, APARTMAN, 7, 0, CT_BESIK) + _blok(2, 3, 1, 2, 3, APARTMAN, 0, 5, CT_BESIK) + _yigin(4, 1, 3, APARTMAN, 1, 0, 0, CT_BASAMAK) + _yigin(4, 2, 3, APARTMAN, 1, 0, 0, CT_BASAMAK), 60))
-    o.append(_o("villa", "villa", _blok(1, 3, 1, 3, 2, APARTMAN, 6, 0), 61,
-                susler=[_sus("agac_sogut_1", -5.3, 4.5), _sus("cit_bitki", -5.6, -5.6), _sus("cit_bitki", 5.6, -5.6), _sus("cicek_tarhi", -5.4, -2.0, 90), _sus("cesme", 5.2, 4.6, 0, 0.6)]))
-    o.append(_o("dutch_gable", "konut", _blok(2, 2, 1, 2, 4, APARTMAN, 1, 0, CT_BASAMAK) + _blok(3, 3, 1, 2, 2, APARTMAN, 0, 2, CT_BASAMAK), 62))
+    # Georgian sıra evler: stock tuğla, sıva zemin, parapet arkasında mansart, üç renkli kapı
+    o.append(_o("terrace_houses", "sira_evi", _blok(0, 1, 1, 2, 3, GEORGIAN, 10, 6, P) + _blok(2, 3, 1, 2, 3, GEORGIAN, 11, 6, P) + _blok(4, 4, 1, 2, 3, GEORGIAN, 10, 7, P), _th(5, 0, 60)))
+    # müstakil sıva villa
+    o.append(_o("villa", "villa", _blok(1, 3, 1, 3, 2, SIVA_TERAS, 14, 6, CT_KIRMA), _th(3, 1, 61),
+                susler=[_sus("agac_cinar_1", -5.3, 4.5), _sus("cit_bitki", -5.6, -5.6), _sus("cit_bitki", 5.6, -5.6), _sus("cicek_tarhi", -5.4, -2.0, 90), _sus("cesme", 5.2, 4.6, 0, 0.6)]))
+    # "Pont Street Dutch": kırmızı tuğla, basamaklı Hollanda alınlığı
+    o.append(_o("dutch_gable", "konut", _blok(2, 2, 1, 2, 4, VICTORIAN, 12, 6, CT_BASAMAK) + _blok(3, 3, 1, 2, 2, VICTORIAN, 13, 6, CT_BASAMAK), _th(2, 0, 62)))
     # ---- süslenmiş arsalar
-    o.append(_o("bahceli_ev", "konut", _blok(2, 3, 2, 3, 1, FACHWERK, 3, 0) + _yigin(2, 2, 1, FACHWERK, 3, 0, k0=1) + _yigin(3, 2, 1, FACHWERK, 3, 0, k0=1), 63, bolge="ev", susler=[
-        _sus("cit_ahsap", -5.6, -6.6), _sus("cit_ahsap", -2.8, -6.6), _sus("cit_ahsap", 2.8, -6.6), _sus("cit_ahsap", 5.6, -6.6),
-        _sus("sebze_bahcesi", -4.6, -2.6), _sus("agac_meyve_2", -5.0, 2.2), _sus("agac_meyve_3", -4.4, 5.2, 0, 0.9), _sus("odun_yigini", 5.9, 2.5, 90),
-        _sus("kuyu", 3.2, -4.3, 0, 0.8), _sus("cali_3", 0.2, -5.5), _sus("cicek_obegi", -1.2, -4.2), _sus("cicek_obegi", -0.4, -3.1, 40, 1.0, 1),
-        _sus("ot_obegi", 1.4, -3.4), _sus("koyun", -1.6, -1.2, 200), _sus("kutuk", 5.5, -1.5)]))
-    o.append(_o("kafe_onu", "kafe", _blok(1, 3, 2, 3, 2, APARTMAN, 1, 2), 64, 0, "CAFE ROSE", susler=[
+    # Victorian ikiz ev (semi-detached): cumbalı, kırmızımsı kiremit, ön bahçe
+    o.append(_o("bahceli_ev", "konut", _blok(1, 4, 2, 3, 2, VICTORIAN, 12, 8, CT_KIRMA), _th(4, 1, 63), bolge="ev", susler=[
+        _sus("cit_bitki", -5.6, -5.4), _sus("agac_meyve_2", -5.6, 2.2), _sus("agac_cinar_2", -4.9, 5.4, 0, 0.8),
+        _sus("cali_3", 0.2, -5.6), _sus("cicek_obegi", -1.2, -5.2), _sus("cicek_obegi", 4.4, -5.4, 40, 1.0, 1), _sus("bank", -5.6, -2.0, 90)]))
+    o.append(_o("kafe_onu", "kafe", _blok(1, 3, 2, 3, 2, APARTMAN, 1, 6, P), _th(3, 1, 64), 9, "CAFE ROSE", susler=[
         _sus("masa", -3.2, -4.2, 20), _sus("masa", 3.3, -4.4, -15), _sus("masa", -5.3, -1.8, 80), _sus("saksi", -1.3, -5.9), _sus("saksi", 1.3, -5.9),
-        _sus("agac_yuvarlak_4", 5.6, -1.2, 0, 0.9), _sus("sokak_lambasi", -6.2, -6.2), _sus("cop_kutusu", 6.2, -6.2), _sus("bisiklet_park", 5.6, 2.2, 90)]))
+        _sus("agac_cinar_3", 5.6, -1.2, 0, 0.8), _sus("sokak_lambasi", -6.2, -6.2), _sus("cop_kutusu", 6.2, -6.2), _sus("bisiklet_park", 5.6, 2.2, 90)]))
+    # bahçe meydanının köşesi: demir korkuluk, çınarlar, yeşil banklar, telefon kulübesi, posta kutusu
     o.append(_o("park_kosesi", "konut", [], 65, bolge="eski", susler=[
-        _sus("cesme", 0, 0), _sus("bank", -3.2, 0, 90), _sus("bank", 3.2, 0, -90), _sus("bank", 0, 3.2, 180), _sus("agac_yuvarlak_1", -4.8, 4.6),
-        _sus("agac_yuvarlak_3", 4.9, 4.4), _sus("agac_kavak_1", -5.6, -4.8), _sus("agac_cam_1", 5.4, -4.6), _sus("agac_sogut_2", 0.4, 5.6, 0, 0.9),
-        _sus("cali_1", -2.6, -4.9), _sus("cali_2", 2.4, -5.2), _sus("cicek_tarhi", 0, -4.0), _sus("sokak_lambasi", -2.4, 2.6, 45), _sus("heykel", 5.6, 0.2, -90, 0.8),
-        _sus("cop_kutusu", 2.6, 2.4), _sus("kaya", -5.6, 0.6)] + [_sus("cicek_obegi" if i % 2 else "ot_obegi", -1.8 + (i * 37 % 40) / 10.0, -1.9 + (i * 53 % 38) / 10.0, i * 40, 1.0, i) for i in range(8)]))
+        _sus("cesme", 0, 0.6), _sus("bank", -3.2, 0.6, 90), _sus("bank", 3.2, 0.6, -90), _sus("bank", 0, 3.8, 180), _sus("agac_cinar_1", -4.6, 4.4),
+        _sus("agac_cinar_2", 4.7, 4.2), _sus("agac_cinar_3", -4.9, -2.2, 0, 0.9), _sus("cali_1", 4.6, -2.6), _sus("cali_2", 2.4, 5.6), _sus("cicek_tarhi", 0, -2.6),
+        _sus("sokak_lambasi", -6.3, -6.3), _sus("telefon_kulubesi", 5.4, -6.2), _sus("posta_kutusu", 3.9, -6.3), _sus("bollard", -4.6, -6.5), _sus("bollard", -3.0, -6.5),
+        _sus("demir_korkuluk", -5.6, -5.4), _sus("demir_korkuluk", -2.8, -5.4), _sus("demir_kapi", 0.0, -5.4), _sus("demir_korkuluk", 2.8, -5.4), _sus("demir_korkuluk", 5.6, -5.4)]
+        + [_sus("cicek_obegi" if i % 2 else "ot_obegi", -1.8 + (i * 37 % 40) / 10.0, 1.6 + (i * 53 % 30) / 10.0, i * 40, 1.0, i) for i in range(6)]))
     return o
 
 
@@ -4162,53 +5941,103 @@ def _b(tasarim, x, y, don=0, kapali=False):
     return v
 
 
+def _sira(ad, x0, x1, y, aci=0.0):
+    """Hücre ortalarına dizilmiş süsler (x0…x1 hücreleri, y sabit; sahne metresi). 16 hücrelik sahne için."""
+    return [_sus(ad, (x - 7.5) * HUCRE, y, aci) for x in range(x0, x1 + 1)]
+
+
 def sahneler():
-    """Örnek sahneler (16 × 16 hücre = 44,8 m). y = 0 ön (kameraya yakın)."""
+    """Örnek sahneler (16 × 16 hücre = 44,8 m). y = 0 ön (kameraya yakın). v6: Londra."""
     S = []
-    # 1) Kasaba meydanı: ortada arnavut kaldırımı meydan + çeşme, çevresinde yol, dükkânlar, köşede park
+    # 1) Kasaba meydanı: ortada arnavut kaldırımı meydan + çeşme, çevresinde yol, dükkânlar, köşede demir korkuluklu park
     z = _zemin_birlestir(
         _dikdortgen(0, 15, 6, 7, "yol"), _dikdortgen(5, 6, 0, 15, "yol"),
         _dikdortgen(7, 15, 8, 15, "kaldirim"), _dikdortgen(7, 12, 0, 5, "meydan"), _dikdortgen(0, 4, 8, 15, "kaldirim"),
         _dikdortgen(13, 15, 0, 5, "cim"), _dikdortgen(0, 4, 0, 5, "cim"), _dikdortgen(1, 3, 2, 2, "patika"), _dikdortgen(2, 2, 0, 5, "patika"),
-        _dikdortgen(0, 0, 0, 5, "cit"), _dikdortgen(0, 4, 0, 0, "cit"), [dict(x=2, y=0, t="patika", k=0)], _dikdortgen(3, 4, 4, 5, "tarh"),
-        _dikdortgen(13, 15, 4, 5, "tarh"))
+        _dikdortgen(3, 4, 4, 5, "tarh"), _dikdortgen(13, 15, 4, 5, "tarh"))
     S.append(dict(ad="kasaba_meydani", n=16, tohum=3, zemin=z,
-                  binalar=[_b("burger_queen", 8, 9), _b("starbocks", 12, 10), _b("books", 2, 9), _b("pastel_kuleler", 2, 13, kapali=True),
-                           _b("old_pub", 8, 13), _b("dutch_gable", 13, 14), _b("flowers", 14, 2, 3)],
-                  susler=[_sus("cesme", 2.8, -12.6), _sus("bank", 0.0, -15.2, 0), _sus("bank", 5.6, -15.2, 0), _sus("sokak_lambasi", -1.0, -8.6),
-                          _sus("sokak_lambasi", 7.6, -8.6), _sus("agac_yuvarlak_1", -19.0, -14.0), _sus("agac_yuvarlak_2", -11.5, -19.0),
-                          _sus("agac_meyve_1", -12.0, -10.0), _sus("bank", -15.2, -16.0, 90), _sus("agac_yuvarlak_3", 18.5, -17.0), _sus("masa", 4.0, -9.4),
-                          _sus("cop_kutusu", -1.6, -10.2), _sus("heykel", 9.8, -16.5)]))
-    # 2) Nehir kenarı: önde kanal, rıhtım kaldırımı, arkada sıra evler ve kafe; köprü yerine iskele
+                  binalar=[_b("burger_queen", 8, 10), _b("starbocks", 12, 10), _b("books", 2, 10), _b("pastel_kuleler", 2, 14, kapali=True),
+                           _b("old_pub", 8, 14), _b("dutch_gable", 13, 14), _b("flowers", 14, 2, 3)],
+                  susler=[_sus("cesme", 5.6, -12.6), _sus("bank", 2.8, -15.2, 0), _sus("bank", 8.4, -15.2, 0), _sus("sokak_lambasi", -1.0, -6.6),
+                          _sus("sokak_lambasi", 13.0, -6.6), _sus("agac_cinar_1", -18.5, -13.0), _sus("agac_cinar_2", -11.0, -19.0),
+                          _sus("agac_cinar_3", -11.5, -10.5, 0, 0.85), _sus("bank", -15.2, -16.0, 90), _sus("agac_cinar_1", 18.5, -17.0), _sus("masa", 10.0, -9.0),
+                          _sus("cop_kutusu", -1.6, -10.2), _sus("heykel", 12.4, -16.5), _sus("telefon_kulubesi", -0.4, -16.6), _sus("posta_kutusu", -0.4, -14.6),
+                          _sus("belisha", -9.6, -6.6), _sus("belisha", -3.0, -6.6), _sus("belisha", -9.6, 1.4), _sus("bollard", -0.8, -12.4), _sus("bollard", -0.8, -8.6)]
+                  + _sira("demir_korkuluk", 0, 4, -6.9) ))
+    # 2) Nehir kenarı (Thames): önde su, rıhtım kaldırımı, arkada Georgian sıra evler ve balıkçı; rıhtımda lambalar
     z = _zemin_birlestir(
         _dikdortgen(0, 15, 2, 4, "su"), _dikdortgen(0, 15, 5, 6, "kaldirim"), _dikdortgen(0, 15, 7, 8, "yol"), _dikdortgen(0, 15, 9, 15, "kaldirim"),
         _dikdortgen(0, 15, 0, 1, "cim"), _dikdortgen(10, 11, 0, 8, "yol"), _dikdortgen(10, 11, 2, 4, "meydan"), _dikdortgen(13, 15, 12, 15, "cim"),
-        _dikdortgen(13, 15, 12, 12, "cit"), _dikdortgen(0, 2, 0, 0, "tarh"))
+        _dikdortgen(0, 2, 0, 0, "tarh"))
     S.append(dict(ad="nehir_kenari", n=16, tohum=5, zemin=z,
-                  binalar=[_b("terrace_houses", 2, 12), _b("fish_ships", 7, 12), _b("dutch_gable", 13, 10, kapali=True), _b("fachwerk_ev", 14, 14)],
+                  binalar=[_b("terrace_houses", 2, 11), _b("fish_ships", 7, 11), _b("dutch_gable", 12, 11, kapali=True), _b("fachwerk_ev", 14, 14)],
                   susler=[_sus("kayik", -14.0, -14.2, 80), _sus("kayik", 2.0, -13.6, 100), _sus("iskele", -6.0, -9.8), _sus("sokak_lambasi", -18.0, -7.6),
-                          _sus("sokak_lambasi", -4.0, -7.6), _sus("bank", -11.0, -7.4, 180), _sus("agac_yuvarlak_1", -19.5, -20.0), _sus("agac_yuvarlak_2", -8.0, -20.5),
-                          _sus("agac_meyve_1", 18.0, -20.0), _sus("fici", 1.0, -7.0), _sus("kasalar", 3.4, -6.8), _sus("bisiklet_park", 17.0, -7.2)]))
-    # 3) Banliyö sokağı: ortada yol, iki yanında bahçeli evler, çitler, patikalar
+                          _sus("sokak_lambasi", -4.0, -7.6), _sus("bank", -11.0, -7.4, 180), _sus("agac_cinar_1", -19.5, -20.0), _sus("agac_cinar_2", -8.0, -20.5),
+                          _sus("agac_cinar_3", 18.0, -20.0), _sus("fici", 1.0, -7.0), _sus("kasalar", 3.4, -6.8), _sus("bisiklet_park", 17.0, -7.2),
+                          _sus("telefon_kulubesi", 4.6, 3.4), _sus("posta_kutusu", 13.4, 3.2), _sus("bollard", -14.5, -4.0), _sus("bollard", -11.5, -4.0), _sus("bollard", -8.5, -4.0)]))
+    # 3) Banliyö sokağı: ortada yol, iki yanında cumbalı ikiz evler, çit bitkileri, çınarlar
     z = _zemin_birlestir(
-        _dikdortgen(0, 15, 7, 8, "yol"), _dikdortgen(7, 8, 0, 6, "patika"), _dikdortgen(0, 15, 6, 6, "kaldirim"), _dikdortgen(0, 15, 9, 9, "kaldirim"),
-        _dikdortgen(0, 15, 5, 5, "cit"), [dict(x=7, y=5, t="patika", k=0), dict(x=8, y=5, t="patika", k=0)],
-        _dikdortgen(2, 2, 10, 10, "patika"), _dikdortgen(8, 8, 10, 10, "patika"), _dikdortgen(13, 13, 10, 10, "patika"),
-        _dikdortgen(0, 1, 0, 1, "tarh"), _dikdortgen(14, 15, 0, 1, "tarh"), _dikdortgen(5, 5, 11, 15, "cit"), _dikdortgen(11, 11, 11, 15, "cit"))
+        _dikdortgen(0, 15, 7, 8, "yol"), _dikdortgen(0, 15, 6, 6, "kaldirim"), _dikdortgen(0, 15, 9, 9, "kaldirim"),
+        _dikdortgen(0, 1, 0, 1, "tarh"), _dikdortgen(14, 15, 0, 1, "tarh"), _dikdortgen(5, 5, 12, 15, "cit"), _dikdortgen(11, 11, 12, 15, "cit"))
     S.append(dict(ad="banliyo_sokagi", n=16, tohum=7, zemin=z,
-                  binalar=[_b("bahceli_ev", 2, 13), _b("kucuk_ev", 8, 13), _b("fachwerk_ev", 13, 13), _b("kucuk_ev", 3, 2, 2), _b("bahceli_ev", 12, 2, 2)],
-                  susler=[_sus("sokak_lambasi", -15.0, 0.2), _sus("sokak_lambasi", 5.0, 0.2), _sus("posta_kutusu", -9.0, 5.2), _sus("agac_yuvarlak_1", -1.0, 17.0),
-                          _sus("agac_meyve_1", 20.0, 17.5), _sus("agac_yuvarlak_3", -2.0, -17.0), _sus("agac_meyve_2", 3.5, -19.0), _sus("durak", 12.0, -3.4, 180),
-                          _sus("cop_kutusu", 9.6, -3.4), _sus("koyun", 0.0, -12.0, 40)]))
+                  binalar=[_b("bahceli_ev", 2, 12), _b("kucuk_ev", 8, 13), _b("fachwerk_ev", 13, 13), _b("kucuk_ev", 3, 2, 2), _b("bahceli_ev", 12, 3, 2)],
+                  susler=[_sus("sokak_lambasi", -15.0, 4.4), _sus("sokak_lambasi", 5.0, 4.4), _sus("posta_kutusu", -9.0, 4.6), _sus("agac_cinar_1", -1.0, 17.0),
+                          _sus("agac_cinar_2", 20.0, 17.5), _sus("agac_cinar_3", -2.0, -17.0), _sus("agac_meyve_2", 3.5, -19.0), _sus("durak", 11.0, -3.6, 180),
+                          _sus("cop_kutusu", 6.6, -3.4), _sus("telefon_kulubesi", 17.5, 4.6), _sus("agac_cinar_2", -19.0, -3.6, 0, 0.8), _sus("agac_cinar_1", 0.0, -3.6, 0, 0.8)]))
     # 4) Tepe kasabası: arkada iki kademe yükselen teraslar (istinat duvarı, yamaç), önde yol ve su
     z = _zemin_birlestir(
         _dikdortgen(0, 15, 0, 1, "su"), _dikdortgen(0, 15, 2, 2, "kaldirim"), _dikdortgen(0, 15, 3, 4, "yol"), _dikdortgen(0, 15, 5, 9, "kaldirim"),
         _dikdortgen(0, 15, 10, 15, "cim", 1), _dikdortgen(0, 6, 10, 15, "meydan", 1), _dikdortgen(9, 15, 13, 15, "cim", 2), _dikdortgen(7, 8, 10, 12, "tarh", 1),
         _dikdortgen(12, 13, 5, 9, "cim"), _dikdortgen(12, 12, 5, 9, "cit"))
     S.append(dict(ad="tepe_kasabasi", n=16, tohum=9, zemin=z,
-                  binalar=[_b("town_hall", 3, 13), _b("tas_kule", 12, 14), _b("bakery", 2, 7), _b("pharmacy", 8, 7), _b("kaideli_ev", 14, 7)],
-                  susler=[_sus("agac_yuvarlak_1", 8.0, 8.0), _sus("agac_yuvarlak_2", 20.0, 9.0), _sus("agac_meyve_1", 16.0, 14.0), _sus("sokak_lambasi", -8.0, -15.4),
-                          _sus("sokak_lambasi", 8.0, -15.4), _sus("bank", 0.0, -15.6, 180), _sus("kayik", -12.0, -20.4, 90), _sus("kuyu", 17.5, -3.0)]))
+                  binalar=[_b("town_hall", 3, 13), _b("tas_kule", 12, 14), _b("bakery", 2, 7), _b("pharmacy", 8, 7), _b("kemerli_gecit", 13, 8)],
+                  susler=[_sus("agac_cinar_1", 8.0, 8.0), _sus("agac_cinar_2", 20.0, 9.0), _sus("agac_meyve_1", 16.0, 14.0), _sus("sokak_lambasi", -8.0, -15.4),
+                          _sus("sokak_lambasi", 8.0, -15.4), _sus("bank", 0.0, -15.6, 180), _sus("kayik", -12.0, -20.4, 90), _sus("posta_kutusu", 3.0, -6.6),
+                          _sus("telefon_kulubesi", -9.5, -6.4)]))
+    # 5) Georgian meydanı (garden square): ortada demir korkuluklu, çınarlı bahçe; üç yanında sıra evler, önde sokak
+    z = _zemin_birlestir(
+        _dikdortgen(0, 15, 0, 15, "kaldirim"), _dikdortgen(4, 11, 4, 11, "yol"), _dikdortgen(5, 10, 5, 10, "cim"),
+        _dikdortgen(0, 15, 4, 4, "yol"), _dikdortgen(4, 4, 0, 3, "yol"), _dikdortgen(11, 11, 0, 3, "yol"),
+        _dikdortgen(7, 7, 5, 10, "patika"), _dikdortgen(5, 10, 8, 8, "patika"), _dikdortgen(0, 0, 5, 15, "cim"), _dikdortgen(15, 15, 5, 15, "cim"),
+        _dikdortgen(5, 10, 0, 1, "meydan"), _dikdortgen(6, 6, 6, 6, "tarh"), _dikdortgen(9, 9, 9, 9, "tarh"))
+    kor = []
+    for i in range(5, 11):
+        u = (i - 7.5) * HUCRE
+        kor.append(_sus("demir_kapi" if i == 7 else "demir_korkuluk", u, -8.25))
+        kor.append(_sus("demir_kapi" if i == 7 else "demir_korkuluk", u, 8.25, 180))
+        kor.append(_sus("demir_kapi" if i == 8 else "demir_korkuluk", -8.25, u, -90))
+        kor.append(_sus("demir_kapi" if i == 8 else "demir_korkuluk", 8.25, u, 90))
+    S.append(dict(ad="georgian_meydan", n=16, tohum=11, zemin=z,
+                  binalar=[_b("kaideli_ev", 2, 14), _b("terrace_houses", 7, 14), _b("kaideli_ev", 12, 14),
+                           _b("terrace_houses", 1, 10, 1), _b("terrace_houses", 14, 10, 3), _b("kemerli_gecit", 1, 2, 1), _b("kemerli_gecit", 14, 2, 3)],
+                  susler=kor + [_sus("agac_cinar_1", -5.6, -5.4), _sus("agac_cinar_2", 5.8, -5.2), _sus("agac_cinar_3", -5.4, 5.6), _sus("agac_cinar_1", 5.6, 5.8),
+                                _sus("agac_cinar_2", 4.6, -0.4, 0, 0.8), _sus("bank", -3.0, 2.6, 180), _sus("bank", 3.4, 2.6, 180), _sus("bank", -0.6, -4.4, 90),
+                                _sus("cali_1", -6.6, 0.6), _sus("cali_2", 6.8, 2.6), _sus("cali_3", 2.6, 6.8), _sus("heykel", 2.6, -2.4, 0, 0.8),
+                                _sus("sokak_lambasi", -12.4, -12.4), _sus("sokak_lambasi", 12.4, -12.4), _sus("sokak_lambasi", -12.4, 12.3), _sus("sokak_lambasi", 12.4, 12.3),
+                                _sus("telefon_kulubesi", 0.6, -18.4), _sus("posta_kutusu", -1.4, -18.2), _sus("bank", -5.6, -19.0), _sus("bank", 6.4, -19.0),
+                                _sus("belisha", -6.9, -12.6), _sus("belisha", 6.9, -12.6), _sus("belisha", -6.9, -7.2), _sus("belisha", 6.9, -7.2),
+                                _sus("agac_cinar_3", -4.0, -20.6, 0, 0.85), _sus("agac_cinar_1", 4.4, -20.8, 0, 0.85),
+                                _sus("bollard", -7.4, -14.6), _sus("bollard", -3.6, -14.6), _sus("bollard", 0.2, -14.6), _sus("bollard", 4.0, -14.6), _sus("bollard", 7.4, -14.6)]))
+    # 6) High street: iki şeritli ana cadde, arkada Victoria tarzı dükkân sırası ve pub; kavşakta zebra geçidi ve Belisha
+    #    fenerleri; önde otobüs durağı, posta kutusu, telefon kulübesi, büfe, küçük yeşil alan
+    z = _zemin_birlestir(
+        _dikdortgen(0, 15, 0, 15, "kaldirim"), _dikdortgen(0, 15, 6, 7, "yol"), _dikdortgen(8, 8, 0, 15, "yol"),
+        _dikdortgen(0, 7, 11, 15, "cim"), _dikdortgen(9, 15, 11, 15, "cim"), _dikdortgen(0, 3, 0, 2, "cim"), _dikdortgen(12, 15, 0, 1, "meydan"),
+        _dikdortgen(0, 0, 0, 2, "cit"), _dikdortgen(0, 3, 0, 0, "cit"), _dikdortgen(1, 2, 1, 1, "tarh"))
+    S.append(dict(ad="high_street", n=16, tohum=13, zemin=z,
+                  binalar=[_b("burger_queen", 1, 10), _b("pizza_hat", 4, 10), _b("old_pub", 6, 10), _b("books", 10, 10), _b("market_24", 12, 10),
+                           _b("bakery", 15, 10), _b("snack_bar", 12, 2, 2)],
+                  susler=[_sus("durak", -11.0, -5.4, 180), _sus("posta_kutusu", -4.4, -5.6), _sus("telefon_kulubesi", 4.4, -6.0), _sus("cop_kutusu", -6.2, -5.4),
+                          _sus("sokak_lambasi", -17.0, -4.5), _sus("sokak_lambasi", -2.6, -4.5), _sus("sokak_lambasi", 4.4, 1.5), _sus("sokak_lambasi", 18.0, 1.5),
+                          _sus("sokak_lambasi", -11.0, 1.5), _sus("sokak_lambasi", 12.0, -4.5),
+                          _sus("belisha", -2.8, -4.5), _sus("belisha", -2.8, 1.5), _sus("belisha", 4.3, -4.5), _sus("belisha", 4.3, 1.5),
+                          _sus("bollard", -1.6, -5.6), _sus("bollard", -1.6, -7.6), _sus("bollard", 3.2, -5.6), _sus("bollard", 3.2, -7.6),
+                          _sus("agac_cinar_1", -15.4, -17.4), _sus("agac_cinar_2", 7.5, -11.5, 0, 0.85), _sus("agac_cinar_3", 19.6, -9.0, 0, 0.85),
+                          _sus("bank", -15.5, -12.2, 180), _sus("bank", 15.0, -6.0), _sus("masa", 9.5, -17.5), _sus("masa", 15.5, -19.0, 40),
+                          _sus("bisiklet_park", -8.0, -9.0), _sus("agac_cinar_1", -12.0, 17.5), _sus("agac_cinar_2", 8.0, 18.0), _sus("agac_cinar_3", 17.5, 16.0),
+                          _sus("cali_1", -19.0, 13.0), _sus("cali_3", 5.5, 13.0),
+                          _sus("agac_cinar_3", -9.0, -14.5, 0, 0.9), _sus("agac_cinar_2", -4.5, -19.0, 0, 0.85), _sus("bank", -9.0, -17.4, 180),
+                          _sus("cicek_kovalari", 10.4, 2.6), _sus("menu_panosu", -6.5, 2.4)]))
     return S
 
 
@@ -4240,7 +6069,7 @@ def _unity_parca(ad, g):
 def json_yaz(yol):
     parcalar = [_unity_parca(ad, parca_g(ad)) for ad in PARCA]
     hafifler = [_unity_parca(ad, hafif_parca(ad)) for ad in PARCA]
-    veri = dict(surum=3, hucre=HUCRE, kat=KAT, izgara=IZGARA, duvarRenk=DUVAR_RENK, catiRenk=CATI_RENK, vurguRenk=VURGU_RENK,
+    veri = dict(surum=4, tarzAd=TARZ_AD, uslupTaban=USLUP_TABAN, usluplar=USLUPLAR, hucre=HUCRE, kat=KAT, izgara=IZGARA, duvarRenk=DUVAR_RENK, catiRenk=CATI_RENK, vurguRenk=VURGU_RENK,
                 tenteRenk=TENTE_RENK, yaprakRenk=YAPRAK_RENK, icSinir=IC_SINIR_VARSAYILAN, icYedek=IC_YEDEK,
                 kademe=KADEME, etek=ETEK, kaldirimZ=KALDIRIM_Z, zeminTur=[dict(ad=a, etiket=e) for a, e in ZEMIN_TUR], sertZemin=list(SERT_ZEMIN), catiTarz=CATI_TARZ_AD, turler=TURLER, parcalar=parcalar, hafifler=hafifler)
     os.makedirs(os.path.dirname(yol), exist_ok=True)

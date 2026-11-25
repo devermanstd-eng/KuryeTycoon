@@ -5,106 +5,115 @@
  "dukkan": false,
  "tur": "dukkan",
  "tabela": "KIOSK",
- "tente": 2,
+ "tente": 8,
  "bloklar": [
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 2,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 3,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 4,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
+  },
   {
    "x": 2,
    "y": 2,
    "k": 0,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 4,
-   "ct": 0
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
   },
   {
    "x": 2,
    "y": 2,
    "k": 1,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 4,
-   "ct": 0
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
   },
   {
    "x": 2,
    "y": 2,
    "k": 2,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 4,
-   "ct": 0
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
   },
   {
    "x": 2,
    "y": 2,
    "k": 3,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 4,
-   "ct": 0
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
   },
   {
    "x": 2,
    "y": 2,
    "k": 4,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 4,
-   "ct": 0
-  },
-  {
-   "x": 2,
-   "y": 2,
-   "k": 5,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 4,
-   "ct": 0
-  },
-  {
-   "x": 2,
-   "y": 2,
-   "k": 6,
-   "tarz": 0,
-   "renk": 5,
-   "cati": 4,
-   "ct": 0
-  },
-  {
-   "x": 2,
-   "y": 1,
-   "k": 0,
-   "tarz": 0,
-   "renk": 0,
-   "cati": 0,
-   "ct": 0
-  },
-  {
-   "x": 2,
-   "y": 1,
-   "k": 1,
-   "tarz": 0,
-   "renk": 0,
-   "cati": 0,
-   "ct": 0
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 5
   },
   {
    "x": 3,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 0,
-   "cati": 0,
-   "ct": 0
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 4
   },
   {
    "x": 1,
    "y": 1,
    "k": 0,
-   "tarz": 0,
-   "renk": 2,
-   "cati": 0,
-   "ct": 0
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 4
   }
  ],
  "susler": []

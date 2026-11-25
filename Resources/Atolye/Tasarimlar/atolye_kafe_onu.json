@@ -1,11 +1,11 @@
 {
  "ad": "kafe_onu",
  "bolge": "karma",
- "tohum": 64,
+ "tohum": 65,
  "dukkan": false,
  "tur": "kafe",
  "tabela": "CAFE ROSE",
- "tente": 0,
+ "tente": 9,
  "bloklar": [
   {
    "x": 1,
@@ -13,8 +13,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 1,
@@ -22,8 +22,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 1,
@@ -31,8 +31,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 1,
@@ -40,8 +40,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 2,
@@ -49,8 +49,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 2,
@@ -58,8 +58,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 2,
@@ -67,8 +67,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 2,
@@ -76,8 +76,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 3,
@@ -85,8 +85,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 3,
@@ -94,8 +94,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 3,
@@ -103,8 +103,8 @@
    "k": 0,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   },
   {
    "x": 3,
@@ -112,8 +112,8 @@
    "k": 1,
    "tarz": 0,
    "renk": 1,
-   "cati": 2,
-   "ct": 0
+   "cati": 6,
+   "ct": 7
   }
  ],
  "susler": [
@@ -158,11 +158,11 @@
    "renk": 0
   },
   {
-   "ad": "agac_yuvarlak_4",
+   "ad": "agac_cinar_3",
    "x": 5.6,
    "y": -1.2,
    "aci": 0,
-   "olcek": 0.9,
+   "olcek": 0.8,
    "renk": 0
   },
   {
