@@ -13,6 +13,7 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), 
     cizgiler: (p0, p1, "#rrggbb") listesi verilirse (Bina Atölyesi'nin kenar çizgileri) derinlik konturu yerine bunlar,
     oyundaki gibi sabit piksel kalınlığında ve hafif titrek çizilir; Pastel_Cam yüzlerine çapraz parlama eklenir."""
     V=np.array(g.v,float)
+    vn=getattr(g,'vn',None)
     S=size*ss
     a=math.radians(az); e=math.radians(el)
     # kamera yönü (kameradan sahneye)
@@ -51,6 +52,15 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), 
         col=cols[m]*((0.80+0.25*lam) if pastel else (0.55+0.55*lam))
         if pastel and lam<0.25: col=col*np.array([0.97,0.95,1.0])     # gölge: yüzeyin biraz koyusu, hafif mor
         if pastel and '_Kabuk_' in m: col=cols[m]
+        # köşe normalleri (g.vn; Bina Atölyesi ağaçları): Unity'deki yumuşak gölgelemenin taslağı, köşe renkleri arası geçiş
+        kose=None
+        if pastel and vn is not None and '_Kabuk_' not in m and all(i<len(vn) and vn[i] is not None for i in f):
+            kose=[]
+            for i in f:
+                lv=max(0,float(np.dot(vn[i],sun)))
+                cv=cols[m]*(0.78+0.3*lv)
+                if lv<0.2: cv=cv*np.array([0.95,0.94,1.0])
+                kose.append(np.clip(cv,0,1))
         parlama=None
         if pastel and m.startswith('Pastel_Cam'):
             sxy=px[f]+py[f]; parlama=(sxy.min(), max(1e-6, sxy.max()-sxy.min()))
@@ -74,7 +84,11 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), 
             sub=zb[y0:y1+1,x0:x1+1]
             upd=msk&(zz<sub)
             sub[upd]=zz[upd]
-            img[y0:y1+1,x0:x1+1][upd]=col
+            if kose is not None:
+                kc=(w0[...,None]*kose[0]+w1[...,None]*kose[k]+w2[...,None]*kose[k+1])
+                img[y0:y1+1,x0:x1+1][upd]=np.clip(kc,0,1)[upd]
+            else:
+                img[y0:y1+1,x0:x1+1][upd]=col
             if parlama is not None:
                 tt=((gx+gy)-parlama[0])/parlama[1]
                 bant=upd&(((tt>0.36)&(tt<0.43))|((tt>0.47)&(tt<0.5)))

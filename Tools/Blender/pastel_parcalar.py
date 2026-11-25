@@ -18,6 +18,9 @@ birleştirme kurallarının Python hâli. Geometri çekirdeği bolge_modelleri.p
     Georgian, Victorian, beyaz sıva, mews, Portland taşı, gotik, tuğla depo); çatı tarzı 7 parapet arkasında mansart.
     Kalem çizgisi inceldi; "Pastel_Iz_*" malzemeli yüzeyler (tuğla / arduvaz sırası izi, cam kayıtları) kontur almaz.
     Ayrıntı: dosyada "LONDRA MİMARİSİ (v6)" bölümü.
+  • v7 (gerçekçi ağaçlar): gövde + dal iskeleti + yaprak kümeleri, dört yaprak tonu (roller Y, y, a, m), kaynaklı köşeler
+    (g.vn: yumuşak gölgeleme), üç ayrıntı düzeyi (JSON: parcalar / hafifler / uzaklar), kışın çıplak dal (oyunda
+    gölgelendirici kırpar; önizlemede yaprak rengi KIS_RENGI). Ayrıntı: "GERÇEKÇİ AĞAÇLAR (v7)" bölümü.
 
 Çalıştırma (Blender gerekmez):
   python3 Tools/Blender/pastel_parcalar.py --json                 parça kütüphanesini Unity için yazar
@@ -91,6 +94,7 @@ VURGU_RENK = ["#b8382f", "#2c3d70", "#34333a", "#2f6048", "#e2b33c", "#3f7d74", 
 TENTE_RENK = ["#c8553f", "#3f7d74", "#3f5f8a", "#d9a441", "#8a5a78", "#5a8f4a", "#2f6048", "#7a2f38", "#2c3d70", "#efe6cf"]
 # yaz açık / yaz koyu / ilkbahar / sonbahar turuncu / kızıl / sarı / çiçekli pembe / kış (karlı)
 YAPRAK_RENK = ["#8fbf7a", "#6fa968", "#a9c96a", "#e0a04a", "#c9603f", "#e8c95a", "#f2b6c8", "#dfe3e6"]
+KIS_RENGI = 7               # bu yaprak renginde önizleme kışı gösterir: yaprak döken ağaçlar çıplak, dallarda kar
 TAS_RENK = "#cfc8ba"
 
 HEX = B.HEX
@@ -142,6 +146,21 @@ CICEK = [PM("Cicek", h) for h in ("#e8607a", "#f5c84a", "#ffffff", "#b58ad9")]
 
 def koyu(hexv, f=0.86):
     return B.koyu(hexv, f)
+
+
+def karis(h1, h2, t):
+    """İki rengin karışımı (t = 0 → h1, 1 → h2). C#: AtolyeKurucu.Karis (aynı yuvarlama: aşağı)."""
+    a, b = h1.lstrip("#"), h2.lstrip("#")
+    return "#%02x%02x%02x" % tuple(int(int(a[i:i + 2], 16) * (1 - t) + int(b[i:i + 2], 16) * t) for i in (0, 2, 4))
+
+
+def yaprak_tonlari(yp):
+    """Yaprak renginden dört ton: Y orta, y koyu (küme altı), a açık sarımsı (ışık), m gölge yanı (yeşilde mavimsi;
+    sonbahar gibi sıcak renkte kızıl: aynı ağaçta sarı-turuncu-kızıl karışır). C#: AtolyeKurucu.YaprakTonlari."""
+    h = yp.lstrip("#")
+    sicak = int(h[0:2], 16) > int(h[2:4], 16)
+    return dict(Y=yp, y=koyu(yp, 0.88), a=karis(yp, "#f6ecaa", 0.32),
+                m=karis(koyu(yp, 0.92), "#c0503a", 0.42) if sicak else karis(koyu(yp, 0.9), "#5f8fa8", 0.24))
 
 
 def cer(o, n, L):
@@ -4629,34 +4648,6 @@ def cop_kutusu(g):
     dsil(g, 0, 0, 0.85, 0.9, 0.3, 8, DEMIR_S, kapak=(True, True))
 
 
-def _cinar(g, tohum, hafif=False):
-    """Londra çınarı (plane tree): uzun, benekli gövde; yüksekte geniş, çok öbekli taç."""
-    rnd = random.Random(tohum * 17 + 3)
-    h = rnd.uniform(3.1, 3.7)
-    k = 0.19
-    kutu(g, -k, k, -k, k, 0.0, h, GOVDE)
-    if not hafif:
-        benek = (PM("Iz", "#d9d2b8"), PM("Iz", "#b9b59a"), PM("Iz", "#a58a72"))
-        for i, n in enumerate(YON):
-            cy = kare_yuz(n, k)
-            for j in range(4):
-                u, z = rnd.uniform(0.03, 0.2), 0.3 + j * (h - 0.6) / 4 + rnd.uniform(0, 0.3)
-                w, hh = rnd.uniform(0.1, 0.16), rnd.uniform(0.22, 0.45)
-                cokgen(g, cy, [(u, z), (u + w, z + 0.05), (u + w * 0.9, z + hh), (u + 0.02, z + hh * 0.8)], benek[(i + j + tohum) % 3], 0.008)
-        for i in range(3):                                                             # ana dallar
-            a = i * 2.1 + rnd.uniform(-0.3, 0.3)
-            cubuk(g, (0, 0, h - 0.5), (math.cos(a) * 1.0, math.sin(a) * 1.0, h + 0.7), 0.16, GOVDE)
-    bulut(g, (0, 0, h + 1.5), 1.7, 1.65, 1.35, tohum, kabuk=not hafif)
-    if not hafif:
-        for i in range(3):
-            a = i * 2.1 + rnd.uniform(-0.3, 0.3)
-            bulut(g, (math.cos(a) * 1.25, math.sin(a) * 1.25, h + 0.9 + rnd.uniform(0, 0.7)), 1.05, 1.0, 0.85, tohum + i + 7, mat=YP2 if i % 2 else YP)
-
-
-for _i in range(1, 4):
-    ekle("agac_cinar_%d" % _i, "agac", "Ağaç: Londra çınarı (benekli gövde) %d" % _i, (lambda g, s=_i: _cinar(g, s)), "agac", hafif=(lambda g, s=_i: _cinar(g, s, True)))
-
-
 # ---- yol: zebra geçidi, çift sarı çizgi
 
 @_z("Yol: zebra geçidi (y ekseni boyunca giden yolda)")
@@ -4688,6 +4679,567 @@ def z_bordur_uc(g):
 def z_bordur_son(g):
     _kaldirim_seridi(g, on(), HUCRE - 0.6, HUCRE)
     _sari_cizgi(g, on(), HUCRE - 0.6, HUCRE)
+
+
+# ================================== GERÇEKÇİ AĞAÇLAR (v7) ==================================
+# Sanat stili aynı (pastel renk, kalem kontur, kâğıt); ağaçların FORMU gerçekçi:
+#   • gövde hafif eğri, kökte genişler; ana dallar gövdeden ayrılıp taça girer, ince dallar her yaprak kümesine uzanır
+#     (kışın tam dal iskeleti kalır);
+#   • taç tek top değil: dallara oturan 12–30 düzensiz, kabarık yaprak kümesi; kümenin üstü açık sarımsı, yanı orta,
+#     gölge yanı mavimsi, altı koyu ton (aynı ağaçta dört ton: roller Y, y, a, m), üstünde birkaç yaprak lekesi;
+#   • kontur yalnız büyük dış kümelerin ve gövdenin ters kabuğunda (Pastel_Kabuk_*); yaprak ve gövde yüzeyleri "iz"
+#     malzemelidir (Pastel_Yaprak_Dok_Iz_*, Pastel_Govde_Iz_*): iç küme sınırlarına kalem çizgisi çekilmez;
+#   • köşeler kaynaklıdır (g.vn): Unity'de yumuşak gölgelenir (düz yüzlü low-poly görünüm yok);
+#   • yaprak döken türlerin yaprakları "Pastel_Yaprak_Dok_…" adlıdır: oyunda kış gelince gölgelendirici bunları kırpar
+#     (_PastelKis), dallardaki kar şeritleri (Pastel_DalKar_…) yalnız o zaman görünür. Önizlemede kış = yaprak rengi 7.
+#   • üç ayrıntı düzeyi: yakın (≤ ~1500 üçgen), hafif (≤ ~250), uzak (≤ 40; JSON "uzaklar").
+# Malzeme adları mevsim / kar koduyla uyumlu: etiket hâlâ "Yaprak" (City3D.SehirMalzemesi adın ikinci parçasına bakar).
+
+YD = ROL("Yaprak_Dok_Iz", "Y", "#8fbf7a")          # yaprak döken: orta ton
+YD_KOYU = ROL("Yaprak_Dok_Iz", "y", "#7aa868")     # küme altı
+YD_ACIK = ROL("Yaprak_Dok_Iz", "a", "#b4d283")     # ışık alan üst (sarımsı)
+YD_MAVI = ROL("Yaprak_Dok_Iz", "m", "#6f9f84")     # gölge yanı (mavimsi)
+KABUK_DOK = ROL("Kabuk_Dok", "k", "#3e4a3a")       # yaprak döken tacın dış hattı (kışın gizlenir)
+YS = ROL("Yaprak_Iz", "Y", "#8fbf7a")              # her dem yeşil çalı (şimşir, lavanta): kışın da durur
+YS_KOYU = ROL("Yaprak_Iz", "y", "#7aa868")
+YS_ACIK = ROL("Yaprak_Iz", "a", "#b4d283")
+YS_MAVI = ROL("Yaprak_Iz", "m", "#6f9f84")
+IGNE = [PM("Igne_Iz", h) for h in ("#6f9c7c", "#5c8a72", "#86ad82", "#557f73")]     # iğne yapraklı: orta, koyu, açık, mavimsi
+KABUK_IGNE = PM("Kabuk", "#3d4f48")
+KABUK_GOVDE = PM("Kabuk", "#5b4a44")
+DAL_KAR = PM("DalKar_Iz", "#f4f6fa")
+GOVDE_TON = {"kahve": ("#8a6a55", "#74574a"), "koyu": ("#77605a", "#614d4a"), "cinar": ("#b9b39c", "#a3977f"), "hus": ("#f1ede2", "#3f3d42"),
+             "gri": ("#8f8a84", "#77716c")}
+TON_DOK = (YD, YD_KOYU, YD_ACIK, YD_MAVI)
+TON_SABIT = (YS, YS_KOYU, YS_ACIK, YS_MAVI)
+
+
+def _govde_mat(ton, koyu_mu=False):
+    return PM("Govde_Iz", GOVDE_TON[ton][1 if koyu_mu else 0])
+
+
+_OKTA = None
+
+
+def _okta(detay):
+    """Birim küre ağı: 0 → sekizyüzlü (8 üçgen), 1 → bir kez bölünmüş (32), 2 → iki kez (128)."""
+    global _OKTA
+    if _OKTA is None:
+        _OKTA = {}
+        v = [(1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)]
+        f = [(0, 2, 4), (2, 1, 4), (1, 3, 4), (3, 0, 4), (2, 0, 5), (1, 2, 5), (3, 1, 5), (0, 3, 5)]
+        _OKTA[0] = (list(v), list(f))
+        for d in (1, 2):
+            v = list(v)
+            kenar = {}
+
+            def orta(i, j):
+                k = (min(i, j), max(i, j))
+                if k not in kenar:
+                    kenar[k] = len(v)
+                    v.append(B.norm(B.mul(B.add(v[i], v[j]), 0.5)))
+                return kenar[k]
+            f2 = []
+            for a, b, c in f:
+                ab, bc, ca = orta(a, b), orta(b, c), orta(c, a)
+                f2 += [(a, ab, ca), (b, bc, ab), (c, ca, bc), (ab, bc, ca)]
+            f = f2
+            _OKTA[d] = (list(v), list(f))
+    return _OKTA[detay]
+
+
+def _kume(g, c, rx, ry, rz, rnd, tonlar, detay=1, kabuk=None, puruz=0.2, leke=2, alt=0.62, ana=0):
+    """Yaprak kümesi: kabarık, düzensiz küre (alt yarısı basık), köşeleri kaynaklı (yumuşak gölgelenir). Küme tek ana
+    tondadır (ana: tonlar sırası), altı koyu ton. leke: yüzeyin hemen üstünde küçük yaprak lekeleri (kalem darbesi gibi;
+    ana tondan açık / koyu). kabuk: verilirse biraz büyük ters kopya (dış hat çizgisi)."""
+    v, f = _okta(detay)
+    faz = [rnd.uniform(0, 6.28) for _ in range(3)]
+    pts = []
+    for p in v:
+        k = 1.0 + rnd.uniform(-puruz, puruz) + 0.13 * math.sin(3.1 * p[0] + faz[0]) * math.cos(2.7 * p[1] + faz[1]) + 0.08 * math.sin(4.3 * p[2] + faz[2])
+        z = p[2] * (alt if p[2] < 0 else 1.0)
+        pts.append((c[0] + p[0] * rx * k, c[1] + p[1] * ry * k, c[2] + z * rz * k))
+    g.sid += 1
+    ust = []
+    for a, b, d in f:
+        P = [pts[a], pts[b], pts[d]]
+        n = B.norm(B.newell(P))
+        g.yuz(P, tonlar[1] if n[2] < -0.35 else tonlar[ana])
+        if n[2] > -0.1:
+            ust.append((P, n))
+    acik, koyu_t = (tonlar[2] if ana != 2 else tonlar[0]), (tonlar[3] if ana != 3 else tonlar[1])
+    for i in range(leke if ust else 0):                        # yaprak lekeleri: küçük üçgenler, yüzeyin 2,5 cm üstünde
+        P, n = ust[rnd.randrange(len(ust))]
+        w0, w1 = rnd.uniform(0.15, 0.6), rnd.uniform(0.15, 0.4)
+        o = tuple(P[0][q] * (1 - w0 - w1) + P[1][q] * w0 + P[2][q] * w1 for q in range(3))
+        u = B.norm(B.sub(P[1 + i % 2], P[0]))
+        w = B.cross(n, u)
+        s = rnd.uniform(0.09, 0.16)
+        q0 = B.add(o, B.mul(n, 0.025))
+        q1 = B.add(B.add(q0, B.mul(u, s * 1.6)), B.mul(w, s * 0.3))
+        q2 = B.add(B.add(q0, B.mul(u, s * 0.6)), B.mul(w, s * 0.9))
+        g.yuz([q0, q1, q2], acik if (n[2] > 0.3) == (i % 3 != 0) else koyu_t)
+    if kabuk:
+        t = 0.028
+        for a, b, d in f:
+            P = [pts[d], pts[b], pts[a]]
+            g.yuz([(c[0] + (p[0] - c[0]) * (1 + t / max(rx, 0.2)), c[1] + (p[1] - c[1]) * (1 + t / max(ry, 0.2)), c[2] + (p[2] - c[2]) * (1 + t / max(rz, 0.2))) for p in P], kabuk)
+    g.sid += 1
+
+
+def _filiz(g, c, boy, rnd, mat, n=3):
+    """Küme merkezinden yukarı / dışa açılan ince filiz dalları (iki yüzlü, sivrilen şerit): kışın ince dal dokusu."""
+    g.sid += 1
+    for i in range(n):
+        a, e = rnd.uniform(0, 6.28), rnd.uniform(0.35, 1.25)
+        L = boy * rnd.uniform(0.7, 1.15)
+        d = (math.cos(a) * math.cos(e), math.sin(a) * math.cos(e), math.sin(e))
+        te = (-math.sin(a) * 0.022, math.cos(a) * 0.022, 0.0)
+        orta = B.add(B.add(c, B.mul(d, L * 0.55)), (0, 0, L * 0.08))
+        uc = B.add(c, B.mul(d, L))
+        for pts in ([B.sub(c, te), B.add(c, te), B.add(orta, B.mul(te, 0.6)), B.sub(orta, B.mul(te, 0.6))], [B.sub(orta, B.mul(te, 0.6)), B.add(orta, B.mul(te, 0.6)), uc]):
+            g.yuz(pts, mat)
+            g.yuz(pts[::-1], mat)
+        if i == 0:
+            yan = B.add(orta, (math.cos(a + 1.1) * L * 0.4, math.sin(a + 1.1) * L * 0.4, L * 0.3))      # yan filiz
+            pts = [B.sub(orta, B.mul(te, 0.5)), B.add(orta, B.mul(te, 0.5)), yan]
+            g.yuz(pts, mat)
+            g.yuz(pts[::-1], mat)
+    g.sid += 1
+
+
+def _boru(g, yol, yaricap, kenar, mat, kapak=False, faz=0.0, kabuk=None, mat2=None, rnd=None):
+    """Yol boyunca (nokta listesi) halka halka boru. yaricap: her nokta için sayı ya da (kenar uzunluğunda) liste.
+    Son yarıçap 0,02'den küçükse uç sivrilir. kabuk: ters kopya (dış hat). mat2 + rnd: bazı yüzler ikinci tonda."""
+    halkalar = []
+    n = len(yol)
+    for i, p in enumerate(yol):
+        d = B.norm(B.sub(yol[min(i + 1, n - 1)], yol[max(i - 1, 0)]))
+        ref = (0, 0, 1) if abs(d[2]) < 0.9 else (1, 0, 0)
+        a = B.norm(B.cross(ref, d))
+        b = B.cross(d, a)
+        if abs(d[2]) >= 0.9:                                  # dik gövdede halkalar x, y eksenine hizalı (burulma olmasın)
+            a, b = (1, 0, 0), (0, 1, 0)
+        r = yaricap[i]
+        h = []
+        for k in range(kenar):
+            t = 2 * math.pi * k / kenar + faz
+            rk = r[k] if isinstance(r, (list, tuple)) else r
+            h.append(B.add(p, B.add(B.mul(a, math.cos(t) * rk), B.mul(b, math.sin(t) * rk))))
+        halkalar.append(h)
+    g.sid += 1
+    for i in range(n - 1):
+        for k in range(kenar):
+            j = (k + 1) % kenar
+            m = mat2 if (mat2 and rnd and rnd.random() < 0.3) else mat
+            g.yuz([halkalar[i][k], halkalar[i][j], halkalar[i + 1][j], halkalar[i + 1][k]], m)
+    if kapak:
+        g.yuz(halkalar[-1], mat)
+    if kabuk:
+        t = 0.045
+        for i in range(n - 1):
+            for k in range(kenar):
+                j = (k + 1) % kenar
+                q = []
+                for (hi, kk) in ((i + 1, k), (i + 1, j), (i, j), (i, k)):
+                    p, o = halkalar[hi][kk], yol[hi]
+                    d = B.sub(p, o)
+                    L = math.sqrt(B.dot(d, d)) or 1.0
+                    q.append(B.add(p, B.mul(d, t / L)))
+                g.yuz(q, kabuk)
+    g.sid += 1
+
+
+def _egri(p0, p1, rnd, sapma=0.12, sark=0.0, n=3):
+    """p0 → p1 arası hafif eğri yol (n nokta): ortası rastgele yana kayar; sark > 0 ise uç aşağı sarkar, < 0 yukarı kıvrılır."""
+    d = B.sub(p1, p0)
+    L = math.sqrt(B.dot(d, d))
+    yol = []
+    kay = (rnd.uniform(-sapma, sapma) * L, rnd.uniform(-sapma, sapma) * L, rnd.uniform(0.0, sapma) * L)
+    for i in range(n):
+        t = i / float(n - 1)
+        w = math.sin(math.pi * t)
+        yol.append((p0[0] + d[0] * t + kay[0] * w, p0[1] + d[1] * t + kay[1] * w, p0[2] + d[2] * t + kay[2] * w - sark * L * t * t + sark * L * t))
+    yol[-1] = p1
+    return yol
+
+
+# Tür tablosu. govde: (boy, yarıçap, ton) · tac: (merkezin gövde tepesinden yüksekliği, rx, ry, rz) · kume: (sayı, yarıçap alt, üst)
+# sark: dal uçları sarkar (söğüt, huş) · bosluk: 0…1 kümeler arası boşluk (seyrek taç) · alt_dal: en alt dalın gövdedeki yeri (0…1)
+AGAC_TUR = {
+    "cinar":   dict(ad="Londra çınarı (benekli gövde, geniş yayvan taç)", govde=(3.5, 0.2, "cinar"), tac=(1.5, 2.35, 2.3, 1.55), kume=(20, 0.72, 1.0), sark=0.0, bosluk=0.25, alt_dal=0.72),
+    "mese":    dict(ad="Meşe (kalın gövde, düzensiz geniş taç)", govde=(2.3, 0.3, "koyu"), tac=(1.5, 2.6, 2.45, 1.7), kume=(24, 0.7, 1.05), sark=0.0, bosluk=0.35, alt_dal=0.6),
+    "ihlamur": dict(ad="Ihlamur (uzun oval taç)", govde=(2.3, 0.19, "kahve"), tac=(2.3, 1.55, 1.5, 2.45), kume=(20, 0.6, 0.85), sark=0.0, bosluk=0.15, alt_dal=0.8),
+    "hus":     dict(ad="Huş (beyaz ince gövde, seyrek sarkık taç)", govde=(3.2, 0.11, "hus"), tac=(1.3, 1.25, 1.2, 1.9), kume=(13, 0.42, 0.62), sark=0.35, bosluk=0.6, alt_dal=0.6),
+    "kavak":   dict(ad="Kavak (dar, uzun)", govde=(1.1, 0.17, "gri"), tac=(3.1, 0.8, 0.78, 3.2), kume=(17, 0.5, 0.68), sark=-0.2, bosluk=0.1, alt_dal=0.9),
+    "kestane": dict(ad="At kestanesi (yuvarlak, yoğun taç)", govde=(2.4, 0.25, "kahve"), tac=(1.75, 2.05, 2.0, 1.85), kume=(22, 0.72, 0.98), sark=0.0, bosluk=0.08, alt_dal=0.75),
+    "sogut":   dict(ad="Söğüt (sarkık)", govde=(2.3, 0.27, "koyu"), tac=(1.1, 2.2, 2.15, 1.3), kume=(15, 0.62, 0.85), sark=0.3, bosluk=0.3, alt_dal=0.7),
+    "meyve":   dict(ad="Elma ağacı (kırmızı meyveli)", govde=(1.5, 0.15, "kahve"), tac=(0.95, 1.45, 1.4, 1.0), kume=(13, 0.5, 0.7), sark=0.0, bosluk=0.3, alt_dal=0.65),
+    "genc":    dict(ad="Genç sokak ağacı (koruma kafesli)", govde=(2.1, 0.06, "kahve"), tac=(0.85, 0.8, 0.78, 1.0), kume=(9, 0.36, 0.5), sark=0.0, bosluk=0.3, alt_dal=0.85),
+}
+
+
+def _iskelet(tur, tohum):
+    """Ağacın iskeleti (türe ve tohuma göre, ayrıntı düzeyinden bağımsız: üç düzey aynı ağacı çizer).
+    Dönen: gövde yolu, gövde yarıçapları, kümeler [(merkez, yarıçap, dış mı)], dallar [(yol, r0, r1, derinlik)]."""
+    T = AGAC_TUR[tur]
+    rnd = random.Random(tohum * 7919 + sum(ord(ch) for ch in tur))
+    boy, r, ton = T["govde"]
+    boy *= rnd.uniform(0.92, 1.1)
+    egx, egy = rnd.uniform(-0.22, 0.22) * min(1.0, r / 0.2), rnd.uniform(-0.18, 0.18) * min(1.0, r / 0.2)
+    govde = [(0.0, 0.0, 0.0), (0.0, 0.0, 0.3), (egx * 0.5, egy * 0.5, boy * 0.42), (egx * 0.2, egy * 0.9, boy * 0.75), (egx * 0.6, egy * 0.5, boy)]
+    tepe = govde[-1]
+    dz, rx, ry, rz = T["tac"]
+    k = rnd.uniform(0.92, 1.08)
+    rx, ry, rz = rx * k, ry * k * rnd.uniform(0.93, 1.07), rz * rnd.uniform(0.93, 1.07)
+    mrk = (tepe[0] + rnd.uniform(-0.15, 0.15), tepe[1] + rnd.uniform(-0.15, 0.15), boy + dz)
+    n, k0, k1 = T["kume"]
+    kumeler = []
+    alt_sinir = boy * T["alt_dal"]
+    for i in range(n):
+        # altın açı sarmalı: taç elipsoidinin kabuğuna yakın, düzensiz
+        f = (i + 0.5) / n
+        zz = 1 - 1.75 * f                                        # 1 (tepe) … −0.75 (alt): tacın dibi açık kalır
+        aci = i * 2.39996 + rnd.uniform(-0.35, 0.35)
+        rr = math.sqrt(max(0.0, 1 - zz * zz))
+        kat = rnd.uniform(0.6, 0.86) if i % 4 else rnd.uniform(0.2, 0.4)       # dörtte biri içeride: taç dolu, ama boşluklu
+        c = (mrk[0] + math.cos(aci) * rr * rx * kat, mrk[1] + math.sin(aci) * rr * ry * kat, max(alt_sinir + 0.3, mrk[2] + zz * rz * kat))
+        kr = rnd.uniform(k0, k1) * (0.92 - 0.3 * T["bosluk"]) * (1.1 if kat > 0.5 else 0.95)
+        kumeler.append((c, kr, kat > 0.5))
+    # dallar: her küme merkezi, gövdeye daha yakın bağlanmış en yakın düğüme bağlanır (ağaç gibi dallanır)
+    dugum = [(govde[3], 0), (tepe, 0)]
+    dallar = []
+    sira = sorted(range(n), key=lambda i: B.dot(B.sub(kumeler[i][0], tepe), B.sub(kumeler[i][0], tepe)))
+    for i in sira:
+        c = kumeler[i][0]
+        en, eu = None, 1e9
+        for p, der in dugum:
+            d = B.sub(c, p)
+            u = math.sqrt(B.dot(d, d)) * (1.0 + 0.25 * der)
+            if u < eu and c[2] >= p[2] - 0.6:
+                en, eu = (p, der), u
+        if en is None:
+            en = (tepe, 0)
+        p, der = en
+        der += 1
+        r0 = r * (0.56 if der == 1 else 0.32 if der == 2 else 0.2)
+        yol = _egri(p, c, rnd, 0.1, (T["sark"] if der > 1 else T["sark"] * 0.4) or -0.12)
+        dallar.append((yol, max(0.03, r0), max(0.016, r0 * 0.42), der))
+        dugum.append((c, der))
+        dugum.append((yol[1], der))
+    rg = [[r * (1.65 + 0.4 * math.sin(3 * (2 * math.pi * q / 6) + tohum)) for q in range(6)], r * 1.12, r, r * 0.86, r * 0.7]
+    return dict(govde=govde, rg=rg, kumeler=kumeler, dallar=dallar, mrk=mrk, r3=(rx, ry, rz), ton=ton, boy=boy, r=r, rnd=rnd, T=T)
+
+
+def _kabuk_izi(g, S, tur, rnd):
+    """Kabuk dokusu: gövdede kısa düşey kalem taramaları; çınarda benekler, huşta siyah yatay izler."""
+    govde, r, ton = S["govde"], S["r"], S["ton"]
+    koyu_m = _govde_mat(ton, True)
+
+    def nokta(t, aci, tasma=0.012):
+        # gövde yolunda t (0…1) konumu + açıdaki yüzey noktası
+        f = 1 + t * (len(govde) - 2)
+        i = min(int(f), len(govde) - 2)
+        u = f - i
+        p = tuple(govde[i][k] + (govde[i + 1][k] - govde[i][k]) * u for k in range(3))
+        rr = (r * 1.12 if i < 2 else r * 0.95) + tasma
+        return (p[0] + math.cos(aci) * rr, p[1] + math.sin(aci) * rr, p[2]), (math.cos(aci), math.sin(aci), 0.0)
+    if tur == "cinar":
+        benek = (PM("Govde_Iz", "#ddd7bd"), PM("Govde_Iz", "#8f9a7a"), PM("Govde_Iz", "#a18a74"))
+        for i in range(10):
+            aci, t = rnd.uniform(0, 6.28), rnd.uniform(0.05, 0.95)
+            p, n = nokta(t, aci)
+            te = (-n[1], n[0], 0)
+            w, h = rnd.uniform(0.06, 0.1), rnd.uniform(0.14, 0.3)
+            levha(g, [B.add(p, B.mul(te, -w)), B.add(B.add(p, B.mul(te, w * 0.8)), (0, 0, 0.04)), B.add(B.add(p, B.mul(te, w)), (0, 0, h)), B.add(B.add(p, B.mul(te, -w * 0.7)), (0, 0, h * 0.85))], benek[i % 3])
+    elif tur == "hus":
+        for i in range(9):
+            aci, t = rnd.uniform(0, 6.28), rnd.uniform(0.05, 0.98)
+            p, n = nokta(t, aci)
+            te = (-n[1], n[0], 0)
+            w = rnd.uniform(0.04, 0.08)
+            levha(g, [B.add(p, B.mul(te, -w)), B.add(p, B.mul(te, w)), B.add(B.add(p, B.mul(te, w * 0.7)), (0, 0, 0.035)), B.add(B.add(p, B.mul(te, -w * 0.8)), (0, 0, 0.03))], koyu_m)
+    else:
+        for i in range(8):
+            aci, t = rnd.uniform(0, 6.28), rnd.uniform(0.02, 0.85)
+            p, n = nokta(t, aci)
+            te = (-n[1], n[0], 0)
+            h = rnd.uniform(0.18, 0.4)
+            levha(g, [B.add(p, B.mul(te, -0.012)), B.add(p, B.mul(te, 0.012)), B.add(B.add(p, B.mul(te, 0.012)), (0, 0, h)), B.add(B.add(p, B.mul(te, -0.012)), (0, 0, h))], koyu_m)
+
+
+def _agac7(g, tur, tohum, duzey=0, yaprak=True, ek=None):
+    """Gerçekçi ağaç. duzey: 0 yakın · 1 hafif (birkaç küme + gövde + ana dallar) · 2 uzak (gövde + iki küme)."""
+    S = _iskelet(tur, tohum)
+    rnd = random.Random(tohum * 31 + 5)
+    gm = _govde_mat(S["ton"])
+    govde, rg = S["govde"], S["rg"]
+    if duzey == 2:
+        _boru(g, [govde[0], govde[-1]], [S["r"] * 1.3, S["r"] * 0.8], 4, gm, kapak=False, faz=0.785)
+        if yaprak:
+            rx, ry, rz = S["r3"]
+            _kume(g, S["mrk"], rx * 0.92, ry * 0.92, rz * 0.9, rnd, TON_DOK, detay=0, puruz=0.1, leke=0, alt=0.8)
+            _kume(g, (S["mrk"][0] + rx * 0.2, S["mrk"][1] - ry * 0.15, S["mrk"][2] + rz * 0.25), rx * 0.7, ry * 0.7, rz * 0.7, rnd, TON_DOK, detay=0, puruz=0.1, leke=0, alt=0.8)
+        yumusat(g)
+        return
+    if duzey == 1:
+        _boru(g, [govde[0], govde[2], govde[-1]], [S["r"] * 1.5, S["r"], S["r"] * 0.75], 4, gm, kapak=False, faz=0.785)
+        for yol, r0, r1, der in S["dallar"]:
+            if der == 1:
+                _boru(g, [yol[0], yol[-1]], [r0, r1], 3, gm, kapak=False)
+        if yaprak:
+            rx, ry, rz = S["r3"]
+            _kume(g, S["mrk"], rx * 0.78, ry * 0.78, rz * 0.8, rnd, TON_DOK, detay=1, puruz=0.16, leke=0, alt=0.75)
+            dis = [k for k in S["kumeler"] if k[2]]
+            for c, kr, _ in dis[::max(1, len(dis) // 5)][:5]:
+                _kume(g, c, kr * 1.25, kr * 1.2, kr * 1.0, rnd, TON_DOK, detay=0, puruz=0.15, leke=0)
+        yumusat(g)
+        return
+    # ---- yakın görünüm
+    _boru(g, govde, rg, 6, gm, kapak=False, kabuk=KABUK_GOVDE)
+    for yol, r0, r1, der in S["dallar"]:
+        if der == 1:
+            _boru(g, yol, [r0, (r0 + r1) / 2, r1], 4, gm, kapak=False)
+            a, b = yol[1], yol[2]                               # dalın üstünde kar şeridi (yalnız kışın görünür)
+            d = B.norm(B.sub(b, a))
+            yan = B.norm(B.cross(d, (0, 0, 1))) if abs(d[2]) < 0.95 else (1, 0, 0)
+            w = r0 * 0.8
+            ust = (0, 0, (r0 + r1) / 2 + 0.015)
+            levha(g, [B.add(B.add(a, B.mul(yan, -w)), ust), B.add(B.add(a, B.mul(yan, w)), ust), B.add(B.add(b, B.mul(yan, w * 0.6)), ust), B.add(B.add(b, B.mul(yan, -w * 0.6)), ust)], DAL_KAR)
+        else:
+            _boru(g, yol, [r0, r0 * 0.75, r1], 3, gm, kapak=False)
+    _kabuk_izi(g, S, tur, rnd)
+    for c, kr, dis in S["kumeler"]:
+        if dis:
+            _filiz(g, c, kr * 1.05, rnd, gm, 2)
+    if yaprak:
+        for i, (c, kr, dis) in enumerate(S["kumeler"]):
+            # ton: tacın üstündeki kümeler açık (ışık), altındakiler mavimsi (gölge), ortadakiler orta; biraz karışık
+            yuk = (c[2] - S["mrk"][2]) / max(0.3, S["r3"][2])
+            ana = 2 if yuk > 0.3 else 3 if yuk < -0.3 else 0
+            if rnd.random() < 0.22:
+                ana = (0, 2, 3)[rnd.randrange(3)]
+            _kume(g, c, kr * rnd.uniform(1.0, 1.2), kr * rnd.uniform(1.0, 1.2), kr * rnd.uniform(0.72, 0.9), rnd, TON_DOK, detay=1,
+                  kabuk=KABUK_DOK if dis else None, leke=8 if dis else 2, ana=ana)
+    if ek:
+        ek(g, S, rnd)
+    yumusat(g)
+
+
+def yumusat(g):
+    """Köşe kaynağı: yaprak, gövde, iğne ve kabuk yüzlerinin aynı konumdaki köşelerine ortak (alan ağırlıklı) normal
+    verir (g.vn). Unity'ye bu köşeler paylaşılarak yazılır (yumuşak gölgeleme); önizleme de bu normallerle boyar."""
+    etiket = ("_Yaprak_", "_Govde_", "_Igne_", "_Kabuk_")
+    top_ = {}
+    yuz_n = []
+    for f, mi in zip(g.f, g.fm):
+        m = g.mats[mi]
+        if not any(e in m for e in etiket):
+            yuz_n.append(None)
+            continue
+        n = B.newell([g.v[i] for i in f])
+        yuz_n.append(n)
+        for i in f:
+            k = (m.split("_")[1] == "Kabuk", round(g.v[i][0] * 500), round(g.v[i][1] * 500), round(g.v[i][2] * 500))
+            a = top_.get(k)
+            top_[k] = n if a is None else B.add(a, n)
+    vn = [None] * len(g.v)
+    for f, mi, n in zip(g.f, g.fm, yuz_n):
+        if n is None:
+            continue
+        m = g.mats[mi]
+        for i in f:
+            k = (m.split("_")[1] == "Kabuk", round(g.v[i][0] * 500), round(g.v[i][1] * 500), round(g.v[i][2] * 500))
+            vn[i] = B.norm(top_[k])
+    g.vn = vn
+
+
+def _ek_meyve(renk):
+    def ek(g, S, rnd):
+        mm = PM("Meyve", renk)
+        for c, kr, dis in S["kumeler"]:
+            if not dis:
+                continue
+            for j in range(2):
+                a, b = rnd.uniform(0, 6.28), rnd.uniform(-0.5, 0.6)
+                meyve(g, c[0] + math.cos(a) * kr * 0.95 * math.cos(b), c[1] + math.sin(a) * kr * 0.95 * math.cos(b), c[2] + math.sin(b) * kr * 0.6, 0.09, mm, n=5)
+    return ek
+
+
+def _ek_cicek(g, S, rnd):
+    """At kestanesinin beyaz çiçek salkımları (mum gibi dik koniler), dış kümelerin üstünde."""
+    bm = PM("Cicek_Iz", "#fbf3ea")
+    for c, kr, dis in S["kumeler"]:
+        if not dis or c[2] < S["mrk"][2] - 0.3:
+            continue
+        for j in range(2):
+            a = rnd.uniform(0, 6.28)
+            x, y = c[0] + math.cos(a) * kr * 0.5, c[1] + math.sin(a) * kr * 0.5
+            dsil(g, x, y, c[2] + kr * 0.55, c[2] + kr * 0.55 + 0.38, 0.09, 4, bm, r1=0.0, kapak=(False, False))
+
+
+def _ek_sogut(g, S, rnd):
+    """Söğüdün sarkan dal perdeleri: dış kümelerden yere doğru inen ince, iki yüzlü şeritler."""
+    for c, kr, dis in S["kumeler"]:
+        if not dis:
+            continue
+        for j in range(5):
+            a = rnd.uniform(0, 6.28)
+            x, y = c[0] + math.cos(a) * kr * 0.8, c[1] + math.sin(a) * kr * 0.8
+            L = rnd.uniform(1.0, 2.0)
+            te = (-math.sin(a) * 0.06, math.cos(a) * 0.06, 0)
+            ust, alt = (x, y, c[2] - kr * 0.2), (x + math.cos(a) * 0.12, y + math.sin(a) * 0.12, max(0.5, c[2] - kr * 0.2 - L))
+            levha(g, [B.add(ust, B.mul(te, -1)), B.add(ust, te), B.add(alt, B.mul(te, 0.25)), B.add(alt, B.mul(te, -0.25))], YD_KOYU if j % 2 else YD, cift=True)
+
+
+def _ek_kafes(g, S, rnd):
+    """Genç sokak ağacının koruma kafesi: dört demir dikme + iki çember, yanında ahşap kazık ve bağ."""
+    for i in range(4):
+        a = math.pi / 4 + i * math.pi / 2
+        cubuk(g, (math.cos(a) * 0.32, math.sin(a) * 0.32, 0), (math.cos(a) * 0.32, math.sin(a) * 0.32, 1.25), 0.03, DEMIR_S)
+    for z in (0.45, 1.2):
+        for i in range(4):
+            a0, a1 = math.pi / 4 + i * math.pi / 2, math.pi / 4 + (i + 1) * math.pi / 2
+            cubuk(g, (math.cos(a0) * 0.32, math.sin(a0) * 0.32, z), (math.cos(a1) * 0.32, math.sin(a1) * 0.32, z), 0.025, DEMIR_S)
+    cubuk(g, (0.16, 0.05, 0), (0.16, 0.05, 1.7), 0.05, AHSAP)
+    cubuk(g, (0.16, 0.05, 1.55), (0.02, 0.0, 1.55), 0.03, AHSAP2)
+
+
+def _cam7(g, tohum, duzey=0):
+    """Çam / köknar: düz gövde, üst üste binen, kenarı dişli konik katlar (iğne yapraklı: kışın da yeşil)."""
+    rnd = random.Random(tohum * 131 + 9)
+    h = rnd.uniform(0.9, 1.3)
+    kat = 5 + tohum % 2
+    R, boy = rnd.uniform(1.35, 1.6), rnd.uniform(5.2, 6.2)
+    gm = _govde_mat("koyu")
+    _boru(g, [(0, 0, 0), (0, 0, h + 0.5)], [0.2, 0.14], 4 if duzey else 6, gm, kapak=False, kabuk=None if duzey else KABUK_GOVDE)
+    if duzey == 2:
+        dsil(g, 0, 0, h, boy, R * 0.9, 5, IGNE[0], r1=0.0, kapak=(True, False))
+        yumusat(g)
+        return
+    kat = 3 if duzey == 1 else kat
+    kenar = 6 if duzey == 1 else 10
+    z = h
+    for i in range(kat):
+        f = i / float(kat)
+        r = R * (1 - f * 0.78)
+        dz = (boy - h) / kat * 1.45
+        tepe = (rnd.uniform(-0.05, 0.05), rnd.uniform(-0.05, 0.05), z + dz)
+        etek = []
+        faz = rnd.uniform(0, 6.28)
+        for k in range(kenar):
+            a = 2 * math.pi * k / kenar + faz
+            rr = r * (1.0 if k % 2 == 0 else 0.72) * rnd.uniform(0.92, 1.08)
+            etek.append((math.cos(a) * rr, math.sin(a) * rr, z - (0.16 if k % 2 == 0 else 0.0) + rnd.uniform(-0.04, 0.04)))
+        g.sid += 1
+        for k in range(kenar):
+            j = (k + 1) % kenar
+            n = B.norm(B.newell([etek[k], etek[j], tepe]))
+            t = rnd.random()
+            g.yuz([etek[k], etek[j], tepe], IGNE[2] if (n[0] * 0.5 - n[1] * 0.6 > 0.25 and t < 0.7) else IGNE[3] if n[0] * 0.5 - n[1] * 0.6 < -0.3 else IGNE[0])
+            g.yuz([etek[j], etek[k], (0, 0, z + 0.25)], IGNE[1])                    # katın koyu altı
+            if duzey == 0 and i % 2 == 0:
+                c = (0, 0, z + dz * 0.4)
+                g.yuz([tuple(c[q] + (p[q] - c[q]) * 1.05 for q in range(3)) for p in (tepe, etek[j], etek[k])], KABUK_IGNE)
+        g.sid += 1
+        z += (boy - h) / kat
+    yumusat(g)
+
+
+def _cali7(g, tip, tohum, duzey=0):
+    """Çalılar: genel (yaprak döken, birkaç küme), şimşir küre, ortanca (renkli çiçek topları), lavanta (mor başaklar)."""
+    rnd = random.Random(tohum * 53 + len(tip))
+    if tip == "simsir":
+        dsil(g, 0, 0, 0, 0.3, 0.06, 4, _govde_mat("koyu"), kapak=(False, False))
+        _kume(g, (0, 0, 0.72), 0.62, 0.62, 0.6, rnd, TON_SABIT, detay=2 if duzey == 0 else 1 if duzey == 1 else 0, kabuk=YS_KABUK if duzey == 0 else None, puruz=0.04, leke=6 if duzey == 0 else 0, alt=0.85)
+    elif tip == "lavanta":
+        _kume(g, (0, 0, 0.26), 0.5, 0.48, 0.34, rnd, TON_SABIT, detay=1 if duzey < 2 else 0, kabuk=YS_KABUK if duzey == 0 else None, leke=0, alt=0.5)
+        if duzey < 2:
+            mor = (PM("Cicek", "#9a86c8"), PM("Cicek", "#b39ad6"))
+            for i in range(14 if duzey == 0 else 6):
+                a, rr = rnd.uniform(0, 6.28), rnd.uniform(0.05, 0.42)
+                x, y = math.cos(a) * rr, math.sin(a) * rr
+                cubuk(g, (x, y, 0.4), (x + math.cos(a) * 0.08, y + math.sin(a) * 0.08, 0.72 + rnd.uniform(0, 0.12)), 0.035, mor[i % 2])
+    else:
+        n = {"genel": 4, "ortanca": 5}[tip] if duzey == 0 else 2 if duzey == 1 else 1
+        ton = TON_DOK
+        merkez = []
+        for i in range(n):
+            a = i * 2.4 + rnd.uniform(-0.3, 0.3)
+            rr = 0.0 if i == 0 else rnd.uniform(0.35, 0.55)
+            kr = rnd.uniform(0.42, 0.58) * (1.15 if i == 0 else 1.0) * (1.4 if duzey == 2 else 1.0)
+            c = (math.cos(a) * rr, math.sin(a) * rr, kr * 0.72 + (0.12 if i == 0 else 0.0))
+            merkez.append((c, kr))
+            _kume(g, c, kr, kr, kr * 0.85, rnd, ton, detay=1 if duzey < 2 else 0, kabuk=KABUK_DOK if (duzey == 0 and i < 3) else None, leke=2 if duzey == 0 else 0, alt=0.7)
+        if duzey == 0:
+            cubuk(g, (0, 0, 0), (0.05, 0.02, 0.5), 0.06, _govde_mat("koyu"))
+            cubuk(g, (0, 0, 0.1), (0.3, -0.2, 0.5), 0.04, _govde_mat("koyu"))
+            cubuk(g, (0, 0, 0.1), (-0.28, 0.18, 0.5), 0.04, _govde_mat("koyu"))
+        if tip == "ortanca" and duzey < 2:
+            renk = (PM("Cicek", "#e9a3c1"), PM("Cicek", "#a9b9e6"), PM("Cicek", "#c9a3dc"), PM("Cicek", "#f3d3df"))
+            for i, (c, kr) in enumerate(merkez):
+                for j in range(3 if duzey == 0 else 1):
+                    a, b = rnd.uniform(0, 6.28), rnd.uniform(0.15, 1.0)
+                    p = (c[0] + math.cos(a) * kr * 0.85 * math.cos(b), c[1] + math.sin(a) * kr * 0.85 * math.cos(b), c[2] + math.sin(b) * kr * 0.7)
+                    meyve(g, p[0], p[1], p[2] - 0.05, 0.17, renk[(i + j + tohum) % 4], n=6, rz=0.2)
+        elif tip == "genel" and tohum % 3 == 2 and duzey == 0:
+            for i in range(6):
+                a = i * 1.05
+                meyve(g, math.cos(a) * 0.5, math.sin(a) * 0.48, 0.75 + 0.1 * (i % 2), 0.08, CICEK[i % len(CICEK)], n=5)
+    yumusat(g)
+
+
+YS_KABUK = ROL("Kabuk", "k", "#3e4a3a")
+PARCA_UZAK = {}     # ad -> en uzak görünüm üreticisi (yalnız ağaç ve çalılar; JSON "uzaklar")
+
+
+def _agac_ekle(ad, aciklama, hedef, fn):
+    """fn(g, duzey): üç ayrıntı düzeyini aynı adla kaydeder."""
+    ekle(ad, "agac", aciklama, (lambda g, f=fn: f(g, 0)), hedef, hafif=(lambda g, f=fn: f(g, 1)))
+    PARCA_UZAK[ad] = (lambda g, f=fn: f(g, 2))
+
+
+# ad → (tür, tohum, ek). Eski adlar korunur (kayıtlı tasarımlar ve sahneler bozulmasın): yuvarlak = at kestanesi.
+_AGAC_AD = [("yuvarlak", "kestane", 4, None), ("kestane", "kestane", 2, _ek_cicek), ("cinar", "cinar", 3, None), ("mese", "mese", 2, None),
+            ("ihlamur", "ihlamur", 2, None), ("hus", "hus", 2, None), ("kavak", "kavak", 2, None), ("sogut", "sogut", 2, _ek_sogut),
+            ("meyve", "meyve", 3, "meyve"), ("genc", "genc", 2, _ek_kafes)]
+for _on, _tur, _n, _ek in _AGAC_AD:
+    for _i in range(1, _n + 1):
+        _e = _ek_meyve(("#d8402f", "#e8662f", "#c8343a")[_i % 3]) if _ek == "meyve" else _ek
+        _to = _i + (40 if _on == "kestane" else 0)
+        _agac_ekle("agac_%s_%d" % (_on, _i), "Ağaç: %s %d" % (AGAC_TUR[_tur]["ad"] + (", çiçekli" if _on == "kestane" else ""), _i), "agac",
+                   (lambda g, d, t=_tur, s=_to, e=_e: _agac7(g, t, s, d, True, e if d == 0 else None)))
+for _i in range(1, 4):
+    _agac_ekle("agac_cam_%d" % _i, "Ağaç: çam / köknar (katmanlı konik) %d" % _i, "agac", (lambda g, d, s=_i: _cam7(g, s, d)))
+_agac_ekle("agac_ciplak_1", "Ağaç: çıplak meşe (dal iskeleti)", "agac", (lambda g, d: _agac7(g, "mese", 9, d, False)))
+for _i in range(1, 4):
+    _agac_ekle("cali_%d" % _i, "Çalı %d" % _i, "cali", (lambda g, d, s=_i: _cali7(g, "genel", s, d)))
+_agac_ekle("cali_simsir", "Çalı: şimşir küre (budanmış)", "cali", (lambda g, d: _cali7(g, "simsir", 1, d)))
+_agac_ekle("cali_ortanca", "Çalı: ortanca (renkli çiçek topları)", "cali", (lambda g, d: _cali7(g, "ortanca", 2, d)))
+_agac_ekle("cali_lavanta", "Çalı: lavanta", "cali", (lambda g, d: _cali7(g, "lavanta", 3, d)))
+
+
+def uzak_parca(ad):
+    """Parçanın en uzak görünümü (yalnız ağaç ve çalılarda; yoksa None)."""
+    fn = PARCA_UZAK.get(ad)
+    if fn is None:
+        return None
+    g = G(ad)
+    fn(g)
+    return g
+
+
+@_cevre("Çit bitkisi (budanmış şimşir çit, bir hücre)")
+def cit_bitki(g):
+    rnd = random.Random(77)
+    kutu(g, -A, A, -0.3, 0.3, 0.0, 0.98, YP, atla=("zn",))
+    kutu(g, -A + 0.03, A - 0.03, -0.27, 0.27, 0.98, 1.06, YP2, atla=("zn",))
+    for i in range(10):                                         # yaprak lekeleri (ön ve arka yüzde)
+        x, z = rnd.uniform(-A + 0.15, A - 0.3), rnd.uniform(0.12, 0.8)
+        s = -1 if i % 2 else 1
+        y = s * 0.312
+        pts = [(x, y, z), (x + 0.16, y, z + 0.03), (x + 0.07, y, z + 0.13)]
+        levha(g, pts if s < 0 else pts[::-1], YS_KOYU if i % 3 else YS_MAVI)
 
 
 # ================================== KULLANIM TÜRLERİ ==================================
@@ -5061,8 +5613,10 @@ def yerlesim(t):
         ct = CATI_RENK[b["cati"] % len(CATI_RENK)]
         vr = T["vurgu"] or VURGU_RENK[karma(tohum, b["renk"], b["cati"], 7) % len(VURGU_RENK)]
         yp = YAPRAK_RENK[yaprak % len(YAPRAK_RENK)]
-        return dict(D=dv, d=koyu(dv, 0.9), C=ct, c=koyu(ct, 0.86), K=vr, T=TENTE_RENK[t.get("tente", 0) % len(TENTE_RENK)],
-                    Y=yp, y=koyu(yp, 0.88), k=cizgi_rengi(yp))
+        r = dict(D=dv, d=koyu(dv, 0.9), C=ct, c=koyu(ct, 0.86), K=vr, T=TENTE_RENK[t.get("tente", 0) % len(TENTE_RENK)], k=cizgi_rengi(yp))
+        r.update(yaprak_tonlari(yp))
+        r["kis"] = yaprak % len(YAPRAK_RENK) == KIS_RENGI          # önizleme: kışın yaprak döken ağaç çıplak
+        return r
 
     zorla = [None]
 
@@ -5547,6 +6101,32 @@ def kenarlar(g, en_kisa=EN_KISA):
     return cikti
 
 
+def _mevsim_atla(mat, r):
+    """Önizlemede oyundaki _PastelKis davranışının taslağı: kışın (yaprak rengi KIS_RENGI) yaprak döken yapraklar
+    ("_Dok_") çizilmez; dallardaki kar ("_DalKar_") yalnız kışın çizilir. Unity'de bunu gölgelendirici yapar (mesh aynı)."""
+    kis = r.get("kis", False)
+    return ("_Dok_" in mat and kis) or ("_DalKar_" in mat and not kis)
+
+
+def _normal_tasi(g, normaller, aci=0.0, don=0):
+    """Eklenecek yüzün köşe normallerini (parça ekseninde) hedef geometriye taşır: g.yuz'dan HEMEN ÖNCE çağrılır."""
+    vn = getattr(g, "vn", None)
+    if vn is None:
+        vn = g.vn = []
+    while len(vn) < len(g.v):
+        vn.append(None)
+    ca, sa = math.cos(aci), math.sin(aci)
+    for n in normaller:
+        if n is not None:
+            nx, ny = n[0], n[1]
+            if aci:
+                nx, ny = nx * ca - ny * sa, nx * sa + ny * ca
+            for _ in range(don % 4):
+                nx, ny = -ny, nx
+            n = (nx, ny, n[2])
+        vn.append(n)
+
+
 def bina(t, hafif=False, gizle=GIZLI_GRUP):
     """Tasarımdan tek geometri (metre, arsa ortalı, ön −Y, zemin z = 0). g.cizgiler: kalem çizgileri.
     gizle: atlanacak gruplar (varsayılan: iç mekân ve kepenk; iç görünüm için ör. ("Cati", "Duvar_On", "Kepenk", "Poset"))."""
@@ -5569,7 +6149,12 @@ def bina(t, hafif=False, gizle=GIZLI_GRUP):
             pg = parca_g(ad)
         karo = ad in CATI_KAROLARI
         ca, sa = math.cos(aci), math.sin(aci)
+        pvn = getattr(pg, "vn", None)
         for f, mi in zip(pg.f, pg.fm):
+            if _mevsim_atla(pg.mats[mi], r):
+                continue
+            if pvn:
+                _normal_tasi(g, [pvn[i] for i in f], aci, don)
             pts = []
             for i in f:
                 px, py, pz = pg.v[i]
@@ -5740,7 +6325,8 @@ def ornekler():
 
 # ================================== SAHNE (zemin + birden çok bina) ==================================
 
-SAHNE_RENK = dict(D="#f6f0e2", d="#e3dccb", C="#c8553f", c="#ad4835", K="#3f7d74", T="#c8553f", Y=YAPRAK_RENK[0], y=koyu(YAPRAK_RENK[0], 0.88), k=cizgi_rengi(YAPRAK_RENK[0]))
+SAHNE_RENK = dict(D="#f6f0e2", d="#e3dccb", C="#c8553f", c="#ad4835", K="#3f7d74", T="#c8553f", k=cizgi_rengi(YAPRAK_RENK[0]), kis=False)
+SAHNE_RENK.update(yaprak_tonlari(YAPRAK_RENK[0]))
 
 
 def sahne_merkezi(n, x, y):
@@ -5858,7 +6444,12 @@ def _yer_ekle(g, yer, hafif=False):
     ad, cx, cy, z, don, zs, kay, r, olcek, aci, ygrup, cam = yer
     pg = hafif_parca(ad) if hafif else parca_g(ad)
     ca, sa = math.cos(aci), math.sin(aci)
+    pvn = getattr(pg, "vn", None)
     for f, mi in zip(pg.f, pg.fm):
+        if _mevsim_atla(pg.mats[mi], r):
+            continue
+        if pvn:
+            _normal_tasi(g, [pvn[i] for i in f], aci, don)
         pts = []
         for i in f:
             px, py, pz = pg.v[i]
@@ -5892,10 +6483,16 @@ def sahne(sh, tasarimlar=None, gece=None):
     susler = sh.get("susler") or []
     if susler:
         sg = bina(dict(ad="sus", tohum=sh.get("tohum", 1), tur="konut", bloklar=[], susler=susler))
+        svn = getattr(sg, "vn", None)
         for f, mi in zip(sg.f, sg.fm):
+            if svn:
+                _normal_tasi(zg, [svn[j] if j < len(svn) else None for j in f])
             zg.yuz([sg.v[j] for j in f], sg.mats[mi])
     cz = kenarlar(zg)
+    zvn = getattr(zg, "vn", None)
     for f, mi in zip(zg.f, zg.fm):
+        if zvn:
+            _normal_tasi(g, [zvn[j] if j < len(zvn) else None for j in f])
         g.yuz([zg.v[j] for j in f], gece(zg.mats[mi], -1, True) if gece else zg.mats[mi])
     if gece:
         cz = [(a, b, "#15131f", w) for a, b, c, w in cz]
@@ -5914,7 +6511,10 @@ def sahne(sh, tasarimlar=None, gece=None):
             for _ in range(don):
                 px, py = -py, px
             return (ox + px, oy + py, oz + p[2])
+        bvn = getattr(bg, "vn", None)
         for f, mi in zip(bg.f, bg.fm):
+            if bvn:
+                _normal_tasi(g, [bvn[j] if j < len(bvn) else None for j in f], 0.0, don)
             g.yuz([cevir(bg.v[j]) for j in f], gece(bg.mats[mi], bi, acik) if gece else bg.mats[mi])
         cz += [(cevir(a), cevir(b2), "#15131f" if gece else c, w) for a, b2, c, w in bg.cizgiler]
     g.cizgiler = cz
@@ -6010,9 +6610,9 @@ def sahneler():
     S.append(dict(ad="georgian_meydan", n=16, tohum=11, zemin=z,
                   binalar=[_b("kaideli_ev", 2, 14), _b("terrace_houses", 7, 14), _b("kaideli_ev", 12, 14),
                            _b("terrace_houses", 1, 10, 1), _b("terrace_houses", 14, 10, 3), _b("kemerli_gecit", 1, 2, 1), _b("kemerli_gecit", 14, 2, 3)],
-                  susler=kor + [_sus("agac_cinar_1", -5.6, -5.4), _sus("agac_cinar_2", 5.8, -5.2), _sus("agac_cinar_3", -5.4, 5.6), _sus("agac_cinar_1", 5.6, 5.8),
+                  susler=kor + [_sus("agac_cinar_1", -5.6, -5.4), _sus("agac_mese_1", 5.8, -5.2), _sus("agac_kestane_1", -5.4, 5.6), _sus("agac_cinar_3", 5.6, 5.8),
                                 _sus("agac_cinar_2", 4.6, -0.4, 0, 0.8), _sus("bank", -3.0, 2.6, 180), _sus("bank", 3.4, 2.6, 180), _sus("bank", -0.6, -4.4, 90),
-                                _sus("cali_1", -6.6, 0.6), _sus("cali_2", 6.8, 2.6), _sus("cali_3", 2.6, 6.8), _sus("heykel", 2.6, -2.4, 0, 0.8),
+                                _sus("cali_ortanca", -6.6, 0.6), _sus("cali_simsir", 6.8, 2.6), _sus("cali_lavanta", 2.6, 6.8), _sus("cali_ortanca", -2.6, 6.6), _sus("heykel", 2.6, -2.4, 0, 0.8),
                                 _sus("sokak_lambasi", -12.4, -12.4), _sus("sokak_lambasi", 12.4, -12.4), _sus("sokak_lambasi", -12.4, 12.3), _sus("sokak_lambasi", 12.4, 12.3),
                                 _sus("telefon_kulubesi", 0.6, -18.4), _sus("posta_kutusu", -1.4, -18.2), _sus("bank", -5.6, -19.0), _sus("bank", 6.4, -19.0),
                                 _sus("belisha", -6.9, -12.6), _sus("belisha", 6.9, -12.6), _sus("belisha", -6.9, -7.2), _sus("belisha", 6.9, -7.2),
@@ -6034,7 +6634,8 @@ def sahneler():
                           _sus("bollard", -1.6, -5.6), _sus("bollard", -1.6, -7.6), _sus("bollard", 3.2, -5.6), _sus("bollard", 3.2, -7.6),
                           _sus("agac_cinar_1", -15.4, -17.4), _sus("agac_cinar_2", 7.5, -11.5, 0, 0.85), _sus("agac_cinar_3", 19.6, -9.0, 0, 0.85),
                           _sus("bank", -15.5, -12.2, 180), _sus("bank", 15.0, -6.0), _sus("masa", 9.5, -17.5), _sus("masa", 15.5, -19.0, 40),
-                          _sus("bisiklet_park", -8.0, -9.0), _sus("agac_cinar_1", -12.0, 17.5), _sus("agac_cinar_2", 8.0, 18.0), _sus("agac_cinar_3", 17.5, 16.0),
+                          _sus("bisiklet_park", -8.0, -9.0), _sus("agac_mese_2", -12.0, 17.5), _sus("agac_ihlamur_1", 8.0, 18.0), _sus("agac_hus_1", 17.5, 16.0), _sus("agac_hus_2", 14.5, 18.5),
+                          _sus("agac_genc_1", -14.0, 1.9), _sus("agac_genc_2", -6.2, 1.9), _sus("agac_genc_1", 9.6, 1.9), _sus("agac_genc_2", 15.4, 1.9),
                           _sus("cali_1", -19.0, 13.0), _sus("cali_3", 5.5, 13.0),
                           _sus("agac_cinar_3", -9.0, -14.5, 0, 0.9), _sus("agac_cinar_2", -4.5, -19.0, 0, 0.85), _sus("bank", -9.0, -17.4, 180),
                           _sus("cicek_kovalari", 10.4, 2.6), _sus("menu_panosu", -6.5, 2.4)]))
@@ -6054,14 +6655,27 @@ def _unity_parca(ad, g):
     eksen çevirisini C# tarafı yapar. Yüzler üçgenlenir; her malzeme bir alt-mesh."""
     v = []
     alt = {}
+    vn = getattr(g, "vn", None)
+    kaynak = {}          # yumuşak (g.vn'si olan) köşeler konuma göre paylaşılır: Unity normalleri yumuşak hesaplar, dosya küçülür
     for f, mi in zip(g.f, g.fm):
-        pts = [g.v[i] for i in f]
-        bas = len(v) // 3
-        for p in pts:
-            v += [round(p[0], 4), round(p[1], 4), round(p[2], 4)]
+        sira = []
+        for i in f:
+            p = g.v[i]
+            q = (round(p[0], 3), round(p[1], 3), round(p[2], 3))
+            if vn and i < len(vn) and vn[i] is not None:
+                k = ("_Kabuk_" in g.mats[mi],) + q
+                j = kaynak.get(k)
+                if j is None:
+                    j = kaynak[k] = len(v) // 3
+                    v += list(q)
+            else:
+                j = len(v) // 3
+                v += [round(p[0], 4), round(p[1], 4), round(p[2], 4)]
+            sira.append(j)
         uc = alt.setdefault(g.mats[mi], [])
-        for i in range(1, len(pts) - 1):
-            uc += [bas, bas + i, bas + i + 1]
+        for i in range(1, len(sira) - 1):
+            if len({sira[0], sira[i], sira[i + 1]}) == 3:
+                uc += [sira[0], sira[i], sira[i + 1]]
     grup, aciklama, hedef = PARCA_BILGI[ad]
     return dict(ad=ad, grup=grup, aciklama=aciklama, hedef=hedef, kucuk=bool(kucuk(ad)), sinir=IC_SINIR.get(ad, 0), v=v, alt=[dict(malzeme=m, uc=u) for m, u in alt.items()])
 
@@ -6069,7 +6683,8 @@ def _unity_parca(ad, g):
 def json_yaz(yol):
     parcalar = [_unity_parca(ad, parca_g(ad)) for ad in PARCA]
     hafifler = [_unity_parca(ad, hafif_parca(ad)) for ad in PARCA]
-    veri = dict(surum=4, tarzAd=TARZ_AD, uslupTaban=USLUP_TABAN, usluplar=USLUPLAR, hucre=HUCRE, kat=KAT, izgara=IZGARA, duvarRenk=DUVAR_RENK, catiRenk=CATI_RENK, vurguRenk=VURGU_RENK,
+    uzaklar = [_unity_parca(ad, uzak_parca(ad)) for ad in PARCA if ad in PARCA_UZAK]      # en uzak görünüm (yalnız ağaç ve çalılar)
+    veri = dict(surum=5, uzaklar=uzaklar, kisRengi=KIS_RENGI, tarzAd=TARZ_AD, uslupTaban=USLUP_TABAN, usluplar=USLUPLAR, hucre=HUCRE, kat=KAT, izgara=IZGARA, duvarRenk=DUVAR_RENK, catiRenk=CATI_RENK, vurguRenk=VURGU_RENK,
                 tenteRenk=TENTE_RENK, yaprakRenk=YAPRAK_RENK, icSinir=IC_SINIR_VARSAYILAN, icYedek=IC_YEDEK,
                 kademe=KADEME, etek=ETEK, kaldirimZ=KALDIRIM_Z, zeminTur=[dict(ad=a, etiket=e) for a, e in ZEMIN_TUR], sertZemin=list(SERT_ZEMIN), catiTarz=CATI_TARZ_AD, turler=TURLER, parcalar=parcalar, hafifler=hafifler)
     os.makedirs(os.path.dirname(yol), exist_ok=True)
