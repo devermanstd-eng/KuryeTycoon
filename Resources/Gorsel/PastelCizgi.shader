@@ -64,6 +64,7 @@ Shader "KuryeTycoon/PastelCizgi"
                 half4 color : TEXCOORD0;
                 float3 positionOS : TEXCOORD1;
                 float fogCoord : TEXCOORD2;
+                float kabuk : TEXCOORD3;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -127,12 +128,15 @@ Shader "KuryeTycoon/PastelCizgi"
                 #endif
                 o.color = half4(c * _BaseColor.rgb, alfa * _BaseColor.a);
                 o.positionOS = v.positionOS.xyz;
+                o.kabuk = abs(v.uv.x) > 0.5 ? 0.0 : 1.0;
                 o.fogCoord = ComputeFogFactor(cp.z);
                 return o;
             }
 
-            half4 frag(Varyings i) : SV_Target
+            half4 frag(Varyings i, bool onYuz : SV_IsFrontFace) : SV_Target
             {
+                // ters kabuk: yalnız içe bakan (kameradan uzak) yüzleri çizilir; şeritler iki yüzlü
+                if (i.kabuk > 0.5 && !onYuz) discard;
                 // çizgi boyunca ton ve koyuluk oynaması (model uzayı, metre): kalem bazı yerlerde bastırır, bazı yerlerde kaldırır
                 half g = PC_Gurultu(i.positionOS * 3.1) * 0.65h + PC_Gurultu(i.positionOS * 9.0 + 4.0) * 0.35h;
                 half3 renk = i.color.rgb * (0.85h + g * 0.4h * _Titreme + (1.0h - _Titreme) * 0.15h);

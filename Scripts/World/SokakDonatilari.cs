@@ -34,14 +34,19 @@ namespace KuryeTycoon
         {
             if (turler != null) return;
             turler = new Dictionary<string, List<Tur>>();
+            var atolyeTur = new HashSet<string>();
             var duz = Quaternion.Euler(-90f, 0f, 0f);
             foreach (var p in Resources.LoadAll<GameObject>(Klasor))
             {
                 if (p == null || !p.name.StartsWith("Donati_")) continue;
-                // Donati_bank_2 → "bank"
+                // Bina Atölyesi donatıları (Donati_bank_atolye_1): ayar kapalıysa kullanılmaz
+                bool atolye = AtolyeAyari.AtolyeMi(p.name);
+                if (atolye && !AtolyeAyari.Cevre) continue;
+                // Donati_bank_2 → "bank"; Donati_bank_atolye_1 → "bank"
                 string ad = p.name.Substring(7);
                 int son = ad.LastIndexOf('_');
                 if (son > 0 && int.TryParse(ad.Substring(son + 1), out _)) ad = ad.Substring(0, son);
+                if (ad.EndsWith("_atolye")) ad = ad.Substring(0, ad.Length - 7);
                 var t = new Tur();
                 float enAlt = float.NegativeInfinity;
                 var kok = p.transform.worldToLocalMatrix;
@@ -66,6 +71,9 @@ namespace KuryeTycoon
                 if (t.parcalar.Count == 0) continue;
                 t.taban = float.IsInfinity(enAlt) ? 0f : enAlt;
                 if (!turler.TryGetValue(ad, out var l)) turler[ad] = l = new List<Tur>();
+                // bir türün atölye modeli varsa o türde yalnız atölye modelleri kalır
+                if (atolye && !atolyeTur.Contains(ad)) { l.Clear(); atolyeTur.Add(ad); }
+                if (!atolye && atolyeTur.Contains(ad)) continue;
                 l.Add(t);
             }
         }
