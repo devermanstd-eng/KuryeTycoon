@@ -6,8 +6,9 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Minyatür maket (diorama) görünümü: Gorsel3D'nin ekran efektleri profilinin oyun içi kopyasını her karede ayarlar.
-    ///  • Tilt-shift: alan derinliği odağı her karede ekranın ortasındaki zemine konur; üst ve alt kenar hafif bulanık, ortadaki
-    ///    kurye ve binalar net. Yüksek kalitede Bokeh (iki yön), Orta'da hızlı Gaussian (yalnız uzak taraf). Düz haritada kapalı.
+    ///  • Tilt-shift: alan derinliği odağı her karede ekranın ortasındaki zemine konur; ekranın üstü (uzak taraf) hafif bulanık,
+    ///    ortadaki kurye ve binalar net. Hızlı Gaussian; iki kenarlı Bokeh yalnız DioramaAyari.bokehTiltShift ile (M2 Air'de kare
+    ///    hızını yarıya indirdi). Düşük kalitede ve düz haritada kapalı.
     ///  • Saate göre renk: gündüz bal rengi, altın saatte sıcak turuncu, gece derin lacivert gölge + sıcak parlaklar.
     ///    Işıma eşiği gündüz yüksek (güneşli çatı parlamaz), gece düşük (yalnız pencere, vitrin ve lambalar parlar).
     ///  • Ekrana yarı saydam ton bindirmez: eskiden 2D gece/bulut/güneş perdesi haritayı grileştiriyor, güneş parlaması
@@ -82,7 +83,7 @@ namespace KuryeTycoon
 
         static void TiltShift(Camera cam, DioramaAyari a)
         {
-            int mod = GrafikKalitesi.TiltShiftModu;    // 0 kapalı, 1 hızlı, 2 Bokeh
+            int mod = GrafikKalitesi.TiltShiftModu;    // 0 kapalı, 1 hızlı (Gaussian), 2 Bokeh (yalnız istenirse)
             var mc = MapCamera.I;
             if (mod == 0 || a.tiltShiftPiksel <= 0.01f || cam == null || cam.orthographic || mc == null || mc.FlatMode ||
                 !OdakUzakligi(cam, out float P))

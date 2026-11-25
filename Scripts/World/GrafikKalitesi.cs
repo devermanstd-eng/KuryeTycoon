@@ -7,13 +7,14 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Grafik kalitesi (Ayarlar > Harita): Otomatik · Düşük · Orta · Yüksek.
-    ///  • Yüksek: 3D ışık ayarı olduğu gibi (4096 gölge haritası, 4 kademe, yumuşak gölge, MSAA 4x, SSAO, ışıma, gece 72 lamba ışığı).
+    ///  • Yüksek: 3D ışık ayarı olduğu gibi (4096 gölge haritası, 4 kademe, yumuşak gölge, MSAA 4x (Retina'da yok, SMAA), SSAO, ışıma,
+    ///    gece 72 lamba ışığı).
     ///  • Orta: 2048 gölge, 2 kademe, SSAO ve MSAA yok (FXAA), Retina ekranda %85 çözünürlük, gece 32 lamba ışığı, yağmur %60.
     ///  • Düşük: 1024 sert gölge, tek kademe, kısa gölge mesafesi, ışıma ve HDR yok, %70 çözünürlük, gece 12 lamba ışığı, yağmur %30.
     ///  • Otomatik (varsayılan): Orta'dan başlar; oyun başladıktan sonra kare hızı düşükse bir kademe iner, iyiyse çıkar.
     ///    Sonuç kaydedilir, bir sonraki açılışta oradan başlar.
     ///  • Maket bulanıklığı (tilt-shift) ve ortam gölgesi (SSAO) ayrıca açılıp kapatılabilir; varsayılanı kaliteye göre
-    ///    (Yüksek: ikisi de, Orta: hızlı tilt-shift, Düşük: hiçbiri).
+    ///    (Yüksek: ikisi de, Orta: yalnız tilt-shift, Düşük: hiçbiri). Tilt-shift her kalitede hızlı Gaussian.
     /// Render ayarı dosyaları (Resources/Gorsel) diskte değişmez: değerler oyun sırasında bellekte değişir, oyundan
     /// çıkınca (editörde Play durunca) eski hâline döner. Böylece git'te değişmiş dosya görünmez.
     /// </summary>
@@ -132,8 +133,10 @@ namespace KuryeTycoon
         }
 
         /// <summary>
-        /// Tilt-shift: 0 kapalı, 1 hızlı (yalnız uzak taraf, Gaussian), 2 tam (üst ve alt kenar, Bokeh).
-        /// Kaliteye göre: Yüksek tam, Orta hızlı, Düşük kapalı. Açık: her kalitede tam.
+        /// Tilt-shift: 0 kapalı, 1 hızlı (Gaussian, yalnız uzak taraf), 2 Bokeh (üst ve alt kenar).
+        /// Kaliteye göre: Yüksek ve Orta hızlı, Düşük kapalı. Açık: her kalitede hızlı.
+        /// Bokeh yalnız Diorama ayarında açıkça istenirse ve Yüksek'te (DioramaAyari.bokehTiltShift): 25.11 ölçümünde M2 Air'de
+        /// Yüksek kalitede kare hızını yarıya indirdi (tilt-shift kapalı 24 FPS, Bokeh açık 12 FPS).
         /// </summary>
         public static int TiltShiftModu
         {
@@ -141,8 +144,8 @@ namespace KuryeTycoon
             {
                 int s = TiltShiftSecimi;
                 if (s == SecimKapali) return 0;
-                if (s == SecimAcik) return 2;
-                return Seviye == Yuksek ? 2 : Seviye == Orta ? 1 : 0;
+                if (s == SecimKaliteyeGore && Seviye == Dusuk) return 0;
+                return Seviye == Yuksek && DioramaAyari.Gecerli.bokehTiltShift ? 2 : 1;
             }
         }
 
@@ -203,7 +206,9 @@ namespace KuryeTycoon
                     a.shadowDistance = oShadowDistance;
                     a.shadowCascadeCount = oCascades;
                     Yaz(a, "mainLightShadowmapResolution", "m_MainLightShadowmapResolution", oShadowRes);
-                    a.msaaSampleCount = oMsaa;
+                    // Retina'da MSAA yok: kenar yumuşatma zaten SMAA (KenarYumusatma). İkisi birden ~4,3 milyon pikselde M2 Air'i
+                    // boğuyordu (25.11: Yüksek, efektler kapalı 22 FPS; Orta 44 FPS). Retina'da piksel küçük, SMAA yeter.
+                    a.msaaSampleCount = retina ? 1 : oMsaa;
                     a.renderScale = oRenderScale;
                     a.supportsHDR = oHdr;
                 }
