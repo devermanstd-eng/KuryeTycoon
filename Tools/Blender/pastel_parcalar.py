@@ -4968,6 +4968,142 @@ def _kabuk_izi(g, S, tur, rnd):
             levha(g, [B.add(p, B.mul(te, -0.012)), B.add(p, B.mul(te, 0.012)), B.add(B.add(p, B.mul(te, 0.012)), (0, 0, h)), B.add(B.add(p, B.mul(te, -0.012)), (0, 0, h))], koyu_m)
 
 
+YD_KALEM = ROL("Yaprak_Dok_Iz", "k", "#3e4a3a")      # yaprağın kalem kenarı (yaprak renginin koyusu; kışın kırpılır)
+YS_KALEM = ROL("Yaprak_Iz", "k", "#3e4a3a")
+
+# Yaprak biçimleri (v8): (t, w) çiftleri; t = 0 sap … 1 uç, w = yarım genişlik (boya oranla). Ayna simetrik çizilir.
+YAPRAK_BICIM = {
+    "oval":  [(0.0, 0.0), (0.32, 0.3), (0.68, 0.17), (1.0, 0.0)],                                  # kestane, meyve, genç
+    "lob":   [(0.0, 0.0), (0.42, 0.5), (0.56, 0.2), (1.0, 0.0)],                                    # çınar (loblu)
+    "mese":  [(0.0, 0.0), (0.3, 0.3), (0.5, 0.14), (0.72, 0.26), (1.0, 0.0)],
+    "kalp":  [(0.0, 0.0), (0.14, 0.4), (0.6, 0.24), (1.0, 0.0)],                                   # ıhlamur
+    "kucuk": [(0.0, 0.0), (0.35, 0.4), (1.0, 0.0)],                                                # huş
+    "ince":  [(0.0, 0.0), (0.4, 0.15), (1.0, 0.0)],                                                # kavak, söğüt
+}
+# tür → (biçim, yaprak boyu m, sayı çarpanı, sarkma 0…1)
+YAPRAK_TUR = {"cinar": ("lob", 0.34, 1.0, 0.0), "mese": ("mese", 0.3, 1.0, 0.0), "ihlamur": ("kalp", 0.28, 1.1, 0.05),
+              "hus": ("kucuk", 0.2, 1.15, 0.45), "kavak": ("ince", 0.26, 1.05, 0.0), "kestane": ("oval", 0.32, 1.05, 0.05),
+              "sogut": ("ince", 0.36, 1.0, 0.85), "meyve": ("oval", 0.24, 1.0, 0.05), "genc": ("oval", 0.22, 1.0, 0.0)}
+GUNES = B.norm((0.45, -0.55, 0.75))     # önizlemenin ve oyunun ana ışığına yakın: yaprak tonu bu yöne göre seçilir
+
+
+def _yaprak_ciz(g, p, nl, t, boy, bicim, mat, kalem=None):
+    """Tek yaprak: p sap noktası, nl yaprak yüzünün normali (dışa), t yaprak ekseni (sap → uç; nl'ye dik).
+    kalem: verilirse yaprağın 1-2 cm arkasında biraz büyük koyu kopya (kalem kenarı gibi okunur)."""
+    w = B.norm(B.cross(nl, t))
+    P = bicim
+    sag = [B.add(B.add(p, B.mul(t, a * boy)), B.mul(w, b * boy)) for a, b in P]
+    sol = [B.add(B.add(p, B.mul(t, a * boy)), B.mul(w, -b * boy)) for a, b in P[1:-1]]
+    pts = sag + sol[::-1]
+    if B.dot(B.newell(pts), nl) < 0:
+        pts = pts[::-1]
+    g.yuz(pts, mat)
+    if kalem:
+        geri = B.mul(nl, -0.025)
+        k = 1.25
+        # dört köşeli koyu baklava: sap, sağ en geniş, uç, sol en geniş
+        en = max(P, key=lambda q: q[1])
+        q0 = B.add(B.add(p, B.mul(t, -0.05 * boy)), geri)
+        q1 = B.add(B.add(B.add(p, B.mul(t, en[0] * boy)), B.mul(w, en[1] * boy * k + 0.012)), geri)
+        q2 = B.add(B.add(p, B.mul(t, boy * 1.07)), geri)
+        q3 = B.add(B.add(B.add(p, B.mul(t, en[0] * boy)), B.mul(w, -en[1] * boy * k - 0.012)), geri)
+        kp = [q0, q1, q2, q3]
+        if B.dot(B.newell(kp), nl) < 0:
+            kp = kp[::-1]
+        g.yuz(kp, kalem)
+
+
+def _yaprak_kumesi(g, c, rx, ry, rz, rnd, tonlar, kalem, tur, n, olcek=1.0, mrk=None, alt=0.62, ic_sinir=0.58):
+    """Kümenin yüzeyine n tek tek yaprak dağıtır (v8: "yaprak yaprak"). Yapraklar dışa ve biraz yukarı bakar, ekseni
+    dışa / aşağı sarkar; tonu güneşe bakışa göre: ışık yanı açık sarımsı (a), orta (Y), gölge yanı mavimsi (m),
+    altı koyu (y). Biraz içeride kalanlar koyu: taç derinlikli okunur."""
+    bicim_ad, boy0, _, sark = YAPRAK_TUR.get(tur, YAPRAK_TUR["kestane"])
+    bicim = YAPRAK_BICIM[bicim_ad]
+    g.sid += 1
+    for i in range(n):
+        # yüzeyde düzgün dağılım (alt yarı seyrek)
+        while True:
+            z = rnd.uniform(-1.0, 1.0)
+            if z >= -0.15 or rnd.random() < 0.55:
+                break
+        a = rnd.uniform(0, 6.283)
+        s = math.sqrt(max(0.0, 1 - z * z))
+        d = (s * math.cos(a), s * math.sin(a), z)
+        u = 1.06 - (1.06 - ic_sinir) * rnd.random() ** 1.6      # katmanlı: çoğu dışta, bir kısmı derinde
+        p = (c[0] + d[0] * rx * u, c[1] + d[1] * ry * u, c[2] + d[2] * rz * u * (alt if z < 0 else 1.0))
+        nrm = B.norm((d[0] / max(rx, 0.1), d[1] / max(ry, 0.1), d[2] / max(rz, 0.1)))
+        # taç ölçeğindeki normal (mrk'ten dışa): ton bunun güneşe bakışıyla seçilir
+        tn = B.norm(B.sub(p, mrk)) if mrk else nrm
+        isik = B.dot(B.norm(B.add(B.mul(tn, 0.7), B.mul(nrm, 0.3))), GUNES)
+        r = rnd.uniform(-0.28, 0.28)
+        derin = (1.06 - u) / max(0.05, 1.06 - ic_sinir)          # 0 dış … 1 en iç
+        isik -= derin * 0.7
+        if derin > 0.6 or (tn[2] < -0.5 and rnd.random() < 0.6):
+            mat = tonlar[1]
+        elif isik + r > 0.62:
+            mat = tonlar[2]
+        elif isik + r < 0.12:
+            mat = tonlar[3]
+        else:
+            mat = tonlar[0]
+        rast = B.norm((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1)))
+        nl = B.norm(B.add(B.add(B.mul(nrm, 0.9), B.mul(rast, 0.35)), (0, 0, 0.25)))
+        eks = B.add(B.add(B.mul(nrm, 0.6), (0, 0, -0.35 - 1.6 * sark)), B.mul(rast, 0.6))
+        eks = B.sub(eks, B.mul(nl, B.dot(eks, nl)))
+        if B.dot(eks, eks) < 1e-6:
+            eks = B.cross(nl, (1, 0, 0))
+        t = B.norm(eks)
+        boy = boy0 * olcek * rnd.uniform(0.8, 1.2)
+        _yaprak_ciz(g, B.sub(p, B.mul(t, boy * 0.35)), nl, t, boy, bicim, mat, kalem if derin < 0.2 else None)
+    g.sid += 1
+
+
+def _sogut_sarkit(g, c, kr, rnd, tonlar, kalem, n_serit, olcek=1.0):
+    """Söğüdün sarkan yaprak perdeleri: dış kümeden yere inen ince dalcık boyunca dizili ince uzun yapraklar."""
+    bicim = YAPRAK_BICIM["ince"]
+    for j in range(n_serit):
+        a = rnd.uniform(0, 6.283)
+        x, y = c[0] + math.cos(a) * kr * 0.85, c[1] + math.sin(a) * kr * 0.85
+        L = rnd.uniform(1.0, 2.1)
+        ust = (x, y, c[2] - kr * 0.1)
+        dis = (math.cos(a), math.sin(a), 0.0)
+        adim = 0.16 * olcek
+        k = int(L / adim)
+        for q in range(k):
+            f = q / float(max(1, k))
+            p = (ust[0] + dis[0] * 0.18 * f, ust[1] + dis[1] * 0.18 * f, ust[2] - L * f)
+            yan = 1 if q % 2 else -1
+            nl = B.norm((dis[0] + rnd.uniform(-0.4, 0.4), dis[1] + rnd.uniform(-0.4, 0.4), 0.15))
+            w = B.cross(nl, (0, 0, 1))
+            t = B.norm(B.add((0, 0, -1), B.mul(w, 0.45 * yan)))
+            mat = tonlar[1] if rnd.random() < 0.25 else tonlar[2] if B.dot(nl, GUNES) > 0.3 else tonlar[0]
+            _yaprak_ciz(g, p, nl, t, 0.3 * olcek * rnd.uniform(0.85, 1.15), bicim, mat, kalem)
+
+
+def _tac_yapraklari(g, S, tur, rnd, duzey, tonlar=None, kalem=None):
+    """v8 taç: tek tek yapraklar (dışta ışığa göre tonlu, derindekiler koyu: taç derinlikli okunur, aralardan dal ve gök
+    görünür). Hafif düzeyde kümelerin içine koyu, kalemsiz bir hacim de konur (uzaktan boşluklu görünmesin).
+    duzey 0: ~600–900 yaprak, kalem kenarlı. duzey 1: ~140 iri yaprak, kenarsız."""
+    tonlar = tonlar or TON_DOK
+    kalem = kalem if kalem is not None else YD_KALEM
+    _, boy0, carp, _ = YAPRAK_TUR.get(tur, YAPRAK_TUR["kestane"])
+    kumeler = S["kumeler"]
+    toplam_alan = sum(kr * kr for _, kr, _ in kumeler) or 1.0
+    hedef = (1150 if duzey == 0 else 150) * carp
+    olcek = 0.85 if duzey == 0 else 2.0
+    koyu = (tonlar[1],) * 4
+    for c, kr, dis in kumeler:
+        n = max(6, int(hedef * kr * kr / toplam_alan))
+        ic = 0.8
+        if duzey:       # uzaktan boşluklar kaybolsun: yalnız hafif düzeyde koyu iç hacim
+            _kume(g, c, kr * ic, kr * ic, kr * ic * 0.8, rnd, (tonlar[1], tonlar[1], tonlar[1], tonlar[1]), detay=0, puruz=0.15, leke=0, ana=0)
+        _yaprak_kumesi(g, c, kr * 1.05, kr * 1.05, kr * 0.88, rnd, tonlar, kalem if duzey == 0 else None, tur, n, olcek, S["mrk"])
+    if tur == "sogut":
+        for c, kr, dis in kumeler:
+            if dis:
+                _sogut_sarkit(g, c, kr, rnd, tonlar, kalem if duzey == 0 else None, 4 if duzey == 0 else 1, olcek=1.0 if duzey == 0 else 1.8)
+
+
 def _agac7(g, tur, tohum, duzey=0, yaprak=True, ek=None):
     """Gerçekçi ağaç. duzey: 0 yakın · 1 hafif (birkaç küme + gövde + ana dallar) · 2 uzak (gövde + iki küme)."""
     S = _iskelet(tur, tohum)
@@ -4988,11 +5124,7 @@ def _agac7(g, tur, tohum, duzey=0, yaprak=True, ek=None):
             if der == 1:
                 _boru(g, [yol[0], yol[-1]], [r0, r1], 3, gm, kapak=False)
         if yaprak:
-            rx, ry, rz = S["r3"]
-            _kume(g, S["mrk"], rx * 0.78, ry * 0.78, rz * 0.8, rnd, TON_DOK, detay=1, puruz=0.16, leke=0, alt=0.75)
-            dis = [k for k in S["kumeler"] if k[2]]
-            for c, kr, _ in dis[::max(1, len(dis) // 5)][:5]:
-                _kume(g, c, kr * 1.25, kr * 1.2, kr * 1.0, rnd, TON_DOK, detay=0, puruz=0.15, leke=0)
+            _tac_yapraklari(g, S, tur, rnd, 1)
         yumusat(g)
         return
     # ---- yakın görünüm
@@ -5013,14 +5145,7 @@ def _agac7(g, tur, tohum, duzey=0, yaprak=True, ek=None):
         if dis:
             _filiz(g, c, kr * 1.05, rnd, gm, 2)
     if yaprak:
-        for i, (c, kr, dis) in enumerate(S["kumeler"]):
-            # ton: tacın üstündeki kümeler açık (ışık), altındakiler mavimsi (gölge), ortadakiler orta; biraz karışık
-            yuk = (c[2] - S["mrk"][2]) / max(0.3, S["r3"][2])
-            ana = 2 if yuk > 0.3 else 3 if yuk < -0.3 else 0
-            if rnd.random() < 0.22:
-                ana = (0, 2, 3)[rnd.randrange(3)]
-            _kume(g, c, kr * rnd.uniform(1.0, 1.2), kr * rnd.uniform(1.0, 1.2), kr * rnd.uniform(0.72, 0.9), rnd, TON_DOK, detay=1,
-                  kabuk=KABUK_DOK if dis else None, leke=8 if dis else 2, ana=ana)
+        _tac_yapraklari(g, S, tur, rnd, 0)
     if ek:
         ek(g, S, rnd)
     yumusat(g)
@@ -5201,7 +5326,7 @@ def _agac_ekle(ad, aciklama, hedef, fn):
 
 # ad → (tür, tohum, ek). Eski adlar korunur (kayıtlı tasarımlar ve sahneler bozulmasın): yuvarlak = at kestanesi.
 _AGAC_AD = [("yuvarlak", "kestane", 4, None), ("kestane", "kestane", 2, _ek_cicek), ("cinar", "cinar", 3, None), ("mese", "mese", 2, None),
-            ("ihlamur", "ihlamur", 2, None), ("hus", "hus", 2, None), ("kavak", "kavak", 2, None), ("sogut", "sogut", 2, _ek_sogut),
+            ("ihlamur", "ihlamur", 2, None), ("hus", "hus", 2, None), ("kavak", "kavak", 2, None), ("sogut", "sogut", 2, None),
             ("meyve", "meyve", 3, "meyve"), ("genc", "genc", 2, _ek_kafes)]
 for _on, _tur, _n, _ek in _AGAC_AD:
     for _i in range(1, _n + 1):
@@ -6661,7 +6786,8 @@ def _unity_parca(ad, g):
         sira = []
         for i in f:
             p = g.v[i]
-            q = (round(p[0], 3), round(p[1], 3), round(p[2], 3))
+            hb = 2 if "_Yaprak_" in g.mats[mi] else 3        # tek tek yapraklar: santimetre yeter (dosya küçük kalsın)
+            q = (round(p[0], hb), round(p[1], hb), round(p[2], hb))
             if vn and i < len(vn) and vn[i] is not None:
                 k = ("_Kabuk_" in g.mats[mi],) + q
                 j = kaynak.get(k)
