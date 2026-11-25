@@ -42,6 +42,8 @@ namespace KuryeTycoon
         // Denge hedefleri (CLAUDE.md: Test ve Denge Doğrulama)
         const float PayAlt = 0.45f, PayUst = 0.55f;
         const int PaketBeklemeUst = 13;
+        /// <summary>22–60 hesaplık paketler bundan kısa sürede alınırsa oyun fazla hızlı (24.11: 1–8 gün; hedef 9–12).</summary>
+        const int PaketBeklemeAlt = 9;
 
         public static readonly int[] SehirTohumlari = { TestModu.SabitHaritaTohumu, 123456789, 246813579, 975318642, 555000111 };
         const int VarsayilanKlasikGun = 60;
@@ -68,6 +70,9 @@ namespace KuryeTycoon
             /// <summary>Gün sonlarında okunan pazar payı (gün, pay). Günlük kayıtta pay yok; koşu sırasında toplanır.</summary>
             public readonly List<KeyValuePair<int, float>> paySeyri = new List<KeyValuePair<int, float>>();
             public string paySeyriMetni = "-", bolgeGecisleri = "-";
+            /// <summary>En uzun kesintisiz "ölü" dönem: hiçbir geliştirme, bölge ya da kurye paketi alınmayan gün sayısı ve başladığı gün.</summary>
+            public int oluEnUzun, oluBas, oluSeri, oluSeriBas;
+            public long oluImza = -1;
         }
 
         // ------------------------------------------------------------------ kurulum
@@ -216,6 +221,7 @@ namespace KuryeTycoon
                 {
                     sonGun = sh.Days.Count;
                     if (RivalCompany.I != null) k.paySeyri.Add(new KeyValuePair<int, float>(sonGun, RivalCompany.I.MarketShare));
+                    OluGun(k, sonGun);
                 }
                 if (Senaryo.HedefVar && Senaryo.Durum != 0 && !tm.RaporHazir)
                     tm.Bitir(Senaryo.Durum == 1 ? "senaryo kazanıldı" : "senaryo kaybedildi");
@@ -293,6 +299,26 @@ namespace KuryeTycoon
         /// Kurye hesabı paketinin (tavanın) dolu kaldığı gün sayısı, TestModu.KapasiteOzeti ile aynı tanım.
         /// Sonradan geçilen paketlerde 13 günü aşan bekleme bant dışıdır; son paket test bitince hâlâ sürebilir.
         /// </summary>
+        /// <summary>
+        /// İlerleme imzası: bütün geliştirme seviyeleri (kurye paketi dahil) + açık bölge. Gün sonunda değişmediyse o gün
+        /// "ölü" sayılır; en uzun kesintisiz seri tutulur (120 günlük tempo: oyuncunun alacak bir şey bulamadığı dönemler).
+        /// </summary>
+        static void OluGun(Kosu k, int gun)
+        {
+            long imza = CityMap.I != null ? CityMap.I.UnlockLevel * 100000L : 0;
+            if (UpgradeManager.I != null)
+                foreach (UpgradeKind u in System.Enum.GetValues(typeof(UpgradeKind))) imza += UpgradeManager.I.Level(u);
+            imza += GelisimAgaci.AlinanSayisi * 1000L;
+            if (k.oluImza >= 0 && imza == k.oluImza)
+            {
+                if (k.oluSeri == 0) k.oluSeriBas = gun;
+                k.oluSeri++;
+                if (k.oluSeri > k.oluEnUzun) { k.oluEnUzun = k.oluSeri; k.oluBas = k.oluSeriBas; }
+            }
+            else k.oluSeri = 0;
+            k.oluImza = imza;
+        }
+
         static void PaketBekleme(Kosu k, List<DayRecord> gunler)
         {
             var sira = new List<int>();
@@ -311,8 +337,9 @@ namespace KuryeTycoon
             {
                 bool suruyor = t == enBuyuk;
                 bool asti = !suruyor && dolu[t] > PaketBeklemeUst;
-                if (asti) k.paketBandda = false;
-                parca.Add($"{t}:{dolu[t]}g{(suruyor ? "…" : "")}{(asti ? "!" : "")}");
+                bool hizli = !suruyor && t >= 22 && t <= 60 && dolu[t] < PaketBeklemeAlt;   // orta oyun fazla hızlı
+                if (asti || hizli) k.paketBandda = false;
+                parca.Add($"{t}:{dolu[t]}g{(suruyor ? "…" : "")}{(asti ? "!" : hizli ? "↓" : "")}");
             }
             k.paketBekleme = string.Join(" ", parca);
         }
@@ -380,7 +407,7 @@ namespace KuryeTycoon
                           $"batch {(Application.isBatchMode ? "evet" : "hayır")} · grafik {SystemInfo.graphicsDeviceType}");
             sb.AppendLine($"Ayarlar: bot akıllı · hız {hiz}× · bot tohumu {TestModu.SabitBotTohumu} · ekran görüntüsü yok");
             sb.AppendLine($"Durum: {biten}/{kosular.Count} koşu bitti · gerçek süre {dk:0.0} dk · koşularda {kosuIciHata} hata, toplam {toplamHata} hata");
-            sb.AppendLine($"Denge bandı: pazar payı %{PayAlt * 100f:0}–{PayUst * 100f:0} (Rakiplerin şehri ve Serbest hariç) · kurye paketi beklemesi ≤ {PaketBeklemeUst} gün");
+            sb.AppendLine($"Denge bandı: pazar payı %{PayAlt * 100f:0}–{PayUst * 100f:0} (Rakiplerin şehri ve Serbest hariç) · kurye paketi beklemesi {PaketBeklemeAlt}–{PaketBeklemeUst} gün (22–60 hesap; üstü ≤ {PaketBeklemeUst})");
             sb.AppendLine($"Not: Klasik senaryo ayrıca koşulmadı; tohum1 koşusu odur (aynı şehir, aynı bot tohumu, {klasikGun} gün).");
             sb.AppendLine();
 
@@ -396,7 +423,12 @@ namespace KuryeTycoon
                     $"{GameData.Ft(k.kasaBaslangic)} → {GameData.Ft(k.kasaBitis)}".PadRight(30), pay.PadLeft(4), $"{k.itibar:0.00}".PadLeft(6),
                     $"{k.atamaBekleme:0.0} / {k.almaBekleme:0.0}".PadRight(13), k.paketBekleme.PadRight(18), k.sonuc));
             }
-            sb.AppendLine("(Pay sonunda '!' = bant dışı · paket bekleme 'hesap:gün', '…' = test bitince sürüyordu, '!' = 13 günü aştı)");
+            sb.AppendLine($"(Pay sonunda '!' = bant dışı · paket bekleme 'hesap:gün', '…' = test bitince sürüyordu, '!' = {PaketBeklemeUst} günü aştı, " +
+                          $"'↓' = 22–60 hesapta {PaketBeklemeAlt} günden kısa: fazla hızlı)");
+            var oluListe = new List<string>();
+            foreach (var ko in kosular)
+                if (ko.gun > 0) oluListe.Add($"{ko.ad} {ko.oluEnUzun} g" + (ko.oluEnUzun > 0 ? $" ({ko.oluBas}.–{ko.oluBas + ko.oluEnUzun - 1}.)" : ""));
+            if (oluListe.Count > 0) sb.AppendLine("En uzun ölü dönem (hiçbir geliştirme, bölge, paket, ağaç düğümü alınmayan gün): " + string.Join(" · ", oluListe));
 
             var bantDisi = new List<string>();
             var hatali = new List<string>();
@@ -423,6 +455,9 @@ namespace KuryeTycoon
                 sb.AppendLine($"Pazar payı: {(k.pay >= 0f ? $"%{k.pay * 100f:0.0}" : "-")} · itibar {k.itibar:0.00} · kurye {k.kurye}/{k.kuryeSiniri} · sözleşmeli dükkan {k.dukkan}");
                 sb.AppendLine($"Teslimat {k.teslimat} · iptal {k.iptal} · kaçan {k.kacan} · ort. atama bekleme {k.atamaBekleme:0.0} dk · ort. alma bekleme {k.almaBekleme:0.0} dk");
                 sb.AppendLine($"Pazar payı seyri: {k.paySeyriMetni}");
+                sb.AppendLine(k.oluEnUzun > 0
+                    ? $"En uzun ölü dönem: {k.oluEnUzun} gün ({k.oluBas}–{k.oluBas + k.oluEnUzun - 1}. gün): geliştirme, bölge ya da kurye paketi alınmadı"
+                    : "En uzun ölü dönem: yok (her gün bir şey alındı)");
                 sb.AppendLine($"Bölge açılışları: {k.bolgeGecisleri}");
                 sb.AppendLine($"Kurye paketi beklemesi: {k.paketBekleme}");
                 sb.AppendLine($"Hata {k.hata} · uyarı {k.uyari}");

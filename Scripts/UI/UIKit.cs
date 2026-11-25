@@ -67,29 +67,6 @@ namespace KuryeTycoon
 
         // ---------------------------------------------------------------- bölüm başlığı
 
-        // ---------------------------------------------------------------- "?" yardım balonu
-
-        string helpTip;
-        bool helpTipInWindow;
-        bool drawingWindow;   // DrawPanel pencere içeriğini çizerken true
-
-        /// <summary>"?" metnini fare yanında gösterir. Kök düzeyde, her şeyin üstünde çizilir.</summary>
-        void DrawHelpTip(float sw, float sh)
-        {
-            if (string.IsNullOrEmpty(helpTip) || Event.current.type != EventType.Repaint) return;
-            var m = Event.current.mousePosition;
-            if (helpTipInWindow && !(panelOpen && WindowContentRect(sh).Contains(m))) return;   // kaydırılıp gizlenmiş satır
-            const float w = 330f;
-            var c = new GUIContent(helpTip);
-            float h = kitTip.CalcHeight(c, w - 24f) + 18f;
-            float x = Mathf.Min(m.x + 16f, sw - w - 8f);
-            float y = m.y + 18f;
-            if (y + h > sh - 8f) y = Mathf.Max(TopBar + 4f, m.y - h - 10f);
-            var r = new Rect(x, y, w, h);
-            UITheme.Shadowed(r, new Color(0.06f, 0.065f, 0.08f, 0.98f), 10f, 6f);
-            UITheme.Outline(r, UITheme.WithAlpha(Color.white, 0.12f), 1f, 10f);
-            GUI.Label(new Rect(r.x + 12f, r.y + 9f, w - 24f, h - 18f), c, kitTip);
-        }
 
         /// <summary>Pencerenin kaydırılan içerik alanı (başlık çubuğunun altı).</summary>
         Rect WindowContentRect(float sh)

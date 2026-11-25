@@ -9,8 +9,8 @@ namespace KuryeTycoon
     /// Bunlar eskiden OnGUI'de GUI.DrawTexture ile çiziliyordu. IMGUI her zaman UI Toolkit'in üstüne çizildiği için güneş
     /// parlaması, bulutlar ve gece tonu kurye telefonunun, bina kartının ve durum kartlarının üstüne biniyordu (16.11).
     /// Şimdi aynı çağrılar (Renk, Doku, Dondur) dörtgen olarak kaydedilir ve UI Toolkit'te haritanın hemen üstündeki, bütün
-    /// arayüzün altındaki katmanda çizilir (Arayuz/UiHaritaKatmani.cs). UI Toolkit kurulamazsa aynı kayıt OnGUI'de eskisi gibi
-    /// çizilir (Oynat). Kayıt bir karede bir kez yapılır (LateUpdate); çizim aynı kayıttan.
+    /// arayüzün altındaki katmanda çizilir (Arayuz/UiHaritaKatmani.cs). OnGUI yedeği 25.11'de kaldırıldı (UI Toolkit kurulamazsa
+    /// arayüz zaten yok). Kayıt bir karede bir kez yapılır (LateUpdate); çizim aynı kayıttan.
     /// </summary>
     public sealed class Ciz2D
     {
@@ -19,7 +19,7 @@ namespace KuryeTycoon
         /// <summary>Harita katmanı (sipariş yoğunluğu, teslim süresi…): GUI birimi (ekran / arayüz ölçeği).</summary>
         public static readonly Ciz2D Isi = new Ciz2D();
 
-        /// <summary>UI Toolkit katmanı çiziyor mu? Değilse WeatherFx ve GameUI kaydı OnGUI'de Oynat ile çizer.</summary>
+        /// <summary>UI Toolkit katmanı çiziyor mu? (Değilse kayıt yapılır ama çizilmez.)</summary>
         public static bool UitkCiziyor;
 
         struct Dortgen
@@ -138,23 +138,5 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>UI Toolkit yoksa: kaydı OnGUI'de eskisi gibi çizer (GUI.matrix çağıranın ayarladığı gibi).</summary>
-        public void Oynat()
-        {
-            var eskiRenk = GUI.color;
-            var m = GUI.matrix;
-            foreach (var q in liste)
-            {
-                GUI.color = q.renk;
-                if (q.donuk)
-                {
-                    GUI.matrix = m;
-                    GUIUtility.RotateAroundPivot(q.aci, q.pivot);
-                }
-                GUI.DrawTexture(q.r, q.doku != null ? q.doku : Texture2D.whiteTexture);
-                if (q.donuk) GUI.matrix = m;
-            }
-            GUI.color = eskiRenk;
-        }
     }
 }

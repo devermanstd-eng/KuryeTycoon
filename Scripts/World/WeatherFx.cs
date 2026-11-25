@@ -245,19 +245,6 @@ namespace KuryeTycoon
             Ciz(ciz);
         }
 
-        /// <summary>UI Toolkit kurulamadıysa: kayıt eskisi gibi OnGUI'de, arayüzün (GameUI) altında çizilir.</summary>
-        void OnGUI()
-        {
-            GUI.depth = 10;   // GameUI'nin altında kalsın
-            if (Ciz2D.UitkCiziyor || Event.current.type != EventType.Repaint) return;
-            if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
-            GUI.matrix = Matrix4x4.identity;
-            var alan = Ciz2D.Hava.Alan;
-            GUI.BeginClip(alan, -alan.position, Vector2.zero, false);
-            try { Ciz2D.Hava.Oynat(); }
-            finally { GUI.EndClip(); }
-        }
-
         /// <summary>
         /// Efektler. 16.11'de hafifletildi: hoş geldin kutusu kapanınca harita "soluk, grimsi" görünüyordu. Bulutluda ekranın
         /// yarısını kaplayan %60 saydam bulutlar ve gri ton, güneşte ekran boyu %55 parlama vardı. Şimdi bulutlar küçük ve
@@ -273,11 +260,17 @@ namespace KuryeTycoon
             if (!Enabled) return;
             float sunV = sunAmt * DayNight.Daylight01;
 
-            // Işık tonu: güneşte sıcak, bulutluda gri, yağmurda koyu mavi-gri, soğukta mavi (hepsi hafif: harita canlı kalsın)
-            ciz.Doldur(full, new Color(1f, 0.82f, 0.50f), sunV * (0.035f + heatAmt * 0.05f));
-            ciz.Doldur(full, new Color(0.42f, 0.45f, 0.52f), cloudAmt * 0.06f);
-            ciz.Doldur(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.13f + stormAmt * 0.10f);
-            ciz.Doldur(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.05f);
+            // Işık tonu: güneşte sıcak, bulutluda gri, yağmurda koyu mavi-gri, soğukta mavi (hepsi hafif: harita canlı kalsın).
+            // Minyatür maket renk derecelendirmesi açıksa (Diorama) ton ve güneş parlaması ekrana çizilmez: güneş ve bulut 3D
+            // ışıkta, serinlik beyaz ayarında. Ekran boyu gri/sarı perde haritayı grileştiriyor, parlama arayüzün altına biniyordu.
+            bool perdesiz = Diorama.RenkAktif;
+            if (!perdesiz)
+            {
+                ciz.Doldur(full, new Color(1f, 0.82f, 0.50f), sunV * (0.035f + heatAmt * 0.05f));
+                ciz.Doldur(full, new Color(0.42f, 0.45f, 0.52f), cloudAmt * 0.06f);
+                ciz.Doldur(full, new Color(0.10f, 0.14f, 0.22f), rainAmt * 0.13f + stormAmt * 0.10f);
+                ciz.Doldur(full, new Color(0.62f, 0.78f, 1f), coldAmt * 0.05f);
+            }
 
             // 3D hava açıkken (yakın görünüm) bulut, yağmur, kar ve yapraklar 3D modellerle çizilir: ekrandakiler atlanır
             bool hava3D = Hava3D.Showing;
@@ -290,8 +283,8 @@ namespace KuryeTycoon
                     ciz.Doku(new Rect(c.p.x - c.size, c.p.y - c.size * 0.4f + c.size * 0.25f, c.size * 2f, c.size * 0.8f), puff);
                 }
 
-            // Güneş: sağ üst köşede küçük parlama ve hafif ışık hüzmeleri
-            if (sunV > 0.02f)
+            // Güneş: sağ üst köşede küçük parlama ve hafif ışık hüzmeleri (maket görünümünde yok: güneş 3D ışıkta)
+            if (sunV > 0.02f && !perdesiz)
             {
                 float a = sunV * (0.22f + heatAmt * 0.12f);
                 float size = sh * 0.55f * (1f + heatAmt * 0.3f);

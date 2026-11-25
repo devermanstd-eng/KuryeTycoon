@@ -6,12 +6,12 @@ using UnityEngine.UIElements;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// UI Toolkit kökü. Oyun içindeki bütün ekranlar UI Toolkit'te; IMGUI (OnGUI) yalnızca haritanın üstüne çizilenler
-    /// (etiketler, katman, uçan yazılar, seçili bina işareti) için kaldı. Kurulum ekranı ayrı belgede (UiKurulum.cs).
+    /// UI Toolkit kökü. Oyun içindeki bütün ekranlar ve haritanın üstündeki yazılar (etiketler, uçan yazılar, şehir etkinliği:
+    /// UiHaritaEtiketleri.cs) UI Toolkit'te; OnGUI'de yalnız klavye/fare girişi kaldı. Kurulum ekranı ayrı belgede (UiKurulum.cs).
     ///  • UIDocument ve PanelSettings çalışma anında kurulur (sahneye bir şey eklemek gerekmez).
     ///  • Ölçek IMGUI ile aynı (GameUI.uiScale): iki sistemin koordinatları birebir aynı, dikdörtgenler karşılaştırılabilir.
     ///  • Katmanlar: (uiKok'un altında) harita efektleri: hava, gece/gündüz, harita katmanı (UiHaritaKatmani.cs) ·
-    ///    hud (üst çubuk, sol menü, harita araçları, olaylar, durum kartları) · pencere (pencere, kurye telefonu,
+    ///    hud (en altta harita yazıları; üst çubuk, sol menü, harita araçları, olaylar, durum kartları, lejant) · pencere (pencere, kurye telefonu,
     ///    bina kartı) · üst (bildirimler, rehber, büyük kurye kartı, en üstte olay kartı / Esc menüsü / onay) · ipucu.
     ///  • Harita farenin UI Toolkit elemanının üstünde olup olmadığını <see cref="UiUzerinde"/> ile sorar.
     ///  • Değerler 8 Hz'de yenilenir (hız düğmeleri her karede); ağaç bir kez kurulur.
@@ -199,6 +199,7 @@ namespace KuryeTycoon
             UiRehberKur();
             UiBuyukKartKur();    // üst katmanda, bildirim ve rehberin üstünde
             UiModalKur();   // en son: perde her şeyin üstünde
+            UiHaritaEtiketKur(root);   // harita yazıları hud'ın en altında, lejant hud'da, foto ipucu kökte (UiHaritaEtiketleri.cs)
             uiHazir = true;
         }
 
