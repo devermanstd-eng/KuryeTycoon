@@ -3,6 +3,9 @@
 //    −1 son). Köşe gölgelendiricisi şeridi EKRANDA sabit piksel kalınlığına açar (geometry shader yok): yakında da uzakta da
 //    aynı incelikte; çok kısa görünen kenarlar silinir (uzakta bina çizgi yumağına dönmez).
 //  • El çizimi hissi: kalınlık uçtan uca değişir, ton ve koyuluk çizgi boyunca gürültüyle oynar, yer yer incelip kesilir.
+//  • Kademeli kalınlık: |uv.x| şeridin yarı genişliğini ölçekler (büyük kenar 1,0; ayrıntı kenarı 0,45). v6: çizgiler
+//    inceldi (varsayılan 1,15 piksel), ayrıntı çizgileri biraz saydam; çizgi kameraya daha az çekilir (arkada kalan
+//    girintili kenarlar öne sızıp görüntüyü ağırlaştırmasın).
 //  • uv.x = 0 olan üçgenler açılmaz: ağaç taçlarının "ters kabuğu" (biraz büyük, yüzleri ters kopya) aynı malzemeyle dış hat olur.
 //  • Renk köşe renginden (yüzey renginin koyusu). Işıksız; gölge düşürmez; derinlik / normal dokusuna yazmaz (ekran
 //    geçişindeki mürekkep çizgisi bu şeritleri görmez).
@@ -13,7 +16,7 @@ Shader "KuryeTycoon/PastelCizgi"
     Properties
     {
         [MainColor] _BaseColor("Renk çarpanı", Color) = (1, 1, 1, 1)
-        _Kalinlik("Kalınlık (piksel)", Range(0.5, 4)) = 1.4
+        _Kalinlik("Kalınlık (piksel)", Range(0.5, 4)) = 1.15
         _Titreme("El titremesi", Range(0, 1)) = 0.55
         _Silinme("Bu boydan kısa görünen çizgi silinir (piksel)", Range(0, 12)) = 3
     }
@@ -92,7 +95,7 @@ Shader "KuryeTycoon/PastelCizgi"
                 float3 pw = TransformObjectToWorld(po);
                 float3 bakis = GetWorldSpaceNormalizeViewDir(pw);
                 float uzak = abs(TransformWorldToView(pw).z);
-                pw += bakis * (uzak * 0.004 + 0.0002);
+                pw += bakis * (uzak * 0.002 + 0.001);
                 return TransformWorldToHClip(pw);
             }
 
@@ -103,7 +106,7 @@ Shader "KuryeTycoon/PastelCizgi"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 float4 cp = PC_Kirpma(v.positionOS.xyz);
                 half alfa = 1.0h;
-                if (abs(v.uv.x) > 0.5)
+                if (abs(v.uv.x) > 0.05)
                 {
                     float4 cq = PC_Kirpma(v.diger);
                     float2 sp = cp.xy / max(cp.w, 1e-5) * _ScreenParams.xy * 0.5;
@@ -119,6 +122,7 @@ Shader "KuryeTycoon/PastelCizgi"
                         cp.xy += kay * 2.0 / _ScreenParams.xy * cp.w;
                     }
                     alfa = saturate((boy - _Silinme * 0.5) / max(_Silinme, 0.01));
+                    alfa *= abs(v.uv.x) < 0.75 ? 0.8h : 1.0h;       // ayrıntı çizgisi: biraz saydam
                 }
                 if (_PastelCizgiGizle > 0.5) cp = float4(2.0, 2.0, 2.0, 1.0);    // kırpma hacminin dışı: çizilmez
                 o.positionCS = cp;
@@ -128,7 +132,7 @@ Shader "KuryeTycoon/PastelCizgi"
                 #endif
                 o.color = half4(c * _BaseColor.rgb, alfa * _BaseColor.a);
                 o.positionOS = v.positionOS.xyz;
-                o.kabuk = abs(v.uv.x) > 0.5 ? 0.0 : 1.0;
+                o.kabuk = abs(v.uv.x) > 0.05 ? 0.0 : 1.0;
                 o.fogCoord = ComputeFogFactor(cp.z);
                 return o;
             }

@@ -28,8 +28,10 @@ namespace KuryeTycoon
         public const string TasarimKaynak = "Atolye/Tasarimlar";              // Resources klasörü (tasarım JSON'ları)
         public const string CizgiMalzemesi = "Pastel_Cizgi_3a2f3a";
         public const int Apartman = 0, Fachwerk = 1, Tas = 2, Kaide = 3, Merdiven = 4;
-        const int CtOto = 0, CtKirma = 1, CtBesik = 2, CtMansart = 3, CtTeras = 4, CtBasamak = 5, CtTestere = 6;
-        public static readonly string[] TarzAd = { "Pastel apartman", "Yarı ahşap (fachwerk) ev", "Taş kule", "Taş kaide / teras", "Taş merdiven" };
+        const int CtOto = 0, CtKirma = 1, CtBesik = 2, CtMansart = 3, CtTeras = 4, CtBasamak = 5, CtTestere = 6, CtParapet = 7;
+        static readonly string[] TemelTarzAd = { "Boyalı sıva teras (pastel)", "Yarı ahşap (Tudor) ev", "Taş kule", "Taş kaide / teras", "Taş merdiven" };
+        /// <summary>Duvar tarzı adları: beş temel tarz + kütüphanedeki Londra üslupları (pastel_parcalar.py: TARZ_AD).</summary>
+        public static string[] TarzAd => Kut != null && Kut.tarzAd != null && Kut.tarzAd.Length > 0 ? Kut.tarzAd : TemelTarzAd;
         public static readonly string[] Bolgeler = { "eski", "karma", "kule", "ev", "kampus", "sanayi", "avm" };
 
         // ---------------------------------------------------------------- kütüphane (JSON)
@@ -48,10 +50,26 @@ namespace KuryeTycoon
             public int calisan, kepenk;      // kepenk = 1: dükkân (kepenk, sipariş poşeti, kurye)
         }
         [Serializable] public class ZeminTurVeri { public string ad, etiket; }
+        /// <summary>
+        /// Londra duvar üslubu (pastel_parcalar.py: USLUPLAR; bloğun tarz alanı uslupTaban + sıra). kapi: kapı yüzü ve konutta
+        /// her kapiAralik hücrede bir ek kapı; onZemin / zemin: zemin katın ön / öbür yüzleri; onKat1 / kat1: birinci kat;
+        /// ust: ikinci kat ve üstü; tavan: sütunun en üst katı; duz: cephe süsünün arkasındaki düz duvar; koseZemin / kose,
+        /// kaide, silmeZemin / silme: boşsa konmaz; cati: çatı tarzı "Tarza göre" iken kullanılan tarz.
+        /// </summary>
+        [Serializable]
+        public class UslupVeri
+        {
+            public string ad, etiket, kapi, duz, kose, koseZemin, kaide, silme, silmeZemin;
+            public string[] zemin, onZemin, kat1, onKat1, ust, tavan;
+            public int kapiAralik, cati;
+        }
         [Serializable]
         public class Kutuphane
         {
             public int surum;
+            public string[] tarzAd;          // duvar tarzı adları (temel beş + üsluplar)
+            public int uslupTaban = 5;       // bu tarz ve üstü: usluplar[tarz − uslupTaban]
+            public UslupVeri[] usluplar;
             public float hucre = 2.8f, kat = 3f;
             public int izgara = 5;
             public int icSinir = 6;          // bir iç mekânda aynı mobilyadan en fazla kaç tane (parçada sinir yazmıyorsa)
@@ -113,9 +131,9 @@ namespace KuryeTycoon
             Kutuphane k;
             try { k = JsonUtility.FromJson<Kutuphane>(metin); }
             catch (Exception ex) { Debug.LogError("Bina Atölyesi: parça kütüphanesi okunamadı: " + ex.Message); return false; }
-            if (k == null || k.parcalar == null || k.parcalar.Length == 0 || k.surum < 3 || k.turler == null || k.yaprakRenk == null || k.tenteRenk == null)
+            if (k == null || k.parcalar == null || k.parcalar.Length == 0 || k.surum < 4 || k.turler == null || k.yaprakRenk == null || k.tenteRenk == null)
             {
-                Debug.LogError("Bina Atölyesi: parça kütüphanesi eski ya da eksik (sürüm 3 gerekli). python3 Tools/Blender/pastel_parcalar.py --json");
+                Debug.LogError("Bina Atölyesi: parça kütüphanesi eski ya da eksik (sürüm 4 gerekli). python3 Tools/Blender/pastel_parcalar.py --json");
                 return false;
             }
             foreach (var p in k.parcalar) parca[p.ad] = p;
@@ -146,6 +164,19 @@ namespace KuryeTycoon
         }
 
         static bool Bos(string s) => string.IsNullOrEmpty(s);
+        static bool Bos(string[] l) => l == null || l.Length == 0;
+
+        /// <summary>Tarzın Londra üslubu (tabloda yoksa null: eski tarzlar). pastel_parcalar.py: uslup.</summary>
+        static UslupVeri Uslup(int tarz)
+        {
+            var kt = Kut;
+            if (kt == null || kt.usluplar == null) return null;
+            int i = tarz - kt.uslupTaban;
+            return i >= 0 && i < kt.usluplar.Length ? kt.usluplar[i] : null;
+        }
+
+        /// <summary>İçi olan, kapı alabilen gövde tarzı mı (kaide ve merdiven değil). pastel_parcalar.py: govdeli.</summary>
+        static bool Govdeli(int tarz) => tarz == Apartman || tarz == Fachwerk || tarz == Tas || Uslup(tarz) != null;
 
         /// <summary>Tasarım JSON'undan (pastel_parcalar.py --ornekler ya da atölye penceresi) tasarım nesnesi. Bozuksa null.</summary>
         public static BinaTasarimi TasarimOku(string json)
@@ -212,11 +243,15 @@ namespace KuryeTycoon
         }
 
         static readonly Vector2Int[] Yon = { new Vector2Int(0, -1), new Vector2Int(1, 0), new Vector2Int(0, 1), new Vector2Int(-1, 0) };
-        static readonly string[] AptUst = { "duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_yuvarlak",
+        static readonly string[] AptUst = { "duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_pencere",
                                             "duvar_alinlik", "duvar_panjur_kapali", "duvar_stor" };
         static readonly string[] DuzVaryantlar = { "duvar_duz_tugla", "duvar_duz_kutu" };
-        /// <summary>Kalem çizgisi (pastel_parcalar.py: EN_KISA, KALIN_BOY, KALIN, INCE): kısa kenar çizilmez; 2 m ve uzun kenarlar kalın, kısalar ince.</summary>
-        const float EnKisa = 0.13f, KalinBoy = 2f, Kalin = 1.25f, Ince = 0.62f;
+        /// <summary>
+        /// Kalem çizgisi (pastel_parcalar.py: EN_KISA, KALIN_BOY, KALIN, INCE): kısa kenar çizilmez; 1,35 m ve uzun kenarlar
+        /// (bina köşesi, saçak, mahya, kat çizgisi) × 1,0, ayrıntı kenarları × 0,45 (v6: inceldi). "Pastel_Iz_" malzemeli
+        /// yüzeyler (tuğla / arduvaz sırası izi, cam kayıtları, korkuluk çubukları) hiç kontur almaz.
+        /// </summary>
+        const float EnKisa = 0.13f, KalinBoy = 1.35f, Kalin = 1f, Ince = 0.45f;
 
         /// <summary>Düz apartman duvarının varyantı (altıda bir tuğla yamalı, altıda bir klimalı / kutulu). pastel_parcalar.py: duz_varyant.</summary>
         static string DuzVaryant(int x, int y, int i, int k, int tohum)
@@ -229,7 +264,8 @@ namespace KuryeTycoon
         static readonly string[] TasUst = { "tas_duvar", "tas_mazgal", "tas_kemerli", "tas_duvar" };
         static readonly HashSet<string> SaksiAlir = new HashSet<string> { "duvar_pencere", "duvar_cift", "duvar_panjur", "duvar_panjur_kapali" };
         static readonly HashSet<string> CatiKarolari = new HashSet<string> { "cati_duz", "cati_egim", "cati_kose", "cati_vadi", "cati_semer" };
-        static readonly float[] HKirma = { 0f, 0.85f, 1.7f, 2.55f, 3.4f }, HBesik = { 0f, 1.25f, 2.5f, 3.75f, 5f }, HMansart = { 0f, 2f, 2.45f, 2.9f, 3.35f };
+        static readonly float[] HKirma = { 0f, 0.85f, 1.7f, 2.55f, 3.4f }, HBesik = { 0f, 1.25f, 2.5f, 3.75f, 5f }, HMansart = { 0f, 2f, 2.45f, 2.9f, 3.35f },
+                                  HParapet = { 0f, 1.3f, 1.6f, 1.9f, 2.2f };
         const string Silme = "Pastel_Silme_fbf7ee";
 
         static uint Karma(int a, int b, int c, int d)
@@ -255,10 +291,10 @@ namespace KuryeTycoon
             return "#" + ((int)(c.r * f)).ToString("x2") + ((int)(c.g * f)).ToString("x2") + ((int)(c.b * f)).ToString("x2");
         }
 
-        /// <summary>Kalem çizgisi rengi: yüzey renginin koyusu ile sıcak koyu mor-kahvenin ortası (saf siyah değil).</summary>
+        /// <summary>Kalem çizgisi rengi: yüzey renginin koyusu, sıcak mor-kahveye kaydırılmış; v6'da daha açık (siyaha yakın değil).</summary>
         static Color32 CizgiRengi(Color32 c)
         {
-            return new Color32((byte)(c.r * 0.225f + 0.135f * 255f), (byte)(c.g * 0.225f + 0.1f * 255f), (byte)(c.b * 0.225f + 0.135f * 255f), 255);
+            return new Color32((byte)(c.r * 0.33f + 0.17f * 255f), (byte)(c.g * 0.33f + 0.14f * 255f), (byte)(c.b * 0.33f + 0.18f * 255f), 255);
         }
 
         static string CizgiRengiHex(string hex)
@@ -300,7 +336,7 @@ namespace KuryeTycoon
 
             public bool OnAcik(int x, int y)
             {
-                return blok.TryGetValue(new Vector3Int(x, y, 0), out var b) && (b.tarz == Apartman || b.tarz == Fachwerk || b.tarz == Tas) && !Dolu(x, y - 1, 0);
+                return blok.TryGetValue(new Vector3Int(x, y, 0), out var b) && Govdeli(b.tarz) && !Dolu(x, y - 1, 0);
             }
 
             public Renkler RenkleriAl(int renk, int cati, int yaprak)
@@ -343,7 +379,7 @@ namespace KuryeTycoon
             var plan = new IcPlani();
             var Z = new List<Vector2Int>();
             foreach (var b in s.blok.Values)
-                if (b.k == 0 && (b.tarz == Apartman || b.tarz == Fachwerk || b.tarz == Tas)) Z.Add(new Vector2Int(b.x, b.y));
+                if (b.k == 0 && Govdeli(b.tarz)) Z.Add(new Vector2Int(b.x, b.y));
             if (!kapiVar || Z.Count == 0) return plan;
             Z.Sort((p, q) => p.x != q.x ? p.x.CompareTo(q.x) : p.y.CompareTo(q.y));
             var zs = new HashSet<Vector2Int>(Z);
@@ -487,6 +523,7 @@ namespace KuryeTycoon
                 if (altBos) s.Koy("taban", x, y, z, 0, r);
                 bool kapiHucresi = kapiVar && kapiX == x && kapiY == y;
                 bool sade = !Bos(T.duvar) && tarz == Apartman;
+                var U = Uslup(tarz);
                 // üst katlar kalkınca kaidenin üstü açık kalmasın
                 if (tarz == Kaide && k == 0 && s.Dolu(x, y, 1)) s.Koy("taban", x, y, KAT, 0, r, 1f, 0f, 0f, 0.97f, "Govde");
                 for (int i = 0; i < 4; i++)
@@ -498,12 +535,31 @@ namespace KuryeTycoon
                     bool kapiYuzu = k == 0 && i == 0 && kapiHucresi;
                     bool onZemin = k == 0 && i == 0 && tarz != Kaide;
                     bool cepheYuzu = !Bos(T.cephe) && kapiHucresi && i == 0 && k == kapiUst && k > 0;
+                    bool ekKapi = false;
                     string ad;
                     if (tarz == Kaide) ad = "tas_duvar";
-                    else if (kapiYuzu) ad = !Bos(T.kapi) ? T.kapi : tarz == Tas ? "kapi_kemerli" : "kapi_ahsap";
+                    else if (kapiYuzu) ad = !Bos(T.kapi) ? T.kapi : U != null ? U.kapi : tarz == Tas ? "kapi_kemerli" : "kapi_ahsap";
                     else if (onZemin && !Bos(T.on)) ad = T.on;
-                    else if (cepheYuzu) ad = "duvar_duz";
+                    else if (cepheYuzu) ad = U != null ? U.duz : "duvar_duz";
                     else if (sade) ad = T.duvar;
+                    else if (U != null)
+                    {
+                        // Londra üslubu: kat ve yöne göre liste; konutta kapı sırasında her kapiAralik hücrede bir ek kapı
+                        string[] liste;
+                        if (k == 0)
+                        {
+                            ekKapi = i == 0 && T.grup == "Konut" && U.kapiAralik > 0 && kapiVar && y == kapiY && Mod(x - kapiX, U.kapiAralik) == 0;
+                            liste = (i == 0 && !Bos(U.onZemin)) ? U.onZemin : U.zemin;
+                        }
+                        else if (k == 1)
+                        {
+                            liste = (i == 0 && !Bos(U.onKat1)) ? U.onKat1 : U.kat1;
+                            if (Bos(liste)) liste = U.ust;
+                        }
+                        else if (!s.Dolu(x, y, k + 1)) liste = !Bos(U.tavan) ? U.tavan : U.ust;
+                        else liste = U.ust;
+                        ad = ekKapi ? U.kapi : Bos(liste) ? U.duz : liste[Sec(h, liste.Length)];
+                    }
                     else if (tarz == Tas) ad = TasUst[Sec(h + (hk % 3 == 0 ? 1u : 0u), TasUst.Length)];
                     else if (tarz == Fachwerk) ad = k == 0 ? (h % 3 != 0 ? "duvar_pencere" : "duvar_duz") : FwUst[Sec(h, FwUst.Length)];
                     else if (k == 0) ad = h % 4 != 0 ? "zemin_pencere" : "duvar_duz";
@@ -515,12 +571,22 @@ namespace KuryeTycoon
                     string cizilen = ad;
                     if (ad == "duvar_duz" && tarz == Apartman && Bos(T.duvar) && !cepheYuzu) cizilen = DuzVaryant(x, y, i, k, tohum);
                     s.Koy(cizilen, x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
-                    if (ad == "duvar_duz" && cepheYuzu) s.Koy(T.cephe, x, y, z, i, r);
+                    if (cepheYuzu && tarz != Kaide) s.Koy(T.cephe, x, y, z, i, r);
                     if (SaksiAlir.Contains(ad) && hk % 5 == 0) s.Koy("cicek_kutusu_p", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
                     if (onZemin && T.tente != 0 && (kapiYuzu || !Bos(T.on))) s.Koy("tente", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
                     if (T.kepenk != 0 && onZemin && (kapiYuzu || !Bos(T.on))) s.Koy("kepenk", x, y, z, i, r, 1f, 0f, 0f, 1f, "Kepenk");
-                    if (k == 0 && tarz != Kaide && !sade) s.Koy("kaide", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
-                    if (tarz == Apartman && Bos(T.duvar)) s.Koy("silme", x, y, z + KAT, i, r);
+                    // Kaide: kapı, dükkân cephesi ve ek kapı yüzlerinde yok (o parçaların kendi eteği var)
+                    if (k == 0 && tarz != Kaide && !sade && !kapiYuzu && !(onZemin && !Bos(T.on)) && !ekKapi)
+                    {
+                        string kd = U != null ? U.kaide : "kaide";
+                        if (!Bos(kd)) s.Koy(kd, x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
+                    }
+                    if (U != null)
+                    {
+                        string sm = k == 0 ? U.silmeZemin : U.silme;
+                        if (!Bos(sm)) s.Koy(sm, x, y, z + KAT, i, r);
+                    }
+                    else if (tarz == Apartman && Bos(T.duvar)) s.Koy("silme", x, y, z + KAT, i, r);
                     else if (tarz == Fachwerk && k > 0) s.Koy("silme_ahsap", x, y, z, i, r);
                     if (k == 0 && i != 0 && (tarz == Apartman || tarz == Fachwerk) && Bos(T.duvar))
                     {
@@ -529,7 +595,7 @@ namespace KuryeTycoon
                         else if (a == 1) s.Koy("saksi", x, y, z, i, r, 1f, -0.8f, -A - 0.38f);
                         else if (a == 2 && ad == "duvar_duz") s.Koy("sarmasik", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
                     }
-                    if (kapiYuzu) s.Koy("paspas", x, y, z, i, r, 1f, 0f, -A - 0.75f);
+                    if (kapiYuzu && U == null) s.Koy("paspas", x, y, z, i, r, 1f, 0f, -A - 0.75f);
                     if (k == 0 && tarz == Apartman && ad == "zemin_pencere" && Karma(x, y, i, tohum + 9) % 5 == 0)
                         s.Koy("fener", x, y, z, i, r, 1f, 1.15f, 0f, 1f, dg);
                 }
@@ -542,12 +608,17 @@ namespace KuryeTycoon
                     if (aBos && cBos)
                     {
                         if (sade) continue;
-                        string kose = tarz == Tas || tarz == Kaide ? "kose_tas" : (tarz == Fachwerk && k > 0) ? "kose_ahsap" : "kose_dis";
-                        // sütun boyunca aynı: yağmur iniş borusu çatıdan yere iner
-                        if (kose == "kose_dis" && Karma(x, y, i, tohum + 71) % 4 == 0 && parca.ContainsKey("kose_boru")) kose = "kose_boru";
-                        s.Koy(kose, x, y, z, i, r);
+                        string kose;
+                        if (U != null) kose = k == 0 ? U.koseZemin : U.kose;
+                        else
+                        {
+                            kose = tarz == Tas || tarz == Kaide ? "kose_tas" : (tarz == Fachwerk && k > 0) ? "kose_ahsap" : "kose_dis";
+                            // sütun boyunca aynı: yağmur iniş borusu çatıdan yere iner
+                            if (kose == "kose_dis" && Karma(x, y, i, tohum + 71) % 4 == 0 && parca.ContainsKey("kose_boru")) kose = "kose_boru";
+                        }
+                        if (!Bos(kose)) s.Koy(kose, x, y, z, i, r);
                     }
-                    else if (!aBos && !cBos && !s.Dolu(x + a.x + c.x, y + a.y + c.y, k))
+                    else if (U == null && !aBos && !cBos && !s.Dolu(x + a.x + c.x, y + a.y + c.y, k))
                         s.Koy("kose_ic", x, y, z, i, r);
                 }
                 // altı boş: kemerli geçit
@@ -701,13 +772,15 @@ namespace KuryeTycoon
 
             void KenarParcasi(string ad, string koseAd)
             {
+                // kenar parçası hücrenin kendi rengini alır (farklı renkli sıra evlerde parapet / saçak eve göre)
                 foreach (var p in bolge)
                 {
+                    var rr = s.blok.TryGetValue(new Vector3Int(p.x, p.y, k), out var hb) ? s.RenkleriAl(hb) : r;
                     for (int i = 0; i < 4; i++)
-                        if (!kume.Contains(p + Yon[i])) s.Koy(ad, p.x, p.y, z, i, r);
+                        if (!kume.Contains(p + Yon[i])) s.Koy(ad, p.x, p.y, z, i, rr);
                     if (koseAd == null) continue;
                     for (int i = 0; i < 4; i++)
-                        if (!kume.Contains(p + Yon[(i + 3) % 4]) && !kume.Contains(p + Yon[i])) s.Koy(koseAd, p.x, p.y, z, i, r);
+                        if (!kume.Contains(p + Yon[(i + 3) % 4]) && !kume.Contains(p + Yon[i])) s.Koy(koseAd, p.x, p.y, z, i, rr);
                 }
             }
 
@@ -743,7 +816,9 @@ namespace KuryeTycoon
                     KenarParcasi("dama", null);
                     return;
                 }
-                ct = tarz == Fachwerk ? CtBesik : CtKirma;
+                var U = Uslup(tarz);
+                ct = U != null ? U.cati : tarz == Fachwerk ? CtBesik : CtKirma;
+                if (ct < CtKirma || ct > CtParapet) ct = CtKirma;       // bozuk tablo: kırma
             }
             if (ct == CtTeras)
             {
@@ -763,7 +838,7 @@ namespace KuryeTycoon
             // eğimli çatı: yarım hücrelik kafeste dışarıya uzaklık (kırma / mansart: 8 komşu; beşik: mahyaya dik eksen)
             bool besik = ct == CtBesik || ct == CtBasamak;
             int eksen = gen >= der ? 0 : 1;
-            float[] H = ct == CtMansart ? HMansart : besik ? HBesik : HKirma;
+            float[] H = ct == CtMansart ? HMansart : ct == CtParapet ? HParapet : besik ? HBesik : HKirma;
             var d = new Dictionary<Vector2Int, int>();
             const int Bilinmiyor = -1;
             foreach (var p in bolge)
@@ -805,7 +880,9 @@ namespace KuryeTycoon
                 kuyruk = yeni;
             }
             var anahtarlar = new List<Vector2Int>(d.Keys);
-            foreach (var p in anahtarlar) d[p] = Mathf.Clamp(d[p], 0, 4);
+            // parapet arkası: iki kademeden sonra düz kurşun tepe (çapraz kırık çizgileri olmasın)
+            int ustSinir = ct == CtParapet ? 2 : 4;
+            foreach (var p in anahtarlar) d[p] = Mathf.Clamp(d[p], 0, ustSinir);
 
             string catiMat = "Pastel_Cati_" + r.C.TrimStart('#');
             foreach (var p in bolge)
@@ -830,6 +907,27 @@ namespace KuryeTycoon
                         float zs = h0 < 4 ? H[h0 + 1] - H[h0] : 1f;
                         s.Koy(karo.ad, p.x, p.y, z + H[h0], karo.don, r, zs, -A + i * A, -A + j * A);
                     }
+            if (ct == CtParapet)
+            {
+                // Londra: saçak yerine parapet; ortak duvar hizalarında sıra baca; ön kenarda mansart pencereleri
+                KenarParcasi("parapet", "parapet_kose");
+                int a0 = eksen == 0 ? xMin : yMin, a1 = eksen == 0 ? xMax : yMax;       // mahya ekseni boyunca
+                int c0 = eksen == 0 ? yMin : xMin, c1 = eksen == 0 ? yMax : xMax;       // mahyaya dik
+                int cb = Yari(c0 + c1);
+                float kayma = ((c0 + c1) * 0.5f - cb) * Hucre;                          // bölge çift sıra derinse baca mahya çizgisinde
+                float ky = eksen == 0 ? kayma : -kayma;
+                for (int a = a0; a <= a1; a++)
+                {
+                    int hx = eksen == 0 ? a : cb, hy = eksen == 0 ? cb : a;
+                    if (!kume.Contains(new Vector2Int(hx, hy))) continue;
+                    if ((a - a0) % 2 == 0) s.Koy("baca_sira", hx, hy, z, eksen, r, 1f, -A + 0.3f, ky);
+                    if (a == a1) s.Koy("baca_sira", hx, hy, z, eksen, r, 1f, A - 0.3f, ky);
+                }
+                foreach (var p in bolge)
+                    if (Karma(p.x, p.y, k, tohum + 21) % 2 == 0 && !kume.Contains(new Vector2Int(p.x, p.y - 1)) && d[new Vector2Int(2 * p.x + 1, 2 * p.y + 1)] >= 1 && !sade)
+                        s.Koy("mansart_penceresi", p.x, p.y, z, 0, r, 1f, 0f, -A);
+                return;
+            }
             KenarParcasi("sacak", "sacak_kose");
             // alınlıklar (basamaklı tarzda çatıyı aşan kalın basamaklar)
             string alinMat = tarz == Fachwerk ? "Pastel_Siva_f6f0e2" : "Pastel_Duvar_" + r.D.TrimStart('#');
@@ -1246,7 +1344,7 @@ namespace KuryeTycoon
                 adlar.Sort(string.CompareOrdinal);
                 foreach (string mat in adlar)
                 {
-                    if (mat.Contains("_Yazi_")) continue;
+                    if (mat.Contains("_Yazi_") || mat.Contains("_Iz_")) continue;       // yazı ve "iz" yüzeyleri kontur almaz
                     Color32 renk = CizgiRengi(AddanRenk(mat));
                     var l = yz.alt[mat];
                     for (int i = 0; i + 2 < l.Count; i += 3)
