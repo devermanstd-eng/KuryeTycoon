@@ -26,6 +26,7 @@ namespace KuryeTycoon.EditorTools
         BinaTasarimi tasarim;
         int kat, tarz, renk, cati;
         GameObject onizleme;
+        GameObject onizlemeIsigi;   // sahnede güneş yoksa geçici ışık (kaydedilmez)
         Mesh onizlemeMesh;
         int ucgen;
         Vector2Int fare = new Vector2Int(-1, -1);
@@ -45,6 +46,18 @@ namespace KuryeTycoon.EditorTools
             Undo.undoRedoPerformed += Yenile;
             if (tasarim == null) YeniTasarim();
             Yenile();
+            EditorApplication.delayCall += KamerayiOdakla;
+        }
+
+        /// <summary>Sahne kamerasını arsaya, sokak (ön, +Z) tarafından hafif yukarıdan bakacak şekilde getirir.</summary>
+        static void KamerayiOdakla()
+        {
+            var sv = SceneView.lastActiveSceneView;
+            if (sv == null) return;
+            sv.in2DMode = false;
+            sv.orthographic = false;
+            sv.LookAt(new Vector3(0f, 3f, 0f), Quaternion.Euler(32f, 205f, 0f), 11f);
+            sv.Repaint();
         }
 
         void OnDisable()
@@ -52,7 +65,9 @@ namespace KuryeTycoon.EditorTools
             SceneView.duringSceneGui -= SahneGui;
             Undo.undoRedoPerformed -= Yenile;
             if (onizleme != null) DestroyImmediate(onizleme);
+            if (onizlemeIsigi != null) DestroyImmediate(onizlemeIsigi);
             if (onizlemeMesh != null) DestroyImmediate(onizlemeMesh);
+            onizlemeIsigi = null;
             onizleme = null;
             onizlemeMesh = null;
         }
@@ -75,6 +90,7 @@ namespace KuryeTycoon.EditorTools
                 onizleme.AddComponent<MeshFilter>();
                 onizleme.AddComponent<MeshRenderer>();
             }
+            IsikHazirla();
             var mesh = BinaAtolyesiKurucu.Kur(tasarim, false, out var adlar);
             var mf = onizleme.GetComponent<MeshFilter>();
             var mr = onizleme.GetComponent<MeshRenderer>();
@@ -91,6 +107,21 @@ namespace KuryeTycoon.EditorTools
             else mf.sharedMesh = null;
             SceneView.RepaintAll();
             Repaint();
+        }
+
+        /// <summary>Boş sahnede Pastel malzeme güneşsiz kararır; sahnede yönlü ışık yoksa geçici bir güneş koyar.</summary>
+        void IsikHazirla()
+        {
+            if (onizlemeIsigi != null) return;
+            foreach (var l in Object.FindObjectsByType<Light>())
+                if (l.type == LightType.Directional && l.isActiveAndEnabled) return;
+            onizlemeIsigi = new GameObject("Bina Atölyesi (ışık)") { hideFlags = HideFlags.DontSave };
+            var isik = onizlemeIsigi.AddComponent<Light>();
+            isik.type = LightType.Directional;
+            isik.intensity = 1.3f;
+            isik.color = new Color(1f, 0.96f, 0.88f);
+            isik.shadows = LightShadows.Soft;
+            onizlemeIsigi.transform.rotation = Quaternion.Euler(45f, 160f, 0f);   // sokak (ön, +Z) cephesi aydınlık
         }
 
         int BlokBul(int x, int y, int k)
@@ -177,7 +208,7 @@ namespace KuryeTycoon.EditorTools
                 case EventType.Repaint:
                     // Izgara (seçili katın tabanı) ve arsa sınırı; sokak tarafı (ön, +Z) kalın çizgi
                     Handles.zTest = UnityEngine.Rendering.CompareFunction.Always;
-                    Handles.color = new Color(0.25f, 0.2f, 0.3f, 0.55f);
+                    Handles.color = new Color(0.9f, 0.85f, 1f, 0.45f);
                     for (int i = 0; i <= n; i++)
                     {
                         float a = -yari + i * h;
@@ -258,6 +289,7 @@ namespace KuryeTycoon.EditorTools
                 }
                 if (GUILayout.Button("Parçaları yeniden oku")) { BinaAtolyesiKurucu.Yukle(); Yenile(); }
             }
+            if (GUILayout.Button("Kamerayı arsaya getir")) KamerayiOdakla();
             using (new EditorGUILayout.HorizontalScope())
             {
                 if (GUILayout.Button("JSON içe aktar")) IceAktar();
