@@ -1990,7 +1990,8 @@ namespace KuryeTycoon
             Tint(renderers, !CityMap.I.IsUnlocked(tile), seed);
             // İçi modelli binalar ("_Cati" çocuğu olanlar, ör. mahalle bakkalı): kamera yaklaşınca çatı kalkar
             // Bakkalın canlı hâli (BakkalCanli): müşteriler, kasiyer, sipariş poşeti, kepenk, tedarik kamyoneti
-            if (ownModel)
+            // Yalnız sipariş alınan yerler (dükkân bağlı bina): konut, kamu ve sanayi binalarının çatısı kalkmaz, içi gösterilmez
+            if (ownModel && shop != null)
             {
                 var catiKaldir = CatiKaldir.Tak(inst);
                 if (catiKaldir != null)
