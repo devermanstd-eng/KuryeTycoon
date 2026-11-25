@@ -53,7 +53,8 @@ namespace KuryeTycoon
                     int no = i;
                     y.Dugme("Bakış: " + BakkalCanli.BakisAd[i], () => b.BakisSec(no), b.Bakis != i, "kucuk-dg");
                 }
-                y.Dugme("Dışarı çık", () => b.Cik(), true, "vurgu");
+                // Tanı: bu satır Console'da görünmüyorsa tıklama düğmeye hiç ulaşmıyor demektir (ekranın üstündeki düğme ayrı çalışır)
+                y.Dugme("Dışarı çık", () => { Debug.Log("Kurye Tycoon · bakkal kartı: 'Dışarı çık' tıklandı"); IceriBakis.Cik(); }, true, "vurgu");
                 return;
             }
             y.Dugme("İçeri gir", () => b.IceriGir(), true, "vurgu");

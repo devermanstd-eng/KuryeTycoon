@@ -33,7 +33,7 @@ namespace KuryeTycoon.EditorTools
         // ---------------------------------------------------------------- kütüphane (JSON)
 
         [Serializable] public class AltVeri { public string malzeme; public int[] uc; }
-        [Serializable] public class ParcaVeri { public string ad, grup, aciklama, hedef; public bool kucuk; public float[] v; public AltVeri[] alt; }
+        [Serializable] public class ParcaVeri { public string ad, grup, aciklama, hedef; public bool kucuk; public int sinir; public float[] v; public AltVeri[] alt; }   // sinir: bir iç mekânda en fazla kaç tane (0: varsayılan)
         [Serializable]
         public class TurVeri
         {
@@ -51,6 +51,8 @@ namespace KuryeTycoon.EditorTools
             public int surum;
             public float hucre = 2.8f, kat = 3f;
             public int izgara = 5;
+            public int icSinir = 6;          // bir iç mekânda aynı mobilyadan en fazla kaç tane (parçada sinir yazmıyorsa)
+            public string[] icYedek;         // türün listesi tükenince kullanılan dolgu mobilyaları
             public string[] duvarRenk, catiRenk, vurguRenk, tenteRenk, yaprakRenk, catiTarz;
             public TurVeri[] turler;
             public ParcaVeri[] parcalar, hafifler;
@@ -311,6 +313,16 @@ namespace KuryeTycoon.EditorTools
             }
             var T = s.T;
             var son = kolon[kolon.Count - 1];
+            // Aynı mobilyadan en fazla "sinir" tane: dolunca listedeki sıradakine, o da dolunca yedeklere geçilir
+            var say = new Dictionary<string, int>();
+            bool Al(string ad)
+            {
+                int sinir = parca.TryGetValue(ad, out var pv) && pv.sinir > 0 ? pv.sinir : Mathf.Max(1, Kut.icSinir);
+                say.TryGetValue(ad, out int n);
+                if (n >= sinir) return false;
+                say[ad] = n + 1;
+                return true;
+            }
             if (!Bos(T.icKasa))
             {
                 var adaylar = new[] { new Vector2Int(kx + 1, ky), new Vector2Int(kx - 1, ky), son };
@@ -320,18 +332,32 @@ namespace KuryeTycoon.EditorTools
                         plan.kasaVar = true;
                         plan.kasa = c;
                         plan.mobilya[c] = T.icKasa;
+                        Al(T.icKasa);
                         break;
                     }
             }
-            if (!E.Contains(son) && !plan.mobilya.ContainsKey(son) && !Bos(T.icArka)) plan.mobilya[son] = T.icArka;
+            if (!E.Contains(son) && !plan.mobilya.ContainsKey(son) && !Bos(T.icArka) && Al(T.icArka)) plan.mobilya[son] = T.icArka;
             int j = 0;
             if (T.ic != null && T.ic.Length > 0)
-                foreach (var c in Z)
+            {
+                // ön sıradan (sokak tarafı) arkaya, soldan sağa
+                var sirali = new List<Vector2Int>(Z);
+                sirali.Sort((p, q) => p.y != q.y ? p.y.CompareTo(q.y) : p.x.CompareTo(q.x));
+                foreach (var c in sirali)
                 {
                     if (E.Contains(c) || plan.mobilya.ContainsKey(c)) continue;
-                    plan.mobilya[c] = T.ic[j % T.ic.Length];
-                    j++;
+                    string sec = null;
+                    for (int d = 0; d < T.ic.Length; d++)
+                    {
+                        string ad = T.ic[(j + d) % T.ic.Length];
+                        if (Al(ad)) { sec = ad; j += d + 1; break; }
+                    }
+                    if (sec == null && Kut.icYedek != null)
+                        foreach (string ad in Kut.icYedek)
+                            if (Al(ad)) { sec = ad; break; }
+                    if (sec != null) plan.mobilya[c] = sec;
                 }
+            }
             return plan;
         }
 

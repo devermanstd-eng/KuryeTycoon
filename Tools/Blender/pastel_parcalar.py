@@ -1498,11 +1498,11 @@ def _ic(aciklama):
     return parca("ic", aciklama)
 
 
-def _urunler(g, x0, x1, y, z, rnd, h=0.24, d=0.16):
+def _urunler(g, x0, x1, y, z, rnd, h=0.24, d=0.16, w0=0.2, w1=0.42):
     renk = ("#d94f3d", "#e8a23a", "#f2d04a", "#5a9a4a", "#2f7d8c", "#3d5a8a", "#8a4a6b", "#f4f0e6", "#7ab8d6", "#e07a9a")
     x = x0
     while x < x1 - 0.12:
-        w = rnd.uniform(0.2, 0.42)
+        w = rnd.uniform(w0, w1)
         kutu(g, x, min(x1, x + w) - 0.03, y - d, y, z, z + rnd.uniform(h * 0.6, h), PM("Urun", rnd.choice(renk)), atla=("zn",))
         x += w
 
@@ -1555,8 +1555,8 @@ def ic_raf(g):
     for i, z in enumerate((0.12, 0.55, 0.98)):
         dd = 0.36 - i * 0.07
         kutu(g, -1.15, 1.15, 0.35 - dd, 0.35 + dd, z - 0.03, z, SILME, atla=())
-        _urunler(g, -1.1, 1.1, 0.35 - dd + 0.18, z, rnd)
-        _urunler(g, -1.1, 1.1, 0.35 + dd, z, rnd)
+        _urunler(g, -1.1, 1.1, 0.35 - dd + 0.18, z, rnd, w0=0.4, w1=0.7)
+        _urunler(g, -1.1, 1.1, 0.35 + dd, z, rnd, w0=0.4, w1=0.7)
 
 
 @_ic("Soğutucu dolap")
@@ -1567,8 +1567,8 @@ def ic_sogutucu(g):
     rnd = random.Random(4)
     for z in (0.32, 0.78, 1.24):
         kutu(g, -1.1, 1.1, 0.3, 0.5, z - 0.03, z, PM("Metal", "#c9ccd0"), atla=())
-        for i in range(9):
-            dsil(g, -0.96 + i * 0.24, 0.4, z, z + 0.3, 0.07, 5, PM("Sise", rnd.choice(("#c8453f", "#7fb86a", "#e0a04a", "#bcd6f0", "#6b4a35"))), kapak=(False, True))
+        for i in range(6):
+            kutu(g, -1.02 + i * 0.36, -0.76 + i * 0.36, 0.34, 0.46, z, z + 0.3, PM("Sise", rnd.choice(("#c8453f", "#7fb86a", "#e0a04a", "#bcd6f0", "#6b4a35"))), atla=("zn", "yp"))
     for x in (-1.2, -0.02, 1.16):
         kutu(g, x, x + 0.06, 0.28, 0.5, 0.25, 1.75, PM("Metal", "#9aa3ab"))
 
@@ -1733,7 +1733,7 @@ def ic_kitaplik(g):
         kutu(g, -1.15, 1.15, 0.85, 0.9, z, z + 0.42, AHSAP2, atla=())
         x = -1.1
         while x < 1.05:
-            w = rnd.uniform(0.12, 0.24)
+            w = rnd.uniform(0.3, 0.55)
             kutu(g, x, x + w - 0.01, 0.72, 0.9, z, z + rnd.uniform(0.28, 0.4), PM("Urun", rnd.choice(("#c8453f", "#3f5f8a", "#6fa968", "#d9a441", "#8a5a78", "#f4f0e6"))), atla=("zn",))
             x += w
     kutu(g, -0.6, 0.6, -0.1, 0.4, 0.0, 0.7, AHSAP2)
@@ -1996,6 +1996,106 @@ def ic_oturma(g):
     kutu(g, -1.3, -1.0, 0.4, 1.2, 0.0, 1.6, AHSAP2)
 
 
+@_ic("Hortum makaraları ve hortum rafı (itfaiye)")
+def ic_hortum(g):
+    kr = PM("Arac", "#c8342f")
+    for x in (-0.7, 0.5):
+        silindir(g, (x - 0.14, 1.05, 1.1), (x + 0.14, 1.05, 1.1), 0.42, 0.42, 10, kr)
+        silindir(g, (x - 0.1, 1.05, 1.1), (x + 0.1, 1.05, 1.1), 0.34, 0.34, 10, PM("Hortum", "#e8d9a8"))
+        kutu(g, x - 0.2, x + 0.2, 1.0, 1.35, 0.0, 0.7, PM("Metal", "#9aa3ab"))
+    kutu(g, -1.25, 1.25, 1.1, 1.38, 1.9, 1.96, PM("Metal", "#9aa3ab"), atla=())
+    for i in range(5):
+        kutu(g, -1.1 + i * 0.46, -0.75 + i * 0.46, 1.12, 1.36, 1.96, 2.12, PM("Hortum", "#e8d9a8" if i % 2 else "#d9c48a"))
+    dsil(g, 1.15, 0.9, 0.0, 0.62, 0.11, 6, kr, kapak=(False, True))
+    dsil(g, 1.15, 0.9, 0.62, 0.74, 0.05, 5, DEMIR)
+
+
+@_ic("Soyunma dolapları ve bank")
+def ic_dolap(g):
+    for i in range(4):
+        x = -1.2 + i * 0.6
+        kutu(g, x, x + 0.56, 0.9, 1.35, 0.0, 1.9, PM("Metal", "#7a9ab8" if i % 2 else "#6b8aa8"))
+        kutu(g, x + 0.1, x + 0.46, 0.88, 0.9, 1.5, 1.7, DEMIR, atla=())
+        kutu(g, x + 0.44, x + 0.5, 0.86, 0.9, 0.9, 1.0, PM("Metal", "#c9ccd0"))
+    kutu(g, -1.0, 1.0, 0.2, 0.55, 0.42, 0.48, AHSAP, atla=())
+    for x in (-0.9, 0.82):
+        kutu(g, x, x + 0.08, 0.25, 0.5, 0.0, 0.42, DEMIR)
+
+
+@_ic("Ekipman askısı (ceket, kask, çizme)")
+def ic_ekipman(g):
+    cubuk(g, (-1.2, 1.25, 1.7), (1.2, 1.25, 1.7), 0.05, DEMIR)
+    kutu(g, -1.25, 1.25, 1.1, 1.38, 1.95, 2.0, AHSAP, atla=())
+    for i in range(5):
+        x = -1.0 + i * 0.5
+        kutu(g, x - 0.19, x + 0.19, 1.12, 1.3, 0.85, 1.68, PM("Ceket", "#e8b83a"))
+        kutu(g, x - 0.19, x + 0.19, 1.1, 1.12, 1.1, 1.18, SILME, atla=())
+        meyve(g, x, 1.24, 2.0, 0.17, PM("Arac", "#c8342f"), n=6, rz=0.2)
+        kutu(g, x - 0.12, x + 0.12, 1.0, 1.3, 0.0, 0.35, PM("Lastik", "#3d3b42"))
+
+
+@_ic("Muayene yatağı (perde bölmeli)")
+def ic_muayene(g):
+    mt = PM("Metal", "#c9ccd0")
+    kutu(g, -0.5, 0.45, 0.3, 1.3, 0.5, 0.62, SILME, atla=())
+    kutu(g, -0.45, 0.4, 1.0, 1.28, 0.62, 0.72, PM("Yastik", "#bcd6f0"))
+    kutu(g, -0.5, 0.45, 0.32, 0.95, 0.62, 0.66, PM("Yastik", "#a9cfc6"), atla=("zn",))
+    for x in (-0.45, 0.4):
+        for y in (0.38, 1.22):
+            cubuk(g, (x, y, 0.0), (x, y, 0.5), 0.05, mt)
+    cubuk(g, (-1.2, 0.1, 2.1), (-1.2, 1.38, 2.1), 0.04, mt)
+    cubuk(g, (-1.2, 0.1, 2.1), (0.2, 0.1, 2.1), 0.04, mt)
+    for i in range(4):
+        kutu(g, -1.22 - 0.02 * (i % 2), -1.18, 0.14 + i * 0.31, 0.45 + i * 0.31, 0.35, 2.08, PM("Perde", "#a9cfc6" if i % 2 else "#bfe0d8"))
+    for i in range(3):
+        kutu(g, -1.15 + i * 0.3, -0.85 + i * 0.3, 0.08, 0.12 + 0.02 * (i % 2), 0.35, 2.08, PM("Perde", "#bfe0d8" if i % 2 else "#a9cfc6"))
+    dsil(g, 0.95, 0.9, 0.0, 0.45, 0.04, 5, mt, kapak=(False, False))
+    dsil(g, 0.95, 0.9, 0.45, 0.52, 0.17, 7, VR, kapak=(True, True))
+    kutu(g, 0.75, 1.2, 1.1, 1.38, 0.0, 0.8, SILME)
+
+
+@_ic("Tekerlekli sandalye ve ecza dolabı")
+def ic_tekerlekli(g):
+    mt = PM("Metal", "#9aa3ab")
+    kutu(g, -0.85, -0.35, 0.55, 1.0, 0.45, 0.5, VR, atla=())
+    kutu(g, -0.85, -0.35, 0.98, 1.04, 0.5, 1.0, VR, atla=())
+    for x in (-0.9, -0.3):
+        silindir(g, (x - 0.03, 0.85, 0.32), (x + 0.03, 0.85, 0.32), 0.32, 0.32, 10, mt)
+        silindir(g, (x - 0.02, 0.45, 0.1), (x + 0.02, 0.45, 0.1), 0.1, 0.1, 6, DEMIR)
+        cubuk(g, (x, 1.04, 0.5), (x, 1.14, 1.05), 0.04, DEMIR)
+    kutu(g, 0.3, 1.2, 1.0, 1.38, 0.0, 1.8, SILME)
+    kutu(g, 0.36, 0.73, 0.98, 1.0, 0.95, 1.7, VIT, atla=())
+    kutu(g, 0.77, 1.14, 0.98, 1.0, 0.95, 1.7, VIT, atla=())
+    kutu(g, 0.62, 0.88, 0.96, 0.98, 0.35, 0.61, PM("Arac", "#c8342f"), atla=())
+    kutu(g, 0.71, 0.79, 0.94, 0.96, 0.38, 0.58, SILME, atla=())
+    kutu(g, 0.65, 0.85, 0.94, 0.96, 0.44, 0.52, SILME, atla=())
+
+
+@_ic("Bilgi panosu, su sebili, saksı")
+def ic_pano(g):
+    kutu(g, -1.0, 0.3, 1.3, 1.36, 0.9, 2.0, PM("Tahta", "#d9c9a8"))
+    kutu(g, -1.05, 0.35, 1.28, 1.38, 0.84, 0.9, AHSAP, atla=())
+    rnd = random.Random(8)
+    for i in range(3):
+        for j in range(2):
+            kutu(g, -0.9 + i * 0.4, -0.6 + i * 0.4, 1.28, 1.3, 1.05 + j * 0.45, 1.4 + j * 0.45, PM("Afis", rnd.choice(("#f4f0e6", "#f5c84a", "#a9cfc6", "#f0b0c0"))), atla=())
+    kutu(g, 0.6, 1.0, 0.95, 1.35, 0.0, 1.0, SILME)
+    dsil(g, 0.8, 1.15, 1.0, 1.45, 0.15, 7, PM("Su", "#7ab8d6"), kapak=(False, True))
+    dsil(g, -1.05, 0.9, 0.0, 0.4, 0.18, 7, SAKSI, r1=0.23, kapak=(False, True), kapak_mat=AHSAP2)
+    top(g, (-1.05, 0.9, 0.85), 0.3, 0.3, 0.45, YAPRAK)
+
+
+@_ic("Saksılı bitkiler ve bank (dolgu)")
+def ic_bitki(g):
+    for x, h in ((-0.95, 1.0), (0.95, 0.8)):
+        dsil(g, x, 1.0, 0.0, 0.45, 0.2, 7, SAKSI, r1=0.26, kapak=(False, True), kapak_mat=AHSAP2)
+        top(g, (x, 1.0, 0.45 + h * 0.55), 0.34, 0.34, h * 0.5, YAPRAK)
+    kutu(g, -0.55, 0.55, 0.85, 1.2, 0.4, 0.46, AHSAP, atla=())
+    kutu(g, -0.55, 0.55, 1.2, 1.26, 0.46, 0.85, AHSAP, atla=())
+    for x in (-0.5, 0.42):
+        kutu(g, x, x + 0.08, 0.9, 1.2, 0.0, 0.4, DEMIR)
+
+
 @_ic("Sipariş poşeti (tezgâhta)")
 def ic_poset(g):
     kg = PM("Karton", "#c49a6c")
@@ -2160,11 +2260,11 @@ IC_TUR = {
     "bakkal24": _MK, "minimart": _MK, "market": _MK, "supermarket": _MK, "market24": _MK, "bio": _MK,
     "belediye": ("ic_gise", ("ic_bekleme", "ic_ofis", "ic_bekleme"), "ic_ofis", "ic_zemin_ahsap", 1),
     "postane": ("ic_gise", ("ic_bekleme", "ic_palet"), "ic_ofis", "ic_zemin_karo", 1),
-    "hastane": ("ic_resepsiyon", ("ic_sedye", "ic_bekleme", "ic_sedye"), "ic_bekleme", "ic_zemin_karo", 1),
+    "hastane": ("ic_resepsiyon", ("ic_bekleme", "ic_muayene", "ic_pano", "ic_sedye", "ic_muayene", "ic_tekerlekli"), "ic_bekleme", "ic_zemin_karo", 1),
     "polis": ("ic_gise", ("ic_ofis", "ic_bekleme", "ic_ofis"), "ic_ofis", "ic_zemin_karo", 1),
-    "itfaiye": ("ic_ofis", ("ic_itfaiye", "ic_palet", "ic_itfaiye", "ic_bekleme"), "", "ic_zemin_beton", 1),
+    "itfaiye": ("ic_ofis", ("ic_itfaiye", "ic_itfaiye", "ic_hortum", "ic_ekipman", "ic_dolap", "ic_hortum", "ic_dolap", "ic_ekipman"), "", "ic_zemin_beton", 1),
     "okul": ("ic_tahta", ("ic_sira", "ic_sira", "ic_kitaplik"), "ic_sira", "ic_zemin_ahsap", 1),
-    "kutuphane": ("ic_gise", ("ic_kitaplik", "ic_okuma", "ic_kitaplik"), "ic_okuma", "ic_zemin_ahsap", 1),
+    "kutuphane": ("ic_gise", ("ic_kitaplik", "ic_okuma", "ic_kitaplik", "ic_koltuk"), "ic_okuma", "ic_zemin_ahsap", 1),
     "depo": ("ic_ofis", ("ic_palet", "ic_forklift", "ic_palet"), "ic_palet", "ic_zemin_beton", 1),
     "garaj": ("ic_ofis", ("ic_lift", "ic_palet"), "ic_lift", "ic_zemin_beton", 1),
     "fabrika": ("ic_ofis", ("ic_makine", "ic_makine", "ic_palet"), "ic_makine", "ic_zemin_beton", 1),
@@ -2175,6 +2275,14 @@ IC_TUR = {
     "pazar": ("ic_pazar", ("ic_pazar", "ic_manav", "ic_pazar", "ic_cicek"), "ic_pazar", "ic_zemin_beton", 1),
     "opera": ("ic_gise", ("ic_koltuklar", "ic_koltuklar", "ic_sahne"), "ic_sahne", "ic_zemin_ahsap", 1),
 }
+# Bir iç mekânda aynı mobilyadan en fazla kaç tane olabilir (yazılmayanlar IC_SINIR_VARSAYILAN). Sınır dolunca türün
+# listesindeki sıradaki mobilyaya, o da dolunca IC_YEDEK'e geçilir; hepsi dolduysa hücre boş (açık alan) kalır.
+IC_SINIR_VARSAYILAN = 6
+IC_SINIR = {"ic_itfaiye": 2, "ic_hortum": 2, "ic_dolap": 3, "ic_ekipman": 3, "ic_sedye": 2, "ic_muayene": 4, "ic_tekerlekli": 2, "ic_pano": 2,
+            "ic_bekleme": 3, "ic_tas_firin": 1, "ic_mutfak": 2, "ic_sahne": 1, "ic_yuruyen": 1, "ic_forklift": 2, "ic_lift": 2, "ic_makine": 4,
+            "ic_koltuklar": 4, "ic_tahta": 1, "ic_kahve": 1, "ic_sogutucu": 4, "ic_manav": 3, "ic_kitaplik": 5, "ic_okuma": 4, "ic_ofis": 3,
+            "ic_oturma": 2, "ic_koltuk": 4, "ic_bitki": 4, "ic_palet": 5, "ic_pazar": 5, "ic_cicek": 4, "ic_ekmek": 3, "ic_et": 2, "ic_askilik": 5}
+IC_YEDEK = ["ic_bitki", "ic_koltuk", "ic_bekleme"]
 _D = dict(on="vitrin", kapi="kapi_vitrin", tente=1)
 _Y = dict(on="vitrin_genis", kapi="kapi_vitrin", tente=1)
 TURLER = [
@@ -2373,21 +2481,44 @@ def ic_plan(blok, kapi, T):
             break                           # yalnız çaprazdan bağlı parça: olduğu gibi kalır
         E.add(ek)
     mob = {}
+    say = {}
+
+    def al(ad):
+        """Mobilyanın sınırı dolmadıysa sayar ve True döner."""
+        if say.get(ad, 0) >= IC_SINIR.get(ad, IC_SINIR_VARSAYILAN):
+            return False
+        say[ad] = say.get(ad, 0) + 1
+        return True
+
     if T["icKasa"]:
         for c in ((kx + 1, ky), (kx - 1, ky), kolon[-1]):
             if c in zs and c not in E:
                 plan["kasa"] = c
                 mob[c] = T["icKasa"]
+                al(T["icKasa"])
                 break
     son = kolon[-1]
-    if son not in E and son not in mob and T["icArka"]:
+    if son not in E and son not in mob and T["icArka"] and al(T["icArka"]):
         mob[son] = T["icArka"]
     j = 0
-    for c in Z:
-        if c in E or c in mob or not T["ic"]:
+    liste = T["ic"]
+    for c in sorted(Z, key=lambda c: (c[1], c[0])):          # ön sıradan (sokak tarafı) arkaya, soldan sağa
+        if c in E or c in mob or not liste:
             continue
-        mob[c] = T["ic"][j % len(T["ic"])]
-        j += 1
+        sec = None
+        for d in range(len(liste)):
+            ad = liste[(j + d) % len(liste)]
+            if al(ad):
+                sec = ad
+                j += d + 1
+                break
+        if sec is None:
+            for ad in IC_YEDEK:
+                if al(ad):
+                    sec = ad
+                    break
+        if sec:
+            mob[c] = sec
     plan["gecit"] = E
     plan["mobilya"] = mob
     return plan
@@ -3015,14 +3146,14 @@ def _unity_parca(ad, g):
         for i in range(1, len(pts) - 1):
             uc += [bas, bas + i, bas + i + 1]
     grup, aciklama, hedef = PARCA_BILGI[ad]
-    return dict(ad=ad, grup=grup, aciklama=aciklama, hedef=hedef, kucuk=bool(kucuk(ad)), v=v, alt=[dict(malzeme=m, uc=u) for m, u in alt.items()])
+    return dict(ad=ad, grup=grup, aciklama=aciklama, hedef=hedef, kucuk=bool(kucuk(ad)), sinir=IC_SINIR.get(ad, 0), v=v, alt=[dict(malzeme=m, uc=u) for m, u in alt.items()])
 
 
 def json_yaz(yol):
     parcalar = [_unity_parca(ad, parca_g(ad)) for ad in PARCA]
     hafifler = [_unity_parca(ad, hafif_parca(ad)) for ad in PARCA]
     veri = dict(surum=3, hucre=HUCRE, kat=KAT, izgara=IZGARA, duvarRenk=DUVAR_RENK, catiRenk=CATI_RENK, vurguRenk=VURGU_RENK,
-                tenteRenk=TENTE_RENK, yaprakRenk=YAPRAK_RENK, catiTarz=CATI_TARZ_AD, turler=TURLER, parcalar=parcalar, hafifler=hafifler)
+                tenteRenk=TENTE_RENK, yaprakRenk=YAPRAK_RENK, icSinir=IC_SINIR_VARSAYILAN, icYedek=IC_YEDEK, catiTarz=CATI_TARZ_AD, turler=TURLER, parcalar=parcalar, hafifler=hafifler)
     os.makedirs(os.path.dirname(yol), exist_ok=True)
     with open(yol, "w", encoding="utf-8") as f:
         json.dump(veri, f, ensure_ascii=False, separators=(",", ":"))
