@@ -10,9 +10,9 @@ birleştirme kurallarının Python hâli. Geometri çekirdeği bolge_modelleri.p
   • Renkler rol olarak yazılır: malzeme adı "Pastel_<etiket>_@D" (duvar), "@d" (duvarın koyusu), "@C" (çatı),
     "@c" (çatının koyusu), "@K" (kapı / panjur vurgusu). Birleştirici bunları bloğun seçili rengiyle değiştirir:
     "Pastel_Duvar_bcd9ea" gibi. Sabit renkler doğrudan "Pastel_<etiket>_<rrggbb>".
-  • Unity tarafı parçaları FBX'ten değil, bu betiğin yazdığı JSON'dan okur (Editor/BinaAtolyesi/pastel_parcalar.json):
+  • Unity tarafı parçaları FBX'ten değil, bu betiğin yazdığı JSON'dan okur (Resources/Atolye/pastel_parcalar.json):
     Blender gerekmez, araç parçaları anında kurar. Köşeler yüz başına ayrıdır (düz gölgeleme); normalleri Unity hesaplar. Parça değişince:  python3 Tools/Blender/pastel_parcalar.py --json
-  • Birleştirme kuralları (bina()) Editor/BinaAtolyesi.cs'teki C# birleştiricisiyle AYNI olmalı: birini değiştirince öbürünü de.
+  • Birleştirme kuralları (bina()) Scripts/World/Atolye/AtolyeKurucu.cs'teki C# birleştiricisiyle AYNI olmalı: birini değiştirince öbürünü de.
 
 Çalıştırma (Blender gerekmez):
   python3 Tools/Blender/pastel_parcalar.py --json                 parça kütüphanesini Unity için yazar
@@ -1174,7 +1174,7 @@ HARF_OZEL = {"&": "ve", "'": "kesme", "-": "tire", "/": "bolu", ".": "nokta"}
 
 
 def harf_adi(ch):
-    """Karakterin parça adı (boşluk ve bilinmeyenler için None). Editor/BinaAtolyesiKurucu.cs'teki HarfAdi ile aynı."""
+    """Karakterin parça adı (boşluk ve bilinmeyenler için None). Scripts/World/Atolye/AtolyeKurucu.cs'teki HarfAdi ile aynı."""
     ch = ch.upper()
     if ch in HARF_OZEL:
         return "harf_" + HARF_OZEL[ch]
@@ -2386,7 +2386,7 @@ def kucuk(ad):
 # Tasarım: dict(ad, bolge, tohum, tur, tabela, tente, bloklar=[dict(x, y, k, tarz, renk, cati, ct)],
 #               susler=[dict(ad, x, y, aci, olcek, renk)]).
 # x, y 0…IZGARA−1 (y = 0 sokak tarafı), k kat; süslerde x, y metre (arsa ortası 0, sokak −Y), aci derece.
-# Kurallar Editor/BinaAtolyesiKurucu.cs ile aynı (karma fonksiyonu dahil): birini değiştirince öbürünü de değiştir.
+# Kurallar Scripts/World/Atolye/AtolyeKurucu.cs ile aynı (karma fonksiyonu dahil): birini değiştirince öbürünü de değiştir.
 
 def karma(a, b, c, d):
     h = (a * 73856093) ^ (b * 19349663) ^ (c * 83492791) ^ (d * 2654435761)
@@ -2441,7 +2441,7 @@ GIZLI_GRUP = ("Ic", "Ampul", "Poset", "Kepenk")        # uzak görünümde (LOD1
 def ic_plan(blok, kapi, T):
     """Zemin katın iç yerleşimi. Mobilyaların hepsi öne (−Y) bakar ve hücrenin arka yarısında durur: her sıranın ön yarısı
     yürüme koridorudur. Kapı sütunu (kapıdan arkaya) boş "geçit"tir; koridorlardan ulaşılamayan hücre kalırsa önündeki
-    hücre de geçit olur (blok şekli ne olursa olsun kapıdan her hücreye yol açık). C# karşılığı: BinaAtolyesiKurucu.IcPlan.
+    hücre de geçit olur (blok şekli ne olursa olsun kapıdan her hücreye yol açık). C# karşılığı: AtolyeKurucu.IcPlan.
     Dönen: hucreler (sıralı), gecit (küme), mobilya {hücre: parça}, kasa (hücre ya da None), kapi (x, y)."""
     Z = sorted((x, y) for (x, y, k), b in blok.items() if k == 0 and b["tarz"] in (APARTMAN, FACHWERK, TAS))
     plan = dict(hucreler=Z, gecit=set(), mobilya={}, kasa=None, kapi=(0, 0))
@@ -2927,7 +2927,7 @@ def _renkli(ad, r, cam=0):
 
 def kenarlar(g, en_kisa=0.07):
     """Kalem çizgileri: sert kenarlar (iki yüz arası > 25°) ve açık kenarlar. Aynı düzlemde yan yana gelen parçaların
-    ek yerleri (panel – panel) çizilmez. Dönen: (p0, p1, "#rrggbb") listesi. C# karşılığı: BinaAtolyesiKurucu.Kenarlar."""
+    ek yerleri (panel – panel) çizilmez. Dönen: (p0, p1, "#rrggbb") listesi. C# karşılığı: AtolyeKurucu.Kenarlar."""
     kayit = {}
     for f, mi in zip(g.f, g.fm):
         mat = g.mats[mi]
@@ -3350,9 +3350,12 @@ def _gece(klasor, orn):
 
 if __name__ == "__main__":
     if "--json" in sys.argv:
-        json_yaz(os.path.join(depo_koku(), "Editor", "BinaAtolyesi", "pastel_parcalar.json"))
+        json_yaz(os.path.join(depo_koku(), "Resources", "Atolye", "pastel_parcalar.json"))
     if "--ornekler" in sys.argv:
-        ornek_json_yaz(sys.argv[sys.argv.index("--ornekler") + 1])
+        # klasör verilmezse oyunun okuduğu yer: Resources/Atolye/Tasarimlar (her tasarım oyunda bir bina olur)
+        i = sys.argv.index("--ornekler")
+        hedef = sys.argv[i + 1] if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("--") else os.path.join(depo_koku(), "Resources", "Atolye", "Tasarimlar")
+        ornek_json_yaz(hedef)
     if "--onizleme" in sys.argv:
         i = sys.argv.index("--onizleme")
         onizleme(sys.argv[i + 1], sys.argv[i + 2:] or None)

@@ -36,12 +36,16 @@ namespace KuryeTycoon
             turler = new Dictionary<string, List<Tur>>();
             var atolyeTur = new HashSet<string>();
             var duz = Quaternion.Euler(-90f, 0f, 0f);
-            foreach (var p in Resources.LoadAll<GameObject>(Klasor))
+            // Bina Atölyesi donatıları (Donati_bank_atolye_1) dosya değil: oyun çalışırken kurulan şablonlar (AtolyeUretici).
+            // Klasörde eski kaydedilmiş atölye prefabı kaldıysa kullanılmaz.
+            var adaylar = new List<GameObject>();
+            foreach (var eski in Resources.LoadAll<GameObject>(Klasor))
+                if (eski != null && !AtolyeAyari.AtolyeMi(eski.name)) adaylar.Add(eski);
+            if (AtolyeAyari.Cevre) adaylar.AddRange(AtolyeUretici.Donatilar());
+            foreach (var p in adaylar)
             {
                 if (p == null || !p.name.StartsWith("Donati_")) continue;
-                // Bina Atölyesi donatıları (Donati_bank_atolye_1): ayar kapalıysa kullanılmaz
                 bool atolye = AtolyeAyari.AtolyeMi(p.name);
-                if (atolye && !AtolyeAyari.Cevre) continue;
                 // Donati_bank_2 → "bank"; Donati_bank_atolye_1 → "bank"
                 string ad = p.name.Substring(7);
                 int son = ad.LastIndexOf('_');

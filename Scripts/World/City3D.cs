@@ -111,6 +111,18 @@ namespace KuryeTycoon
             Shader.SetGlobalFloat("_PastelCizgiGizle", AtolyeAyari.OyundaKalemCizgisi ? 0f : 1f);
             var loaded = Resources.LoadAll<GameObject>(PackFolder + "/Binalar");
             packTrees = Resources.LoadAll<GameObject>(PackFolder + "/Agaclar");
+            // Bina Atölyesi modelleri dosya değil: oyun çalışırken tasarımlardan kurulan şablonlar (AtolyeUretici). Klasörde
+            // eski kaydedilmiş atölye prefabı kaldıysa (yerel, depoda yok) kullanılmaz: aynı ad iki kez havuza girmesin.
+            {
+                var binaListe = new List<GameObject>(loaded);
+                binaListe.RemoveAll(eskiAtolye => eskiAtolye == null || AtolyeAyari.AtolyeMi(eskiAtolye.name));
+                if (AtolyeAyari.Binalar) binaListe.AddRange(AtolyeUretici.Binalar());
+                loaded = binaListe.ToArray();
+                var agacListe = new List<GameObject>(packTrees);
+                agacListe.RemoveAll(eskiAtolye => eskiAtolye == null || AtolyeAyari.AtolyeMi(eskiAtolye.name));
+                if (AtolyeAyari.Cevre) agacListe.AddRange(AtolyeUretici.Agaclar());
+                packTrees = agacListe.ToArray();
+            }
             packRoads = Resources.LoadAll<GameObject>(PackFolder + "/Yollar");
 
             // Kendi binalarımız paketten ayrı tutulur: genişlik süzgecine girmez, yerine göre seçilir
@@ -705,6 +717,7 @@ namespace KuryeTycoon
             BuildCountryside(map, pack, packTreesOk, rng);
             Refresh(true);
             foreach (var p in pieces) p.t.gameObject.SetActive(false);
+            AtolyeUretici.SureyiYaz();   // oyun çalışırken kurulan atölye modellerinin süresi
             Built?.Invoke();
         }
 
@@ -971,6 +984,7 @@ namespace KuryeTycoon
         static Vector3 PrefabSize(GameObject prefab)
         {
             if (sizeCache.TryGetValue(prefab, out var cached)) return cached;
+            AtolyeUretici.Hazirla(prefab);   // atölye şablonu: mesh'leri ilk kullanımda kurulur
             var b = new Bounds();
             bool any = false;
             foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>(true))
@@ -1915,6 +1929,7 @@ namespace KuryeTycoon
                        Vector2 offset = default, float targetHeight = 0f, bool registerHeight = true, bool ownModel = false)
         {
             if (prefab == null) return;
+            AtolyeUretici.Hazirla(prefab);   // atölye şablonu: mesh'leri ilk kullanımda kurulur
             // Organik şehirde binalar yola dönük, açıları 90'ın katı değil: döndürülmüş kare komşuya taşmasın diye küçülür
             if (CityMap.Organik && footprint > 0f)
             {
