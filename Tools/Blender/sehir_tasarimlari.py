@@ -100,7 +100,9 @@ class Uretici:
                     b.append(dict(x=x, y=y, k=k, tarz=tarz, renk=renk, cati=cati, ct=ct))
         return b
 
-    def kaydet(self, liste, ad, tur, bloklar, susler=(), tabela="", tente=0):
+    def kaydet(self, liste, ad, tur, bloklar, susler=(), tabela="", tente=0, zemin="cim", sutunlar=None, modul=None):
+        """zemin: boş hücrelere konan arsa zemini ("cim", "bahce", "avlu" ya da None); sutunlar: zeminin konacağı x sütunları
+        (modülde yalnız kendi şeridi). modul: (x0, genişlik) verilirse ad s_<bölge>_m<x0><w>_<n> (City3D şeritleri birleştirir)."""
         # aynı hücrede iki blok kalmasın (sonraki üstüne yazar)
         tek = {}
         for b in bloklar:
@@ -113,8 +115,27 @@ class Uretici:
         if imza in self.imzalar:
             return False
         self.imzalar.add(imza)
-        liste.append(dict(ad="s_%s_%03d" % (self.bolge, len(liste) + 1), bolge=self.bolge, tohum=self.rnd.randrange(1, 9999), dukkan=False,
-                          tur=tur, tabela=tabela, tente=tente, bloklar=bloklar, susler=list(susler)))
+        susler = list(susler)
+        if zemin:
+            dolu = {(b["x"], b["y"]) for b in bloklar}
+            for x in (sutunlar if sutunlar is not None else range(IZ)):
+                for y in range(IZ):
+                    if (x, y) in dolu:
+                        continue
+                    z = zemin
+                    if zemin == "bahce":
+                        z = "arsa_bahce" if self.rnd.random() < 0.25 else "arsa_cim"
+                    elif zemin == "karisik":
+                        z = "arsa_avlu" if self.rnd.random() < 0.5 else "arsa_cim"
+                    else:
+                        z = "arsa_" + zemin
+                    susler.insert(0, dict(ad=z, x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0))
+        if modul:
+            ad = "s_%s_m%d%d_%03d" % (self.bolge, modul[0], modul[1], len(liste) + 1)
+        else:
+            ad = "s_%s_%03d" % (self.bolge, len(liste) + 1)
+        liste.append(dict(ad=ad, bolge=self.bolge, tohum=self.rnd.randrange(1, 9999), dukkan=False,
+                          tur=tur, tabela=tabela, tente=tente, bloklar=bloklar, susler=susler))
         return True
 
     def sus(self, ad, x, y, olcek=1.0, renk=0):
@@ -148,7 +169,7 @@ class Uretici:
 
 # ---------------------------------------------------------------- bölgeler
 
-def sira_evler(u, liste, n, katlar, usluplar, dukkan_orani=0.0, derin=(2, 3), y0=1):
+def sira_evler(u, liste, n, katlar, usluplar, dukkan_orani=0.0, derin=(2, 4), y0=0):
     """Eski şehir / çarşı: arsada 1–3 ayrı sıra ev yan yana (her biri kendi üslubu, rengi, boyu, çatısı)."""
     deneme = 0
     while sum(1 for t in liste) < n and deneme < n * 30:
@@ -173,20 +194,59 @@ def sira_evler(u, liste, n, katlar, usluplar, dukkan_orani=0.0, derin=(2, 3), y0
         if u.rnd.random() < dukkan_orani:
             tur = u.sec(DUKKAN_TUR)
             tabela = u.sec(PUB_TABELA) if tur == "pub" else u.sec(TABELA)
-            u.kaydet(liste, "", tur, bloklar, tabela=tabela, tente=u.rnd.randrange(10))
+            u.kaydet(liste, "", tur, bloklar, tabela=tabela, tente=u.rnd.randrange(10), zemin="karisik")
         else:
-            u.kaydet(liste, "", "konut", bloklar)
+            u.kaydet(liste, "", "konut", bloklar, zemin="karisik")
+
+
+def moduller(u, liste, her, katlar, usluplar, dukkan_orani):
+    """Sıra ev şeritleri: (x0, genişlik) yuvası başına `her` tasarım. City3D bir arsayı 2–3 şeritten kurar (her arsada başka
+    birleşim: binlerce farklı cephe, mesh'ler paylaşılır). Şerit kaldırıma yaslanır (y = 0); arkası kendi avlusu / bahçesi."""
+    for w in (1, 2, 3):
+        for x0 in range(0, IZ - w + 1):
+            sayac, deneme = 0, 0
+            while sayac < her and deneme < her * 40:
+                deneme += 1
+                tarz = u.sec(usluplar)
+                kat = u.sec(katlar)
+                if tarz == MEWS:
+                    kat = min(kat, 2)
+                d = u.sec([2, 2, 3, 3, 4])
+                renk, cati, ct = u.renk(tarz), u.cati(tarz), u.ct(tarz)
+                b = u.kutu(x0, x0 + w - 1, 0, d - 1, kat, tarz, renk, cati, ct)
+                if u.rnd.random() < 0.3 and kat >= 2 and d < IZ:
+                    b += u.kutu(x0, x0 + w - 1, d, d, max(1, kat - u.sec([1, 2])), tarz, renk, cati, u.sec([CT_TERAS, CT_OTO]))
+                if u.rnd.random() < 0.12 and kat >= 3 and d >= 2:
+                    b += u.kutu(x0, x0 + w - 1, 1, d - 1, 1, tarz, renk, cati, ct, k0=kat)
+                s = []
+                if u.rnd.random() < 0.3:
+                    s.append(u.sus(u.sec(CALI + ["saksi", "bisiklet_park", "cop_kutusu", "odun_yigini", "bank"]), hucre_m(x0) + u.rnd.uniform(-0.8, 0.8 + (w - 1) * H),
+                                   u.rnd.uniform(hucre_m(min(IZ - 1, d + 1)) - 0.8, 6.2)))
+                zemin = u.sec(["bahce", "karisik", "avlu", "bahce"])
+                if u.rnd.random() < dukkan_orani:
+                    tur = u.sec(DUKKAN_TUR)
+                    tabela = u.sec(PUB_TABELA) if tur == "pub" else u.sec(TABELA)
+                    ok = u.kaydet(liste, "", tur, b, susler=s, tabela=tabela, tente=u.rnd.randrange(10), zemin=zemin, sutunlar=range(x0, x0 + w), modul=(x0, w))
+                else:
+                    ok = u.kaydet(liste, "", "konut", b, susler=s, zemin=zemin, sutunlar=range(x0, x0 + w), modul=(x0, w))
+                sayac += 1 if ok else 0
+
+
+ESKI_US = [GEO, GEO, VIC, SIVA, PORT, APT, GOT, MEWS, TAS]
+KARMA_US = [GEO, VIC, VIC, SIVA, APT, APT, MEWS, PORT, GOT, MOD, FACH]
 
 
 def eski(u, n):
     l = []
-    sira_evler(u, l, n, [2, 3, 3, 4, 4, 5], [GEO, GEO, VIC, SIVA, PORT, APT, GOT, MEWS, TAS], dukkan_orani=0.25)
+    sira_evler(u, l, n, [2, 3, 3, 4, 4, 5], ESKI_US, dukkan_orani=0.25)
+    moduller(u, l, 20, [2, 3, 3, 4, 4, 5], ESKI_US, 0.25)
     return l
 
 
 def karma(u, n):
     l = []
-    sira_evler(u, l, n, [2, 3, 3, 4, 5], [GEO, VIC, VIC, SIVA, APT, APT, MEWS, PORT, GOT, MOD, FACH], dukkan_orani=0.6)
+    sira_evler(u, l, n, [2, 3, 3, 4, 5], KARMA_US, dukkan_orani=0.6)
+    moduller(u, l, 20, [2, 3, 3, 4, 5], KARMA_US, 0.6)
     return l
 
 
@@ -214,9 +274,9 @@ def kule(u, n):
                 u.kutu(2, 2, 1, 3, 2, tarz, renk, cati, CT_TERAS)
         if u.rnd.random() < 0.4:
             tur = u.sec(DUKKAN_TUR[:5])
-            u.kaydet(l, "", tur, b, tabela=u.sec(TABELA), tente=u.rnd.randrange(10))
+            u.kaydet(l, "", tur, b, tabela=u.sec(TABELA), tente=u.rnd.randrange(10), zemin="avlu")
         else:
-            u.kaydet(l, "", "konut", b)
+            u.kaydet(l, "", "konut", b, zemin="karisik")
     return l
 
 
@@ -264,7 +324,7 @@ def mustakil(u, n, kucuk=False):
                     dolu.append(xe)
         y_arka = max(bb["y"] for bb in b)
         s = u.bahce(dolu, y0, y_arka, agac=u.sec([0, 1, 1, 2]) if not kucuk else u.sec([0, 1, 1]), cali=u.sec([1, 2, 3]), ek=u.sec([0, 1, 1]))
-        u.kaydet(l, "", "konut", b, susler=s)
+        u.kaydet(l, "", "konut", b, susler=s, zemin="bahce")
     return l
 
 
@@ -286,7 +346,7 @@ def kampus(u, n):
         else:                    # T biçimli
             b = u.kutu(0, 4, 1, 1, kat, tarz, renk, cati, ct) + u.kutu(1, 3, 2, u.sec([3, 4]), kat - u.sec([0, 1]), tarz, renk, cati, ct)
             s = []
-        u.kaydet(l, "", "konut", b, susler=s)
+        u.kaydet(l, "", "konut", b, susler=s, zemin="cim")
     return l
 
 
@@ -309,7 +369,7 @@ def sanayi(u, n):
         if u.rnd.random() < 0.6:
             for i in range(u.sec([1, 2, 3])):
                 s.append(u.sus(u.sec(["kasalar", "fici", "odun_yigini", "araba_yeri", "kasalar"]), u.rnd.uniform(-6.0, 6.0), u.rnd.uniform(-6.3, -4.6)))
-        u.kaydet(l, "", "konut", b, susler=s)
+        u.kaydet(l, "", "konut", b, susler=s, zemin="avlu")
     return l
 
 
@@ -325,14 +385,15 @@ def avm(u, n):
         if u.rnd.random() < 0.4:
             b += u.kutu(u.sec([0, 3]), u.sec([1, 4]), 1, 2, 1, tarz, renk, cati, CT_TERAS, k0=kat)
         s = [u.sus("araba_yeri", u.rnd.uniform(-5, 5), -5.6)] if u.rnd.random() < 0.6 else []
-        u.kaydet(l, "", u.sec(["konut", "dukkan"]), b, susler=s, tabela=u.sec(["OUTLET", "MEGASTORE", "GALLERIA", "ARCADE", "HOME & GARDEN",
+        u.kaydet(l, "", u.sec(["konut", "dukkan"]), b, susler=s, zemin="avlu", tabela=u.sec(["OUTLET", "MEGASTORE", "GALLERIA", "ARCADE", "HOME & GARDEN",
                                                                                "FASHION HOUSE", "TECH STORE", "SPORTS"]), tente=u.rnd.randrange(10))
     return l
 
 
-# bölge → (üretici, tasarım sayısı). Toplam ~260 tasarım; şehirde çıkanlar oyun çalışırken kurulur.
-BOLGELER = [("eski", eski, 48), ("karma", karma, 48), ("kule", kule, 30), ("ev", lambda u, n: mustakil(u, n), 44),
-            ("banliyo", lambda u, n: mustakil(u, n, kucuk=True), 34), ("kampus", kampus, 18), ("sanayi", sanayi, 26), ("avm", avm, 10)]
+# bölge → (üretici, tam tasarım sayısı). Eski şehir ve çarşıda ayrıca 12 şerit yuvası × 20 şerit; şehirde çıkanlar oyun
+# çalışırken (arka planda, kameraya yakın olanlar önce) kurulur.
+BOLGELER = [("eski", eski, 30), ("karma", karma, 30), ("kule", kule, 60), ("ev", lambda u, n: mustakil(u, n), 120),
+            ("banliyo", lambda u, n: mustakil(u, n, kucuk=True), 100), ("kampus", kampus, 30), ("sanayi", sanayi, 60), ("avm", avm, 16)]
 
 
 def tasarimlar():

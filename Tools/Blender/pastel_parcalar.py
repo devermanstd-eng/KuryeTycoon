@@ -1344,6 +1344,40 @@ def cicek_tarhi(g):
         meyve(g, x, y, 0.28, 0.07, CICEK[i % len(CICEK)], n=5)
 
 
+# ---- arsa zemini (v10): bina tasarımlarında boş hücrelere konur, arsa çıplak kalmasın (bir hücre: 2,8 × 2,8 m)
+ARSA_CIM = PM("Cim", "#b5d79a")
+ARSA_CIM2 = PM("Cim", "#a6cc8c")
+ARSA_TAS = PM("Meydan", "#ddd2bf")
+ARSA_TAS2 = PM("Meydan", "#cfc3ae")
+
+
+@_cevre("Arsa zemini: çim (bir hücre)")
+def arsa_cim(g):
+    e = HUCRE / 2
+    kutu(g, -e, e, -e, e, 0.0, 0.04, ARSA_CIM)
+    for i, (x, y, r) in enumerate(((-0.7, 0.5, 0.35), (0.6, -0.4, 0.28), (0.1, 0.9, 0.22))):
+        kutu(g, x - r, x + r, y - r * 0.6, y + r * 0.6, 0.04, 0.05, ARSA_CIM2, atla=())
+
+
+@_cevre("Arsa zemini: taş avlu (bir hücre)")
+def arsa_avlu(g):
+    e = HUCRE / 2
+    kutu(g, -e, e, -e, e, 0.0, 0.05, ARSA_TAS)
+    for i in range(4):
+        for j in range(4):
+            if (i + j) % 2 == 0:
+                kutu(g, -e + i * e / 2 + 0.03, -e + (i + 1) * e / 2 - 0.03, -e + j * e / 2 + 0.03, -e + (j + 1) * e / 2 - 0.03, 0.05, 0.06, ARSA_TAS2, atla=())
+
+
+@_cevre("Arsa zemini: çimli bahçe, kenarında çiçek tarhı (bir hücre)")
+def arsa_bahce(g):
+    e = HUCRE / 2
+    kutu(g, -e, e, -e, e, 0.0, 0.04, ARSA_CIM)
+    kutu(g, -e, e, e - 0.35, e, 0.04, 0.14, PM("Toprak", "#9b7a5c"))
+    for i in range(6):
+        meyve(g, -e + 0.25 + i * 0.47, e - 0.17, 0.2, 0.12, CICEK[i % len(CICEK)], n=5)
+
+
 @_cevre("Sebze bahçesi")
 def sebze_bahcesi(g):
     kutu(g, -1.3, 1.3, -0.9, 0.9, 0.0, 0.1, PM("Toprak", "#8a6a55"))

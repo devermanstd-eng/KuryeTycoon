@@ -128,6 +128,18 @@ namespace KuryeTycoon
             Yok(t);
         }
 
+        /// <summary>Şablonun mesh'leri henüz kurulmadı mı (City3D arka planda kurar, o sırada yerinde kutu durur).</summary>
+        public static bool Kurulmadi(GameObject sablon) => sablon != null && bekleyen.ContainsKey(sablon);
+
+        /// <summary>Kurulmamış şablonun tasarımındaki kat sayısı (yer tutucu kutunun boyu için; bilinmiyorsa 2).</summary>
+        public static int KatSayisi(GameObject sablon)
+        {
+            if (sablon == null || !bekleyen.TryGetValue(sablon, out var t) || t.bloklar == null || t.bloklar.Count == 0) return 2;
+            int k = 0;
+            foreach (var b in t.bloklar) k = Mathf.Max(k, b.k + 1);
+            return k;
+        }
+
         /// <summary>Şehir kurulunca: kaç model kuruldu, ne kadar sürdü (Console; hata raporunda da görünür).</summary>
         public static void SureyiYaz()
         {
