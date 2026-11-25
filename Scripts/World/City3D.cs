@@ -924,6 +924,12 @@ namespace KuryeTycoon
             return true;
         }
 
+        // Yollar 10 m'lik kareye göre (OrganikSehir3D), atölye arsası 14 m: 14 m'yi bir kareye sığdırmak binaları gerçeğin ~%70'ine
+        // küçültüyordu (yollar binalardan büyük görünüyordu). Yalnız atölye şehrinde arsa 12,5 m'ye sığar (komşu arsanın bahçe
+        // şeridine biraz taşar; sıra evler bitişik görünür) ve binalar biraz daha uzun.
+        const float AtolyeBoyCarpani = 1.32f;
+        static bool AtolyeSehirOlcegi(string ad) => AtolyeAyari.YalnizAtolye && ad.StartsWith("Bolge_") && AtolyeAyari.AtolyeMi(ad);
+
         /// <summary>Ad sıra ev şeridi mi ("..._atolye_s_&lt;bölge&gt;_m&lt;x0&gt;&lt;w&gt;_&lt;n&gt;"); öyleyse yuvası (x0, genişlik).</summary>
         static bool ModulYuvasi(string ad, out Vector2Int yuva)
         {
@@ -2084,7 +2090,7 @@ namespace KuryeTycoon
             bool bolge = ArsaOlculu(prefab.name);
             // Blok binaları tam 10 m kare: ölçek sabit (1 m = 0,1 kare), çizgi kabuğu yüzünden küçülüp aralarında boşluk kalmasın
             float s = targetHeight > 0f ? targetHeight / Mathf.Max(0.001f, b.size.z)
-                    : prefab.name.StartsWith("Blok_") ? footprint * 0.1f : bolge ? footprint / 14f : footprint / Mathf.Max(0.001f, horiz);
+                    : prefab.name.StartsWith("Blok_") ? footprint * 0.1f : bolge ? footprint / (AtolyeSehirOlcegi(prefab.name) ? 12.5f : 14f) : footprint / Mathf.Max(0.001f, horiz);
             inst.transform.localScale = Vector3.one * s;
             b = CombinedBounds(renderers);
             if (bolge) inst.transform.position += new Vector3(0f, 0f, -b.max.z);
@@ -2097,7 +2103,7 @@ namespace KuryeTycoon
             // Aynı model her karede biraz farklı renkte (duvar, kapı, panjur, çatı): şehir tekrar eden kopyalar gibi görünmesin
             int seed = ownModel ? ((tile.x + 101) * 73856093 ^ (tile.y + 37) * 19349663 ^ (int)(offset.x * 1000f)) & 0x7fffffff : -1;
 
-            float mul = ownModel && targetHeight <= 0f ? OwnHeightBoost : 1f;
+            float mul = ownModel && targetHeight <= 0f ? (AtolyeSehirOlcegi(prefab.name) ? AtolyeBoyCarpani : OwnHeightBoost) : 1f;
             pieces.Add(new Piece { t = holder, height = height * mul, prefab = true, tile = tile, shop = shop, varSeed = seed, heightMul = mul });
             // bir arsada birden çok şerit olabilir: en yüksek olanı
             if (targetHeight <= 0f && registerHeight) heightByTile[tile] = heightByTile.TryGetValue(tile, out float eskiH) ? Mathf.Max(eskiH, height * mul) : height * mul;
