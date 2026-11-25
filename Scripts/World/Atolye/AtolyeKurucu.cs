@@ -207,10 +207,22 @@ namespace KuryeTycoon
         }
 
         static readonly Vector2Int[] Yon = { new Vector2Int(0, -1), new Vector2Int(1, 0), new Vector2Int(0, 1), new Vector2Int(-1, 0) };
-        static readonly string[] AptUst = { "duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_yuvarlak" };
+        static readonly string[] AptUst = { "duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_yuvarlak",
+                                            "duvar_alinlik", "duvar_panjur_kapali", "duvar_stor" };
+        static readonly string[] DuzVaryantlar = { "duvar_duz_tugla", "duvar_duz_kutu" };
+        /// <summary>Kalem çizgisi (pastel_parcalar.py: EN_KISA, KALIN_BOY, KALIN, INCE): kısa kenar çizilmez; 2 m ve uzun kenarlar kalın, kısalar ince.</summary>
+        const float EnKisa = 0.13f, KalinBoy = 2f, Kalin = 1.25f, Ince = 0.62f;
+
+        /// <summary>Düz apartman duvarının varyantı (altıda bir tuğla yamalı, altıda bir klimalı / kutulu). pastel_parcalar.py: duz_varyant.</summary>
+        static string DuzVaryant(int x, int y, int i, int k, int tohum)
+        {
+            int v = Sec(Karma(x * 4 + i, y, k, tohum + 61), 6);
+            string ad = v < DuzVaryantlar.Length ? DuzVaryantlar[v] : "duvar_duz";
+            return parca != null && parca.ContainsKey(ad) ? ad : "duvar_duz";
+        }
         static readonly string[] FwUst = { "fachwerk_pencere", "fachwerk_capraz", "fachwerk_saksi", "fachwerk_x", "fachwerk_pencere" };
         static readonly string[] TasUst = { "tas_duvar", "tas_mazgal", "tas_kemerli", "tas_duvar" };
-        static readonly HashSet<string> SaksiAlir = new HashSet<string> { "duvar_pencere", "duvar_cift", "duvar_panjur" };
+        static readonly HashSet<string> SaksiAlir = new HashSet<string> { "duvar_pencere", "duvar_cift", "duvar_panjur", "duvar_panjur_kapali" };
         static readonly HashSet<string> CatiKarolari = new HashSet<string> { "cati_duz", "cati_egim", "cati_kose", "cati_vadi", "cati_semer" };
         static readonly float[] HKirma = { 0f, 0.85f, 1.7f, 2.55f, 3.4f }, HBesik = { 0f, 1.25f, 2.5f, 3.75f, 5f }, HMansart = { 0f, 2f, 2.45f, 2.9f, 3.35f };
         const string Silme = "Pastel_Silme_fbf7ee";
@@ -495,7 +507,9 @@ namespace KuryeTycoon
                         ad = AptUst[Sec(h, AptUst.Length)];
                         if (ad == "duvar_balkon" && hk % 2 != 0) ad = "duvar_pencere";
                     }
-                    s.Koy(ad, x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
+                    string cizilen = ad;
+                    if (ad == "duvar_duz" && tarz == Apartman && Bos(T.duvar) && !cepheYuzu) cizilen = DuzVaryant(x, y, i, k, tohum);
+                    s.Koy(cizilen, x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
                     if (ad == "duvar_duz" && cepheYuzu) s.Koy(T.cephe, x, y, z, i, r);
                     if (SaksiAlir.Contains(ad) && hk % 5 == 0) s.Koy("cicek_kutusu_p", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
                     if (onZemin && T.tente != 0 && (kapiYuzu || !Bos(T.on))) s.Koy("tente", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
@@ -523,7 +537,10 @@ namespace KuryeTycoon
                     if (aBos && cBos)
                     {
                         if (sade) continue;
-                        s.Koy(tarz == Tas || tarz == Kaide ? "kose_tas" : (tarz == Fachwerk && k > 0) ? "kose_ahsap" : "kose_dis", x, y, z, i, r);
+                        string kose = tarz == Tas || tarz == Kaide ? "kose_tas" : (tarz == Fachwerk && k > 0) ? "kose_ahsap" : "kose_dis";
+                        // sütun boyunca aynı: yağmur iniş borusu çatıdan yere iner
+                        if (kose == "kose_dis" && Karma(x, y, i, tohum + 71) % 4 == 0 && parca.ContainsKey("kose_boru")) kose = "kose_boru";
+                        s.Koy(kose, x, y, z, i, r);
                     }
                     else if (!aBos && !cBos && !s.Dolu(x + a.x + c.x, y + a.y + c.y, k))
                         s.Koy("kose_ic", x, y, z, i, r);
@@ -1098,7 +1115,7 @@ namespace KuryeTycoon
                     }
                 }
             }
-            float enKisa = hafifMi ? 0.9f : 0.07f;
+            float enKisa = hafifMi ? 0.9f : EnKisa;
             foreach (var ke in kenarlar.Values)
             {
                 if ((ke.a - ke.b).sqrMagnitude < enKisa * enKisa) continue;
@@ -1120,10 +1137,12 @@ namespace KuryeTycoon
                 var yz = ke.sahip;
                 int cb = yz.cKose.Count;
                 Color32 renk = L[0].renk;
-                yz.cKose.Add(ke.a); yz.cDiger.Add(ke.b); yz.cUv.Add(new Vector2(-1f, 1f)); yz.cRenk.Add(renk);
-                yz.cKose.Add(ke.a); yz.cDiger.Add(ke.b); yz.cUv.Add(new Vector2(1f, 1f)); yz.cRenk.Add(renk);
-                yz.cKose.Add(ke.b); yz.cDiger.Add(ke.a); yz.cUv.Add(new Vector2(-1f, -1f)); yz.cRenk.Add(renk);
-                yz.cKose.Add(ke.b); yz.cDiger.Add(ke.a); yz.cUv.Add(new Vector2(1f, -1f)); yz.cRenk.Add(renk);
+                // kademeli kalınlık: uv.x'in büyüklüğü şeridin yarı genişliğini ölçekler (PastelCizgi: yana açma = uv.x × kalınlık)
+                float kal = hafifMi ? 1f : (ke.a - ke.b).sqrMagnitude >= KalinBoy * KalinBoy ? Kalin : Ince;
+                yz.cKose.Add(ke.a); yz.cDiger.Add(ke.b); yz.cUv.Add(new Vector2(-kal, 1f)); yz.cRenk.Add(renk);
+                yz.cKose.Add(ke.a); yz.cDiger.Add(ke.b); yz.cUv.Add(new Vector2(kal, 1f)); yz.cRenk.Add(renk);
+                yz.cKose.Add(ke.b); yz.cDiger.Add(ke.a); yz.cUv.Add(new Vector2(-kal, -1f)); yz.cRenk.Add(renk);
+                yz.cKose.Add(ke.b); yz.cDiger.Add(ke.a); yz.cUv.Add(new Vector2(kal, -1f)); yz.cRenk.Add(renk);
                 yz.cUc.Add(cb); yz.cUc.Add(cb + 1); yz.cUc.Add(cb + 2); yz.cUc.Add(cb + 2); yz.cUc.Add(cb + 1); yz.cUc.Add(cb + 3);
             }
             return gruplar;

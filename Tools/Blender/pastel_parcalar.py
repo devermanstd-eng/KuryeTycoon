@@ -1491,6 +1491,546 @@ def cicek_obegi(g):
         meyve(g, x, y, 0.2, 0.07, CICEK[i % len(CICEK)], n=5)
 
 
+# ================================== AYRINTI KATMANI (v4) ==================================
+# Aynı adlı parçalar burada yeniden tanımlanır (sonraki tanım geçerlidir): pencereler derin pervazlı, söveli, perdeli;
+# köşeler dişli taşlı; silmeler profilli; saçaklar konsollu ve oluklu; kiremitler kademeli ve oluklu; dükkân cepheleri
+# dilimli tenteli, çerçeveli tabelalı. Kurallar (yerlesim) yalnız üç yerde değişti: APT_UST'a yeni pencereler, düz duvar
+# varyantları (duz_varyant) ve iniş borulu köşe (kose_boru). Uzak görünüm (LOD1) eski sade parçalarla kalır.
+
+PERDE = [PM("Perde", "#f6ead2"), PM("Perde", "#e9c9c0"), PM("Perde", "#c9dcc4"), PM("Perde", "#d9d0e6")]
+TUGLA = PM("Tugla", "#c98a72")
+TUGLA2 = PM("Tugla", "#b3745e")
+METAL = PM("Metal", "#9aa3ab")
+OLUK = PM("Metal", "#7d8790")
+
+
+def _sade(ad):
+    """Parçanın şimdiki (sade) üreticisini uzak görünüm için saklar."""
+    if ad in PARCA and ad not in PARCA_HAFIF:
+        PARCA_HAFIF[ad] = PARCA[ad]
+
+
+for _ad in ("kose_dis", "silme", "kaide", "sacak", "cati_egim", "cati_kose", "cati_semer", "tabela_bant", "duvar_duz", "baca", "cati_penceresi"):
+    _sade(_ad)
+
+
+def pencere(g, c, u0, u1, z0, z1, kemer=False, bolme=1, yatay=True, cam=CAM, t=0.12, perde=1, sove=True):
+    """Pencere: cam duvar yüzünde, kalın çerçeve 10 cm önde (derin pervaz gölgesi), kayıtlar, denizlik + konsollar,
+    alın taşı ve kilit taşı, cam arkasında perde / stor. perde: 0 yok · 1 iki yana toplanmış · 2 stor · 3 tek yanda + lamba."""
+    dc = 0.1
+    w = u1 - u0
+    c.kutu(g, u0, u1, 0, 0.015, z0, z1, cam)
+    # pervazın iç gölgesi (üstte ve solda koyu bant: çerçeve derin görünür)
+    c.kutu(g, u0, u1, 0.015, 0.028, z1 - 0.07, z1, D2)
+    c.kutu(g, u0, u0 + 0.05, 0.015, 0.028, z0, z1 - 0.07, D2)
+    # perde / stor (camın hemen önünde, kayıtların arkasında)
+    pm = PERDE[int(round(u0 * 10 + z1 * 7 + w * 3)) % len(PERDE)]
+    if perde == 1 and w >= 0.7:
+        pw = w * 0.2
+        for a, b in ((u0 + 0.05, u0 + 0.05 + pw), (u1 - pw, u1)):
+            c.kutu(g, a, b, 0.028, 0.036, z0 + 0.02, z1 - 0.07, pm)
+        c.kutu(g, u0 + 0.05, u1, 0.028, 0.04, z1 - 0.17, z1 - 0.07, pm)                    # farbala
+    elif perde == 2:
+        c.kutu(g, u0 + 0.05, u1, 0.028, 0.036, z0 + (z1 - z0) * 0.55, z1 - 0.07, pm)
+        c.kutu(g, u0 + 0.05, u1, 0.028, 0.045, z0 + (z1 - z0) * 0.55 - 0.03, z0 + (z1 - z0) * 0.55, SILME2)
+    elif perde == 3:
+        c.kutu(g, u0 + 0.05, u0 + 0.05 + w * 0.3, 0.028, 0.036, z0 + 0.02, z1 - 0.07, pm)
+        p = c.p(u1 - w * 0.25, 0.03, z0 + 0.02)
+        c.kutu(g, u1 - w * 0.25 - 0.012, u1 - w * 0.25 + 0.012, 0.028, 0.04, z0, z0 + 0.3, DEMIR)
+        c.kutu(g, u1 - w * 0.25 - 0.1, u1 - w * 0.25 + 0.1, 0.028, 0.045, z0 + 0.3, z0 + 0.46, ISIK)   # içeride abajur
+    # çerçeve
+    c.kutu(g, u0 - t, u0, 0, dc, z0 - t, z1 + (0 if kemer else t), SILME)
+    c.kutu(g, u1, u1 + t, 0, dc, z0 - t, z1 + (0 if kemer else t), SILME)
+    c.kutu(g, u0, u1, 0, dc, z0 - t, z0, SILME)
+    if kemer:
+        r = w / 2
+        um = (u0 + u1) / 2
+        c.yarim_disk(g, um, z1, r, 0, 0.015, cam, n=8)
+        n = 6
+        R = r + t / 2
+        for i in range(n):
+            a0, a1 = math.pi * i / n, math.pi * (i + 1) / n
+            cubuk(g, c.p(um + R * math.cos(a0), dc / 2, z1 + R * math.sin(a0)), c.p(um + R * math.cos(a1), dc / 2, z1 + R * math.sin(a1)), t, SILME, dc)
+        if sove:                                                                              # kemerin kilit taşı
+            c.kutu(g, um - 0.09, um + 0.09, 0, dc + 0.05, z1 + r - 0.02, z1 + r + t + 0.1, TAS3)
+    else:
+        c.kutu(g, u0, u1, 0, dc, z1, z1 + t, SILME)
+        if sove:                                                                              # alın taşı + kilit taşı
+            c.kutu(g, u0 - t - 0.08, u1 + t + 0.08, 0, dc + 0.04, z1 + t, z1 + t + 0.09, SILME2)
+            um = (u0 + u1) / 2
+            c.kutu(g, um - 0.08, um + 0.08, 0, dc + 0.07, z1 + 0.02, z1 + t + 0.14, TAS3)
+    for i in range(1, bolme + 1):
+        uu = u0 + w * i / (bolme + 1)
+        c.kutu(g, uu - 0.03, uu + 0.03, 0.036, 0.07, z0, z1, SILME)
+    if yatay:
+        zz = (z0 + z1) / 2 if bolme == 1 else z0 + (z1 - z0) * 0.62
+        c.kutu(g, u0, u1, 0.036, 0.07, zz - 0.03, zz + 0.03, SILME)
+    c.kutu(g, u0 - t - 0.07, u1 + t + 0.07, 0, 0.18, z0 - t - 0.07, z0 - t, SILME2)          # denizlik
+    if sove:
+        for uu in (u0 - t + 0.02, u1 + t - 0.12):                                             # denizlik konsolları
+            c.kutu(g, uu, uu + 0.1, 0, 0.12, z0 - t - 0.2, z0 - t - 0.07, SILME2)
+
+
+def _panjur(g, c, a, b, z0, z1, acik=True):
+    """Lamelli panjur kanadı (açıkken duvara yaslı, kapalıyken pencerenin önünde)."""
+    o0 = 0.0 if acik else 0.1
+    c.kutu(g, a, b, o0, o0 + 0.05, z0, z1, VR)
+    n = 9
+    for i in range(1, n):
+        zz = z0 + (z1 - z0) * i / n
+        c.kutu(g, a + 0.04, b - 0.04, o0 + 0.05, o0 + 0.068, zz - 0.022, zz + 0.022, SILME2)
+    for zz in (z0 + 0.18, z1 - 0.18):                                                         # menteşeler
+        c.kutu(g, (a if acik and a < 1.4 else b - 0.05) if acik else a, ((a + 0.05) if acik and a < 1.4 else b) if acik else a + 0.05,
+               o0 + 0.05, o0 + 0.075, zz - 0.03, zz + 0.03, DEMIR)
+
+
+@parca("duvar", "Panjurlu pencere (açık panjur)")
+def duvar_panjur(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.95, 1.85, 0.95, 2.45, perde=1)
+    _panjur(g, c, 0.38, 0.8, 0.86, 2.56)
+    _panjur(g, c, 2.0, 2.42, 0.86, 2.56)
+
+
+@parca("duvar", "Panjurlu pencere (bir kanadı kapalı)")
+def duvar_panjur_kapali(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.95, 1.85, 0.95, 2.45, perde=0)
+    _panjur(g, c, 0.38, 0.8, 0.86, 2.56)
+    _panjur(g, c, 1.4, 1.87, 0.9, 2.5, acik=False)
+
+
+@parca("duvar", "Storlu pencere")
+def duvar_stor(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.8, 2.0, 0.95, 2.45, bolme=1, perde=2)
+    c.kutu(g, 0.55, 2.25, 0.18, 0.21, 0.5, 0.72, DEMIR)                                      # pencere önü demir saksılık
+    for uu in (0.57, 2.2):
+        c.kutu(g, uu, uu + 0.03, 0, 0.2, 0.5, 0.72, DEMIR)
+    for i in range(3):
+        p = c.p(0.85 + i * 0.55, 0.1, 0.62)
+        dsil(g, p[0], p[1], 0.58, 0.74, 0.08, 5, SAKSI, r1=0.1, kapak=(False, True), kapak_mat=AHSAP2)
+        meyve(g, p[0], p[1], 0.74, 0.11, CICEK[i % len(CICEK)], n=5)
+
+
+@parca("duvar", "Alınlıklı pencere (üçgen alınlık, lambalı)")
+def duvar_alinlik(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.9, 1.9, 0.9, 2.3, bolme=1, perde=3, sove=False)
+    c.kutu(g, 0.68, 2.12, 0, 0.15, 2.42, 2.5, SILME2)
+    c.prizma_uc(g, 0.7, 2.1, 0, 0.13, 2.5, 0.32, SILME)
+    for uu in (0.72, 1.96):
+        c.kutu(g, uu, uu + 0.12, 0, 0.13, 0.62, 0.72, SILME2)
+
+
+@parca("duvar", "Fransız balkonlu kapı-pencere (dökme demir)")
+def duvar_balkon(g):
+    c = on()
+    panel(g, c)
+    pencere(g, c, 0.8, 2.0, 0.25, 2.5, bolme=1, perde=1, sove=False)
+    c.kutu(g, 0.42, 2.38, 0, 0.62, 0.06, 0.18, SILME2)                                       # balkon tablası
+    c.kutu(g, 0.38, 2.42, 0, 0.66, 0.18, 0.22, SILME)
+    for uu in (0.55, 2.13):                                                                   # konsollar
+        c.prizma_uc(g, uu, uu + 0.12, 0, 0.0, 0, 0, SILME2) if False else prizma(
+            g, [c.p(uu, 0, 0.06), c.p(uu, 0.5, 0.06), c.p(uu, 0, -0.3)], tuple(x * 0.12 for x in (c.u[0], c.u[1], 0)), SILME2)
+    z0, z1 = 0.22, 1.12
+    for uu in (0.44, 2.36):
+        c.kutu(g, uu - 0.025, uu + 0.025, 0.56, 0.61, z0, z1 + 0.06, DEMIR)
+        c.kutu(g, uu - 0.02, uu + 0.02, 0.02, 0.58, z1 - 0.04, z1, DEMIR)
+        c.kutu(g, uu - 0.012, uu + 0.012, 0.02, 0.58, z0 + 0.1, z0 + 0.13, DEMIR)
+    c.kutu(g, 0.44, 2.36, 0.56, 0.61, z1 - 0.04, z1, DEMIR)
+    c.kutu(g, 0.44, 2.36, 0.565, 0.605, z0 + 0.1, z0 + 0.13, DEMIR)
+    n = 8
+    for i in range(n):                                                                         # desen: çubuk + çapraz
+        ua, ub = 0.44 + 1.92 * i / n, 0.44 + 1.92 * (i + 1) / n
+        c.kutu(g, ua - 0.011, ua + 0.011, 0.575, 0.595, z0, z1 - 0.04, DEMIR)
+        if i % 2 == 0:
+            cubuk(g, c.p(ua, 0.585, z0 + 0.13), c.p(ub, 0.585, z1 - 0.04), 0.02, DEMIR)
+        else:
+            cubuk(g, c.p(ua, 0.585, z1 - 0.04), c.p(ub, 0.585, z0 + 0.13), 0.02, DEMIR)
+    for uu, ci in ((0.62, 0), (2.18, 1)):                                                     # saksılar
+        p = c.p(uu, 0.36, 0.22)
+        dsil(g, p[0], p[1], 0.22, 0.42, 0.09, 6, SAKSI, r1=0.12, kapak=(False, True), kapak_mat=AHSAP2)
+        meyve(g, p[0], p[1], 0.42, 0.14, YAPRAK, n=5)
+        meyve(g, p[0], p[1], 0.52, 0.07, CICEK[ci], n=5)
+
+
+def _siva_lekesi(g, c, u, z, w, h):
+    c.kutu(g, u, u + w, 0, 0.006, z, z + h, D2)
+
+
+@parca("duvar", "Düz duvar (sıva lekeli, süs bantlı)")
+def duvar_duz(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.0, HUCRE, 0, 0.03, 2.06, 2.14, D2)                                            # süs bandı
+    _siva_lekesi(g, c, 0.5, 0.75, 0.55, 0.35)
+    _siva_lekesi(g, c, 1.7, 1.3, 0.7, 0.28)
+    cubuk(g, c.p(2.2, 0.004, 2.0), c.p(2.32, 0.004, 1.6), 0.012, D2, 0.008)                   # ince çatlak
+    cubuk(g, c.p(2.32, 0.004, 1.6), c.p(2.26, 0.004, 1.32), 0.012, D2, 0.008)
+
+
+@parca("duvar", "Düz duvar: sıvası dökülmüş, tuğlası görünen")
+def duvar_duz_tugla(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.0, HUCRE, 0, 0.03, 2.06, 2.14, D2)
+    c.kutu(g, 0.55, 1.75, 0, 0.012, 0.7, 1.55, TUGLA2)
+    for j in range(5):
+        zz = 0.72 + j * 0.165
+        for i in range(4):
+            uu = 0.57 + i * 0.3 + (0.15 if j % 2 else 0.0)
+            if uu + 0.26 <= 1.76:
+                c.kutu(g, uu, uu + 0.26, 0.012, 0.03, zz, zz + 0.13, TUGLA)
+    _siva_lekesi(g, c, 1.85, 1.9, 0.5, 0.3)
+    p = c.p(2.3, 0.06, 0.0)                                                                    # ev numarası
+    c.kutu(g, 2.12, 2.44, 0, 0.03, 1.5, 1.74, PM("Emaye", "#3d5a8a"))
+    c.kutu(g, 2.2, 2.36, 0.03, 0.04, 1.56, 1.68, SILME)
+
+
+@parca("duvar", "Düz duvar: klima, elektrik kutusu, kablo")
+def duvar_duz_kutu(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.0, HUCRE, 0, 0.03, 2.06, 2.14, D2)
+    c.kutu(g, 0.5, 1.35, 0.02, 0.36, 1.5, 2.0, SILME2)                                        # klima dış ünitesi
+    c.kutu(g, 0.56, 1.0, 0.36, 0.38, 1.56, 1.94, METAL)
+    for i in range(4):
+        c.kutu(g, 0.58, 0.98, 0.38, 0.39, 1.6 + i * 0.09, 1.63 + i * 0.09, DEMIR)
+    for uu in (0.56, 1.25):
+        cubuk(g, c.p(uu, 0.0, 1.32), c.p(uu, 0.34, 1.5), 0.035, DEMIR)
+    c.kutu(g, 1.9, 2.3, 0, 0.12, 0.9, 1.5, METAL)                                              # elektrik kutusu
+    c.kutu(g, 1.94, 2.26, 0.12, 0.13, 0.94, 1.46, OLUK)
+    c.kutu(g, 2.2, 2.24, 0.13, 0.15, 1.15, 1.25, PM("Emaye", "#f2c35a"))
+    c.kutu(g, 2.08, 2.12, 0, 0.04, 1.5, KAT, DEMIR)                                            # kablo borusu
+    c.kutu(g, 1.3, 2.1, 0, 0.03, 1.78, 1.81, DEMIR)
+
+
+@parca("kose", "Dış köşe: pilastr + dişli köşe taşları")
+def kose_dis(g):
+    kutu(g, -A - 0.05, -A + 0.2, -A - 0.05, -A + 0.2, 0.0, KAT, SILME)
+    kutu(g, -A - 0.09, -A + 0.24, -A - 0.09, -A + 0.24, 0.0, 0.16, SILME2, atla=())            # taban
+    kutu(g, -A - 0.09, -A + 0.24, -A - 0.09, -A + 0.24, KAT - 0.13, KAT - 0.03, SILME2, atla=())   # başlık
+    z, i = 0.34, 0
+    while z < KAT - 0.5:
+        w = 0.46 if i % 2 == 0 else 0.32
+        kutu(g, -A - 0.075, -A + w, -A - 0.075, -A + (0.78 - w), z, z + 0.34, SILME2, atla=("zn",))
+        z += 0.58
+        i += 1
+
+
+@parca("kose", "Dış köşe: pilastr + yağmur iniş borusu")
+def kose_boru(g):
+    PARCA["kose_dis"](g)
+    x, y = -A + 0.42, -A - 0.11
+    dsil(g, x, y, 0.0, KAT, 0.055, 6, OLUK, kapak=(False, False))
+    for zz in (0.5, 1.9):                                                                      # kelepçeler
+        kutu(g, x - 0.075, x + 0.075, y - 0.075, -A, zz, zz + 0.05, DEMIR, atla=())
+
+
+PARCA_HAFIF["kose_boru"] = PARCA_HAFIF["kose_dis"]
+
+
+@parca("bant", "Kat silmesi (profilli, dişli)")
+def silme(g):
+    c = on()
+    c.kutu(g, -0.06, HUCRE + 0.06, 0, 0.07, -0.2, -0.12, SILME2)
+    c.kutu(g, -0.08, HUCRE + 0.08, 0, 0.11, -0.12, -0.05, SILME)
+    c.kutu(g, -0.11, HUCRE + 0.11, 0, 0.16, -0.05, 0.0, SILME2)
+    for i in range(3):                                                                         # diş sırası
+        uu = 0.3 + i * 0.95
+        c.kutu(g, uu, uu + 0.3, 0.07, 0.105, -0.2, -0.125, SILME)
+
+
+@parca("bant", "Taş kaide (derzli, bodrum menfezli)")
+def kaide(g):
+    c = on()
+    c.kutu(g, -0.07, HUCRE + 0.07, 0, 0.08, 0.0, 0.42, TAS2)
+    c.kutu(g, -0.09, HUCRE + 0.09, 0, 0.11, 0.42, 0.5, TAS3)
+    c.kutu(g, 1.4 - 0.012, 1.4 + 0.012, 0.08, 0.086, 0.02, 0.42, TAS)                          # düşey derz
+    c.kutu(g, -0.07, HUCRE + 0.07, 0.08, 0.086, 0.2, 0.222, TAS)                               # yatay derz
+    c.kutu(g, 0.2, 0.56, 0.08, 0.1, 0.1, 0.3, DEMIR)                                           # bodrum menfezi
+
+
+@parca("cati", "Saçak (konsollu korniş, saçak tahtası, yağmur oluğu)")
+def sacak(g):
+    c = on()
+    c.kutu(g, -0.02, HUCRE + 0.02, 0, 0.26, -0.1, 0.02, SILME)
+    c.kutu(g, -0.02, HUCRE + 0.02, 0.2, 0.3, -0.03, 0.07, CT2)
+    c.kutu(g, -0.02, HUCRE + 0.02, 0, 0.12, -0.24, -0.1, SILME2)
+    c.kutu(g, -0.02, HUCRE + 0.02, 0.26, 0.3, -0.14, -0.03, AHSAP2)                            # saçak tahtası
+    c.kutu(g, -0.02, HUCRE + 0.02, 0.3, 0.42, -0.1, -0.03, OLUK)                               # yağmur oluğu
+    c.kutu(g, -0.02, HUCRE + 0.02, 0.33, 0.39, -0.03, -0.025, DEMIR)
+    for i in range(3):                                                                         # konsollar
+        uu = 0.3 + i * 1.05
+        prizma(g, [c.p(uu, 0.02, -0.1), c.p(uu, 0.24, -0.1), c.p(uu, 0.02, -0.36)], (c.u[0] * 0.1, c.u[1] * 0.1, 0), SILME2)
+
+
+def _kiremit(g, x0=0.0, x1=None, n=4):
+    """Eğimli karonun kiremit sıraları: her sıra aşağı ucunda kalın (kademeli), üstünde üç oluk sırtı."""
+    x1 = A if x1 is None else x1
+    for i in range(n):
+        y0, y1 = A * i / n, A * (i + 1) / n
+        z0, z1 = i / float(n), (i + 1) / float(n)
+        v = [(x0, y0, z0), (x1, y0, z0), (x1, y0, z0 + 0.075), (x0, y0, z0 + 0.075), (x0, y1, z1 + 0.012), (x1, y1, z1 + 0.012)]
+        kati(g, v, [[0, 1, 2, 3], [3, 2, 5, 4], [0, 3, 4], [1, 5, 2]], [CT2, CT, CT2, CT2])
+    m = 3
+    for j in range(m):
+        x = x0 + (x1 - x0) * (j + 0.5) / m
+        obox(g, (x, A / 2 + 0.01, 0.5 + 0.05), (0.045, 0, 0), (0, A / 2 - 0.02, 0.5 - 0.014), (0, -0.012, 0.017), CT2, ("1-", "1+"))
+
+
+@parca("cati", "Çatı karosu: eğim (kademeli, oluklu kiremit)")
+def cati_egim(g):
+    _cati_yuzu(g, 0, 0, 1, 1, 0)
+    _kiremit(g)
+
+
+def _mahya(g, p0, p1, n=4):
+    """Mahya kiremitleri: sırt boyunca bindirmeli yarım boru parçaları."""
+    for i in range(n):
+        a = tuple(p0[k] + (p1[k] - p0[k]) * i / n for k in range(3))
+        b = tuple(p0[k] + (p1[k] - p0[k]) * (i + 0.86) / n for k in range(3))
+        cubuk(g, (a[0], a[1], a[2] + 0.02), (b[0], b[1], b[2] + 0.05), 0.17, CT2, 0.11)
+
+
+@parca("cati", "Çatı karosu: dış köşe (kırma, mahya kiremitli)")
+def cati_kose(g):
+    _cati_yuzu(g, 0, 0, 1, 0, 0)
+    _mahya(g, (0, 0, 0.03), (A, A, 1.03))
+
+
+@parca("cati", "Çatı karosu: semer (mahya kiremitli)")
+def cati_semer(g):
+    _cati_yuzu(g, 1, 0, 1, 0, 1)
+    _mahya(g, (0, 0, 1.03), (A, A, 1.03), 3)
+
+
+@parca("ayrinti", "Baca (tuğla, başlıklı, çift künk)")
+def baca(g):
+    kutu(g, -0.3, 0.3, -0.25, 0.25, -1.2, 1.5, TUGLA)
+    for j in range(6):                                                                         # tuğla sıraları (derz)
+        zz = 0.1 + j * 0.22
+        kutu(g, -0.305, 0.305, -0.255, 0.255, zz, zz + 0.022, TUGLA2, atla=("zn", "zp"))
+    kutu(g, -0.34, 0.34, -0.29, 0.29, 1.2, 1.3, TUGLA2, atla=())
+    kutu(g, -0.38, 0.38, -0.33, 0.33, 1.5, 1.62, SILME, atla=())
+    kutu(g, -0.33, 0.33, -0.28, 0.28, 1.62, 1.68, SILME2, atla=())
+    for sx in (-0.14, 0.14):
+        dsil(g, sx, 0, 1.68, 2.02, 0.1, 6, TUGLA2, r1=0.085, kapak=(False, True), kapak_mat=DEMIR)
+        dsil(g, sx, 0, 2.02, 2.07, 0.12, 6, TUGLA, kapak=(True, True))
+
+
+@parca("ayrinti", "Çatı penceresi (çıkıntılı, alınlıklı)")
+def cati_penceresi(g):
+    kutu(g, -0.58, 0.58, 0.18, 1.6, 0.0, 1.2, D, atla=("zn", "yp"))
+    kutu(g, -0.64, 0.64, 0.12, 0.2, 0.0, 0.1, SILME2, atla=())                                 # denizlik
+    prizma(g, [(-0.78, 0.04, 1.2), (0.78, 0.04, 1.2), (0, 0.04, 1.86)], (0, 1.6, 0), CT)
+    prizma(g, [(-0.6, 0.02, 1.26), (0.6, 0.02, 1.26), (0, 0.02, 1.74)], (0, 0.05, 0), SILME)   # alınlık yüzü
+    kutu(g, -0.82, 0.82, 0.0, 0.1, 1.14, 1.22, SILME2, atla=())                                # saçak tahtası
+    kutu(g, -0.36, 0.36, 0.15, 0.18, 0.28, 1.02, CAM)
+    kutu(g, -0.36, 0.36, 0.13, 0.15, 0.8, 1.02, PERDE[0], atla=())
+    for a, b, p, q in ((-0.46, -0.36, 0.2, 1.12), (0.36, 0.46, 0.2, 1.12), (-0.46, 0.46, 0.2, 0.28), (-0.46, 0.46, 1.02, 1.12), (-0.025, 0.025, 0.28, 1.02), (-0.36, 0.36, 0.62, 0.67)):
+        kutu(g, a, b, 0.1, 0.18, p, q, SILME, atla=())
+    meyve(g, 0.0, 0.3, 1.86, 0.07, PIRINC, n=5, rz=0.22)                                       # tepe süsü
+
+
+@parca("zemin", "Tabela bandı (çerçeveli, kaz boynu lambalı)")
+def tabela_bant(g):
+    c = on()
+    c.kutu(g, 0.0, HUCRE, 0, 0.13, 2.3, 2.78, VR)
+    c.kutu(g, 0.0, HUCRE, 0, 0.17, 2.78, 2.85, SILME)
+    c.kutu(g, 0.0, HUCRE, 0, 0.17, 2.25, 2.3, SILME)
+    cubuk(g, c.p(1.4, 0.15, 2.9), c.p(1.4, 0.42, 3.0), 0.03, DEMIR)                            # kaz boynu lamba
+    cubuk(g, c.p(1.4, 0.42, 3.0), c.p(1.4, 0.5, 2.88), 0.03, DEMIR)
+    p = c.p(1.4, 0.5, 2.8)
+    dsil(g, p[0], p[1], 2.78, 2.9, 0.11, 6, DEMIR, r1=0.04, kapak=(False, True))
+    meyve(g, p[0], p[1], 2.74, 0.05, ISIK, n=5, rz=0.05)
+
+
+@parca("zemin", "Tente (çizgili, dilimli etekli)")
+def tente(g):
+    c = on()
+    n = 7
+    for i in range(n):
+        a, b = 0.06 + (HUCRE - 0.12) * i / n, 0.06 + (HUCRE - 0.12) * (i + 1) / n
+        m = TN if i % 2 == 0 else SILME
+        pts = [c.p(a, 0.1, 2.3), c.p(b, 0.1, 2.3), c.p(b, 1.0, 1.98), c.p(a, 1.0, 1.98)]
+        q = [(p[0], p[1], p[2] - 0.035) for p in pts]
+        kati(g, pts + q, [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]], m)
+        # dilimli etek: dikdörtgen + altında yarım yuvarlak (üçgen dilim)
+        c.kutu(g, a, b, 0.98, 1.0, 1.86, 1.98, m)
+        um = (a + b) / 2
+        prizma(g, [c.p(a, 0.98, 1.86), c.p(b, 0.98, 1.86), c.p(um + (b - a) * 0.28, 0.98, 1.76), c.p(um - (b - a) * 0.28, 0.98, 1.76)],
+               (c.n[0] * 0.02, c.n[1] * 0.02, 0), m)
+    for uu in (0.08, HUCRE - 0.08):
+        cubuk(g, c.p(uu, 0.05, 1.9), c.p(uu, 0.95, 1.99), 0.03, DEMIR)
+        cubuk(g, c.p(uu, 0.05, 1.55), c.p(uu, 0.95, 1.97), 0.025, DEMIR)                       # payanda
+    c.kutu(g, 0.04, HUCRE - 0.04, 0.02, 0.12, 2.17, 2.26, METAL)                               # tente / kepenk kutusu (tabelanın altında)
+
+
+def _vitrin_urun(g, c, u0, u1, z, rnd):
+    """Vitrin içi: alçak raf + ürün dizisi (camın hemen önünde)."""
+    c.kutu(g, u0, u1, 0.02, 0.07, z, z + 0.04, SILME2)
+    uu = u0 + 0.06
+    renk = ("#d94f3d", "#e8a23a", "#f2d04a", "#5a9a4a", "#2f7d8c", "#8a4a6b", "#f4f0e6", "#7ab8d6")
+    while uu < u1 - 0.14:
+        w = rnd.uniform(0.11, 0.2)
+        c.kutu(g, uu, uu + w, 0.022, 0.06, z + 0.04, z + 0.04 + rnd.uniform(0.14, 0.34), PM("Urun", rnd.choice(renk)))
+        uu += w + 0.05
+
+
+@parca("zemin", "Dükkân vitrini (ürün dizili)")
+def vitrin(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.15, HUCRE - 0.15, 0, 0.09, 0.0, 0.5, VR)                                       # kaide panosu
+    c.kutu(g, 0.27, HUCRE - 0.27, 0.09, 0.11, 0.1, 0.4, SILME2)
+    c.kutu(g, 0.33, HUCRE - 0.33, 0.11, 0.12, 0.16, 0.34, VR)
+    c.kutu(g, 0.15, HUCRE - 0.15, 0, 0.02, 0.5, 2.15, VIT)
+    for uu in (0.15, 1.34, HUCRE - 0.27):
+        c.kutu(g, uu, uu + 0.12, 0, 0.1, 0.5, 2.15, SILME)
+    c.kutu(g, 0.15, HUCRE - 0.15, 0, 0.1, 2.15, 2.28, SILME)
+    c.kutu(g, 0.27, HUCRE - 0.27, 0.02, 0.06, 1.62, 1.68, SILME)
+    rnd = random.Random(21)
+    _vitrin_urun(g, c, 0.28, 1.33, 0.5, rnd)
+    _vitrin_urun(g, c, 1.47, HUCRE - 0.28, 0.5, rnd)
+    c.kutu(g, 0.4, 1.2, 0.02, 0.03, 1.72, 2.1, PERDE[0])                                       # üst camlarda yarım perde
+    c.kutu(g, 1.6, 2.4, 0.02, 0.03, 1.72, 2.1, PERDE[0])
+    c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.16, 0.5, 0.55, SILME2)                                    # vitrin eşiği
+
+
+@parca("zemin", "Geniş vitrin (tek cam, ürün dizili, kampanya kâğıtlı)")
+def vitrin_genis(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.09, 0.0, 0.3, VR)
+    c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.02, 0.3, 2.15, VIT)
+    for uu in (0.1, HUCRE - 0.2):
+        c.kutu(g, uu, uu + 0.1, 0, 0.1, 0.3, 2.15, SILME)
+    c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.1, 2.15, 2.28, SILME)
+    c.kutu(g, 0.06, HUCRE - 0.06, 0, 0.15, 0.3, 0.35, SILME2)
+    c.kutu(g, 0.5, 1.1, 0.02, 0.03, 1.1, 1.7, PM("Afis", "#f5c84a"))                           # kampanya kâğıdı
+    c.kutu(g, 0.56, 1.04, 0.03, 0.04, 1.45, 1.58, VR)
+    c.kutu(g, 0.56, 1.04, 0.03, 0.04, 1.2, 1.26, DEMIR)
+    _vitrin_urun(g, c, 0.24, HUCRE - 0.24, 0.35, random.Random(22))
+    for uu in (0.7, 1.4, 2.1):                                                                 # vitrin spotları
+        c.kutu(g, uu - 0.05, uu + 0.05, 0.02, 0.07, 2.06, 2.13, ISIK)
+
+
+@parca("zemin", "Vitrinli cam kapı (üst ışıklıklı, zilli)")
+def kapi_vitrin(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.15, 1.2, 0, 0.09, 0.0, 0.5, VR)
+    c.kutu(g, 0.15, 1.2, 0, 0.02, 0.5, 2.15, VIT)
+    c.kutu(g, 0.15, 0.27, 0, 0.1, 0.5, 2.15, SILME)
+    c.kutu(g, 1.2, 1.32, 0, 0.11, 0.0, 2.28, SILME)
+    c.kutu(g, 2.5, 2.62, 0, 0.11, 0.0, 2.28, SILME)
+    c.kutu(g, 0.15, 2.62, 0, 0.11, 2.15, 2.28, SILME)
+    _vitrin_urun(g, c, 0.28, 1.19, 0.5, random.Random(23))
+    c.kutu(g, 1.32, 2.5, 0, 0.02, 0.12, 1.86, VIT)                                             # kapı camı
+    c.kutu(g, 1.32, 2.5, 0, 0.02, 1.92, 2.15, CAM)                                             # üst ışıklık
+    c.kutu(g, 1.32, 2.5, 0.02, 0.07, 1.86, 1.92, SILME)
+    c.kutu(g, 1.32, 2.5, 0.02, 0.06, 0.12, 0.45, VR)
+    c.kutu(g, 1.38, 2.44, 0.06, 0.07, 0.18, 0.39, SILME2)
+    c.kutu(g, 1.32, 2.5, 0.02, 0.06, 1.1, 1.17, VR)
+    c.kutu(g, 2.3, 2.38, 0.03, 0.1, 1.0, 1.3, PIRINC)
+    c.kutu(g, 1.6, 2.2, 0.02, 0.03, 1.3, 1.5, PM("Afis", "#f4f0e6"))                           # "AÇIK" kartı
+    c.kutu(g, 1.2, 2.62, 0, 0.42, 0.0, 0.12, TAS)
+    c.kutu(g, 1.26, 2.56, 0.42, 0.66, 0.0, 0.06, TAS2)
+    cubuk(g, c.p(2.7, 0.0, 2.1), c.p(2.7, 0.2, 2.1), 0.025, DEMIR)                             # kapı zili
+    p = c.p(2.7, 0.2, 2.0)
+    dsil(g, p[0], p[1], 1.96, 2.08, 0.07, 6, PIRINC, r1=0.02, kapak=(False, True))
+
+
+def _basamak_korkuluk(g, c, u, o0, o1, z0, z1):
+    cubuk(g, c.p(u, o0, z0 + 0.85), c.p(u, o1, z1 + 0.85), 0.04, DEMIR)
+    for o, z in ((o0, z0), (o1, z1)):
+        cubuk(g, c.p(u, o, z), c.p(u, o, z + 0.85), 0.035, DEMIR)
+    p = c.p(u, o1, z1 + 0.85)
+    meyve(g, p[0], p[1], p[2], 0.045, PIRINC, n=5)
+
+
+def _saksi_cifti(g, c, ua, ub, o):
+    for uu, ci in ((ua, 0), (ub, 3)):
+        p = c.p(uu, o, 0)
+        dsil(g, p[0], p[1], 0.0, 0.34, 0.13, 6, SAKSI, r1=0.17, kapak=(False, True), kapak_mat=AHSAP2)
+        top(g, (p[0], p[1], 0.62), 0.2, 0.2, 0.3, YAPRAK)
+        meyve(g, p[0], p[1], 0.86, 0.07, CICEK[ci], n=5)
+
+
+@parca("zemin", "Ahşap kapı (panelli, üst ışıklıklı, kanopili, basamaklı)")
+def kapi_ahsap(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.72, 2.08, 0, 0.1, 0.0, 2.62, SILME)                                            # söve
+    c.kutu(g, 0.86, 1.94, 0, 0.04, 0.24, 2.1, VR)                                              # kanat
+    for a, b in ((0.94, 1.36), (1.44, 1.86)):                                                  # paneller
+        c.kutu(g, a, b, 0.04, 0.06, 0.34, 1.0, D2)
+        c.kutu(g, a + 0.05, b - 0.05, 0.06, 0.07, 0.4, 0.94, VR)
+        c.kutu(g, a, b, 0.04, 0.06, 1.1, 1.98, D2)
+        c.kutu(g, a + 0.05, b - 0.05, 0.06, 0.07, 1.16, 1.92, VR)
+    c.kutu(g, 1.74, 1.82, 0.06, 0.12, 1.02, 1.1, PIRINC)                                       # tokmak
+    c.kutu(g, 1.25, 1.55, 0.06, 0.075, 1.3, 1.38, PIRINC)                                      # mektup ağzı
+    c.kutu(g, 0.86, 1.94, 0, 0.02, 2.16, 2.5, CAM)                                             # üst ışıklık
+    c.kutu(g, 0.86, 1.94, 0.02, 0.06, 2.1, 2.16, SILME)
+    for uu in (1.22, 1.58):
+        c.kutu(g, uu - 0.02, uu + 0.02, 0.02, 0.05, 2.16, 2.5, SILME)
+    c.kutu(g, 0.55, 2.25, 0, 0.62, 0.0, 0.12, TAS)                                             # iki basamak
+    c.kutu(g, 0.62, 2.18, 0, 0.36, 0.12, 0.24, TAS3)
+    c.kutu(g, 0.5, 2.3, 0, 0.7, 2.68, 2.76, VR)                                                # kanopi
+    c.kutu(g, 0.46, 2.34, 0, 0.74, 2.76, 2.8, SILME)
+    for uu in (0.6, 2.1):
+        prizma(g, [c.p(uu, 0.0, 2.68), c.p(uu, 0.58, 2.68), c.p(uu, 0.0, 2.2)], (c.u[0] * 0.1, c.u[1] * 0.1, 0), SILME2)
+    p = c.p(2.38, 0.18, 1.9)                                                                   # duvar feneri
+    kutu(g, p[0] - 0.07, p[0] + 0.07, p[1] - 0.07, p[1] + 0.07, 1.9, 2.12, ISIK, atla=())
+    kutu(g, p[0] - 0.1, p[0] + 0.1, p[1] - 0.1, p[1] + 0.1, 2.12, 2.16, DEMIR, atla=())
+    kutu(g, p[0] - 0.05, p[0] + 0.05, p[1] - 0.05, p[1] + 0.05, 1.86, 1.9, DEMIR, atla=())
+    c.kutu(g, 2.36, 2.4, 0, 0.18, 2.16, 2.2, DEMIR)
+    c.kutu(g, 0.32, 0.6, 0, 0.03, 1.55, 1.75, PM("Emaye", "#3d5a8a"))                          # ev numarası
+    c.kutu(g, 0.39, 0.53, 0.03, 0.04, 1.6, 1.7, SILME)
+    c.kutu(g, 0.3, 0.62, 0, 0.14, 1.0, 1.32, VR)                                               # posta kutusu
+    c.kutu(g, 0.34, 0.58, 0.14, 0.15, 1.22, 1.26, DEMIR)
+    _saksi_cifti(g, c, 0.36, 2.44, 0.42)
+
+
+@parca("konut", "Merdivenli kapı (sıra ev: korkuluklu basamak, üst ışıklık)")
+def kapi_merdivenli(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.82, 1.98, 0, 0.1, 0.5, 2.82, SILME)
+    c.kutu(g, 0.95, 1.85, 0.02, 0.06, 0.5, 2.3, VR)
+    for a, b in ((1.02, 1.36), (1.44, 1.78)):
+        c.kutu(g, a, b, 0.06, 0.075, 0.62, 1.3, D2)
+        c.kutu(g, a, b, 0.06, 0.075, 1.42, 2.2, D2)
+    c.kutu(g, 0.95, 1.85, 0.02, 0.04, 2.36, 2.72, CAM)
+    c.kutu(g, 1.38, 1.42, 0.04, 0.06, 2.36, 2.72, SILME)
+    c.kutu(g, 1.68, 1.75, 0.06, 0.12, 1.35, 1.45, PIRINC)
+    c.kutu(g, 0.6, 2.2, 0, 0.8, 0.0, 0.5, TAS)
+    for i in range(3):
+        c.kutu(g, 0.7, 2.1, 0.8 + i * 0.28, 1.08 + i * 0.28, 0.0, 0.5 - (i + 1) * 0.125, TAS3 if i % 2 else TAS2)
+    for uu in (0.66, 2.14):
+        _basamak_korkuluk(g, c, uu, 0.72, 1.6, 0.5, 0.06)
+    c.kutu(g, 0.7, 2.1, 0, 0.5, 2.88, 2.94, SILME2)                                            # küçük saçak
+    c.kutu(g, 2.2, 2.46, 0, 0.03, 1.6, 1.8, PM("Emaye", "#3d5a8a"))
+    p = c.p(0.5, 0.16, 2.0)
+    kutu(g, p[0] - 0.07, p[0] + 0.07, p[1] - 0.07, p[1] + 0.07, 2.0, 2.2, ISIK, atla=())
+    kutu(g, p[0] - 0.1, p[0] + 0.1, p[1] - 0.1, p[1] + 0.1, 2.2, 2.24, DEMIR, atla=())
+
+
+DUZ_VARYANT = ["duvar_duz_tugla", "duvar_duz_kutu"]
+
+
+def duz_varyant(x, y, i, k, tohum):
+    """Düz apartman duvarının varyantı (altıda bir tuğla yamalı, altıda bir klimalı / kutulu). C#: AtolyeKurucu.DuzVaryant."""
+    v = karma(x * 4 + i, y, k, tohum + 61) % 6
+    return DUZ_VARYANT[v] if v < len(DUZ_VARYANT) else "duvar_duz"
+
+
 # ---------------------------------------------------------------- iç mekân (zemin kat; çatı kalkınca görünür)
 # Mobilya parçaları bir hücreye sığar; ön yüzü (−Y) müşterinin durduğu taraf (kapı koridoruna bakar), arkası hücrenin dibinde.
 
@@ -2398,10 +2938,11 @@ def karma(a, b, c, d):
 
 
 YON = [(0, -1), (1, 0), (0, 1), (-1, 0)]       # ön, sağ, arka, sol (dönüş 0, 1, 2, 3 × 90°)
-APT_UST = ["duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_yuvarlak"]
+APT_UST = ["duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_yuvarlak",
+           "duvar_alinlik", "duvar_panjur_kapali", "duvar_stor"]
 FW_UST = ["fachwerk_pencere", "fachwerk_capraz", "fachwerk_saksi", "fachwerk_x", "fachwerk_pencere"]
 TAS_UST = ["tas_duvar", "tas_mazgal", "tas_kemerli", "tas_duvar"]
-SAKSI_ALIR = ("duvar_pencere", "duvar_cift", "duvar_panjur")
+SAKSI_ALIR = ("duvar_pencere", "duvar_cift", "duvar_panjur", "duvar_panjur_kapali")
 # Çatı tarzı (bloğun ct alanı): 0 tarza göre · 1 kırma · 2 beşik · 3 mansart · 4 düz teras · 5 basamaklı alınlık · 6 testere
 CT_OTO, CT_KIRMA, CT_BESIK, CT_MANSART, CT_TERAS, CT_BASAMAK, CT_TESTERE = range(7)
 CATI_TARZ_AD = ["Tarza göre", "Kırma", "Beşik", "Mansart", "Düz teras (korkuluklu)", "Basamaklı alınlık (Hollanda)", "Testere (sanayi)"]
@@ -2619,7 +3160,10 @@ def yerlesim(t):
                 ad = APT_UST[h % len(APT_UST)]
                 if ad == "duvar_balkon" and hk % 2:
                     ad = "duvar_pencere"
-            koy(ad, x, y, z, i, r, grup=dg)
+            cizilen = ad
+            if ad == "duvar_duz" and tarz == APARTMAN and not T["duvar"] and not (T["cephe"] and kapi_hucresi and i == 0 and k == kapi_ust and k > 0):
+                cizilen = duz_varyant(x, y, i, k, tohum)
+            koy(cizilen, x, y, z, i, r, grup=dg)
             if ad == "duvar_duz" and T["cephe"] and kapi_hucresi and i == 0 and k == kapi_ust and k > 0:
                 koy(T["cephe"], x, y, z, i, r)
             if ad in SAKSI_ALIR and hk % 5 == 0:
@@ -2655,7 +3199,10 @@ def yerlesim(t):
             if a_bos and b_bos:
                 if T["duvar"] and tarz == APARTMAN:
                     continue
-                koy("kose_tas" if tarz in (TAS, KAIDE) else "kose_ahsap" if (tarz == FACHWERK and k > 0) else "kose_dis", x, y, z, i, r)
+                kose = "kose_tas" if tarz in (TAS, KAIDE) else "kose_ahsap" if (tarz == FACHWERK and k > 0) else "kose_dis"
+                if kose == "kose_dis" and karma(x, y, i, tohum + 71) % 4 == 0:
+                    kose = "kose_boru"          # sütun boyunca aynı: yağmur iniş borusu çatıdan yere iner
+                koy(kose, x, y, z, i, r)
             elif not a_bos and not b_bos and not dolu(x + ax + bx, y + ay + by, k):
                 koy("kose_ic", x, y, z, i, r)
         # altı boş: kemerli geçit
@@ -2925,7 +3472,11 @@ def _renkli(ad, r, cam=0):
     return yeni
 
 
-def kenarlar(g, en_kisa=0.07):
+EN_KISA = 0.13        # bundan kısa kenar çizilmez (yakın görünüm). C#: AtolyeKurucu.EnKisa
+KALIN_BOY, KALIN, INCE = 2.0, 1.25, 0.62      # 2 m ve uzun kenarlar kalın (× 1,25), kısalar ince (× 0,62). C#: AtolyeKurucu aynı sabitler
+
+
+def kenarlar(g, en_kisa=EN_KISA):
     """Kalem çizgileri: sert kenarlar (iki yüz arası > 25°) ve açık kenarlar. Aynı düzlemde yan yana gelen parçaların
     ek yerleri (panel – panel) çizilmez. Dönen: (p0, p1, "#rrggbb") listesi. C# karşılığı: AtolyeKurucu.Kenarlar."""
     kayit = {}
@@ -2960,7 +3511,9 @@ def kenarlar(g, en_kisa=0.07):
                         keskin = True
             ciz = keskin and not dikis
         if ciz:
-            cikti.append((a, b, cizgi_rengi(HEX[L[0][2]])))
+            # kademeli kalınlık: büyük kenarlar (bina köşesi, saçak, kat çizgisi) kalın, ayrıntı kenarları ince
+            boy2 = (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2
+            cikti.append((a, b, cizgi_rengi(HEX[L[0][2]]), KALIN if boy2 >= KALIN_BOY * KALIN_BOY else INCE))
     return cikti
 
 
@@ -3017,7 +3570,7 @@ def bina(t, hafif=False, gizle=GIZLI_GRUP):
         if mat not in HEX:
             HEX[mat] = "#" + mat.rsplit("_", 1)[1]
         kutu(g, x0, x1, y0, y1, z0, z1, mat, atla=())
-    g.cizgiler = kenarlar(g, 0.9 if hafif else 0.07)
+    g.cizgiler = kenarlar(g, 0.9 if hafif else EN_KISA)
     return g
 
 

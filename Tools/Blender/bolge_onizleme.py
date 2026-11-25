@@ -91,7 +91,9 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), 
             ed|=((nb*n2).sum(-1)<0.55)&(np.abs(a1-a2)<1e8)&((nb*nb).sum(-1)>0.5)&((n2*n2).sum(-1)>0.5)
     if cizgiler:
         rs2=np.random.RandomState(3)
-        for p0,p1,hx in cizgiler:
+        for cz in cizgiler:
+            p0,p1,hx=cz[0],cz[1],cz[2]
+            kal=cz[3] if len(cz)>3 else 1.0          # kademeli kalınlık (Bina Atölyesi v4): <1 ince, >1 kalın
             a=np.array(p0,float); b=np.array(p1,float)
             xa,ya,za=(a@right-cx[0])*sc+S/2, S/2-(a@up-cx[1])*sc, a@fwd
             xb,yb,zb_=(b@right-cx[0])*sc+S/2, S/2-(b@up-cx[1])*sc, b@fwd
@@ -105,8 +107,9 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), 
             if n>24 and rs2.rand()<0.35:
                 k0=rs2.randint(0,n-6); sag[k0:k0+max(2,n//18)]=False
             ton=hexrgb(hx)*(0.85+0.3*rs2.rand())
-            for ox in range(ss):
-                for oy in range(ss):
+            ssk=max(1,ss-1) if kal<0.9 else ss+1 if kal>1.1 else ss
+            for ox in range(ssk):
+                for oy in range(ssk):
                     xi=(xs+ox-ss/2+0.5).astype(int); yi=(ys+oy-ss/2+0.5).astype(int)
                     ok=sag&(xi>=0)&(xi<S)&(yi>=0)&(yi<S)
                     xi,yi,zz=xi[ok],yi[ok],zs[ok]
