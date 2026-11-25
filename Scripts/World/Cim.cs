@@ -293,6 +293,12 @@ namespace KuryeTycoon
                     uc += UcRenk[i] * w[i]; taban += TabanRenk[i] * w[i];
                     kuru += KuruOran[i] * w[i]; cicek += Cicekler[i] * w[i];
                 }
+                if (AtolyeAyari.PastelZemin)
+                {
+                    // "Oyunda pastel zemin": tutamlar pastel çimin tonlarına yaklaşır (mevsim farkı hafifçe kalır)
+                    uc = Color.Lerp(uc, new Color(0.812f, 0.910f, 0.722f), 0.75f);
+                    taban = Color.Lerp(taban, new Color(0.624f, 0.784f, 0.533f), 0.75f);
+                }
                 malzeme.SetColor("_Uc", uc);
                 malzeme.SetColor("_Taban", taban);
                 malzeme.SetFloat("_KuruOran", kuru);

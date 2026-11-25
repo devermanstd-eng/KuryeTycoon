@@ -1726,7 +1726,7 @@ namespace KuryeTycoon
         {
             if (m == null) return true;
             string n = m.name;
-            return n.StartsWith("Cizgi") || n.StartsWith("Kesit") || n.StartsWith("Pastel_Cam") || n.StartsWith("Pastel_Vitrin") || n.StartsWith("Pastel_Isik") || n.StartsWith("Pastel_Cizgi") || n.StartsWith("Pastel_Yazi") || n.StartsWith("Cam") || n.StartsWith("Vitrin") || n.StartsWith("Vitray") || n.StartsWith("Isik") ||
+            return n.StartsWith("Cizgi") || n.StartsWith("Kesit") || n.StartsWith("Pastel_Cam") || n.StartsWith("Pastel_Vitrin") || n.StartsWith("Pastel_Asfalt") || n.StartsWith("Pastel_Isik") || n.StartsWith("Pastel_Cizgi") || n.StartsWith("Pastel_Yazi") || n.StartsWith("Cam") || n.StartsWith("Vitrin") || n.StartsWith("Vitray") || n.StartsWith("Isik") ||
                    n.StartsWith("Simsek") || n.StartsWith("Bulut") || n.StartsWith("Yazi") || n.StartsWith("Su_") || n.StartsWith("PSu") ||
                    n.StartsWith("KirSu") || n.StartsWith("OfisCam") || n.StartsWith("Kar_") || n.StartsWith("Reklam") || n.StartsWith("Pano") ||
                    // Yollar: trafik karı eritir, kuryeler yolu görebilsin (yol yalnızca hafif beyazlar)
@@ -2014,7 +2014,12 @@ namespace KuryeTycoon
         /// <summary>Parçanın özgün (gündüz, boyanmamış) malzemeleri. Gece ışıkları ve boyama aynı listeden başlar.</summary>
         static Material[] Originals(Renderer r)
         {
-            if (!origMats.TryGetValue(r, out var o)) { o = r.sharedMaterials; origMats[r] = o; }
+            if (!origMats.TryGetValue(r, out var o))
+            {
+                // "Oyunda pastel zemin": yol, kaldırım, çim malzemeleri pastel karşılıklarıyla (AtolyeAyari.PastelZeminCevir)
+                o = AtolyeAyari.PastelZeminCevir(r.sharedMaterials);
+                origMats[r] = o;
+            }
             return o;
         }
 
