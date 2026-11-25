@@ -427,6 +427,17 @@ namespace KuryeTycoon
         /// </summary>
         public float HakimiyetGucu => AktifRakip == 0 ? 0f : Mathf.Clamp01((MarketShare - HakimiyetEsigi) / 0.10f);
 
+        /// <summary>Oyuncunun pazar payı bunun altına inince rakiplerin karşı yatırımı ve ek kurye baskısı yumuşar (TabanGucu).</summary>
+        public const float TabanEsigi = 0.46f;
+
+        /// <summary>
+        /// Taban koruma: 0 (pay ≥ %46) → 1 (pay ≤ %40). 25.11 (u34, 2 şehir × 120 gün): bir şehirde pay 120. günde %40'a düştü,
+        /// diğerinde %48'de kaldı. Rakip baskısını genel olarak azaltmak öbür şehri yine %55'in üstüne çıkarabilirdi; bunun
+        /// yerine yalnızca oyuncu geride kalınca yatırım ihtimali (−%70'e kadar) ve haftalık kurye ekleme (−%60'a kadar) düşer.
+        /// %55 üstündeki hakimiyet tepkisi aynen kalır (ikisi aynı anda çalışmaz).
+        /// </summary>
+        public float TabanGucu => AktifRakip == 0 ? 0f : Mathf.Clamp01((TabanEsigi - MarketShare) / 0.06f);
+
         // ================================================================ memnuniyet
 
         /// <summary>Bir günde teslimat sorunlarından kaybedilebilecek en fazla memnuniyet.</summary>
@@ -678,6 +689,7 @@ namespace KuryeTycoon
             float esik = SaldirganlikEsigi;
             int seviye = TehditSeviyesi;
             float hakimiyet = HakimiyetGucu;
+            float tabanKoruma = TabanGucu;
             TehditSeviyesiniDuyur(seviye);
             SatisTeklifi();   // zayıflayan bir platform satılık olabilir
             for (int i = 0; i < Rakipler.Count; i++)
@@ -693,7 +705,7 @@ namespace KuryeTycoon
 
                 // Yatırım turu: pazar payın eşiği geçince rakip yatırımcı arar (saldırıdayken daha sık ve daha erken)
                 if (seviye >= 1 && r.aggression > 0.3f && Day >= r.fundingCooldownUntil && myDeliveriesLastWeek >= 600 &&
-                    Random.value < (seviye >= 2 ? 0.5f : 0.2f)) FundingRound(r);
+                    Random.value < (seviye >= 2 ? 0.5f : 0.2f) * (1f - 0.7f * tabanKoruma)) FundingRound(r);
                 // Hakimiyet tepkisi: pay %55'i geçince karşı yatırım (teslimat şartı yok, bekleme 45 yerine ~21 gün)
                 else if (hakimiyet > 0f && Day >= r.fundingCooldownUntil - 24 && Random.value < 0.4f + 0.5f * hakimiyet) FundingRound(r);
 
@@ -702,7 +714,7 @@ namespace KuryeTycoon
                     Mathf.RoundToInt((30 + 30 * r.fundingRounds + 40f * hakimiyet) * (0.7f + 0.4f * r.buyume)));
                 if (r.money > 1000000 && r.couriers < maxCouriers)
                 {
-                    int haftalik = Mathf.RoundToInt(((r.aggression > 0.5f ? 8 : 3) + 10f * hakimiyet) * r.buyume);
+                    int haftalik = Mathf.RoundToInt(((r.aggression > 0.5f ? 8 : 3) + 10f * hakimiyet) * r.buyume * (1f - 0.6f * tabanKoruma));
                     int add = Mathf.Min((int)((r.money - 1000000) / 400000), haftalik);
                     add = Mathf.Max(1, Mathf.Min(add, maxCouriers - r.couriers));
                     r.couriers += add; r.money -= add * 400000L;

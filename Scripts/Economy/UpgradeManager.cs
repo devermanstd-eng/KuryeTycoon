@@ -82,7 +82,10 @@ namespace KuryeTycoon
                 // alınıyordu, 125 hesap 60–66. günde doluyordu. Hedef 9–12 gün: paket + önündeki bölge ≈ o aşamadaki 10 günlük
                 // faaliyet kârının yarısı (22 kurye ~1,2 bin €/gün, 32 ~2 bin, 45 ~2,8 bin, 60 ~4 bin). 22: 450 bin → 800 bin,
                 // 32: 675 bin → 1,4 M, 45: 675 bin → 2,2 M, 60: 1,3 → 3 M, 80: 3 → 8 M, 125: 40 → 36 M.
-                costs = new[] { 80000, 200000, 800000, 1400000, 2200000, 3000000, 8000000, 14000000, 36000000, 70000000, 120000000 },
+                // 25.11 ikinci tur (u34, 2 şehir × 120 gün): bekleme inişli çıkışlıydı, 22: 4–6, 32: 17–25, 45: 1–2, 60: 14–21,
+                // 80: 9–11 gün; 100 → 125 geçişi 38–53 gün. Yük 32 ve 60'tan 22 ve 45'e kaydı: 22: 800 bin → 1 M, 32: 1,4 → 1 M,
+                // 45: 2,2 → 3 M, 60: 3 → 2,4 M, 125: 36 → 24 M.
+                costs = new[] { 80000, 200000, 1000000, 1000000, 3000000, 2400000, 8000000, 14000000, 24000000, 70000000, 120000000 },
                 daily = new[] { 0, 1500, 3000, 5000, 8000, 12000, 17000, 24000, 34000, 46000, 62000, 85000 },
                 levelNames = new[] { "Başlangıç", "Büyüme", "Profesyonel", "Bölgesel", "Şehir", "Metropol", "Kurumsal", "Kurumsal+",
                                      "Büyük şehir", "Büyük şehir+", "Bölge lideri", "Pazar lideri" },
