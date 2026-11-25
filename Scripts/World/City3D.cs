@@ -198,6 +198,19 @@ namespace KuryeTycoon
                 foreach (var p in own) if (p.name.StartsWith(kv.Value)) yedek.Add(p);
                 if (yedek.Count > 0) ownByKey[kv.Key] = yedek;
             }
+            if (AtolyeAyari.YalnizAtolye)
+            {
+                // Şehir yalnız atölye binalarıyla: atölye modeli olan havuzlardan eskiler çıkar; paket binaları ve Londra blokları
+                // kullanılmaz (boş havuzlar bölge havuzuna düşer). Çiftlik gibi atölye karşılığı olmayan havuz eskisi gibi kalır.
+                foreach (var liste in new[] { houses, town, industry, kamu, refs, simge })
+                    if (liste.Exists(p => AtolyeAyari.AtolyeMi(p.name))) liste.RemoveAll(p => !AtolyeAyari.AtolyeMi(p.name));
+                    else liste.Clear();
+                foreach (var kv in bolgeTmp)
+                    if (kv.Value.Exists(p => AtolyeAyari.AtolyeMi(p.name))) kv.Value.RemoveAll(p => !AtolyeAyari.AtolyeMi(p.name));
+                blokDuz.Clear();
+                blokKose.Clear();
+                all.Clear();
+            }
             ownAll = own.ToArray();
             bolgeHavuz = new Dictionary<string, GameObject[]>();
             foreach (var kv in bolgeTmp) bolgeHavuz[kv.Key] = kv.Value.ToArray();
@@ -226,6 +239,27 @@ namespace KuryeTycoon
             ownOld = old.Count > 0 ? old.ToArray() : ownTown;
             ownHigh = high.Count > 0 ? high.ToArray() : ownTown;
             ownMixed = mixed.ToArray();
+            if (AtolyeAyari.YalnizAtolye)
+            {
+                // boşalan eski havuzların yerine bölge havuzlarındaki atölye binaları (yedek yollar boş listeden seçmesin)
+                GameObject[] Birlesik(params string[] anahtarlar)
+                {
+                    var l = new List<GameObject>();
+                    foreach (var a in anahtarlar) if (bolgeHavuz.TryGetValue(a, out var h)) l.AddRange(h);
+                    return l.ToArray();
+                }
+                if (ownTown.Length == 0) ownTown = Birlesik("eski", "karma", "kule");
+                if (ownOld.Length == 0) ownOld = Birlesik("eski");
+                if (ownHigh.Length == 0) ownHigh = Birlesik("kule");
+                if (ownMixed.Length == 0) ownMixed = Birlesik("karma");
+                if (ownOld.Length == 0) ownOld = ownTown;
+                if (ownHigh.Length == 0) ownHigh = ownTown;
+                if (ownMixed.Length == 0) ownMixed = ownTown;
+                if (ownHouses.Length == 0) ownHouses = Birlesik("ev", "banliyo");
+                if (ownHousesTum.Length == 0) ownHousesTum = ownHouses;
+                if (ownIndustry.Length == 0) ownIndustry = Birlesik("sanayi");
+                if (ownRef.Length == 0) ownRef = null;
+            }
 
             // Kendi yol parçalarımız (Yol_...) paketinkilerden önce bulunsun; kendi ağaçlarımız varsa sadece onlar
             System.Array.Sort(packRoads, (p, q) => (q.name.StartsWith("Yol_") ? 1 : 0) - (p.name.StartsWith("Yol_") ? 1 : 0));

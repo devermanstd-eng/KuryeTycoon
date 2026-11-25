@@ -81,15 +81,26 @@ namespace KuryeTycoon
             var dosyalar = Resources.LoadAll<TextAsset>(AtolyeKurucu.TasarimKaynak);
             System.Array.Sort(dosyalar, (p, q) => string.CompareOrdinal(p.name, q.name));
             var adlar = new HashSet<string>();
+            // Bir dosyada tek tasarım ya da paket ({"tasarimlar": ["<tasarım JSON'u>", ...]}: Tools/Blender/sehir_tasarimlari.py)
+            var metinler = new List<(string metin, string kaynak)>();
             foreach (var d in dosyalar)
             {
-                var t = AtolyeKurucu.TasarimOku(d.text);
+                if (d.text.StartsWith("{\"tasarimlar\""))
+                {
+                    var paket = JsonUtility.FromJson<TasarimPaketi>(d.text);
+                    if (paket?.tasarimlar != null) foreach (var m in paket.tasarimlar) metinler.Add((m, d.name));
+                }
+                else metinler.Add((d.text, d.name));
+            }
+            foreach (var (metin, kaynak) in metinler)
+            {
+                var t = AtolyeKurucu.TasarimOku(metin);
                 if (t == null) continue;
                 if (t.bloklar.Count == 0 && t.susler.Count == 0) { Yok(t); continue; }
                 string ad = AtolyeKurucu.ModelAdi(t);
                 if (!adlar.Add(ad))
                 {
-                    Debug.LogWarning("Kurye Tycoon · atölye: aynı adlı iki tasarım (" + ad + "), ikincisi atlandı: " + d.name);
+                    Debug.LogWarning("Kurye Tycoon · atölye: aynı adlı iki tasarım (" + ad + "), ikincisi atlandı: " + kaynak);
                     Yok(t);
                     continue;
                 }
@@ -99,6 +110,8 @@ namespace KuryeTycoon
             }
             return binalar;
         }
+
+        [System.Serializable] class TasarimPaketi { public string[] tasarimlar; }
 
         /// <summary>Şablonun mesh'leri kurulmadıysa kurar (atölye şablonu değilse hiçbir şey yapmaz). City3D kullanmadan önce çağırır.</summary>
         public static void Hazirla(GameObject sablon)

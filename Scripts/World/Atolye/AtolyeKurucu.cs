@@ -32,7 +32,7 @@ namespace KuryeTycoon
         static readonly string[] TemelTarzAd = { "Boyalı sıva teras (pastel)", "Yarı ahşap (Tudor) ev", "Taş kule", "Taş kaide / teras", "Taş merdiven" };
         /// <summary>Duvar tarzı adları: beş temel tarz + kütüphanedeki Londra üslupları (pastel_parcalar.py: TARZ_AD).</summary>
         public static string[] TarzAd => Kut != null && Kut.tarzAd != null && Kut.tarzAd.Length > 0 ? Kut.tarzAd : TemelTarzAd;
-        public static readonly string[] Bolgeler = { "eski", "karma", "kule", "ev", "kampus", "sanayi", "avm" };
+        public static readonly string[] Bolgeler = { "eski", "karma", "kule", "ev", "kampus", "sanayi", "avm", "banliyo" };
 
         // ---------------------------------------------------------------- kütüphane (JSON)
 
