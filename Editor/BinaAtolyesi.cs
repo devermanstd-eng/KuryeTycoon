@@ -824,10 +824,11 @@ namespace KuryeTycoon.EditorTools
                 if (!EditorUtility.IsPersistent(t))
                 {
                     var eski = AssetDatabase.LoadAssetAtPath<BinaTasarimi>(tasarimYol);
-                    if (eski != null) { EditorUtility.CopySerialized(t, eski); EditorUtility.SetDirty(eski); }
+                    if (eski != null) { EditorUtility.CopySerialized(t, eski); eski.name = ad + "_tasarim"; EditorUtility.SetDirty(eski); }
                     else
                     {
                         t.hideFlags = HideFlags.None;
+                        t.name = ad + "_tasarim";   // ana nesne adı dosya adıyla aynı olmalı (Unity uyarısı)
                         AssetDatabase.CreateAsset(t, tasarimYol);
                     }
                 }
