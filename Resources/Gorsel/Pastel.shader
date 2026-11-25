@@ -38,6 +38,9 @@ Shader "KuryeTycoon/Pastel"
         [Header(Cam)]
         [Toggle] _Cam("Cam (çapraz parlama)", Float) = 0
 
+        [Header(Mevsim)]
+        _Dokum("Mevsim kırpması (0 yok, 1 kışın çizilmez, 2 yalnız kışın çizilir)", Float) = 0
+
         // URP/Lit uyumu (oyun kodu bu adları kullanıyor)
         [HideInInspector] _Smoothness("Smoothness", Range(0, 1)) = 0.1
         [HideInInspector] _Metallic("Metallic", Range(0, 1)) = 0
@@ -74,7 +77,19 @@ Shader "KuryeTycoon/Pastel"
         half _Smoothness;
         half _Metallic;
         half _Surface;
+        half _Dokum;
     CBUFFER_END
+
+    // Kış (global; City3D mevsime göre, Bina Atölyesi "Kış önizlemesi" ile yazar): yaprak döken ağaçların yaprakları
+    // (_Dokum = 1) çizilmez, dallardaki kar şeritleri (_Dokum = 2) yalnız o zaman çizilir. Bütün geçişlerde çağrılır
+    // (gölge ve derinlik de kırpılsın: çıplak ağacın gölgesi ve mürekkep konturu da çıplak olsun).
+    float _PastelKis;
+
+    void PastelMevsimKirp()
+    {
+        if (_Dokum > 1.5) clip(_PastelKis - 0.5);
+        else if (_Dokum > 0.5) clip(0.5 - _PastelKis);
+    }
 
     TEXTURE2D(_BaseMap);
     SAMPLER(sampler_BaseMap);
@@ -175,6 +190,7 @@ Shader "KuryeTycoon/Pastel"
             half4 frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_INSTANCE_ID(i);
+                PastelMevsimKirp();
                 half4 tex = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, i.uv);
                 half3 taban = tex.rgb * _BaseColor.rgb * i.color.rgb;
                 half alfa = tex.a * _BaseColor.a;
@@ -288,7 +304,7 @@ Shader "KuryeTycoon/Pastel"
                 return o;
             }
 
-            half4 fragG(VG i) : SV_Target { return 0; }
+            half4 fragG(VG i) : SV_Target { PastelMevsimKirp(); return 0; }
             ENDHLSL
         }
 
@@ -317,7 +333,7 @@ Shader "KuryeTycoon/Pastel"
                 return o;
             }
 
-            half fragD(VD i) : SV_Target { return i.positionCS.z; }
+            half fragD(VD i) : SV_Target { PastelMevsimKirp(); return i.positionCS.z; }
             ENDHLSL
         }
 
@@ -349,6 +365,7 @@ Shader "KuryeTycoon/Pastel"
 
             half4 fragN(VN i) : SV_Target
             {
+                PastelMevsimKirp();
                 float3 n = normalize(i.normalWS);
                 #if defined(_GBUFFER_NORMALS_OCT)
                     float2 oct = PackNormalOctQuadEncode(n);

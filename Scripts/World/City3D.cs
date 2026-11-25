@@ -1684,6 +1684,8 @@ namespace KuryeTycoon
             var map = CityMap.I;
             if (map == null || GameClock.I == null || mevsimBoyali.Count == 0) return;
             var agirlik = KirDurum.Agirliklar();
+            // Bina Atölyesi ağaçları: kışın yaprak döken taçlar kırpılır, dallarda kar görünür (Pastel.shader: _Dokum)
+            Shader.SetGlobalFloat("_PastelKis", agirlik[KirDurum.Kis] > 0.6f ? 1f : 0f);
             // Hava kar örtüsünü en fazla 0,55'e çıkarır: burada 0–1'e açılır (tam kar = tam beyaz çatı)
             float kar = Mathf.Clamp01(map.KarOrtusu / 0.5f), islak = map.Islaklik;
             KarKatmaniGuncelle(kar);

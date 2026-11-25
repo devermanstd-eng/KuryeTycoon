@@ -493,6 +493,14 @@ namespace KuryeTycoon.EditorTools
                     tasarim.susler.Add(new BinaTasarimi.Sus { ad = SeciliSus, olcek = 1f, renk = susRenk });
                     Yenile();
                 }
+                // Kış önizlemesi: oyundaki _PastelKis'i elle açar (yaprak döken ağaçlar çıplak, dallarda kar)
+                bool kisAcik = Shader.GetGlobalFloat("_PastelKis") > 0.5f;
+                bool kisYeni = EditorGUILayout.Toggle("Kış önizlemesi (çıplak dallar)", kisAcik);
+                if (kisYeni != kisAcik)
+                {
+                    Shader.SetGlobalFloat("_PastelKis", kisYeni ? 1f : 0f);
+                    SceneView.RepaintAll();
+                }
                 EditorGUILayout.HelpBox("Ağaç, çalı ve donatılar için dosya üretilmez: parça kütüphanesinde hedefi olan her parça oyun " +
                                         "çalışırken kendiliğinden kurulur (Resources/Gorsel/AtolyeAyari > Çevre modellerini kullan açıksa).", MessageType.None);
                 EditorGUILayout.HelpBox("Ağaçların yaprak malzemesi 'Pastel_Yaprak_…': oyunda mevsimle renk değiştirir ve kar tutar. " +

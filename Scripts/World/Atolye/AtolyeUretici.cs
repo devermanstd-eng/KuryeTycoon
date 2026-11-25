@@ -19,6 +19,7 @@ namespace KuryeTycoon
     public static class AtolyeUretici
     {
         const float LodGecis = 0.08f;      // BlenderBinaKurulum ile aynı
+        const float UzakGecis = 0.025f;    // ağaç / çalı: bu ekran payının altında en uzak görünüm (LOD2)
         // Şablondaki çocuk sırası (adlar "<ad>_<grup>"): CatiKaldir "_Cati" ve "_Ic" ile biten çocukları arar
         static readonly string[] GrupSirasi = { "Govde", "Duvar_On", "Duvar_Sag", "Duvar_Arka", "Duvar_Sol", "Cati", "Ic", "Ampul", "Poset", "Kepenk" };
 
@@ -288,7 +289,17 @@ namespace KuryeTycoon
                 var l0 = Parca(kokGo.transform, "LOD0", mesh, AtolyeKurucu.Malzemeler(adlar));
                 var l1 = Parca(kokGo.transform, "LOD1", hafif, AtolyeKurucu.Malzemeler(hafifAdlar));
                 var grup = kokGo.AddComponent<LODGroup>();
-                grup.SetLODs(new[] { new LOD(LodGecis, new Renderer[] { l0 }), new LOD(0.0005f, new Renderer[] { l1 }) });
+                // ağaç ve çalılarda üçüncü düzey (LOD2: gövde + bir iki küme, en çok ~40 üçgen): şehirde çok sayıda ağaç var
+                Mesh uzakMesh = null;
+                List<string> uzakAdlar = null;
+                if (AtolyeKurucu.UzakVar(t)) uzakMesh = AtolyeKurucu.Kur(t, true, out uzakAdlar, false, true);
+                if (uzakMesh != null)
+                {
+                    uzakMesh.name = ad + "_Uzak";
+                    var l2 = Parca(kokGo.transform, "LOD2", uzakMesh, AtolyeKurucu.Malzemeler(uzakAdlar));
+                    grup.SetLODs(new[] { new LOD(LodGecis, new Renderer[] { l0 }), new LOD(UzakGecis, new Renderer[] { l1 }), new LOD(0.0005f, new Renderer[] { l2 }) });
+                }
+                else grup.SetLODs(new[] { new LOD(LodGecis, new Renderer[] { l0 }), new LOD(0.0005f, new Renderer[] { l1 }) });
                 Sinir(grup, mesh.bounds);
             }
             else

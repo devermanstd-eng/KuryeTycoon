@@ -51,6 +51,7 @@ Shader "KuryeTycoon/PastelCizgi"
             CBUFFER_END
 
             float _PastelCizgiGizle;
+            float _PastelKis;        // kış: yaprak döken taçların ters kabuğu (uv.x = 0, uv.y = 2) çizilmez
 
             struct Attributes
             {
@@ -125,6 +126,7 @@ Shader "KuryeTycoon/PastelCizgi"
                     alfa *= abs(v.uv.x) < 0.75 ? 0.8h : 1.0h;       // ayrıntı çizgisi: biraz saydam
                 }
                 if (_PastelCizgiGizle > 0.5) cp = float4(2.0, 2.0, 2.0, 1.0);    // kırpma hacminin dışı: çizilmez
+                if (_PastelKis > 0.5 && abs(v.uv.x) <= 0.05 && v.uv.y > 1.5) cp = float4(2.0, 2.0, 2.0, 1.0);
                 o.positionCS = cp;
                 half3 c = v.color.rgb;
                 #ifndef UNITY_COLORSPACE_GAMMA
