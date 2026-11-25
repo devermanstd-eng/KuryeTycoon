@@ -423,6 +423,13 @@ namespace KuryeTycoon.EditorTools
                     Yenile();
                 }
                 tv = BinaAtolyesiKurucu.TurBul(tasarim);
+                EditorGUILayout.HelpBox("Tür, binanın ZEMİN KATINDA sokağa (kırmızı çizgiye) bakan cepheyi değiştirir: vitrin, kapı, tente, tabela, " +
+                                        "ön dekor. Üst katlar ve çatı fırçadaki tarz/renkle kurulur. Türün tam hâlini görmek için aşağıdaki " +
+                                        "düğmeyle hazır örneğini yükleyip üzerinde oynayabilirsin.", MessageType.Info);
+                if (!SokagaBakanZeminVar())
+                    EditorGUILayout.HelpBox("Zemin katta sokağa bakan açık cephe yok: tür hiçbir şey göstermez. Kat 0'da, kırmızı çizgiye " +
+                                            "en yakın sıraya (önünde blok olmayan) apartman / ahşap / taş bloğu koy.", MessageType.Warning);
+                if (GUILayout.Button("Bu türün hazır örneğini yükle (" + tv.etiket + ")")) TurOrnegiYukle(tv.ad);
                 EditorGUILayout.LabelField("Varsayılan tabela: " + (string.IsNullOrEmpty(tv.tabela) ? "(yok)" : tv.tabela) + " · prefab: " + PrefabAdi(tasarim), EditorStyles.miniLabel);
             }
             EditorGUILayout.EndFoldoutHeaderGroup();
@@ -559,6 +566,42 @@ namespace KuryeTycoon.EditorTools
             if (t.tabela == null) t.tabela = "";
             t.ad = Temiz(t.ad);
             return t;
+        }
+
+        /// <summary>Zemin katta önü (sokak tarafı, y-1) boş, cephe alan bir blok var mı? Tür yalnız bu cephelere uygulanır.</summary>
+        bool SokagaBakanZeminVar()
+        {
+            if (tasarim == null || tasarim.bloklar == null) return false;
+            foreach (var b in tasarim.bloklar)
+            {
+                if (b.k != 0 || b.tarz == BinaAtolyesiKurucu.Kaide || b.tarz == BinaAtolyesiKurucu.Merdiven) continue;
+                if (BlokBul(b.x, b.y - 1, 0) < 0) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Ornekler klasöründe türü bu olan ilk tasarımı açar (mevcut tasarımın yerine).</summary>
+        void TurOrnegiYukle(string turAdi)
+        {
+            string klasor = Path.Combine(Application.dataPath, "KuryeTycoon/Editor/BinaAtolyesi/Ornekler");
+            if (!Directory.Exists(klasor)) return;
+            var dosyalar = Directory.GetFiles(klasor, "*.json");
+            System.Array.Sort(dosyalar);
+            foreach (var d in dosyalar)
+            {
+                var t = JsondanOku(d);
+                string ta = string.IsNullOrEmpty(t.tur) ? "konut" : t.tur;
+                if (ta != turAdi) { DestroyImmediate(t); continue; }
+                if (tasarim != null && tasarim.bloklar.Count > 0 &&
+                    !EditorUtility.DisplayDialog("Bina Atölyesi", "Açık tasarım (" + tasarim.bloklar.Count + " blok) örnekle değişecek. " +
+                                                 "Saklamak istersen önce 'JSON dışa aktar' ya da 'Prefab olarak kaydet'.", "Örneği yükle", "Vazgeç"))
+                { DestroyImmediate(t); return; }
+                tasarim = t;
+                Yenile();
+                KamerayiOdakla();
+                return;
+            }
+            EditorUtility.DisplayDialog("Bina Atölyesi", "Bu tür için hazır örnek yok.", "Tamam");
         }
 
         void IceAktar()
