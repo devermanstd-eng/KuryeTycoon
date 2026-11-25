@@ -124,7 +124,7 @@ Shader "KuryeTycoon/PastelCizgi"
                 o.positionCS = cp;
                 half3 c = v.color.rgb;
                 #ifndef UNITY_COLORSPACE_GAMMA
-                    c = SRGBToLinear(c);
+                    c = c * (c * (c * 0.305306011h + 0.682171111h) + 0.012522878h);   // sRGB → doğrusal (yaklaşık)
                 #endif
                 o.color = half4(c * _BaseColor.rgb, alfa * _BaseColor.a);
                 o.positionOS = v.positionOS.xyz;

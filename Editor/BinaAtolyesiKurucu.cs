@@ -78,12 +78,13 @@ namespace KuryeTycoon.EditorTools
             hafif = new Dictionary<string, ParcaVeri>();
             tur = new Dictionary<string, TurVeri>();
             string metin = null;
-            var ta = AssetDatabase.LoadAssetAtPath<TextAsset>(KutuphaneYol);
-            if (ta != null) metin = ta.text;
-            else
+            // Önce diskten oku: içe aktarma henüz bitmemişken TextAsset eski içeriği verebilir.
+            string tam = Path.Combine(Application.dataPath, "KuryeTycoon/Editor/BinaAtolyesi/pastel_parcalar.json");
+            if (File.Exists(tam)) metin = File.ReadAllText(tam);
+            if (string.IsNullOrEmpty(metin))
             {
-                string tam = Path.Combine(Application.dataPath, "KuryeTycoon/Editor/BinaAtolyesi/pastel_parcalar.json");
-                if (File.Exists(tam)) metin = File.ReadAllText(tam);
+                var ta = AssetDatabase.LoadAssetAtPath<TextAsset>(KutuphaneYol);
+                if (ta != null) metin = ta.text;
             }
             if (string.IsNullOrEmpty(metin))
             {
