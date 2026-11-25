@@ -110,6 +110,7 @@ SILME = PM("Silme", "#fbf7ee")
 SILME2 = PM("Silme", "#e9e2d2")
 CAM = PM("Cam", "#bcd6f0")
 CAM2 = PM("Cam", "#a8c8e8")
+VIT = PM("Vitrin", "#bcd6f0")
 AHSAP = PM("Ahsap", "#8a6247")
 AHSAP2 = PM("Ahsap", "#5d4336")
 SIVA = PM("Siva", "#f6f0e2")
@@ -431,7 +432,7 @@ def vitrin(g):
     panel(g, c)
     c.kutu(g, 0.15, HUCRE - 0.15, 0, 0.09, 0.0, 0.5, VR)                       # kaide panosu
     c.kutu(g, 0.27, HUCRE - 0.27, 0.09, 0.11, 0.1, 0.4, SILME2)
-    c.kutu(g, 0.15, HUCRE - 0.15, 0, 0.02, 0.5, 2.15, CAM)
+    c.kutu(g, 0.15, HUCRE - 0.15, 0, 0.02, 0.5, 2.15, VIT)
     for uu in (0.15, 1.34, HUCRE - 0.27):
         c.kutu(g, uu, uu + 0.12, 0, 0.1, 0.5, 2.15, SILME)
     c.kutu(g, 0.15, HUCRE - 0.15, 0, 0.1, 2.15, 2.28, SILME)
@@ -443,7 +444,7 @@ def vitrin_genis(g):
     c = on()
     panel(g, c)
     c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.09, 0.0, 0.3, VR)
-    c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.02, 0.3, 2.15, CAM)
+    c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.02, 0.3, 2.15, VIT)
     for uu in (0.1, HUCRE - 0.2):
         c.kutu(g, uu, uu + 0.1, 0, 0.1, 0.3, 2.15, SILME)
     c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.1, 2.15, 2.28, SILME)
@@ -456,12 +457,12 @@ def kapi_vitrin(g):
     c = on()
     panel(g, c)
     c.kutu(g, 0.15, 1.2, 0, 0.09, 0.0, 0.5, VR)
-    c.kutu(g, 0.15, 1.2, 0, 0.02, 0.5, 2.15, CAM)
+    c.kutu(g, 0.15, 1.2, 0, 0.02, 0.5, 2.15, VIT)
     c.kutu(g, 0.15, 0.27, 0, 0.1, 0.5, 2.15, SILME)
     c.kutu(g, 1.2, 1.32, 0, 0.11, 0.0, 2.28, SILME)
     c.kutu(g, 2.5, 2.62, 0, 0.11, 0.0, 2.28, SILME)
     c.kutu(g, 0.15, 2.62, 0, 0.11, 2.15, 2.28, SILME)
-    c.kutu(g, 1.32, 2.5, 0, 0.02, 0.12, 2.15, CAM2)
+    c.kutu(g, 1.32, 2.5, 0, 0.02, 0.12, 2.15, VIT)
     c.kutu(g, 1.32, 2.5, 0.02, 0.06, 0.12, 0.45, VR)
     c.kutu(g, 1.32, 2.5, 0.02, 0.06, 1.1, 1.17, VR)
     c.kutu(g, 2.3, 2.38, 0.03, 0.1, 1.0, 1.3, PIRINC)
@@ -475,7 +476,7 @@ def kapi_otomatik(g):
     c.kutu(g, 0.25, 0.37, 0, 0.11, 0.0, 2.28, SILME)
     c.kutu(g, HUCRE - 0.37, HUCRE - 0.25, 0, 0.11, 0.0, 2.28, SILME)
     c.kutu(g, 0.25, HUCRE - 0.25, 0, 0.11, 2.1, 2.28, PM("Metal", "#9aa3ab"))
-    c.kutu(g, 0.37, HUCRE - 0.37, 0, 0.02, 0.05, 2.1, CAM2)
+    c.kutu(g, 0.37, HUCRE - 0.37, 0, 0.02, 0.05, 2.1, VIT)
     c.kutu(g, 1.37, 1.43, 0.02, 0.05, 0.05, 2.1, PM("Metal", "#9aa3ab"))
     for uu in (0.8, 2.0):
         c.kutu(g, uu - 0.25, uu + 0.25, 0.02, 0.03, 1.15, 1.25, VR)             # camdaki uyarı şeridi
@@ -1490,6 +1491,529 @@ def cicek_obegi(g):
         meyve(g, x, y, 0.2, 0.07, CICEK[i % len(CICEK)], n=5)
 
 
+# ---------------------------------------------------------------- iç mekân (zemin kat; çatı kalkınca görünür)
+# Mobilya parçaları bir hücreye sığar; ön yüzü (−Y) müşterinin durduğu taraf (kapı koridoruna bakar), arkası hücrenin dibinde.
+
+def _ic(aciklama):
+    return parca("ic", aciklama)
+
+
+def _urunler(g, x0, x1, y, z, rnd, h=0.24, d=0.16):
+    renk = ("#d94f3d", "#e8a23a", "#f2d04a", "#5a9a4a", "#2f7d8c", "#3d5a8a", "#8a4a6b", "#f4f0e6", "#7ab8d6", "#e07a9a")
+    x = x0
+    while x < x1 - 0.12:
+        w = rnd.uniform(0.2, 0.42)
+        kutu(g, x, min(x1, x + w) - 0.03, y - d, y, z, z + rnd.uniform(h * 0.6, h), PM("Urun", rnd.choice(renk)), atla=("zn",))
+        x += w
+
+
+@_ic("Zemin: karo")
+def ic_zemin_karo(g):
+    kutu(g, -A, A, -A, A, 0.0, 0.03, PM("Karo", "#efe6d2"), atla=("zn",))
+    for i in range(4):
+        for j in range(4):
+            if (i + j) % 2 == 0:
+                g.yuz([(-A + i * 0.7, -A + j * 0.7, 0.034), (-A + (i + 1) * 0.7, -A + j * 0.7, 0.034), (-A + (i + 1) * 0.7, -A + (j + 1) * 0.7, 0.034), (-A + i * 0.7, -A + (j + 1) * 0.7, 0.034)], PM("Karo", "#a9cfc6"))
+    g.sid += 1
+
+
+@_ic("Zemin: ahşap")
+def ic_zemin_ahsap(g):
+    for i in range(5):
+        kutu(g, -A + i * 0.56, -A + (i + 1) * 0.56, -A, A, 0.0, 0.03 + 0.002 * (i % 2), PM("Parke", "#d9b58a" if i % 2 else "#cfa878"), atla=("zn",))
+
+
+@_ic("Zemin: beton")
+def ic_zemin_beton(g):
+    kutu(g, -A, A, -A, A, 0.0, 0.03, PM("Beton", "#cfcac0"), atla=("zn",))
+    kutu(g, -0.06, 0.06, -A, A, 0.03, 0.034, PM("Beton", "#e8d27a"), atla=("zn",))
+
+
+@_ic("Tavan lambası (sarkıt)")
+def ic_lamba(g):
+    cubuk(g, (0, 0, KAT - 0.05), (0, 0, KAT - 0.6), 0.025, DEMIR)
+    dsil(g, 0, 0, KAT - 0.82, KAT - 0.6, 0.26, 8, VR, r1=0.07, kapak=(False, True))
+    meyve(g, 0, 0, KAT - 0.84, 0.09, ISIK, n=6, rz=-0.1)
+
+
+@_ic("Kasa bankosu")
+def ic_kasa(g):
+    kutu(g, -1.1, 1.1, 0.0, 0.6, 0.0, 1.0, VR)
+    kutu(g, -1.15, 1.15, -0.05, 0.65, 1.0, 1.05, AHSAP, atla=())
+    kutu(g, 0.45, 0.9, 0.12, 0.5, 1.05, 1.18, PM("Kasa", "#4a4550"))
+    kutu(g, 0.49, 0.85, 0.4, 0.48, 1.18, 1.46, PM("Kasa", "#4a4550"))
+    kutu(g, 0.53, 0.81, 0.39, 0.4, 1.24, 1.41, ISIK, atla=())
+    kutu(g, -0.9, -0.5, 0.15, 0.45, 1.05, 1.1, PM("Metal", "#c9ccd0"))
+    _urunler(g, -1.0, 1.0, -0.05, 0.25, random.Random(2), 0.14, 0.1)
+
+
+@_ic("Market rafı (çift yüzlü)")
+def ic_raf(g):
+    kutu(g, -1.15, 1.15, -0.05, 0.75, 0.0, 0.1, SILME2)
+    kutu(g, -1.15, 1.15, 0.32, 0.38, 0.1, 1.5, SILME2)
+    rnd = random.Random(7)
+    for i, z in enumerate((0.12, 0.55, 0.98)):
+        dd = 0.36 - i * 0.07
+        kutu(g, -1.15, 1.15, 0.35 - dd, 0.35 + dd, z - 0.03, z, SILME, atla=())
+        _urunler(g, -1.1, 1.1, 0.35 - dd + 0.18, z, rnd)
+        _urunler(g, -1.1, 1.1, 0.35 + dd, z, rnd)
+
+
+@_ic("Soğutucu dolap")
+def ic_sogutucu(g):
+    kutu(g, -1.2, 1.2, 0.5, 1.2, 0.0, 2.0, SILME)
+    kutu(g, -1.1, 1.1, 0.48, 0.5, 0.3, 1.7, ISIK, atla=())
+    kutu(g, -1.2, 1.2, 0.44, 0.5, 1.7, 2.0, PM("Sogutucu", "#5f8fb8"))
+    rnd = random.Random(4)
+    for z in (0.32, 0.78, 1.24):
+        kutu(g, -1.1, 1.1, 0.3, 0.5, z - 0.03, z, PM("Metal", "#c9ccd0"), atla=())
+        for i in range(9):
+            dsil(g, -0.96 + i * 0.24, 0.4, z, z + 0.3, 0.07, 5, PM("Sise", rnd.choice(("#c8453f", "#7fb86a", "#e0a04a", "#bcd6f0", "#6b4a35"))), kapak=(False, True))
+    for x in (-1.2, -0.02, 1.16):
+        kutu(g, x, x + 0.06, 0.28, 0.5, 0.25, 1.75, PM("Metal", "#9aa3ab"))
+
+
+@_ic("Meyve sebze standı")
+def ic_manav(g):
+    for i, (z, y) in enumerate(((0.35, 0.0), (0.6, 0.45), (0.85, 0.9))):
+        kutu(g, -1.1, 1.1, y, y + 0.45, 0.0, z, AHSAP)
+        for k in range(4):
+            x = -0.82 + k * 0.55
+            kutu(g, x - 0.24, x + 0.24, y + 0.04, y + 0.41, z, z + 0.1, PM("Ahsap", "#b08a62"))
+            for a in range(2):
+                meyve(g, x - 0.11 + a * 0.22, y + 0.22, z + 0.1, 0.11, PM("Meyve", ("#d8402f", "#f08a2a", "#8ab84a", "#f2d04a", "#7a3a6a")[(i * 2 + k) % 5]), n=5)
+
+
+@_ic("Sipariş tezgâhı (menü panolu)")
+def ic_tezgah(g):
+    kutu(g, -1.2, 1.2, 0.0, 0.55, 0.0, 1.0, VR)
+    kutu(g, -1.25, 1.25, -0.05, 0.6, 1.0, 1.05, SILME, atla=())
+    for x in (-0.7, 0.5):
+        kutu(g, x - 0.18, x + 0.18, 0.15, 0.4, 1.05, 1.3, PM("Kasa", "#4a4550"))
+    kutu(g, -1.2, 1.2, 1.25, 1.32, 1.9, 2.6, PM("Tahta", "#4a5a52"))
+    for i in range(3):
+        kutu(g, -1.05 + i * 0.75, -0.45 + i * 0.75, 1.24, 1.25, 2.0, 2.5, (ISIK, SILME, PM("Afis", "#f5c84a"))[i], atla=())
+    kutu(g, -0.45, -0.1, 0.1, 0.4, 1.05, 1.12, PM("Tepsi", "#c8553f"))
+
+
+@_ic("Mutfak (ızgara, fritöz, davlumbaz)")
+def ic_mutfak(g):
+    mt = PM("Metal", "#c9ccd0")
+    kutu(g, -1.2, 1.2, 0.6, 1.3, 0.0, 0.9, mt)
+    kutu(g, -1.1, -0.2, 0.7, 1.2, 0.9, 0.94, PM("Izgara", "#4a4550"), atla=())
+    for i in range(3):
+        meyve(g, -0.9 + i * 0.3, 0.95, 0.94, 0.1, PM("Simge", "#7a4a35"))
+    for x in (0.2, 0.75):
+        kutu(g, x, x + 0.4, 0.75, 1.15, 0.9, 1.0, PM("Yag", "#e0b45a"), atla=("zn",))
+    kutu(g, -1.2, 1.2, 0.5, 1.35, 2.0, 2.4, mt)
+    kutu(g, -0.3, 0.3, 0.8, 1.2, 2.4, KAT, mt)
+
+
+@_ic("Masa ve dört sandalye")
+def ic_masa(g):
+    kutu(g, -0.5, 0.5, 0.2, 1.0, 0.7, 0.76, SILME, atla=())
+    cubuk(g, (0, 0.6, 0), (0, 0.6, 0.7), 0.1, DEMIR)
+    for sx, sy in ((-0.8, 0.6), (0.8, 0.6)):
+        kutu(g, sx - 0.2, sx + 0.2, sy - 0.2, sy + 0.2, 0.0, 0.45, VR)
+        kutu(g, sx + (0.14 if sx > 0 else -0.2), sx + (0.2 if sx > 0 else -0.14), sy - 0.2, sy + 0.2, 0.45, 0.95, VR)
+    dsil(g, 0.15, 0.6, 0.76, 0.9, 0.05, 6, PM("Cicek", "#f5c84a"), kapak=(False, True))
+
+
+@_ic("Taş fırın (pizza)")
+def ic_tas_firin(g):
+    tg = PM("Tugla", "#c98a72")
+    kutu(g, -0.9, 0.9, 0.4, 1.3, 0.0, 0.9, TAS)
+    dsil(g, 0, 0.85, 0.9, 1.5, 0.85, 8, tg, r1=0.5, kapak=(False, True))
+    kutu(g, -0.3, 0.3, 0.02, 0.1, 0.95, 1.3, PM("Ates", "#f08a2a"))
+    kutu(g, -0.25, 0.25, 0.7, 1.0, 1.5, KAT, tg)
+    cubuk(g, (0.5, -0.2, 0.9), (1.1, 0.3, 0.2), 0.05, AHSAP)
+    meyve(g, -1.05, 0.5, 0.0, 0.3, PM("Simge", "#f0c060"), n=8, rz=0.08)
+
+
+@_ic("Döner ocağı ve tezgâh")
+def ic_doner(g):
+    mt = PM("Metal", "#c9ccd0")
+    kutu(g, -1.2, 1.2, 0.2, 0.8, 0.0, 1.05, mt)
+    dsil(g, -0.7, 0.5, 1.05, 1.1, 0.25, 8, mt, kapak=(True, True))
+    dsil(g, -0.7, 0.5, 1.1, 1.9, 0.2, 8, PM("Simge", "#a8603a"), r1=0.12, kapak=(False, True))
+    cubuk(g, (-0.7, 0.5, 1.05), (-0.7, 0.5, 2.1), 0.03, DEMIR)
+    kutu(g, -1.05, -0.35, 0.8, 0.86, 1.05, 2.0, PM("Ates", "#f08a2a"))
+    for i in range(3):
+        kutu(g, 0.35 + i * 0.28, 0.58 + i * 0.28, 0.3, 0.7, 1.05, 1.12, PM("Meyve", ("#d8402f", "#8ab84a", "#f4f0e6")[i]), atla=("zn",))
+
+
+@_ic("Sushi barı ve tabureler")
+def ic_sushi(g):
+    kutu(g, -1.2, 1.2, 0.5, 1.0, 0.0, 1.0, AHSAP2)
+    kutu(g, -1.25, 1.25, 0.4, 1.05, 1.0, 1.05, PM("Ahsap", "#d9b58a"), atla=())
+    for i in range(6):
+        kutu(g, -1.0 + i * 0.36, -0.78 + i * 0.36, 0.55, 0.7, 1.05, 1.1, PM("Simge", ("#f0a090", "#f4f0e6", "#7fb86a")[i % 3]), atla=("zn",))
+    for i in range(3):
+        dsil(g, -0.8 + i * 0.8, 0.0, 0.0, 0.62, 0.05, 6, DEMIR, kapak=(False, False))
+        dsil(g, -0.8 + i * 0.8, 0.0, 0.62, 0.7, 0.2, 8, VR, kapak=(True, True))
+
+
+@_ic("Bar tezgâhı, musluklar, şişe rafı")
+def ic_bar(g):
+    kutu(g, -1.25, 1.25, 0.3, 0.8, 0.0, 1.05, AHSAP2)
+    kutu(g, -1.3, 1.3, 0.22, 0.86, 1.05, 1.1, AHSAP, atla=())
+    for x in (-0.75, -0.45, 0.65):
+        cubuk(g, (x, 0.6, 1.1), (x, 0.6, 1.4), 0.05, PIRINC)
+        cubuk(g, (x, 0.6, 1.38), (x, 0.45, 1.34), 0.04, PIRINC)
+    rnd = random.Random(9)
+    for z in (1.3, 1.75):
+        kutu(g, -1.2, 1.2, 1.15, 1.38, z - 0.04, z, AHSAP, atla=())
+        for i in range(10):
+            dsil(g, -1.05 + i * 0.23, 1.26, z, z + 0.32, 0.06, 5, PM("Sise", rnd.choice(("#6b4a35", "#7fb86a", "#e0a04a", "#c8453f"))), r1=0.03, kapak=(False, True))
+    for i in range(3):
+        dsil(g, -0.8 + i * 0.8, -0.15, 0.0, 0.7, 0.05, 6, DEMIR, kapak=(False, False))
+        dsil(g, -0.8 + i * 0.8, -0.15, 0.7, 0.78, 0.2, 8, AHSAP, kapak=(True, True))
+
+
+@_ic("Kahve tezgâhı (makine, pasta dolabı)")
+def ic_kahve(g):
+    kutu(g, -1.2, 1.2, 0.3, 0.85, 0.0, 0.95, VR)
+    kutu(g, -1.25, 1.25, 0.24, 0.9, 0.95, 1.0, AHSAP, atla=())
+    kutu(g, 0.35, 1.05, 0.4, 0.8, 1.0, 1.5, PM("Metal", "#c9ccd0"))
+    kutu(g, 0.45, 0.95, 0.36, 0.4, 1.1, 1.25, DEMIR)
+    kutu(g, -1.1, 0.1, 0.32, 0.8, 1.0, 1.45, VIT)
+    for i in range(4):
+        meyve(g, -0.95 + i * 0.3, 0.3, 1.0, 0.1, PM("Simge", ("#f0b0c0", "#7a4a35", "#f5e6c0", "#e0a04a")[i]), n=8, rz=0.14)
+    kutu(g, -1.2, 1.2, 1.25, 1.32, 1.9, 2.5, PM("Tahta", "#4a5a52"))
+
+
+@_ic("Koltuk ve sehpa")
+def ic_koltuk(g):
+    kutu(g, -0.9, 0.9, 0.7, 1.25, 0.0, 0.45, VR)
+    kutu(g, -0.9, 0.9, 1.1, 1.3, 0.45, 0.95, VR)
+    for sx in (-1.0, 0.86):
+        kutu(g, sx, sx + 0.14, 0.7, 1.3, 0.0, 0.62, VR)
+    kutu(g, -0.4, 0.4, 0.0, 0.4, 0.0, 0.4, AHSAP)
+    kutu(g, -0.15, 0.1, 0.1, 0.3, 0.4, 0.43, SILME, atla=())
+
+
+@_ic("Ekmek rafı")
+def ic_ekmek(g):
+    kutu(g, -1.2, 1.2, 1.0, 1.3, 0.0, 2.0, AHSAP)
+    for z in (0.5, 1.0, 1.5):
+        kutu(g, -1.15, 1.15, 0.6, 1.0, z - 0.04, z, PM("Ahsap", "#d9b58a"), atla=())
+        for i in range(6):
+            meyve(g, -0.95 + i * 0.38, 0.8, z, 0.15, PM("Simge", ("#d9a05a", "#c98a4a", "#e0b070")[i % 3]), n=6, rz=0.16)
+    kutu(g, -1.2, 1.2, 0.0, 0.5, 0.0, 0.9, VIT)
+    kutu(g, -1.2, 1.2, 0.0, 0.5, 0.9, 0.95, SILME, atla=())
+
+
+@_ic("Et tezgâhı (soğutmalı, asılı etler)")
+def ic_et(g):
+    kutu(g, -1.2, 1.2, 0.2, 0.8, 0.0, 0.8, SILME)
+    kutu(g, -1.2, 1.2, 0.2, 0.8, 0.8, 1.05, VIT)
+    for i in range(5):
+        kutu(g, -1.0 + i * 0.43, -0.7 + i * 0.43, 0.18, 0.2, 0.84, 1.0, PM("Simge", ("#c8453f", "#e08a80", "#a8342f")[i % 3]), atla=())
+    cubuk(g, (-1.2, 1.2, 2.2), (1.2, 1.2, 2.2), 0.04, DEMIR)
+    for i in range(5):
+        dsil(g, -0.9 + i * 0.45, 1.2, 1.5, 2.15, 0.1, 5, PM("Simge", "#b84a3a"), r1=0.05, kapak=(True, False))
+
+
+@_ic("Çiçek standı")
+def ic_cicek(g):
+    for i, (z, y) in enumerate(((0.3, 0.2), (0.6, 0.65), (0.9, 1.05))):
+        kutu(g, -1.1, 1.1, y, y + 0.4, 0.0, z, SILME2)
+        for k in range(4):
+            x = -0.8 + k * 0.53
+            dsil(g, x, y + 0.2, z, z + 0.3, 0.13, 6, PM("Metal", "#9aa3ab"), r1=0.17, kapak=(False, True), kapak_mat=YAPRAK)
+            for a in range(2):
+                meyve(g, x - 0.07 + a * 0.14, y + 0.2, z + 0.34, 0.09, CICEK[(i + k + a) % len(CICEK)], n=5)
+
+
+@_ic("Kitaplık")
+def ic_kitaplik(g):
+    kutu(g, -1.2, 1.2, 0.9, 1.3, 0.0, 2.1, AHSAP)
+    rnd = random.Random(12)
+    for z in (0.1, 0.6, 1.1, 1.6):
+        kutu(g, -1.15, 1.15, 0.85, 0.9, z, z + 0.42, AHSAP2, atla=())
+        x = -1.1
+        while x < 1.05:
+            w = rnd.uniform(0.12, 0.24)
+            kutu(g, x, x + w - 0.01, 0.72, 0.9, z, z + rnd.uniform(0.28, 0.4), PM("Urun", rnd.choice(("#c8453f", "#3f5f8a", "#6fa968", "#d9a441", "#8a5a78", "#f4f0e6"))), atla=("zn",))
+            x += w
+    kutu(g, -0.6, 0.6, -0.1, 0.4, 0.0, 0.7, AHSAP2)
+    _urunler(g, -0.55, 0.55, 0.3, 0.7, rnd, 0.1, 0.3)
+
+
+@_ic("Eczane rafı ve banko")
+def ic_eczane(g):
+    kutu(g, -1.2, 1.2, 1.0, 1.3, 0.0, 2.2, SILME)
+    rnd = random.Random(5)
+    for z in (0.4, 0.85, 1.3, 1.75):
+        kutu(g, -1.15, 1.15, 0.8, 1.0, z - 0.03, z, SILME2, atla=())
+        x = -1.1
+        while x < 1.0:
+            kutu(g, x, x + 0.14, 0.82, 0.98, z, z + rnd.uniform(0.15, 0.3), PM("Urun", rnd.choice(("#f4f0e6", "#7ab8d6", "#8ab84a", "#f0b0c0"))), atla=("zn",))
+            x += 0.18
+    kutu(g, -1.2, 1.2, 0.0, 0.5, 0.0, 1.0, SILME)
+    kutu(g, -1.2, 1.2, -0.02, 0.0, 0.3, 0.7, VR, atla=())
+    kutu(g, -0.12, 0.12, -0.04, -0.02, 0.35, 0.65, SILME, atla=())
+    kutu(g, -0.25, 0.25, -0.04, -0.02, 0.44, 0.56, SILME, atla=())
+
+
+@_ic("Kamu bankosu (camlı gişe)")
+def ic_gise(g):
+    kutu(g, -1.25, 1.25, 0.3, 0.8, 0.0, 1.05, AHSAP)
+    kutu(g, -1.25, 1.25, 0.5, 0.54, 1.05, 1.9, VIT)
+    for x in (-1.25, -0.02, 1.21):
+        kutu(g, x, x + 0.06, 0.46, 0.58, 1.05, 1.95, AHSAP2)
+    kutu(g, -1.25, 1.25, 0.44, 0.6, 1.9, 2.0, AHSAP2, atla=())
+    kutu(g, -0.3, 0.3, 0.4, 0.46, 2.05, 2.35, PM("Kasa", "#4a4550"))
+    kutu(g, -0.2, 0.2, 0.39, 0.4, 2.12, 2.28, ISIK, atla=())
+
+
+@_ic("Bekleme sandalyeleri")
+def ic_bekleme(g):
+    for i in range(4):
+        x = -0.9 + i * 0.6
+        kutu(g, x - 0.24, x + 0.24, 0.8, 1.25, 0.38, 0.45, VR, atla=())
+        kutu(g, x - 0.24, x + 0.24, 1.2, 1.27, 0.45, 0.95, VR, atla=())
+    for x in (-1.1, 1.1):
+        kutu(g, x - 0.04, x + 0.04, 0.85, 1.2, 0.0, 0.38, DEMIR)
+    cubuk(g, (-1.1, 1.0, 0.36), (1.1, 1.0, 0.36), 0.05, DEMIR)
+    saksi_x = -1.0
+    dsil(g, saksi_x, 0.2, 0, 0.35, 0.16, 7, SAKSI, r1=0.2, kapak=(False, True), kapak_mat=AHSAP2)
+    top(g, (saksi_x, 0.2, 0.7), 0.28, 0.28, 0.4, YAPRAK)
+
+
+@_ic("Sedye ve serum")
+def ic_sedye(g):
+    kutu(g, -0.95, 0.95, 0.5, 1.2, 0.55, 0.7, SILME, atla=())
+    kutu(g, 0.55, 0.9, 0.6, 1.1, 0.7, 0.8, PM("Yastik", "#bcd6f0"))
+    kutu(g, -0.9, 0.4, 0.52, 1.18, 0.7, 0.74, PM("Yastik", "#a9cfc6"), atla=("zn",))
+    for sx in (-0.85, 0.85):
+        for sy in (0.6, 1.1):
+            cubuk(g, (sx, sy, 0.08), (sx, sy, 0.55), 0.05, PM("Metal", "#c9ccd0"))
+            dsil(g, sx, sy, 0.0, 0.1, 0.06, 5, DEMIR)
+    cubuk(g, (1.15, 0.4, 0), (1.15, 0.4, 1.8), 0.035, PM("Metal", "#c9ccd0"))
+    kutu(g, 1.08, 1.22, 0.36, 0.44, 1.45, 1.75, VIT)
+
+
+@_ic("Ofis masası")
+def ic_ofis(g):
+    kutu(g, -0.9, 0.9, 0.5, 1.2, 0.72, 0.78, AHSAP, atla=())
+    for sx in (-0.85, 0.75):
+        kutu(g, sx, sx + 0.1, 0.55, 1.15, 0.0, 0.72, AHSAP2)
+    kutu(g, -0.3, 0.3, 0.9, 0.96, 0.78, 1.2, PM("Kasa", "#4a4550"))
+    kutu(g, -0.26, 0.26, 0.89, 0.9, 0.84, 1.16, ISIK, atla=())
+    kutu(g, 0.45, 0.8, 0.6, 0.85, 0.78, 0.86, SILME)
+    kutu(g, -0.25, 0.25, 1.35, 1.4, 0.0, 0.95, VR)
+    kutu(g, -0.25, 0.25, 1.0, 1.4, 0.4, 0.47, VR, atla=())
+
+
+@_ic("İtfaiye aracı")
+def ic_itfaiye(g):
+    kr = PM("Arac", "#c8342f")
+    kutu(g, -1.2, 1.2, 0.2, 1.2, 0.35, 1.3, kr)
+    kutu(g, -1.2, -0.4, 0.2, 1.2, 1.3, 1.9, kr)
+    kutu(g, -1.22, -1.2, 0.3, 1.1, 1.35, 1.8, VIT, atla=())
+    kutu(g, -1.15, -0.5, 0.18, 0.2, 1.4, 1.8, VIT, atla=())
+    for x in (-0.75, 0.7):
+        for y in (0.2, 1.2):
+            silindir(g, (x, y - 0.08, 0.35), (x, y + 0.08, 0.35), 0.35, 0.35, 8, PM("Lastik", "#3d3b42"))
+    kutu(g, -0.3, 1.15, 0.45, 0.95, 1.3, 1.42, PM("Metal", "#c9ccd0"))
+    for i in range(6):
+        kutu(g, -0.2 + i * 0.25, -0.14 + i * 0.25, 0.45, 0.95, 1.42, 1.46, PM("Metal", "#9aa3ab"), atla=())
+    kutu(g, -0.95, -0.65, 0.55, 0.85, 1.9, 2.0, PM("Isik", "#7ab8ff"))
+    kutu(g, 0.0, 1.0, 0.18, 0.2, 0.75, 0.9, SILME, atla=())
+
+
+@_ic("Okul sıraları")
+def ic_sira(g):
+    for j in range(2):
+        for i in range(2):
+            x, y = -0.6 + i * 1.2, 0.2 + j * 0.9
+            kutu(g, x - 0.45, x + 0.45, y, y + 0.35, 0.62, 0.67, PM("Ahsap", "#d9b58a"), atla=())
+            kutu(g, x - 0.4, x + 0.4, y - 0.4, y - 0.15, 0.38, 0.43, AHSAP, atla=())
+            for sx in (x - 0.42, x + 0.36):
+                kutu(g, sx, sx + 0.06, y - 0.4, y + 0.35, 0.0, 0.62, DEMIR)
+
+
+@_ic("Kara tahta ve öğretmen masası")
+def ic_tahta(g):
+    kutu(g, -1.2, 1.2, 1.3, 1.36, 0.9, 2.1, PM("Tahta", "#4a5a52"))
+    kutu(g, -1.25, 1.25, 1.28, 1.38, 0.84, 0.9, AHSAP, atla=())
+    for i in range(3):
+        kutu(g, -0.9 + i * 0.3, 0.0 + i * 0.3, 1.29, 1.3, 1.75 - i * 0.25, 1.8 - i * 0.25, SILME, atla=())
+    kutu(g, -0.6, 0.6, 0.5, 1.0, 0.0, 0.75, AHSAP)
+    top(g, (0.3, 0.75, 0.93), 0.16, 0.16, 0.16, PM("Su", "#7ab8d6"))
+
+
+@_ic("Okuma masası")
+def ic_okuma(g):
+    kutu(g, -1.0, 1.0, 0.3, 1.1, 0.7, 0.76, AHSAP, atla=())
+    for sx in (-0.9, 0.8):
+        kutu(g, sx, sx + 0.1, 0.35, 1.05, 0.0, 0.7, AHSAP2)
+    for x in (-0.5, 0.5):
+        kutu(g, x - 0.18, x + 0.18, 0.5, 0.75, 0.76, 0.79, SILME)
+        cubuk(g, (x, 0.95, 0.76), (x, 0.95, 1.1), 0.03, PIRINC)
+        meyve(g, x, 0.95, 1.1, 0.12, PM("Isik", "#8fe0a0"), n=6, rz=0.1)
+        kutu(g, x - 0.2, x + 0.2, -0.15, 0.2, 0.0, 0.45, VR)
+
+
+@_ic("Palet rafı (depo)")
+def ic_palet(g):
+    mt = PM("Metal", "#3f6fb0")
+    for x in (-1.2, 1.14):
+        for y in (0.5, 1.24):
+            kutu(g, x, x + 0.06, y, y + 0.06, 0.0, 2.6, mt)
+    rnd = random.Random(3)
+    for z in (0.12, 1.2, 2.2):
+        kutu(g, -1.2, 1.2, 0.5, 1.3, z - 0.08, z, PM("Metal", "#e08a45"), atla=())
+        for i in range(2):
+            x = -0.6 + i * 1.2
+            kutu(g, x - 0.5, x + 0.5, 0.55, 1.25, z, z + 0.1, AHSAP)
+            kutu(g, x - 0.45, x + 0.45, 0.6, 1.2, z + 0.1, z + rnd.uniform(0.5, 0.85), PM("Karton", "#c49a6c"))
+
+
+@_ic("Forklift")
+def ic_forklift(g):
+    sr = PM("Arac", "#e8b83a")
+    kutu(g, -0.5, 0.5, 0.3, 1.3, 0.2, 0.9, sr)
+    kutu(g, -0.5, 0.5, 0.9, 1.3, 0.9, 1.1, PM("Kasa", "#4a4550"))
+    for x in (-0.45, 0.45):
+        cubuk(g, (x, 0.35, 0.9), (x, 0.35, 1.9), 0.06, DEMIR)
+        cubuk(g, (x, 1.1, 0.9), (x, 1.1, 1.9), 0.06, DEMIR)
+        cubuk(g, (x * 0.6, 0.25, 0.1), (x * 0.6, 0.25, 2.1), 0.07, DEMIR)
+        kutu(g, x * 0.6 - 0.05, x * 0.6 + 0.05, -0.35, 0.25, 0.1, 0.16, DEMIR)
+        for y in (0.45, 1.15):
+            silindir(g, (x - 0.06, y, 0.2), (x + 0.06, y, 0.2), 0.2, 0.2, 8, PM("Lastik", "#3d3b42"))
+    kutu(g, -0.5, 0.5, 0.3, 1.15, 1.9, 1.95, sr, atla=())
+    kutu(g, -0.4, 0.4, -0.3, 0.2, 0.16, 0.7, PM("Karton", "#c49a6c"))
+
+
+@_ic("Kaldırıcıda araba (tamirhane)")
+def ic_lift(g):
+    for x in (-1.15, 1.05):
+        kutu(g, x, x + 0.1, 0.6, 0.75, 0.0, 2.0, PM("Metal", "#3f6fb0"))
+    kutu(g, -1.1, 1.1, 0.35, 1.0, 1.0, 1.08, PM("Metal", "#3f6fb0"), atla=())
+    ar = PM("Arac", "#7ab8d6")
+    kutu(g, -0.95, 0.95, 0.25, 1.1, 1.2, 1.6, ar)
+    kutu(g, -0.5, 0.5, 0.3, 1.05, 1.6, 1.95, VIT)
+    for x in (-0.6, 0.6):
+        for y in (0.25, 1.1):
+            silindir(g, (x, y - 0.06, 1.2), (x, y + 0.06, 1.2), 0.22, 0.22, 8, PM("Lastik", "#3d3b42"))
+    kutu(g, 1.25, 1.38, 0.9, 1.3, 0.0, 0.9, PM("Arac", "#c8342f"))
+
+
+@_ic("Makine bandı (fabrika)")
+def ic_makine(g):
+    mt = PM("Metal", "#9aa3ab")
+    kutu(g, -1.3, 1.3, 0.5, 1.0, 0.5, 0.62, PM("Lastik", "#3d3b42"))
+    for x in (-1.2, 0.0, 1.1):
+        kutu(g, x, x + 0.1, 0.55, 0.95, 0.0, 0.5, mt)
+    kutu(g, -0.5, 0.4, 0.3, 1.2, 0.62, 1.6, PM("Makine", "#5f8f6a"))
+    kutu(g, -0.3, 0.2, 0.28, 0.3, 1.0, 1.4, ISIK, atla=())
+    dsil(g, -0.05, 0.75, 1.6, 2.3, 0.15, 6, mt)
+    for i in range(3):
+        kutu(g, 0.55 + i * 0.25, 0.72 + i * 0.25, 0.65, 0.85, 0.62, 0.8, PM("Karton", "#c49a6c"))
+
+
+@_ic("Resepsiyon (otel / hastane)")
+def ic_resepsiyon(g):
+    kutu(g, -1.2, 1.2, 0.4, 0.9, 0.0, 1.1, VR)
+    kutu(g, -1.25, 1.25, 0.34, 0.96, 1.1, 1.16, PM("Mermer", "#f4f0e6"), atla=())
+    kutu(g, -1.2, 1.2, 0.38, 0.4, 0.2, 0.9, PIRINC, atla=())
+    dsil(g, 0.8, 0.65, 1.16, 1.28, 0.09, 6, PIRINC, r1=0.02)
+    kutu(g, -0.9, -0.5, 0.5, 0.8, 1.16, 1.2, SILME)
+    kutu(g, -1.1, 1.1, 1.3, 1.36, 1.3, 2.2, AHSAP)
+    for i in range(8):
+        kutu(g, -0.95 + i * 0.26, -0.8 + i * 0.26, 1.28, 1.3, 1.5 + (i % 2) * 0.3, 1.62 + (i % 2) * 0.3, PIRINC, atla=())
+
+
+@_ic("Koltuk sıraları (opera)")
+def ic_koltuklar(g):
+    kr = PM("Kadife", "#a8342f")
+    for j in range(3):
+        for i in range(4):
+            x, y = -0.9 + i * 0.6, 0.0 + j * 0.5
+            kutu(g, x - 0.24, x + 0.24, y, y + 0.3, 0.1 * j, 0.42 + 0.1 * j, kr)
+            kutu(g, x - 0.24, x + 0.24, y + 0.3, y + 0.38, 0.1 * j, 0.9 + 0.1 * j, kr)
+
+
+@_ic("Sahne ve perde")
+def ic_sahne(g):
+    kutu(g, -A, A, 0.3, A, 0.0, 0.8, AHSAP)
+    kr = PM("Kadife", "#a8342f")
+    for i in range(7):
+        x = -A + i * 0.4
+        if 2 <= i <= 4:
+            kutu(g, x, x + 0.4, A - 0.15, A - 0.05, 2.3, KAT, kr)
+        else:
+            kutu(g, x, x + 0.4, A - 0.15 - 0.03 * (i % 2), A - 0.05, 0.8, KAT, kr)
+    kutu(g, -0.3, 0.3, 0.7, 1.0, 0.8, 1.4, PM("Kasa", "#4a4550"))
+
+
+@_ic("Pazar tezgâhı")
+def ic_pazar(g):
+    kutu(g, -1.1, 1.1, 0.3, 1.1, 0.0, 0.85, AHSAP)
+    for x in (-1.05, 1.05):
+        cubuk(g, (x, 0.35, 0.85), (x, 0.35, 2.1), 0.06, AHSAP2)
+        cubuk(g, (x, 1.05, 0.85), (x, 1.05, 2.1), 0.06, AHSAP2)
+    for i in range(6):
+        kutu(g, -1.2 + i * 0.4, -0.8 + i * 0.4, 0.2, 1.2, 2.1, 2.16, TN if i % 2 == 0 else SILME, atla=())
+    for k in range(4):
+        x = -0.8 + k * 0.53
+        for b in range(3):
+            meyve(g, x, 0.45 + b * 0.22, 0.85, 0.12, PM("Meyve", ("#d8402f", "#f08a2a", "#8ab84a", "#f2d04a")[k]), n=5)
+
+
+@_ic("Yürüyen merdiven")
+def ic_yuruyen(g):
+    mt = PM("Metal", "#9aa3ab")
+    prizma(g, [(-0.5, -0.2, 0.0), (-0.5, 1.3, 0.0), (-0.5, 1.3, 2.6)], (1.0, 0, 0), mt)
+    for i in range(9):
+        t = i / 9.0
+        kutu(g, -0.4, 0.4, -0.2 + 1.5 * t, -0.2 + 1.5 * (t + 0.11), 2.6 * t, 2.6 * t + 0.3, PM("Lastik", "#3d3b42"))
+    for x in (-0.5, 0.44):
+        cubuk(g, (x + 0.03, -0.2, 0.9), (x + 0.03, 1.3, 3.5), 0.06, PM("Lastik", "#3d3b42"))
+
+
+@_ic("Mağaza askılığı ve raf")
+def ic_askilik(g):
+    cubuk(g, (-1.0, 0.7, 1.5), (1.0, 0.7, 1.5), 0.04, PM("Metal", "#c9ccd0"))
+    for x in (-1.0, 1.0):
+        cubuk(g, (x, 0.7, 0), (x, 0.7, 1.5), 0.04, PM("Metal", "#c9ccd0"))
+    for i in range(9):
+        kutu(g, -0.85 + i * 0.2, -0.72 + i * 0.2, 0.5, 0.9, 0.7, 1.45, PM("Urun", ("#d94f3d", "#3d5a8a", "#f2d04a", "#5a9a4a", "#e07a9a", "#f4f0e6")[i % 6]))
+    kutu(g, -0.5, 0.5, -0.2, 0.2, 0.0, 0.5, SILME)
+    _urunler(g, -0.45, 0.45, 0.15, 0.5, random.Random(6), 0.15, 0.3)
+
+
+@_ic("Oturma odası (koltuk, halı, lamba)")
+def ic_oturma(g):
+    kutu(g, -1.1, 1.1, -0.9, 0.7, 0.03, 0.045, PM("Hali", "#c98a8a"), atla=("zn",))
+    kutu(g, -0.9, 0.9, 0.75, 1.25, 0.0, 0.45, PM("Kumas", "#7a9ab8"))
+    kutu(g, -0.9, 0.9, 1.1, 1.3, 0.45, 0.95, PM("Kumas", "#7a9ab8"))
+    kutu(g, -0.4, 0.4, -0.1, 0.3, 0.0, 0.4, AHSAP)
+    cubuk(g, (1.15, 1.1, 0), (1.15, 1.1, 1.5), 0.04, DEMIR)
+    dsil(g, 1.15, 1.1, 1.5, 1.8, 0.22, 7, ISIK, r1=0.12, kapak=(False, True))
+    kutu(g, -1.3, -1.0, 0.4, 1.2, 0.0, 1.6, AHSAP2)
+
+
+@_ic("Sipariş poşeti (tezgâhta)")
+def ic_poset(g):
+    kg = PM("Karton", "#c49a6c")
+    kati(g, [(-0.12, -0.08, 0), (0.12, -0.08, 0), (0.12, 0.08, 0), (-0.12, 0.08, 0), (-0.14, -0.09, 0.34), (0.14, -0.09, 0.34), (0.14, 0.09, 0.34), (-0.14, 0.09, 0.34)],
+         [[4, 5, 6, 7], [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]], kg)
+    kutu(g, -0.15, 0.15, -0.035, 0.035, 0.29, 0.35, PM("Karton", "#a8824f"), atla=())
+    kutu(g, -0.07, 0.07, -0.092, -0.088, 0.1, 0.22, VR, atla=())
+
+
+@parca("zemin", "Kepenk (kapalı dükkânda iner)")
+def kepenk(g):
+    c = on()
+    n = 18
+    for i in range(n):
+        z0, z1 = 2.28 * i / n, 2.28 * (i + 1) / n
+        c.kutu(g, 0.12, HUCRE - 0.12, 0.11, 0.15 if i % 2 else 0.135, z0, z1, PM("Kepenk", "#aab1b5") if i % 2 else PM("Kepenk", "#8f979c"))
+
+
 # ---------------------------------------------------------------- ağaçlar ve çalılar (tohumlu varyantlar)
 GOVDE = PM("Govde", "#8a6a55")
 
@@ -1608,10 +2132,49 @@ for _tip, _n, _acik, _hedef in AGAC_TIP:
 #   tepe   : kapı sütununun çatısına konan parça                                 vurgu : vurgu rengi (boşsa tohumdan)
 
 def _tur(ad, etiket, grup, onek="Bolge", tabela="", simge="", on="", kapi="", duvar="", tente=0, aks=(), cephe="", tepe="", vurgu="", bolge="karma"):
+    kasa, ic, arka, zemin, calisan = IC_TUR.get(ad, IC_TUR["_"])
     return dict(ad=ad, etiket=etiket, grup=grup, onek=onek, tabela=tabela, simge=simge, on=on, kapi=kapi, duvar=duvar, tente=tente,
-                aks=list(aks), cephe=cephe, tepe=tepe, vurgu=vurgu, bolge=bolge)
+                aks=list(aks), cephe=cephe, tepe=tepe, vurgu=vurgu, bolge=bolge,
+                icKasa=kasa, ic=list(ic), icArka=arka, zemin=zemin, calisan=calisan, kepenk=1 if grup in ("Dükkân", "Market") else 0)
 
 
+# İç mekân: tür → (kasa hücresinin parçası, öteki hücrelerin parçaları (sırayla), kapı koridorunun dibindeki parça, zemin, çalışan sayısı)
+_MK = ("ic_kasa", ("ic_raf", "ic_manav", "ic_raf", "ic_sogutucu"), "ic_sogutucu", "ic_zemin_karo", 1)
+_FF = ("ic_tezgah", ("ic_masa", "ic_mutfak", "ic_masa"), "ic_mutfak", "ic_zemin_karo", 2)
+IC_TUR = {
+    "_": ("", ("ic_oturma", "ic_ofis", "ic_kitaplik"), "", "ic_zemin_ahsap", 0),
+    "dukkan": ("ic_kasa", ("ic_raf", "ic_askilik"), "ic_raf", "ic_zemin_ahsap", 1),
+    "burger": _FF, "mcdanolds": _FF, "kfg": _FF, "bufe": ("ic_tezgah", ("ic_mutfak", "ic_masa"), "", "ic_zemin_karo", 1),
+    "pizza": ("ic_tezgah", ("ic_tas_firin", "ic_masa", "ic_masa"), "ic_tas_firin", "ic_zemin_karo", 2),
+    "doner": ("ic_doner", ("ic_masa", "ic_mutfak"), "ic_masa", "ic_zemin_karo", 1), "gyros": ("ic_doner", ("ic_masa", "ic_mutfak"), "ic_masa", "ic_zemin_karo", 1),
+    "sushi": ("ic_sushi", ("ic_masa", "ic_mutfak", "ic_masa"), "ic_masa", "ic_zemin_ahsap", 2),
+    "kafe": ("ic_kahve", ("ic_koltuk", "ic_masa", "ic_koltuk"), "ic_masa", "ic_zemin_ahsap", 1),
+    "balik": ("ic_tezgah", ("ic_mutfak", "ic_masa"), "ic_masa", "ic_zemin_karo", 1),
+    "bistro": ("ic_bar", ("ic_masa", "ic_masa", "ic_mutfak"), "ic_masa", "ic_zemin_ahsap", 2),
+    "pub": ("ic_bar", ("ic_masa", "ic_koltuk", "ic_masa"), "ic_masa", "ic_zemin_ahsap", 1),
+    "firin": ("ic_kasa", ("ic_ekmek", "ic_ekmek", "ic_tas_firin"), "ic_ekmek", "ic_zemin_karo", 1),
+    "kasap": ("ic_et", ("ic_sogutucu", "ic_et"), "ic_sogutucu", "ic_zemin_karo", 1),
+    "cicekci": ("ic_kasa", ("ic_cicek", "ic_cicek"), "ic_cicek", "ic_zemin_ahsap", 1),
+    "kitapci": ("ic_kasa", ("ic_kitaplik", "ic_kitaplik", "ic_okuma"), "ic_kitaplik", "ic_zemin_ahsap", 1),
+    "eczane": ("ic_eczane", ("ic_raf", "ic_bekleme"), "ic_raf", "ic_zemin_karo", 1),
+    "bakkal24": _MK, "minimart": _MK, "market": _MK, "supermarket": _MK, "market24": _MK, "bio": _MK,
+    "belediye": ("ic_gise", ("ic_bekleme", "ic_ofis", "ic_bekleme"), "ic_ofis", "ic_zemin_ahsap", 1),
+    "postane": ("ic_gise", ("ic_bekleme", "ic_palet"), "ic_ofis", "ic_zemin_karo", 1),
+    "hastane": ("ic_resepsiyon", ("ic_sedye", "ic_bekleme", "ic_sedye"), "ic_bekleme", "ic_zemin_karo", 1),
+    "polis": ("ic_gise", ("ic_ofis", "ic_bekleme", "ic_ofis"), "ic_ofis", "ic_zemin_karo", 1),
+    "itfaiye": ("ic_ofis", ("ic_itfaiye", "ic_palet", "ic_itfaiye", "ic_bekleme"), "", "ic_zemin_beton", 1),
+    "okul": ("ic_tahta", ("ic_sira", "ic_sira", "ic_kitaplik"), "ic_sira", "ic_zemin_ahsap", 1),
+    "kutuphane": ("ic_gise", ("ic_kitaplik", "ic_okuma", "ic_kitaplik"), "ic_okuma", "ic_zemin_ahsap", 1),
+    "depo": ("ic_ofis", ("ic_palet", "ic_forklift", "ic_palet"), "ic_palet", "ic_zemin_beton", 1),
+    "garaj": ("ic_ofis", ("ic_lift", "ic_palet"), "ic_lift", "ic_zemin_beton", 1),
+    "fabrika": ("ic_ofis", ("ic_makine", "ic_makine", "ic_palet"), "ic_makine", "ic_zemin_beton", 1),
+    "sera": ("", ("ic_cicek", "ic_manav"), "ic_cicek", "ic_zemin_beton", 0),
+    "gar": ("ic_gise", ("ic_bekleme", "ic_bekleme", "ic_kahve"), "ic_bekleme", "ic_zemin_karo", 1),
+    "otel": ("ic_resepsiyon", ("ic_koltuk", "ic_masa", "ic_koltuk"), "ic_koltuk", "ic_zemin_ahsap", 1),
+    "avm": ("ic_kasa", ("ic_askilik", "ic_raf", "ic_yuruyen", "ic_askilik"), "ic_askilik", "ic_zemin_karo", 1),
+    "pazar": ("ic_pazar", ("ic_pazar", "ic_manav", "ic_pazar", "ic_cicek"), "ic_pazar", "ic_zemin_beton", 1),
+    "opera": ("ic_gise", ("ic_koltuklar", "ic_koltuklar", "ic_sahne"), "ic_sahne", "ic_zemin_ahsap", 1),
+}
 _D = dict(on="vitrin", kapi="kapi_vitrin", tente=1)
 _Y = dict(on="vitrin_genis", kapi="kapi_vitrin", tente=1)
 TURLER = [
@@ -1763,6 +2326,73 @@ def cizgi_rengi(hexv):
     return "#%02x%02x%02x" % tuple(int(v * 255) for v in r)
 
 
+DUVAR_GRUP = ["Duvar_On", "Duvar_Sag", "Duvar_Arka", "Duvar_Sol"]
+GIZLI_GRUP = ("Ic", "Ampul", "Poset", "Kepenk")        # uzak görünümde (LOD1) ve tek parça önizlemede yok
+
+
+def ic_plan(blok, kapi, T):
+    """Zemin katın iç yerleşimi. Mobilyaların hepsi öne (−Y) bakar ve hücrenin arka yarısında durur: her sıranın ön yarısı
+    yürüme koridorudur. Kapı sütunu (kapıdan arkaya) boş "geçit"tir; koridorlardan ulaşılamayan hücre kalırsa önündeki
+    hücre de geçit olur (blok şekli ne olursa olsun kapıdan her hücreye yol açık). C# karşılığı: BinaAtolyesiKurucu.IcPlan.
+    Dönen: hucreler (sıralı), gecit (küme), mobilya {hücre: parça}, kasa (hücre ya da None), kapi (x, y)."""
+    Z = sorted((x, y) for (x, y, k), b in blok.items() if k == 0 and b["tarz"] in (APARTMAN, FACHWERK, TAS))
+    plan = dict(hucreler=Z, gecit=set(), mobilya={}, kasa=None, kapi=(0, 0))
+    if not kapi or not Z:
+        plan["hucreler"] = []
+        return plan
+    zs = set(Z)
+    ky, kx = kapi
+    plan["kapi"] = (kx, ky)
+    kolon = []
+    y = ky
+    while (kx, y) in zs:
+        kolon.append((kx, y))
+        y += 1
+    E = set(kolon[:-1])
+    while True:
+        R, yigin = {(kx, ky)}, [(kx, ky)]
+        while yigin:
+            x, y = yigin.pop()
+            for q, gec in (((x - 1, y), True), ((x + 1, y), True), ((x, y + 1), (x, y) in E), ((x, y - 1), (x, y - 1) in E)):
+                if gec and q in zs and q not in R:
+                    R.add(q)
+                    yigin.append(q)
+        if len(R) == len(zs):
+            break
+        ek = None
+        for u in Z:
+            if u in R:
+                continue
+            if (u[0], u[1] - 1) in R:
+                ek = (u[0], u[1] - 1)       # öndeki hücre geçit olur
+                break
+            if (u[0], u[1] + 1) in R:
+                ek = u
+                break
+        if ek is None:
+            break                           # yalnız çaprazdan bağlı parça: olduğu gibi kalır
+        E.add(ek)
+    mob = {}
+    if T["icKasa"]:
+        for c in ((kx + 1, ky), (kx - 1, ky), kolon[-1]):
+            if c in zs and c not in E:
+                plan["kasa"] = c
+                mob[c] = T["icKasa"]
+                break
+    son = kolon[-1]
+    if son not in E and son not in mob and T["icArka"]:
+        mob[son] = T["icArka"]
+    j = 0
+    for c in Z:
+        if c in E or c in mob or not T["ic"]:
+            continue
+        mob[c] = T["ic"][j % len(T["ic"])]
+        j += 1
+    plan["gecit"] = E
+    plan["mobilya"] = mob
+    return plan
+
+
 def yerlesim(t):
     """Tasarımdan parça yerleşimleri. Dönen: (yerler, çokgenler, kutular).
     yer: (parça, merkez x, merkez y, taban z, dönüş, z ölçeği, kaydırma, renkler, ölçek, açı)."""
@@ -1785,9 +2415,16 @@ def yerlesim(t):
         return dict(D=dv, d=koyu(dv, 0.9), C=ct, c=koyu(ct, 0.86), K=vr, T=TENTE_RENK[t.get("tente", 0) % len(TENTE_RENK)],
                     Y=yp, y=koyu(yp, 0.88), k=cizgi_rengi(yp))
 
-    def koy(ad, x, y, z, don, r, zs=1.0, kay=(0.0, 0.0), olcek=1.0):
+    zorla = [None]
+
+    def koy(ad, x, y, z, don, r, zs=1.0, kay=(0.0, 0.0), olcek=1.0, grup=None):
+        """grup: prefabdaki ayrı çocuk (Govde, Cati, Duvar_On/Sag/Arka/Sol, Ic, Ampul, Poset, Kepenk). Verilmezse
+        birinci kat ve üstü "Cati" (kamera yaklaşınca kalkan parça), zemin "Govde"."""
         cx, cy = hucre_merkezi(x, y)
-        yerler.append((ad, cx, cy, z, don % 4, zs, kay, r, olcek, 0.0))
+        if grup is None:
+            grup = zorla[0] or ("Cati" if z >= KAT - 0.01 else "Govde")
+        cam = karma(x * 4 + don % 4, y, int(round(z / KAT)), tohum + 41) % 3      # pencere ışık grubu (gece ayrı ayrı yanar)
+        yerler.append((ad, cx, cy, z, don % 4, zs, kay, r, olcek, 0.0, grup, cam))
 
     def on_acik(x, y):
         b = blok.get((x, y, 0))
@@ -1821,9 +2458,12 @@ def yerlesim(t):
         if alt_bos:
             koy("taban", x, y, z, 0, r)
         kapi_hucresi = kapi == (y, x)
+        if tarz == KAIDE and k == 0 and dolu(x, y, 1):
+            koy("taban", x, y, KAT, 0, r, olcek=0.97, grup="Govde")      # üst katlar kalkınca kaidenin üstü açık kalmasın
         for i, (dx, dy) in enumerate(YON):
             if dolu(x + dx, y + dy, k):
                 continue
+            dg = DUVAR_GRUP[i] if (k == 0 and tarz != KAIDE) else None      # zemin kat duvarı: kameraya bakınca iner
             h = karma(x * 4 + i, y, tohum, 11)                   # sütun boyunca aynı: pencereler üst üste hizalı
             hk = karma(x * 4 + i, y, tohum + k * 31, 17)
             kapi_yuzu = k == 0 and i == 0 and kapi_hucresi
@@ -1848,16 +2488,18 @@ def yerlesim(t):
                 ad = APT_UST[h % len(APT_UST)]
                 if ad == "duvar_balkon" and hk % 2:
                     ad = "duvar_pencere"
-            koy(ad, x, y, z, i, r)
+            koy(ad, x, y, z, i, r, grup=dg)
             if ad == "duvar_duz" and T["cephe"] and kapi_hucresi and i == 0 and k == kapi_ust and k > 0:
                 koy(T["cephe"], x, y, z, i, r)
             if ad in SAKSI_ALIR and hk % 5 == 0:
-                koy("cicek_kutusu_p", x, y, z, i, r)
+                koy("cicek_kutusu_p", x, y, z, i, r, grup=dg)
             if on_zemin and T["tente"] and (kapi_yuzu or T["on"]):
-                koy("tente", x, y, z, i, r)
+                koy("tente", x, y, z, i, r, grup=dg)
+            if T["kepenk"] and on_zemin and (kapi_yuzu or T["on"]):
+                koy("kepenk", x, y, z, i, r, grup="Kepenk")
             # bantlar
             if k == 0 and tarz != KAIDE and not (T["duvar"] and tarz == APARTMAN):
-                koy("kaide", x, y, z, i, r)
+                koy("kaide", x, y, z, i, r, grup=dg)
             if tarz == APARTMAN and not T["duvar"]:
                 koy("silme", x, y, z + KAT, i, r)
             elif tarz == FACHWERK and k > 0:
@@ -1870,11 +2512,11 @@ def yerlesim(t):
                 elif a == 1:
                     koy("saksi", x, y, z, i, r, kay=(-0.8, -A - 0.38))
                 elif a == 2 and ad == "duvar_duz":
-                    koy("sarmasik", x, y, z, i, r)
+                    koy("sarmasik", x, y, z, i, r, grup=dg)
             if kapi_yuzu:
                 koy("paspas", x, y, z, i, r, kay=(0.0, -A - 0.75))
             if k == 0 and tarz == APARTMAN and ad == "zemin_pencere" and karma(x, y, i, tohum + 9) % 5 == 0:
-                koy("fener", x, y, z, i, r, kay=(1.15, 0.0))
+                koy("fener", x, y, z, i, r, kay=(1.15, 0.0), grup=dg)
         # köşeler
         for i in range(4):
             (ax, ay), (bx, by) = YON[(i + 3) % 4], YON[i]
@@ -1910,7 +2552,7 @@ def yerlesim(t):
             x += 1
         if metin:
             for x in sira:
-                koy("tabela_bant", x, ky, 0.0, 0, r)
+                koy("tabela_bant", x, ky, 0.0, 0, r, grup="Duvar_On")
             W = len(sira) * HUCRE
             sol = 0.75 if T["simge"] else 0.2
             harfler = [harf_adi(ch) for ch in metin]
@@ -1918,9 +2560,9 @@ def yerlesim(t):
             x0 = -A + sol + (W - sol - 0.2 - (len(harfler) * 6 - 1) * px) / 2
             for j, ha in enumerate(harfler):
                 if ha:
-                    koy(ha, sira[0], ky, 2.54 - 3.5 * px, 0, r, kay=(x0 + j * 6 * px, -A - 0.13), olcek=px)
+                    koy(ha, sira[0], ky, 2.54 - 3.5 * px, 0, r, kay=(x0 + j * 6 * px, -A - 0.13), olcek=px, grup="Duvar_On")
             if T["simge"]:
-                koy(T["simge"], sira[0], ky, 0.0, 0, r, kay=(-A + 0.4, 0.0))      # madalyon parçada hücrenin ortasında
+                koy(T["simge"], sira[0], ky, 0.0, 0, r, kay=(-A + 0.4, 0.0), grup="Duvar_On")      # madalyon parçada hücrenin ortasında
         if T["aks"]:
             j = 0
             for x in sira:
@@ -1932,6 +2574,19 @@ def yerlesim(t):
                     koy(ad, x, ky, 0.0, 0, r, kay=(0.0, -A - 1.05))
         if T["tepe"]:
             koy(T["tepe"], kx, ky, (kapi_ust + 1) * KAT, 0, r, kay=(0.0, 0.3))
+
+    # ---- iç mekân (zemin kat): zemin kaplaması, tavan lambaları, türe göre mobilya
+    plan = ic_plan(blok, kapi, T)
+    for (x, y) in plan["hucreler"]:
+        r = renk(blok[(x, y, 0)])
+        koy(T["zemin"], x, y, 0.0, 0, r, grup="Ic")
+        if (x + y) % 2 == (plan["kapi"][0] + plan["kapi"][1]) % 2:
+            koy("ic_lamba", x, y, 0.0, 0, r, grup="Ampul")
+        ad = plan["mobilya"].get((x, y))
+        if ad:
+            koy(ad, x, y, 0.0, 0, r, grup="Ic")
+    if plan["kasa"] and T["kepenk"]:
+        koy("ic_poset", plan["kasa"][0], plan["kasa"][1], 1.05, 0, renk(blok[plan["kasa"] + (0,)]), kay=(0.1, 0.45), grup="Poset")
 
     # ---- çatılar: her katta üstü açık hücreler; aynı tarz ve çatı tarzından bağlı bölgeler
     for k in sorted(set(b["k"] for b in bloklar)):
@@ -1951,7 +2606,16 @@ def yerlesim(t):
                     if q in ust and q not in gorulen and (ust[q]["tarz"], ust[q].get("ct", 0)) == anahtar:
                         gorulen.add(q)
                         yigin.append(q)
+            # kaide / terasın üstü yerinde kalır; öbür çatılar (ve üst katlar) "Cati" grubunda kalkar
+            cg = "Govde" if ust[bas]["tarz"] == KAIDE else "Cati"
+            zorla[0] = cg
+            n0, n1 = len(cokgenler), len(kutular)
             _cati(bolge, ust[bas], k, tohum, koy, renk, cokgenler, kutular, dolu, blok, bool(T["duvar"]))
+            zorla[0] = None
+            for i in range(n0, len(cokgenler)):
+                cokgenler[i] = tuple(cokgenler[i]) + (cg,)
+            for i in range(n1, len(kutular)):
+                kutular[i] = tuple(kutular[i]) + (cg,)
 
     # ---- arsa süsleri (serbest yerleşim)
     for s in t.get("susler") or []:
@@ -1960,7 +2624,7 @@ def yerlesim(t):
         b0 = dict(renk=0, cati=s.get("renk", 0), tarz=0)
         r = renk(b0, s.get("renk", 0))
         r["K"] = VURGU_RENK[s.get("renk", 0) % len(VURGU_RENK)] if not T["vurgu"] else r["K"]
-        yerler.append((s["ad"], s["x"], s["y"], 0.0, 0, 1.0, (0.0, 0.0), r, s.get("olcek", 1.0) or 1.0, math.radians(s.get("aci", 0.0))))
+        yerler.append((s["ad"], s["x"], s["y"], 0.0, 0, 1.0, (0.0, 0.0), r, s.get("olcek", 1.0) or 1.0, math.radians(s.get("aci", 0.0)), "Govde", 0))
     return yerler, cokgenler, kutular
 
 
@@ -2114,8 +2778,13 @@ def _cati(bolge, b0, k, tohum, koy, renk, cokgenler, kutular, dolu, blok, sade):
             koy("cati_penceresi", x, y, z, 0, r, kay=(0.0, -A))
 
 
-def _renkli(ad, r):
-    """Rol adını gerçek renge çevirir: "Pastel_Duvar_@D" → "Pastel_Duvar_bcd9ea"."""
+def _renkli(ad, r, cam=0):
+    """Rol adını gerçek renge çevirir: "Pastel_Duvar_@D" → "Pastel_Duvar_bcd9ea". Pencere camları üç ışık grubuna dağılır
+    (Pastel_Cam_, Pastel_Cam2_, Pastel_Cam3_: GeceIsiklari her grubu ayrı saatte yakar / söndürür)."""
+    if cam and ad.startswith("Pastel_Cam_"):
+        yeni = "Pastel_Cam%d_%s" % (cam + 1, ad[11:])
+        HEX[yeni] = HEX[ad]
+        return yeni
     i = ad.find("_@")
     if i < 0:
         return ad
@@ -2164,11 +2833,18 @@ def kenarlar(g, en_kisa=0.07):
     return cikti
 
 
-def bina(t, hafif=False):
-    """Tasarımdan tek geometri (metre, arsa ortalı, ön −Y, zemin z = 0). g.cizgiler: kalem çizgileri."""
+def bina(t, hafif=False, gizle=GIZLI_GRUP):
+    """Tasarımdan tek geometri (metre, arsa ortalı, ön −Y, zemin z = 0). g.cizgiler: kalem çizgileri.
+    gizle: atlanacak gruplar (varsayılan: iç mekân ve kepenk; iç görünüm için ör. ("Cati", "Duvar_On", "Kepenk", "Poset"))."""
     yerler, cokgenler, kutular = yerlesim(t)
+    if hafif:
+        gizle = GIZLI_GRUP
+    cokgenler = [c for c in cokgenler if c[3] not in gizle]
+    kutular = [c[:7] for c in kutular if c[7] not in gizle]
     g = G(t.get("ad", "bina") + ("_Hafif" if hafif else ""))
-    for ad, cx, cy, z, don, zs, kay, r, olcek, aci in yerler:
+    for ad, cx, cy, z, don, zs, kay, r, olcek, aci, ygrup, cam in yerler:
+        if ygrup in gizle:
+            continue
         grup = PARCA_BILGI[ad][0]
         if hafif:
             if grup in ("ayrinti", "harf", "simge") or (grup == "cevre" and kucuk(ad)):
@@ -2196,9 +2872,9 @@ def bina(t, hafif=False):
                     for _ in range(don):
                         px, py = -py, px
                 pts.append((cx + px, cy + py, z + pz * zs))
-            g.yuz(pts, _renkli(pg.mats[mi], r))
+            g.yuz(pts, _renkli(pg.mats[mi], r, cam))
         g.sid += 1
-    for pts, mat, n in cokgenler:
+    for pts, mat, n, _ in cokgenler:
         if mat not in HEX:
             HEX[mat] = "#" + mat.rsplit("_", 1)[1]
         nn = B.newell(pts)
@@ -2465,6 +3141,80 @@ def onizleme(klasor, sec=None):
         im = render(sokak, HEX, size=3000, az=30, el=31, arka=ARKA, pastel=True, cizgiler=cz)
         _kirp(im, 2400).save(os.path.join(klasor, "kasaba.jpg"), quality=90)
         print(os.path.join(klasor, "kasaba.jpg"))
+
+
+    if not sec or "ic" in sec:
+        # çatısı kalkmış, kameraya bakan iki duvarı inmiş iç görünümler
+        ad2 = {t["ad"]: t for t in orn}
+        sec_ad = [a for a in ("sparx_express", "burger_queen", "old_pub", "starbocks", "pharmacy", "hospital", "fire_station", "library",
+                              "pizza_hat", "bakery", "butcher", "flowers", "books", "sushi_samurai", "school", "depot", "garage", "factory",
+                              "town_hall", "grand_hotel", "market_hall", "opera", "department_store", "fachwerk_ev") if a in ad2]
+        res, adlar = [], []
+        for ad in sec_ad:
+            g = bina(ad2[ad], gizle=("Cati", "Duvar_On", "Duvar_Sag", "Kepenk"))
+            res.append(_ciz(g, 700, 32, 38))
+            adlar.append("%s  [%s]" % (ad, TUR[ad2[ad]["tur"]]["etiket"]))
+        _kolaj(res[:8], adlar[:8], 4, 700, os.path.join(klasor, "ic_mekan_kolaj.jpg"))
+        _kolaj(res, adlar, 6, 700, os.path.join(klasor, "ic_mekan_hepsi.jpg"))
+    if not sec or "gece" in sec:
+        _gece(klasor, orn)
+
+
+def _gece(klasor, orn):
+    """Gece kasaba görünümü (yaklaşık): pencereler üç grupta (biri sönük), açık dükkânın vitrini ve tabelası yanık,
+    kapalı dükkânın kepengi inik ve vitrini karanlık. Oyundaki GeceIsiklari + DukkanCanli davranışının taslağı."""
+    from bolge_onizleme import render
+    sec_ad = ["pastel_kuleler", "starbocks", "dutch_gable", "town_hall", "fachwerk_ev", "burger_queen", "tas_kule", "bahceli_ev",
+              "villa_gourmet", "kemerli_gecit", "books", "old_pub", "terrace_houses", "flowers", "pharmacy", "sparx_express"]
+    kapali = {"starbocks", "books", "flowers", "town_hall", "villa_gourmet"}
+    ad2 = {t["ad"]: t for t in orn}
+    gece_hex = {}
+
+    def gece_mat(mat, acik, i):
+        hexv = HEX[mat]
+        c = [int(hexv[j:j + 2], 16) for j in (1, 3, 5)]
+        isik = None
+        if mat.startswith("Pastel_Cam3_"):
+            isik = None if (i % 2 == 0 or not acik) else (255, 214, 140)
+        elif mat.startswith("Pastel_Cam2_"):
+            isik = (255, 226, 160) if acik or i % 3 else None
+        elif mat.startswith("Pastel_Cam_"):
+            isik = (255, 236, 180) if acik else ((255, 226, 160) if i % 2 else None)
+        elif mat.startswith("Pastel_Vitrin_"):
+            isik = (255, 240, 200) if acik else None
+        elif mat.startswith("Pastel_Isik_"):
+            isik = (255, 240, 190)
+        elif mat.startswith("Pastel_Yazi_"):
+            isik = (255, 246, 220) if acik else (150, 150, 170)
+        if isik is None:
+            c = (int(c[0] * 0.30 + 8), int(c[1] * 0.33 + 10), int(c[2] * 0.47 + 22))
+            ad = "G_%02x%02x%02x" % c
+        else:
+            c = isik
+            ad = "GI_%02x%02x%02x" % c
+        gece_hex[ad] = "#%02x%02x%02x" % c
+        return ad
+
+    sokak = G("gece")
+    cz = []
+    for i, ad in enumerate(sec_ad):
+        if ad not in ad2:
+            continue
+        acik = ad not in kapali
+        g = bina(ad2[ad], gizle=("Ic", "Ampul", "Poset", "Kepenk") if acik else ("Ic", "Ampul", "Poset"))
+        ox, oy = (i % 4) * 15.5, -(i // 4) * 17.0
+        for f, mi in zip(g.f, g.fm):
+            sokak.yuz([(g.v[j][0] + ox, g.v[j][1] + oy, g.v[j][2]) for j in f], gece_mat(g.mats[mi], acik, i))
+        cz += [((a[0] + ox, a[1] + oy, a[2]), (b[0] + ox, b[1] + oy, b[2]), "#15131f") for a, b, c in g.cizgiler]
+    gece_hex["G_zemin"] = "#2a3140"
+    gece_hex["G_yol"] = "#353a4a"
+    kutu(sokak, -9, 56, -60, 9, -0.25, -0.05, "G_zemin")
+    for r in range(4):
+        kutu(sokak, -9, 56, -r * 17.0 - 9.3, -r * 17.0 - 7.6, -0.05, -0.02, "G_yol")
+    arka = (24, 28, 44)
+    im = render(sokak, gece_hex, size=3000, az=30, el=31, arka=arka, pastel=True, cizgiler=cz)
+    _kirp(im, 2400, arka).save(os.path.join(klasor, "gece_kasaba.jpg"), quality=90)
+    print(os.path.join(klasor, "gece_kasaba.jpg"))
 
 
 if __name__ == "__main__":
