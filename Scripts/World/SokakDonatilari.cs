@@ -30,6 +30,10 @@ namespace KuryeTycoon
 
         static Dictionary<string, List<Tur>> turler;
 
+        /// <summary>Yeni Play'de (alan yeniden yüklenmese de) donatı listesi yeniden kurulur: atölye donatıları Play bitince yok olur.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void OyunBasiSifirla() { turler = null; }
+
         static void Yukle()
         {
             if (turler != null) return;

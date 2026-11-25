@@ -103,6 +103,13 @@ namespace KuryeTycoon
         public static int PackTreeCount { get { LoadPack(); return packTrees.Length; } }
         public static bool PackRoadsOk { get { LoadPack(); return roadStraight != null && roadCross != null; } }
 
+        /// <summary>
+        /// Alan yeniden yüklenmeden (Enter Play Mode ayarı) yeni Play'e geçilince önbellek boşaltılır: atölye binaları
+        /// oyun çalışırken kurulan şablonlardır ve Play bitince yok olur; eski listede kalırlarsa MissingReferenceException.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void OyunBasiOnbellekSifirla() { packBuildings = null; }
+
         static void LoadPack()
         {
             if (packBuildings != null) return;
