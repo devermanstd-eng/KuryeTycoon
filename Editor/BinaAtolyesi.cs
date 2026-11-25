@@ -15,6 +15,8 @@ namespace KuryeTycoon.EditorTools
     ///  • Dağıt fırçası: seçili parçadan yarıçap içine yoğunluk kadar serper (çiçek, ot, çalı).
     ///  • Kullanım türü (dükkân, market, kamu, sanayi, simge, konut): zemin kata türün vitrini, kapısı, tentesi, tabelası
     ///    (yazı + simge) ve ön dekorları gelir; prefab adı türe göre City3D'nin doğru havuzuna girer.
+    ///  • İç mekân: zemin katın içi türe göre kendiliğinden döşenir (BinaAtolyesiKurucu.IcPlan); "İç mekânı göster" önizlemede
+    ///    çatıyı kaldırır. Prefabda parçalar ayrı çocuklardır (_Govde, _Duvar_*, _Cati, _Ic, _Kepenk…) ve köke AtolyePlani yazılır.
     ///  • "Prefab olarak kaydet": mesh (malzemeye göre alt-mesh + kalem çizgileri) + _Hafif LOD + prefab
     ///    (Resources/SehirPaketi/Binalar/&lt;önek&gt;_atolye_&lt;ad&gt;). Tasarım (BinaTasarimi + JSON) Modeller/Atolye altına yazılır.
     ///  • Çevre modeli: seçili ağaç / dekor tek başına prefab olur (Agaclar ya da Donatilar; City3D ve SokakDonatilari okur).
@@ -49,6 +51,7 @@ namespace KuryeTycoon.EditorTools
         bool fareArsada;
         Vector2 kaydir;
         bool acTasarim = true, acKullanim = true, acFirca = true, acCevre, acKaydet = true;
+        bool icGoster;       // önizlemede çatı / üst katlar kalkık, iç mekân görünür
 
         [MenuItem("Kurye Tycoon/Bina Atölyesi")]
         static void Ac()
@@ -151,7 +154,7 @@ namespace KuryeTycoon.EditorTools
                 onizleme.AddComponent<MeshFilter>();
                 onizleme.AddComponent<MeshRenderer>();
             }
-            var mesh = BinaAtolyesiKurucu.Kur(tasarim, false, out var adlar);
+            var mesh = BinaAtolyesiKurucu.Kur(tasarim, false, out var adlar, icGoster);
             var mf = onizleme.GetComponent<MeshFilter>();
             var mr = onizleme.GetComponent<MeshRenderer>();
             if (onizlemeMesh != null) DestroyImmediate(onizlemeMesh);
@@ -380,6 +383,11 @@ namespace KuryeTycoon.EditorTools
                     Yenile();
                 }
                 EditorGUILayout.LabelField($"{tasarim.bloklar.Count} blok · {tasarim.susler.Count} süs · {ucgen} üçgen (çizgiler dahil)", EditorStyles.miniLabel);
+                EditorGUI.BeginChangeCheck();
+                icGoster = EditorGUILayout.ToggleLeft(new GUIContent("İç mekânı göster (çatı ve üst katlar kalkık)",
+                    "Zemin katın içi kullanım türüne göre kendiliğinden döşenir: mobilyalar öne bakar, kapıdan her hücreye yol açık kalır. " +
+                    "Oyunda kamera yaklaşınca çatı kalkar; kepenk, poşet ve insanlar oyunda eklenir."), icGoster);
+                if (EditorGUI.EndChangeCheck()) Yenile();
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     if (GUILayout.Button("Yeni")) { YeniTasarim(); Yenile(); }
@@ -633,9 +641,41 @@ namespace KuryeTycoon.EditorTools
             else AssetDatabase.CreateAsset(mesh, yol);
         }
 
+        /// <summary>Ana mesh dosyasının içindeki (alt nesne) grup mesh'ini yazar: varsa üstüne, yoksa ekler.</summary>
+        static void AltMeshYaz(Mesh mesh, string ad, string anaYol)
+        {
+            mesh.name = ad;
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(anaYol))
+            {
+                if (o is Mesh eski && !AssetDatabase.IsMainAsset(o) && o.name == ad)
+                {
+                    EditorUtility.CopySerialized(mesh, eski);
+                    EditorUtility.SetDirty(eski);
+                    DestroyImmediate(mesh);
+                    return;
+                }
+            }
+            AssetDatabase.AddObjectToAsset(mesh, anaYol);
+        }
+
+        static Mesh AltMeshBul(string ad, string anaYol)
+        {
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(anaYol))
+                if (o is Mesh m && o.name == ad) return m;
+            return null;
+        }
+
         /// <summary>Mesh + _Hafif LOD + prefab (+ tasarım dosyası). Prefabın yolunu döndürür (kurulamazsa null).</summary>
         static string PrefabYaz(BinaTasarimi t, string ad, string klasor, bool lod)
         {
+            // İçi olan binalar parçalı kurulur (çatı kalkar, duvarlar iner, kepenk sarılır); ötekiler tek mesh
+            if (lod)
+            {
+                var kur = BinaAtolyesiKurucu.KurGruplu(t);
+                if (kur != null && kur.plan != null && kur.plan.hucreler.Count > 0 && kur.mesh.ContainsKey("Cati") && kur.mesh.ContainsKey("Ic"))
+                    return GrupluPrefabYaz(t, ad, klasor, kur);
+                if (kur != null) foreach (var m in kur.mesh.Values) DestroyImmediate(m);
+            }
             var mesh = BinaAtolyesiKurucu.Kur(t, false, out var adlar);
             if (mesh == null) return null;
             List<string> hafifAdlar = null;
@@ -666,6 +706,106 @@ namespace KuryeTycoon.EditorTools
                 kok.AddComponent<MeshFilter>().sharedMesh = meshA;
                 kok.AddComponent<MeshRenderer>().sharedMaterials = BinaAtolyesiKurucu.Malzemeler(adlar);
             }
+            string prefabYol = klasor + "/" + ad + ".prefab";
+            PrefabUtility.SaveAsPrefabAsset(kok, prefabYol);
+            DestroyImmediate(kok);
+            return prefabYol;
+        }
+
+        // Prefabdaki çocuk sırası (adlar "<ad>_<grup>"): CatiKaldir "_Cati" ve "_Ic" ile biten çocukları arar
+        static readonly string[] GrupSirasi = { "Govde", "Duvar_On", "Duvar_Sag", "Duvar_Arka", "Duvar_Sol", "Cati", "Ic", "Ampul", "Poset", "Kepenk" };
+
+        /// <summary>
+        /// İçi olan bina: kök [LODGroup + AtolyePlani] → LOD0 (boş; çocukları &lt;ad&gt;_Govde, _Duvar_*, _Cati, _Ic [altında _Ampul,
+        /// _Poset], _Kepenk) + LOD1 (tek mesh, içsiz). Grup mesh'leri ana mesh dosyasının (&lt;ad&gt;.asset) alt nesneleridir.
+        /// _Ic, _Kepenk ve _Poset prefabda kapalıdır: oyunda CatiKaldir ve DukkanCanli açar.
+        /// </summary>
+        static string GrupluPrefabYaz(BinaTasarimi t, string ad, string klasor, BinaAtolyesiKurucu.Kurulum kur)
+        {
+            var hafif = BinaAtolyesiKurucu.Kur(t, true, out var hafifAdlar);
+            BinaAtolyesiKurucu.KlasorAc(AtolyeKlasor);
+            BinaAtolyesiKurucu.KlasorAc(klasor);
+            string meshYol = AtolyeKlasor + "/" + ad + ".asset", hafifYol = AtolyeKlasor + "/" + ad + "_Hafif.asset";
+            // ana mesh: ilk grup (çoğunlukla Govde); dosya adıyla aynı adı taşır
+            string anaGrup = null;
+            foreach (string g in GrupSirasi) if (kur.mesh.ContainsKey(g)) { anaGrup = g; break; }
+            if (anaGrup == null) return null;
+            kur.mesh[anaGrup].name = ad;
+            MeshYaz(kur.mesh[anaGrup], meshYol);
+            AssetDatabase.SaveAssets();
+            var gecerli = new HashSet<string>();
+            foreach (string g in GrupSirasi)
+            {
+                if (g == anaGrup || !kur.mesh.ContainsKey(g)) continue;
+                AltMeshYaz(kur.mesh[g], ad + "_" + g, meshYol);
+                gecerli.Add(ad + "_" + g);
+            }
+            // artık kullanılmayan eski grup mesh'leri
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(meshYol))
+                if (o is Mesh && !AssetDatabase.IsMainAsset(o) && !gecerli.Contains(o.name))
+                {
+                    AssetDatabase.RemoveObjectFromAsset(o);
+                    DestroyImmediate(o, true);
+                }
+            if (hafif != null) { hafif.name = ad + "_Hafif"; MeshYaz(hafif, hafifYol); }
+            AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(meshYol);
+            var hafifA = hafif != null ? AssetDatabase.LoadAssetAtPath<Mesh>(hafifYol) : null;
+
+            var kok = new GameObject(ad);
+            var l0 = new GameObject("LOD0").transform;
+            l0.SetParent(kok.transform, false);
+            var plan = kok.AddComponent<AtolyePlani>();
+            var tv = kur.tur;
+            plan.tur = tv.ad; plan.turGrup = tv.grup; plan.etiket = tv.etiket;
+            plan.siparis = tv.kepenk != 0;
+            plan.calisan = tv.calisan;
+            plan.hucre = BinaAtolyesiKurucu.Hucre;
+            plan.kat = BinaAtolyesiKurucu.KatBoyu;
+            plan.kok = l0;
+            var cizilen = new List<Renderer>();
+            var cocuk = new Dictionary<string, Transform>();
+            foreach (string g in GrupSirasi)
+            {
+                if (!kur.mesh.ContainsKey(g)) continue;
+                Mesh m = g == anaGrup ? AssetDatabase.LoadAssetAtPath<Mesh>(meshYol) : AltMeshBul(ad + "_" + g, meshYol);
+                if (m == null) continue;
+                Transform ust = (g == "Ampul" || g == "Poset") && cocuk.ContainsKey("Ic") ? cocuk["Ic"] : l0;
+                var mr = Parca(ust, ad + "_" + g, m, BinaAtolyesiKurucu.Malzemeler(kur.malzeme[g]));
+                cocuk[g] = mr.transform;
+                cizilen.Add(mr);
+            }
+            Transform Al(string g) => cocuk.TryGetValue(g, out var tr) ? tr : null;
+            plan.cati = Al("Cati"); plan.ic = Al("Ic"); plan.kepenk = Al("Kepenk"); plan.poset = Al("Poset"); plan.ampul = Al("Ampul");
+            for (int i = 0; i < 4; i++) plan.duvar[i] = Al(BinaAtolyesiKurucu.DuvarGrup[i]);
+            if (plan.kepenk != null) plan.kepenk.localPosition = new Vector3(0f, BinaAtolyesiKurucu.KepenkKok, 0f);
+
+            // iç yerleşim: hücre ortaları, geçitler, mobilya
+            var ip = kur.plan;
+            int n = ip.hucreler.Count;
+            plan.hucreOrta = new Vector2[n]; plan.hucreNo = new Vector2Int[n]; plan.gecit = new bool[n]; plan.mobilya = new string[n];
+            float orta = (BinaAtolyesiKurucu.Izgara - 1) * 0.5f;
+            for (int i = 0; i < n; i++)
+            {
+                var h = ip.hucreler[i];
+                plan.hucreNo[i] = h;
+                plan.hucreOrta[i] = new Vector2((h.x - orta) * plan.hucre, (h.y - orta) * plan.hucre);
+                plan.gecit[i] = ip.gecit.Contains(h);
+                plan.mobilya[i] = ip.mobilya.TryGetValue(h, out string mob) ? mob : "";
+            }
+            plan.kapiHucre = plan.HucreBul(ip.kapi);
+            plan.kasaHucre = ip.kasaVar ? plan.HucreBul(ip.kasa) : -1;
+
+            var l1 = hafifA != null ? Parca(kok.transform, "LOD1", hafifA, BinaAtolyesiKurucu.Malzemeler(hafifAdlar)) : null;
+            var lg = kok.AddComponent<LODGroup>();
+            if (l1 != null) lg.SetLODs(new[] { new LOD(LodGecis, cizilen.ToArray()), new LOD(0.0005f, new Renderer[] { l1 }) });
+            else lg.SetLODs(new[] { new LOD(0.0005f, cizilen.ToArray()) });
+            lg.RecalculateBounds();
+            // oyunda açılanlar kapalı kaydedilir (bileşenler takılmazsa bina sıradan görünür)
+            if (plan.ic != null) plan.ic.gameObject.SetActive(false);
+            if (plan.kepenk != null) plan.kepenk.gameObject.SetActive(false);
+            if (plan.poset != null) plan.poset.gameObject.SetActive(false);
+
             string prefabYol = klasor + "/" + ad + ".prefab";
             PrefabUtility.SaveAsPrefabAsset(kok, prefabYol);
             DestroyImmediate(kok);

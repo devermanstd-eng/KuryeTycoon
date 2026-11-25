@@ -40,6 +40,10 @@ namespace KuryeTycoon.EditorTools
             public string ad, etiket, grup, onek, tabela, simge, on, kapi, duvar, cephe, tepe, vurgu, bolge;
             public int tente;
             public string[] aks;
+            // iç mekân (zemin kat): kasa hücresinin parçası, öbür hücrelerin parçaları, kapı sütununun dibindeki parça, zemin
+            public string icKasa, icArka, zemin;
+            public string[] ic;
+            public int calisan, kepenk;      // kepenk = 1: dükkân (kepenk, sipariş poşeti, kurye)
         }
         [Serializable]
         public class Kutuphane
@@ -55,7 +59,7 @@ namespace KuryeTycoon.EditorTools
         static Kutuphane kut;
         static Dictionary<string, ParcaVeri> parca, hafif;
         static Dictionary<string, TurVeri> tur;
-        static readonly TurVeri BosTur = new TurVeri { ad = "konut", etiket = "Konut", grup = "Konut", onek = "Bolge", bolge = "eski" };
+        static readonly TurVeri BosTur = new TurVeri { ad = "konut", etiket = "Konut", grup = "Konut", onek = "Bolge", bolge = "eski", zemin = "ic_zemin_ahsap" };
 
         public static Kutuphane Kut
         {
@@ -94,9 +98,9 @@ namespace KuryeTycoon.EditorTools
             Kutuphane k;
             try { k = JsonUtility.FromJson<Kutuphane>(metin); }
             catch (Exception ex) { Debug.LogError("Bina Atölyesi: parça kütüphanesi okunamadı: " + ex.Message); return false; }
-            if (k == null || k.parcalar == null || k.parcalar.Length == 0 || k.surum < 2 || k.turler == null || k.yaprakRenk == null || k.tenteRenk == null)
+            if (k == null || k.parcalar == null || k.parcalar.Length == 0 || k.surum < 3 || k.turler == null || k.yaprakRenk == null || k.tenteRenk == null)
             {
-                Debug.LogError("Bina Atölyesi: parça kütüphanesi eski ya da eksik (sürüm 2 gerekli). python3 Tools/Blender/pastel_parcalar.py --json");
+                Debug.LogError("Bina Atölyesi: parça kütüphanesi eski ya da eksik (sürüm 3 gerekli). python3 Tools/Blender/pastel_parcalar.py --json");
                 return false;
             }
             foreach (var p in k.parcalar) parca[p.ad] = p;
@@ -139,10 +143,25 @@ namespace KuryeTycoon.EditorTools
             public int don;
             public Vector2 kay;
             public Renkler r;
+            public string grup;      // prefabdaki ayrı çocuk: Govde, Cati, Duvar_On/Sag/Arka/Sol, Ic, Ampul, Poset, Kepenk
+            public int cam;          // pencere ışık grubu (0–2): Pastel_Cam_, Pastel_Cam2_, Pastel_Cam3_
         }
 
-        struct Cokgen { public Vector3[] p; public string mat; public Vector3 n; }
-        struct KutuVeri { public float x0, x1, y0, y1, z0, z1; public string mat; }
+        struct Cokgen { public Vector3[] p; public string mat; public Vector3 n; public string grup; }
+        struct KutuVeri { public float x0, x1, y0, y1, z0, z1; public string mat; public string grup; }
+
+        public static readonly string[] DuvarGrup = { "Duvar_On", "Duvar_Sag", "Duvar_Arka", "Duvar_Sol" };
+        static bool GizliGrup(string g) => g == "Ic" || g == "Ampul" || g == "Poset" || g == "Kepenk";
+
+        /// <summary>Zemin katın iç yerleşimi (pastel_parcalar.py: ic_plan). Hücreler (x, y) ızgara koordinatında.</summary>
+        public class IcPlani
+        {
+            public List<Vector2Int> hucreler = new List<Vector2Int>();
+            public HashSet<Vector2Int> gecit = new HashSet<Vector2Int>();
+            public Dictionary<Vector2Int, string> mobilya = new Dictionary<Vector2Int, string>();
+            public bool kasaVar;
+            public Vector2Int kasa, kapi;
+        }
 
         static readonly Vector2Int[] Yon = { new Vector2Int(0, -1), new Vector2Int(1, 0), new Vector2Int(0, 1), new Vector2Int(-1, 0) };
         static readonly string[] AptUst = { "duvar_pencere", "duvar_pencere", "duvar_cift", "duvar_kemerli", "duvar_saksi", "duvar_panjur", "duvar_dar", "duvar_balkon", "duvar_duz", "duvar_yuvarlak" };
@@ -212,6 +231,9 @@ namespace KuryeTycoon.EditorTools
             public List<Yer> yerler = new List<Yer>();
             public List<Cokgen> cokgenler = new List<Cokgen>();
             public List<KutuVeri> kutular = new List<KutuVeri>();
+            public IcPlani plan = new IcPlani();
+            public string zorlaGrup;
+            public float kat = 3f;
 
             public bool Var(int x, int y, int k) => blok.ContainsKey(new Vector3Int(x, y, k));
             public bool Dolu(int x, int y, int k) => blok.TryGetValue(new Vector3Int(x, y, k), out var b) && b.tarz != Merdiven;
@@ -237,18 +259,110 @@ namespace KuryeTycoon.EditorTools
 
             public Renkler RenkleriAl(BinaTasarimi.Blok b) => RenkleriAl(b.renk, b.cati, 0);
 
-            public void Koy(string ad, int x, int y, float z, int don, Renkler r, float zs = 1f, float kx = 0f, float ky = 0f, float olcek = 1f)
+            /// <summary>grup verilmezse birinci kat ve üstü "Cati" (kamera yaklaşınca kalkan parça), zemin "Govde".</summary>
+            public void Koy(string ad, int x, int y, float z, int don, Renkler r, float zs = 1f, float kx = 0f, float ky = 0f, float olcek = 1f, string grup = null)
             {
                 float cx = (x - (Izgara - 1) * 0.5f) * Hucre, cy = (y - (Izgara - 1) * 0.5f) * Hucre;
-                yerler.Add(new Yer { ad = ad, cx = cx, cy = cy, z = z, don = Mod(don, 4), zs = zs, kay = new Vector2(kx, ky), r = r, olcek = olcek, aci = 0f });
+                if (grup == null) grup = zorlaGrup ?? (z >= kat - 0.01f ? "Cati" : "Govde");
+                int cam = Sec(Karma(x * 4 + Mod(don, 4), y, Mathf.RoundToInt(z / kat), t.tohum + 41), 3);
+                yerler.Add(new Yer
+                {
+                    ad = ad, cx = cx, cy = cy, z = z, don = Mod(don, 4), zs = zs, kay = new Vector2(kx, ky), r = r, olcek = olcek, aci = 0f,
+                    grup = grup, cam = cam,
+                });
             }
+        }
+
+        /// <summary>
+        /// İç yerleşim (pastel_parcalar.py: ic_plan ile AYNI). Mobilyaların hepsi öne (−Y) bakar ve hücrenin arka yarısında
+        /// durur: her sıranın ön yarısı yürüme koridorudur. Kapı sütunu boş "geçit"tir; koridorlardan ulaşılamayan hücre kalırsa
+        /// önündeki hücre de geçit olur (blok şekli ne olursa olsun kapıdan her hücreye yol açık).
+        /// </summary>
+        static IcPlani IcPlan(Durum s, bool kapiVar, int kx, int ky)
+        {
+            var plan = new IcPlani();
+            var Z = new List<Vector2Int>();
+            foreach (var b in s.blok.Values)
+                if (b.k == 0 && (b.tarz == Apartman || b.tarz == Fachwerk || b.tarz == Tas)) Z.Add(new Vector2Int(b.x, b.y));
+            if (!kapiVar || Z.Count == 0) return plan;
+            Z.Sort((p, q) => p.x != q.x ? p.x.CompareTo(q.x) : p.y.CompareTo(q.y));
+            var zs = new HashSet<Vector2Int>(Z);
+            plan.hucreler = Z;
+            plan.kapi = new Vector2Int(kx, ky);
+            var kolon = new List<Vector2Int>();
+            for (int y = ky; zs.Contains(new Vector2Int(kx, y)); y++) kolon.Add(new Vector2Int(kx, y));
+            var E = plan.gecit;
+            for (int i = 0; i + 1 < kolon.Count; i++) E.Add(kolon[i]);
+            while (true)
+            {
+                var R = Erisim(zs, E, plan.kapi);
+                if (R.Count == zs.Count) break;
+                bool bulundu = false;
+                var ek = new Vector2Int();
+                foreach (var u in Z)
+                {
+                    if (R.Contains(u)) continue;
+                    var on = new Vector2Int(u.x, u.y - 1);
+                    if (R.Contains(on)) { ek = on; bulundu = true; break; }                       // öndeki hücre geçit olur
+                    if (R.Contains(new Vector2Int(u.x, u.y + 1))) { ek = u; bulundu = true; break; }
+                }
+                if (!bulundu) break;                                                             // yalnız çaprazdan bağlı parça
+                E.Add(ek);
+            }
+            var T = s.T;
+            var son = kolon[kolon.Count - 1];
+            if (!Bos(T.icKasa))
+            {
+                var adaylar = new[] { new Vector2Int(kx + 1, ky), new Vector2Int(kx - 1, ky), son };
+                foreach (var c in adaylar)
+                    if (zs.Contains(c) && !E.Contains(c))
+                    {
+                        plan.kasaVar = true;
+                        plan.kasa = c;
+                        plan.mobilya[c] = T.icKasa;
+                        break;
+                    }
+            }
+            if (!E.Contains(son) && !plan.mobilya.ContainsKey(son) && !Bos(T.icArka)) plan.mobilya[son] = T.icArka;
+            int j = 0;
+            if (T.ic != null && T.ic.Length > 0)
+                foreach (var c in Z)
+                {
+                    if (E.Contains(c) || plan.mobilya.ContainsKey(c)) continue;
+                    plan.mobilya[c] = T.ic[j % T.ic.Length];
+                    j++;
+                }
+            return plan;
+        }
+
+        /// <summary>Kapı hücresinden koridorlarla ulaşılan hücreler: yanlara hep; arkaya yalnız öndeki hücre geçitse.</summary>
+        static HashSet<Vector2Int> Erisim(HashSet<Vector2Int> zs, HashSet<Vector2Int> E, Vector2Int bas)
+        {
+            var R = new HashSet<Vector2Int> { bas };
+            var yigin = new Stack<Vector2Int>();
+            yigin.Push(bas);
+            while (yigin.Count > 0)
+            {
+                var p = yigin.Pop();
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector2Int q;
+                    bool gec;
+                    if (i == 0) { q = new Vector2Int(p.x - 1, p.y); gec = true; }
+                    else if (i == 1) { q = new Vector2Int(p.x + 1, p.y); gec = true; }
+                    else if (i == 2) { q = new Vector2Int(p.x, p.y + 1); gec = E.Contains(p); }
+                    else { q = new Vector2Int(p.x, p.y - 1); gec = E.Contains(q); }
+                    if (gec && zs.Contains(q) && R.Add(q)) yigin.Push(q);
+                }
+            }
+            return R;
         }
 
         static Durum Yerlesim(BinaTasarimi t)
         {
             float A = Hucre * 0.5f, KAT = KatBoyu, HUCRE = Hucre;
             var T = TurBul(t);
-            var s = new Durum { t = t, T = T };
+            var s = new Durum { t = t, T = T, kat = KAT };
             if (t.bloklar != null) foreach (var b in t.bloklar) s.blok[new Vector3Int(b.x, b.y, b.k)] = b;
             int tohum = t.tohum;
             string metin = (!Bos(t.tabela) ? t.tabela : T.tabela ?? "").ToUpperInvariant();
@@ -289,9 +403,12 @@ namespace KuryeTycoon.EditorTools
                 if (altBos) s.Koy("taban", x, y, z, 0, r);
                 bool kapiHucresi = kapiVar && kapiX == x && kapiY == y;
                 bool sade = !Bos(T.duvar) && tarz == Apartman;
+                // üst katlar kalkınca kaidenin üstü açık kalmasın
+                if (tarz == Kaide && k == 0 && s.Dolu(x, y, 1)) s.Koy("taban", x, y, KAT, 0, r, 1f, 0f, 0f, 0.97f, "Govde");
                 for (int i = 0; i < 4; i++)
                 {
                     if (s.Dolu(x + Yon[i].x, y + Yon[i].y, k)) continue;
+                    string dg = (k == 0 && tarz != Kaide) ? DuvarGrup[i] : null;      // zemin kat duvarı: kameraya bakınca iner
                     uint h = Karma(x * 4 + i, y, tohum, 11);                 // sütun boyunca aynı: pencereler üst üste hizalı
                     uint hk = Karma(x * 4 + i, y, tohum + k * 31, 17);
                     bool kapiYuzu = k == 0 && i == 0 && kapiHucresi;
@@ -311,11 +428,12 @@ namespace KuryeTycoon.EditorTools
                         ad = AptUst[Sec(h, AptUst.Length)];
                         if (ad == "duvar_balkon" && hk % 2 != 0) ad = "duvar_pencere";
                     }
-                    s.Koy(ad, x, y, z, i, r);
+                    s.Koy(ad, x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
                     if (ad == "duvar_duz" && cepheYuzu) s.Koy(T.cephe, x, y, z, i, r);
-                    if (SaksiAlir.Contains(ad) && hk % 5 == 0) s.Koy("cicek_kutusu_p", x, y, z, i, r);
-                    if (onZemin && T.tente != 0 && (kapiYuzu || !Bos(T.on))) s.Koy("tente", x, y, z, i, r);
-                    if (k == 0 && tarz != Kaide && !sade) s.Koy("kaide", x, y, z, i, r);
+                    if (SaksiAlir.Contains(ad) && hk % 5 == 0) s.Koy("cicek_kutusu_p", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
+                    if (onZemin && T.tente != 0 && (kapiYuzu || !Bos(T.on))) s.Koy("tente", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
+                    if (T.kepenk != 0 && onZemin && (kapiYuzu || !Bos(T.on))) s.Koy("kepenk", x, y, z, i, r, 1f, 0f, 0f, 1f, "Kepenk");
+                    if (k == 0 && tarz != Kaide && !sade) s.Koy("kaide", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
                     if (tarz == Apartman && Bos(T.duvar)) s.Koy("silme", x, y, z + KAT, i, r);
                     else if (tarz == Fachwerk && k > 0) s.Koy("silme_ahsap", x, y, z, i, r);
                     if (k == 0 && i != 0 && (tarz == Apartman || tarz == Fachwerk) && Bos(T.duvar))
@@ -323,11 +441,11 @@ namespace KuryeTycoon.EditorTools
                         uint a = Karma(x, y, i, tohum + 5) % 14;
                         if (a == 0) s.Koy("fici", x, y, z, i, r, 1f, 0.7f, -A - 0.45f);
                         else if (a == 1) s.Koy("saksi", x, y, z, i, r, 1f, -0.8f, -A - 0.38f);
-                        else if (a == 2 && ad == "duvar_duz") s.Koy("sarmasik", x, y, z, i, r);
+                        else if (a == 2 && ad == "duvar_duz") s.Koy("sarmasik", x, y, z, i, r, 1f, 0f, 0f, 1f, dg);
                     }
                     if (kapiYuzu) s.Koy("paspas", x, y, z, i, r, 1f, 0f, -A - 0.75f);
                     if (k == 0 && tarz == Apartman && ad == "zemin_pencere" && Karma(x, y, i, tohum + 9) % 5 == 0)
-                        s.Koy("fener", x, y, z, i, r, 1f, 1.15f, 0f);
+                        s.Koy("fener", x, y, z, i, r, 1f, 1.15f, 0f, 1f, dg);
                 }
                 // köşeler
                 for (int i = 0; i < 4; i++)
@@ -366,7 +484,7 @@ namespace KuryeTycoon.EditorTools
                 for (int x = kapiX + 1; s.OnAcik(x, kapiY); x++) sira.Add(x);
                 if (metin.Length > 0)
                 {
-                    foreach (int x in sira) s.Koy("tabela_bant", x, kapiY, 0f, 0, r);
+                    foreach (int x in sira) s.Koy("tabela_bant", x, kapiY, 0f, 0, r, 1f, 0f, 0f, 1f, "Duvar_On");
                     float W = sira.Count * HUCRE;
                     float sol = !Bos(T.simge) ? 0.75f : 0.2f;
                     int n = metin.Length;
@@ -375,9 +493,9 @@ namespace KuryeTycoon.EditorTools
                     for (int j = 0; j < n; j++)
                     {
                         string ha = HarfAdi(metin[j]);
-                        if (ha != null) s.Koy(ha, sira[0], kapiY, 2.54f - 3.5f * px, 0, r, 1f, x0 + j * 6 * px, -A - 0.13f, px);
+                        if (ha != null) s.Koy(ha, sira[0], kapiY, 2.54f - 3.5f * px, 0, r, 1f, x0 + j * 6 * px, -A - 0.13f, px, "Duvar_On");
                     }
-                    if (!Bos(T.simge)) s.Koy(T.simge, sira[0], kapiY, 0f, 0, r, 1f, -A + 0.4f, 0f);
+                    if (!Bos(T.simge)) s.Koy(T.simge, sira[0], kapiY, 0f, 0, r, 1f, -A + 0.4f, 0f, 1f, "Duvar_On");
                 }
                 if (T.aks != null && T.aks.Length > 0)
                 {
@@ -392,6 +510,19 @@ namespace KuryeTycoon.EditorTools
                 }
                 if (!Bos(T.tepe)) s.Koy(T.tepe, kapiX, kapiY, (kapiUst + 1) * KAT, 0, r, 1f, 0f, 0.3f);
             }
+
+            // iç mekân (zemin kat): zemin kaplaması, tavan lambaları, türe göre mobilya
+            s.plan = IcPlan(s, kapiVar, kapiX, kapiY);
+            string zeminAd = !Bos(T.zemin) ? T.zemin : "ic_zemin_ahsap";
+            foreach (var h in s.plan.hucreler)
+            {
+                var r = s.RenkleriAl(s.blok[new Vector3Int(h.x, h.y, 0)]);
+                s.Koy(zeminAd, h.x, h.y, 0f, 0, r, 1f, 0f, 0f, 1f, "Ic");
+                if (Mod(h.x + h.y, 2) == Mod(s.plan.kapi.x + s.plan.kapi.y, 2)) s.Koy("ic_lamba", h.x, h.y, 0f, 0, r, 1f, 0f, 0f, 1f, "Ampul");
+                if (s.plan.mobilya.TryGetValue(h, out string mob)) s.Koy(mob, h.x, h.y, 0f, 0, r, 1f, 0f, 0f, 1f, "Ic");
+            }
+            if (s.plan.kasaVar && T.kepenk != 0)
+                s.Koy("ic_poset", s.plan.kasa.x, s.plan.kasa.y, 1.05f, 0, s.RenkleriAl(s.blok[new Vector3Int(s.plan.kasa.x, s.plan.kasa.y, 0)]), 1f, 0.1f, 0.45f, 1f, "Poset");
 
             // çatılar: her katta üstü açık hücreler; aynı tarz ve çatı tarzından bağlı bölgeler
             var katlar = new SortedSet<int>();
@@ -421,7 +552,14 @@ namespace KuryeTycoon.EditorTools
                             if (ust.TryGetValue(q, out var qb) && qb.tarz == b0.tarz && qb.ct == b0.ct && gorulen.Add(q)) yigin.Push(q);
                         }
                     }
+                    // kaide / terasın üstü yerinde kalır; öbür çatılar (ve üst katlar) "Cati" grubunda kalkar
+                    string cg = b0.tarz == Kaide ? "Govde" : "Cati";
+                    s.zorlaGrup = cg;
+                    int n0 = s.cokgenler.Count, n1 = s.kutular.Count;
                     Cati(s, bolge, b0, k, !Bos(T.duvar));
+                    s.zorlaGrup = null;
+                    for (int i = n0; i < s.cokgenler.Count; i++) { var c = s.cokgenler[i]; c.grup = cg; s.cokgenler[i] = c; }
+                    for (int i = n1; i < s.kutular.Count; i++) { var c = s.kutular[i]; c.grup = cg; s.kutular[i] = c; }
                 }
             }
 
@@ -435,7 +573,7 @@ namespace KuryeTycoon.EditorTools
                     s.yerler.Add(new Yer
                     {
                         ad = su.ad, cx = su.x, cy = su.y, z = 0f, don = 0, zs = 1f, kay = Vector2.zero, r = r,
-                        olcek = su.olcek > 0f ? su.olcek : 1f, aci = su.aci * Mathf.Deg2Rad,
+                        olcek = su.olcek > 0f ? su.olcek : 1f, aci = su.aci * Mathf.Deg2Rad, grup = "Govde", cam = 0,
                     });
                 }
             return s;
@@ -685,7 +823,12 @@ namespace KuryeTycoon.EditorTools
         /// <summary>Model ekseninden (metre, Z yukarı, ön −Y) Unity model uzayına (Y yukarı, ön +Z).</summary>
         static Vector3 Unity(float mx, float my, float mz) => new Vector3(-mx, mz, -my);
 
-        class Kenar { public Vector3 a, b; public List<(Vector3 n, Vector3 ic, Color32 renk)> yuzler = new List<(Vector3, Vector3, Color32)>(4); }
+        class Kenar
+        {
+            public Vector3 a, b;
+            public Yuzey sahip;      // çizginin yazılacağı grup: kenarı ilk gören yüzün grubu
+            public List<(Vector3 n, Vector3 ic, Color32 renk)> yuzler = new List<(Vector3, Vector3, Color32)>(4);
+        }
 
         static long Nicem(Vector3 p)
         {
@@ -693,33 +836,93 @@ namespace KuryeTycoon.EditorTools
             return (x << 42) | (y << 21) | z;
         }
 
+        /// <summary>Bir grubun (prefabdaki bir çocuğun) birikmiş geometrisi: yüzeyler malzemeye göre, kalem çizgileri ayrı.</summary>
+        class Yuzey
+        {
+            public List<Vector3> kose = new List<Vector3>();
+            public Dictionary<string, List<int>> alt = new Dictionary<string, List<int>>();
+            // kalem çizgileri alt-mesh'i: köşe, öbür uç (uv1), yan / uç (uv0), renk
+            public List<Vector3> cKose = new List<Vector3>(), cDiger = new List<Vector3>();
+            public List<Vector2> cUv = new List<Vector2>();
+            public List<Color32> cRenk = new List<Color32>();
+            public List<int> cUc = new List<int>();
+
+            public List<int> Liste(string mat)
+            {
+                if (!alt.TryGetValue(mat, out var l)) { alt[mat] = l = new List<int>(); }
+                return l;
+            }
+        }
+
+        /// <summary>Gruplu kurulumun sonucu: grup adı → mesh ve alt-mesh malzeme adları; iç yerleşim planı.</summary>
+        public class Kurulum
+        {
+            public Dictionary<string, Mesh> mesh = new Dictionary<string, Mesh>();
+            public Dictionary<string, List<string>> malzeme = new Dictionary<string, List<string>>();
+            public IcPlani plan;
+            public TurVeri tur;
+        }
+
+        /// <summary>Kepenk mesh'inin kökü bu yükseklikte (model metresi): yukarı doğru sarılır.</summary>
+        public const float KepenkKok = 2.3f;
+
         /// <summary>
         /// Tasarımı tek mesh'e kurar. malzemeAdlari: alt-mesh sırasıyla malzeme adları (sonuncusu kalem çizgileri).
-        /// hafifMi: uzak görünüm (ayrıntısız parçalar, yalnız uzun çizgiler). Kütüphane yoksa ya da tasarım boşsa null.
+        /// hafifMi: uzak görünüm (ayrıntısız parçalar, yalnız uzun çizgiler; iç mekân yok). Kütüphane yoksa ya da tasarım boşsa null.
+        /// icGoster: atölye önizlemesi için çatı / üst katlar ve kepenk atılır, iç mekân eklenir.
         /// </summary>
-        public static Mesh Kur(BinaTasarimi t, bool hafifMi, out List<string> malzemeAdlari)
+        public static Mesh Kur(BinaTasarimi t, bool hafifMi, out List<string> malzemeAdlari, bool icGoster = false)
         {
             malzemeAdlari = new List<string>();
             if (t == null || Kut == null) return null;
             if ((t.bloklar == null || t.bloklar.Count == 0) && (t.susler == null || t.susler.Count == 0)) return null;
             var s = Yerlesim(t);
-            float A = Hucre * 0.5f;
-            var kose = new List<Vector3>();
-            var alt = new Dictionary<string, List<int>>();
-            // kalem çizgileri alt-mesh'i: köşe, öbür uç (uv1), yan / uç (uv0), renk
-            var cKose = new List<Vector3>(); var cDiger = new List<Vector3>(); var cUv = new List<Vector2>(); var cRenk = new List<Color32>();
-            var cUc = new List<int>();
+            Func<string, string> sec;
+            if (icGoster && !hafifMi) sec = g => (g == "Cati" || g == "Kepenk") ? null : "";
+            else sec = g => GizliGrup(g) ? null : "";
+            var gruplar = Topla(s, hafifMi, sec);
+            if (!gruplar.TryGetValue("", out var y)) return null;
+            return MeshYap(y, t.ad + (hafifMi ? "_Hafif" : ""), 0f, out malzemeAdlari);
+        }
 
-            List<int> Liste(string mat)
+        /// <summary>
+        /// Tasarımı prefabın çocuklarına göre ayrı mesh'lere kurar (yakın görünüm): Govde, Cati, Duvar_On/Sag/Arka/Sol, Ic,
+        /// Ampul, Poset, Kepenk. Kalem çizgileri bütün bina üzerinden hesaplanır (gruplar arası ek yerleri çizilmez).
+        /// </summary>
+        public static Kurulum KurGruplu(BinaTasarimi t)
+        {
+            if (t == null || Kut == null) return null;
+            if ((t.bloklar == null || t.bloklar.Count == 0) && (t.susler == null || t.susler.Count == 0)) return null;
+            var s = Yerlesim(t);
+            var gruplar = Topla(s, false, g => g);
+            var k = new Kurulum { plan = s.plan, tur = s.T };
+            foreach (var kv in gruplar)
             {
-                if (!alt.TryGetValue(mat, out var l)) { alt[mat] = l = new List<int>(); }
-                return l;
+                var m = MeshYap(kv.Value, t.ad + "_" + kv.Key, kv.Key == "Kepenk" ? KepenkKok : 0f, out var adlar);
+                if (m == null) continue;
+                k.mesh[kv.Key] = m;
+                k.malzeme[kv.Key] = adlar;
+            }
+            return k;
+        }
+
+        /// <summary>Yerleşimi gruplara toplar. sec: yerleşim grubu → çıktı grubu (null: atla).</summary>
+        static Dictionary<string, Yuzey> Topla(Durum s, bool hafifMi, Func<string, string> sec)
+        {
+            float A = Hucre * 0.5f;
+            var gruplar = new Dictionary<string, Yuzey>();
+            Yuzey Grup(string ad)
+            {
+                if (!gruplar.TryGetValue(ad, out var g)) gruplar[ad] = g = new Yuzey();
+                return g;
             }
 
             var gecici = new List<Vector3>();
             foreach (var y in s.yerler)
             {
                 if (!parca.TryGetValue(y.ad, out var asil)) continue;
+                string cikis = sec(y.grup ?? "Govde");
+                if (cikis == null) continue;
                 ParcaVeri pv = asil;
                 if (hafifMi)
                 {
@@ -727,6 +930,7 @@ namespace KuryeTycoon.EditorTools
                     if (atla && y.ad != "tas_merdiven" && y.ad != "baca") continue;
                     if (hafif.TryGetValue(y.ad, out var hv) && hv.v != null && hv.v.Length > 0) pv = hv;
                 }
+                var yz = Grup(cikis);
                 bool karo = CatiKarolari.Contains(y.ad);
                 float ca = Mathf.Cos(y.aci), sa = Mathf.Sin(y.aci);
                 gecici.Clear();
@@ -747,11 +951,13 @@ namespace KuryeTycoon.EditorTools
                     }
                     gecici.Add(Unity(y.cx + px, y.cy + py, y.z + pz * y.zs));
                 }
-                int bas = kose.Count;
-                kose.AddRange(gecici);
+                int bas = yz.kose.Count;
+                yz.kose.AddRange(gecici);
                 foreach (var a in pv.alt)
                 {
                     string mat = Renkli(a.malzeme, y.r);
+                    // pencere camları üç ışık grubuna dağılır (GeceIsiklari her grubu ayrı saatte yakar / söndürür)
+                    if (y.cam != 0 && mat.StartsWith("Pastel_Cam_")) mat = "Pastel_Cam" + (y.cam + 1) + "_" + mat.Substring(11);
                     if (mat.StartsWith("Pastel_Kabuk_"))
                     {
                         // ters kabuk: çizgi alt-mesh'ine, açılmayan (uv.x = 0) üçgenler olarak
@@ -759,57 +965,70 @@ namespace KuryeTycoon.EditorTools
                         Color32 kr = AddanRenk(mat);
                         for (int i = 0; i + 2 < a.uc.Length; i += 3)
                         {
-                            int cb = cKose.Count;
+                            int cb = yz.cKose.Count;
                             for (int q = 0; q < 3; q++)
                             {
                                 Vector3 p = gecici[a.uc[i + q]];
-                                cKose.Add(p); cDiger.Add(p); cUv.Add(Vector2.zero); cRenk.Add(kr);
+                                yz.cKose.Add(p); yz.cDiger.Add(p); yz.cUv.Add(Vector2.zero); yz.cRenk.Add(kr);
                             }
-                            cUc.Add(cb); cUc.Add(cb + 2); cUc.Add(cb + 1);
+                            yz.cUc.Add(cb); yz.cUc.Add(cb + 2); yz.cUc.Add(cb + 1);
                         }
                         continue;
                     }
-                    var l = Liste(mat);
+                    var l = yz.Liste(mat);
                     // eksen çevirisi yönü ters çevirir: üçgen sırası da ters
                     for (int i = 0; i + 2 < a.uc.Length; i += 3) { l.Add(bas + a.uc[i]); l.Add(bas + a.uc[i + 2]); l.Add(bas + a.uc[i + 1]); }
                 }
             }
             foreach (var c in s.cokgenler)
             {
+                string cikis = sec(c.grup ?? "Cati");
+                if (cikis == null) continue;
+                var yz = Grup(cikis);
                 var p = c.p;
                 Vector3 nn = Vector3.Cross(p[1] - p[0], p[2] - p[0]);
                 bool ters = Vector3.Dot(nn, c.n) < 0f;
-                int bas = kose.Count;
+                int bas = yz.kose.Count;
                 for (int i = 0; i < p.Length; i++)
                 {
                     var q = ters ? p[p.Length - 1 - i] : p[i];
-                    kose.Add(Unity(q.x, q.y, q.z));
+                    yz.kose.Add(Unity(q.x, q.y, q.z));
                 }
-                var l = Liste(c.mat);
+                var l = yz.Liste(c.mat);
                 for (int i = 1; i + 1 < p.Length; i++) { l.Add(bas); l.Add(bas + i + 1); l.Add(bas + i); }
             }
-            foreach (var k in s.kutular) KutuEkle(kose, Liste(k.mat), k);
-            if (kose.Count == 0 && cKose.Count == 0) return null;
-
-            var adlar = new List<string>(alt.Keys);
-            adlar.Sort(string.CompareOrdinal);
-
-            // ---- kalem çizgileri: sert ve açık kenarlar (pastel_parcalar.py: kenarlar)
-            var kenarlar = new Dictionary<(long, long), Kenar>();
-            foreach (string mat in adlar)
+            foreach (var k in s.kutular)
             {
-                if (mat.Contains("_Yazi_")) continue;
-                Color32 renk = CizgiRengi(AddanRenk(mat));
-                var l = alt[mat];
-                for (int i = 0; i + 2 < l.Count; i += 3)
+                string cikis = sec(k.grup ?? "Cati");
+                if (cikis == null) continue;
+                var yz = Grup(cikis);
+                KutuEkle(yz.kose, yz.Liste(k.mat), k);
+            }
+
+            // ---- kalem çizgileri: sert ve açık kenarlar (pastel_parcalar.py: kenarlar), bütün gruplar birlikte
+            var grupAdlari = new List<string>(gruplar.Keys);
+            grupAdlari.Sort(string.CompareOrdinal);
+            var kenarlar = new Dictionary<(long, long), Kenar>();
+            foreach (string ga in grupAdlari)
+            {
+                var yz = gruplar[ga];
+                var adlar = new List<string>(yz.alt.Keys);
+                adlar.Sort(string.CompareOrdinal);
+                foreach (string mat in adlar)
                 {
-                    Vector3 p0 = kose[l[i]], p1 = kose[l[i + 1]], p2 = kose[l[i + 2]];
-                    Vector3 n = Vector3.Cross(p1 - p0, p2 - p0);
-                    if (n.sqrMagnitude < 1e-12f) continue;
-                    n.Normalize();
-                    KenarEkle(kenarlar, p0, p1, p2, n, renk);
-                    KenarEkle(kenarlar, p1, p2, p0, n, renk);
-                    KenarEkle(kenarlar, p2, p0, p1, n, renk);
+                    if (mat.Contains("_Yazi_")) continue;
+                    Color32 renk = CizgiRengi(AddanRenk(mat));
+                    var l = yz.alt[mat];
+                    for (int i = 0; i + 2 < l.Count; i += 3)
+                    {
+                        Vector3 p0 = yz.kose[l[i]], p1 = yz.kose[l[i + 1]], p2 = yz.kose[l[i + 2]];
+                        Vector3 n = Vector3.Cross(p1 - p0, p2 - p0);
+                        if (n.sqrMagnitude < 1e-12f) continue;
+                        n.Normalize();
+                        KenarEkle(kenarlar, yz, p0, p1, p2, n, renk);
+                        KenarEkle(kenarlar, yz, p1, p2, p0, n, renk);
+                        KenarEkle(kenarlar, yz, p2, p0, p1, n, renk);
+                    }
                 }
             }
             float enKisa = hafifMi ? 0.9f : 0.07f;
@@ -831,26 +1050,39 @@ namespace KuryeTycoon.EditorTools
                     ciz = keskin && !dikis;
                 }
                 if (!ciz) continue;
-                int cb = cKose.Count;
+                var yz = ke.sahip;
+                int cb = yz.cKose.Count;
                 Color32 renk = L[0].renk;
-                cKose.Add(ke.a); cDiger.Add(ke.b); cUv.Add(new Vector2(-1f, 1f)); cRenk.Add(renk);
-                cKose.Add(ke.a); cDiger.Add(ke.b); cUv.Add(new Vector2(1f, 1f)); cRenk.Add(renk);
-                cKose.Add(ke.b); cDiger.Add(ke.a); cUv.Add(new Vector2(-1f, -1f)); cRenk.Add(renk);
-                cKose.Add(ke.b); cDiger.Add(ke.a); cUv.Add(new Vector2(1f, -1f)); cRenk.Add(renk);
-                cUc.Add(cb); cUc.Add(cb + 1); cUc.Add(cb + 2); cUc.Add(cb + 2); cUc.Add(cb + 1); cUc.Add(cb + 3);
+                yz.cKose.Add(ke.a); yz.cDiger.Add(ke.b); yz.cUv.Add(new Vector2(-1f, 1f)); yz.cRenk.Add(renk);
+                yz.cKose.Add(ke.a); yz.cDiger.Add(ke.b); yz.cUv.Add(new Vector2(1f, 1f)); yz.cRenk.Add(renk);
+                yz.cKose.Add(ke.b); yz.cDiger.Add(ke.a); yz.cUv.Add(new Vector2(-1f, -1f)); yz.cRenk.Add(renk);
+                yz.cKose.Add(ke.b); yz.cDiger.Add(ke.a); yz.cUv.Add(new Vector2(1f, -1f)); yz.cRenk.Add(renk);
+                yz.cUc.Add(cb); yz.cUc.Add(cb + 1); yz.cUc.Add(cb + 2); yz.cUc.Add(cb + 2); yz.cUc.Add(cb + 1); yz.cUc.Add(cb + 3);
             }
+            return gruplar;
+        }
 
-            // ---- mesh: önce yüzey köşeleri (beyaz köşe rengi), sonra çizgi köşeleri
-            int yuzeySay = kose.Count;
-            var renkler = new List<Color32>(yuzeySay + cKose.Count);
-            var uv0 = new List<Vector2>(yuzeySay + cKose.Count);
-            var uv1 = new List<Vector3>(yuzeySay + cKose.Count);
+        /// <summary>Grubun mesh'i: önce yüzey köşeleri (beyaz köşe rengi), sonra çizgi köşeleri. yKaydir: kök bu yüksekliğe taşınır.</summary>
+        static Mesh MeshYap(Yuzey yz, string ad, float yKaydir, out List<string> malzemeAdlari)
+        {
+            malzemeAdlari = new List<string>();
+            if (yz.kose.Count == 0 && yz.cKose.Count == 0) return null;
+            var adlar = new List<string>(yz.alt.Keys);
+            adlar.Sort(string.CompareOrdinal);
+            var kaydir = new Vector3(0f, yKaydir, 0f);
+            int yuzeySay = yz.kose.Count;
+            int toplam = yuzeySay + yz.cKose.Count;
+            var kose = new List<Vector3>(toplam);
+            var renkler = new List<Color32>(toplam);
+            var uv0 = new List<Vector2>(toplam);
+            var uv1 = new List<Vector3>(toplam);
             var beyaz = new Color32(255, 255, 255, 255);
-            for (int i = 0; i < yuzeySay; i++) { renkler.Add(beyaz); uv0.Add(Vector2.zero); uv1.Add(kose[i]); }
-            kose.AddRange(cKose); renkler.AddRange(cRenk); uv0.AddRange(cUv); uv1.AddRange(cDiger);
-            for (int i = 0; i < cUc.Count; i++) cUc[i] += yuzeySay;
+            for (int i = 0; i < yuzeySay; i++) { Vector3 p = yz.kose[i] - kaydir; kose.Add(p); renkler.Add(beyaz); uv0.Add(Vector2.zero); uv1.Add(p); }
+            for (int i = 0; i < yz.cKose.Count; i++) { kose.Add(yz.cKose[i] - kaydir); renkler.Add(yz.cRenk[i]); uv0.Add(yz.cUv[i]); uv1.Add(yz.cDiger[i] - kaydir); }
+            var cUc = new List<int>(yz.cUc.Count);
+            for (int i = 0; i < yz.cUc.Count; i++) cUc.Add(yz.cUc[i] + yuzeySay);
 
-            var mesh = new Mesh { name = t.ad + (hafifMi ? "_Hafif" : "") };
+            var mesh = new Mesh { name = ad };
             if (kose.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.SetVertices(kose);
             mesh.SetColors(renkler);
@@ -858,7 +1090,7 @@ namespace KuryeTycoon.EditorTools
             mesh.SetUVs(1, uv1);
             bool cizgiVar = cUc.Count > 0;
             mesh.subMeshCount = adlar.Count + (cizgiVar ? 1 : 0);
-            for (int i = 0; i < adlar.Count; i++) mesh.SetTriangles(alt[adlar[i]], i);
+            for (int i = 0; i < adlar.Count; i++) mesh.SetTriangles(yz.alt[adlar[i]], i);
             if (cizgiVar)
             {
                 mesh.SetTriangles(cUc, adlar.Count);
@@ -870,12 +1102,12 @@ namespace KuryeTycoon.EditorTools
             return mesh;
         }
 
-        static void KenarEkle(Dictionary<(long, long), Kenar> kenarlar, Vector3 a, Vector3 b, Vector3 ucuncu, Vector3 n, Color32 renk)
+        static void KenarEkle(Dictionary<(long, long), Kenar> kenarlar, Yuzey sahip, Vector3 a, Vector3 b, Vector3 ucuncu, Vector3 n, Color32 renk)
         {
             long ka = Nicem(a), kb = Nicem(b);
             if (ka == kb) return;
             var anahtar = ka < kb ? (ka, kb) : (kb, ka);
-            if (!kenarlar.TryGetValue(anahtar, out var ke)) kenarlar[anahtar] = ke = new Kenar { a = a, b = b };
+            if (!kenarlar.TryGetValue(anahtar, out var ke)) kenarlar[anahtar] = ke = new Kenar { a = a, b = b, sahip = sahip };
             // yüzün içine doğru yön: üçüncü köşenin kenara dik bileşeni
             Vector3 e = (b - a).normalized;
             Vector3 ic = ucuncu - a;
@@ -943,7 +1175,7 @@ namespace KuryeTycoon.EditorTools
             Ayar(m, "_GolgeRengi", new Color(0.80f, 0.76f, 0.86f, 1f));
             Ayar(m, "_KagitOlcek", 26f); Ayar(m, "_LekeOlcek", 0.9f); Ayar(m, "_TaramaSiklik", 14f);
             Ayar(m, "_TaramaGuc", 0.16f); Ayar(m, "_TaramaKalinlik", 0.16f); Ayar(m, "_IsiktaTarama", 0.035f);
-            bool cam = ad.StartsWith("Pastel_Cam");
+            bool cam = ad.StartsWith("Pastel_Cam") || ad.StartsWith("Pastel_Vitrin");
             Ayar(m, "_Cam", cam ? 1f : 0f);
             // Gece ışık verenler (GeceIsiklari "Pastel_Cam_", "Pastel_Isik_", "Pastel_Yazi_" adlarını tanır): gündüz ışıma siyah
             if ((cam || ad.StartsWith("Pastel_Isik") || ad.StartsWith("Pastel_Yazi")) && m.HasProperty("_EmissionColor"))

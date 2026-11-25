@@ -3021,7 +3021,7 @@ def _unity_parca(ad, g):
 def json_yaz(yol):
     parcalar = [_unity_parca(ad, parca_g(ad)) for ad in PARCA]
     hafifler = [_unity_parca(ad, hafif_parca(ad)) for ad in PARCA]
-    veri = dict(surum=2, hucre=HUCRE, kat=KAT, izgara=IZGARA, duvarRenk=DUVAR_RENK, catiRenk=CATI_RENK, vurguRenk=VURGU_RENK,
+    veri = dict(surum=3, hucre=HUCRE, kat=KAT, izgara=IZGARA, duvarRenk=DUVAR_RENK, catiRenk=CATI_RENK, vurguRenk=VURGU_RENK,
                 tenteRenk=TENTE_RENK, yaprakRenk=YAPRAK_RENK, catiTarz=CATI_TARZ_AD, turler=TURLER, parcalar=parcalar, hafifler=hafifler)
     os.makedirs(os.path.dirname(yol), exist_ok=True)
     with open(yol, "w", encoding="utf-8") as f:
