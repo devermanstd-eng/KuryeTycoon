@@ -42,6 +42,8 @@ namespace KuryeTycoon
         public class TurVeri
         {
             public string ad, etiket, grup, onek, tabela, simge, on, kapi, duvar, cephe, tepe, vurgu, bolge;
+            // türe özgü mimari (v9): boş değilse bina fırçadaki tarzdan bağımsız bu üslupla ve bu renklerle kurulur (TurMimarisi)
+            public string uslup, duvarRenk, catiRenk;
             public int tente;
             public string[] aks;
             // iç mekân (zemin kat): kasa hücresinin parçası, öbür hücrelerin parçaları, kapı sütununun dibindeki parça, zemin
@@ -177,6 +179,20 @@ namespace KuryeTycoon
             if (kt == null || kt.usluplar == null) return null;
             int i = tarz - kt.uslupTaban;
             return i >= 0 && i < kt.usluplar.Length ? kt.usluplar[i] : null;
+        }
+
+        /// <summary>
+        /// Türün kendi mimarisi varsa (turler[].uslup) bloğun duvar tarzı o üsluba, çatı tarzı "Tarza göre"ye döner: fabrika,
+        /// market, hastane, okul ... fırçada hangi tarz seçilmiş olursa olsun kendi binası olur. Taş kaide ve merdiven değişmez.
+        /// Blok bir struct: tasarımın kendisi değişmez, yalnız kurulan model. pastel_parcalar.py: tur_mimarisi.
+        /// </summary>
+        static BinaTasarimi.Blok TurMimarisi(BinaTasarimi.Blok b, TurVeri T)
+        {
+            var kt = Kut;
+            if (T == null || Bos(T.uslup) || b.tarz == Kaide || b.tarz == Merdiven || kt == null || kt.usluplar == null) return b;
+            for (int i = 0; i < kt.usluplar.Length; i++)
+                if (kt.usluplar[i].ad == T.uslup) { b.tarz = kt.uslupTaban + i; b.ct = 0; return b; }
+            return b;
         }
 
         /// <summary>İçi olan, kapı alabilen gövde tarzı mı (kaide ve merdiven değil). pastel_parcalar.py: govdeli.</summary>
@@ -365,8 +381,8 @@ namespace KuryeTycoon
             public Renkler RenkleriAl(int renk, int cati, int yaprak)
             {
                 var kt = Kut;
-                string dv = kt.duvarRenk[Mod(renk, kt.duvarRenk.Length)];
-                string ct = kt.catiRenk[Mod(cati, kt.catiRenk.Length)];
+                string dv = !Bos(T.duvarRenk) ? T.duvarRenk : kt.duvarRenk[Mod(renk, kt.duvarRenk.Length)];
+                string ct = !Bos(T.catiRenk) ? T.catiRenk : kt.catiRenk[Mod(cati, kt.catiRenk.Length)];
                 string vr = !Bos(T.vurgu) ? T.vurgu : kt.vurguRenk[Sec(Karma(t.tohum, renk, cati, 7), kt.vurguRenk.Length)];
                 string yp = kt.yaprakRenk[Mod(yaprak, kt.yaprakRenk.Length)];
                 YaprakTonlari(yp, out string acik, out string golge);
@@ -507,7 +523,7 @@ namespace KuryeTycoon
             float A = Hucre * 0.5f, KAT = KatBoyu, HUCRE = Hucre;
             var T = TurBul(t);
             var s = new Durum { t = t, T = T, kat = KAT };
-            if (t.bloklar != null) foreach (var b in t.bloklar) s.blok[new Vector3Int(b.x, b.y, b.k)] = b;
+            if (t.bloklar != null) foreach (var b in t.bloklar) s.blok[new Vector3Int(b.x, b.y, b.k)] = TurMimarisi(b, T);
             int tohum = t.tohum;
             string metin = (!Bos(t.tabela) ? t.tabela : T.tabela ?? "").ToUpperInvariant();
 
@@ -848,8 +864,10 @@ namespace KuryeTycoon
             {
                 foreach (var p in bolge) s.Koy("duz_cati", p.x, p.y, z, 0, r);
                 KenarParcasi("korkuluk", null);
+                var Ut = Uslup(tarz);
+                bool modern = Ut != null && Ut.ad == "modern";      // modern binada baca yok, klima ünitesi var
                 foreach (var p in bolge)
-                    if (Karma(p.x, p.y, k, tohum + 21) % 6 == 0) s.Koy("baca_ince", p.x, p.y, z + 0.9f, 0, r, 1f, 0.5f, 0.4f);
+                    if (Karma(p.x, p.y, k, tohum + 21) % (modern ? 3 : 6) == 0) s.Koy(modern ? "cati_klima" : "baca_ince", p.x, p.y, z + 0.9f, 0, r, 1f, 0.5f, 0.4f);
                 return;
             }
             if (ct == CtTestere)

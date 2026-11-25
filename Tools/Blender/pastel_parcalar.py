@@ -4500,6 +4500,107 @@ def d_kose(g):
     kutu(g, -A - 0.06, -A + 0.3, -A - 0.06, -A + 0.3, 0.0, KAT, D2)
 
 
+# ---------------------------------------------------------------- fabrika (f_), modern market / hastane (mo_)
+
+DEMIR_KAYIT = PM("Metal", "#4f565e")
+
+
+def _f_pencere(g, z0, zs, tohum):
+    """Fabrika penceresi: tuğla duvarda geniş, çok bölmeli demir doğramalı pencere, basık kemer, taş denizlik."""
+    c = on()
+    panel(g, c)
+    sash(g, c, 0.32, HUCRE - 0.32, z0, zs, (6, 4), "basik", perde=0, cerceve=DEMIR_KAYIT)
+    kemer_halka(g, c, HUCRE / 2, zs, (HUCRE - 0.64) / 2 + 0.06, 0.2, D2, "basik", 6, 0.03)
+    c.kutu(g, 0.24, HUCRE - 0.24, 0, 0.12, z0 - 0.12, z0, PORTLAND2)
+    tugla_izi(g, c, tohum, 2, yasak=(0.32, HUCRE - 0.32, z0, zs + 0.3))
+
+
+ekle("f_ust", "sanayi", "Fabrika penceresi: geniş, demir doğramalı", lambda g: _f_pencere(g, 0.75, 2.25, 71))
+ekle("f_zemin", "sanayi", "Fabrika zemin penceresi: yüksek, demir doğramalı", lambda g: _f_pencere(g, 0.95, 2.35, 72))
+
+
+@parca("sanayi", "Fabrika kepengi: geniş yükleme kapısı, üstünde vinç kirişi")
+def f_kapi(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.2, HUCRE - 0.2, 0, 0.02, 0.0, 2.5, PM("Sac", "#7d8a94"))
+    for i in range(10):
+        zz = 0.1 + i * 0.24
+        c.kutu(g, 0.22, HUCRE - 0.22, 0.02, 0.05, zz, zz + 0.04, PM("Sac", "#6c7882"))
+    c.kutu(g, 0.1, 0.22, 0, 0.12, 0.0, 2.62, PORTLAND2)
+    c.kutu(g, HUCRE - 0.22, HUCRE - 0.1, 0, 0.12, 0.0, 2.62, PORTLAND2)
+    c.kutu(g, 0.1, HUCRE - 0.1, 0, 0.14, 2.5, 2.66, PORTLAND2)
+    c.kutu(g, HUCRE / 2 - 0.06, HUCRE / 2 + 0.06, 0, 0.7, 2.72, 2.86, DEMIR_KAYIT)      # vinç kirişi
+    c.kutu(g, HUCRE / 2 - 0.02, HUCRE / 2 + 0.02, 0.6, 0.64, 2.3, 2.72, DEMIR_KAYIT)
+    c.kutu(g, 0.15, 0.95, 0, 0.35, 0.0, 0.14, PM("Beton", "#b8b4ac"))                  # yükleme rampası ağzı
+    c.kutu(g, HUCRE - 0.95, HUCRE - 0.15, 0, 0.35, 0.0, 0.14, PM("Beton", "#b8b4ac"))
+
+
+MO_PANEL = ROL("Duvar", "d", "#d9dde0")
+MO_METAL = PM("Metal", "#8d969e")
+
+
+def _mo_paneller(g, c, z0, z1):
+    for uu in (HUCRE / 3, 2 * HUCRE / 3):
+        iz(g, c, uu - 0.012, uu + 0.012, z0, z1, IZ_D, 0.015)
+
+
+@parca("market", "Modern cephe: kaplama paneller, üstte metal bant")
+def mo_duz(g):
+    c = on()
+    panel(g, c)
+    _mo_paneller(g, c, 0.0, KAT - 0.3)
+    iz(g, c, 0.0, HUCRE, 1.48, 1.51, IZ_D, 0.015)
+    c.kutu(g, 0, HUCRE, 0, 0.06, KAT - 0.3, KAT, MO_METAL)
+
+
+@parca("market", "Modern üst kat: yatay şerit pencere")
+def mo_ust(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0, HUCRE, 0, 0.015, 0.85, 2.3, CAM2)
+    for uu in (0.0, HUCRE / 3, 2 * HUCRE / 3, HUCRE - 0.05):
+        c.kutu(g, uu, uu + 0.05, 0, 0.06, 0.85, 2.3, MO_METAL)
+    c.kutu(g, 0, HUCRE, 0, 0.08, 0.78, 0.85, MO_METAL)
+    c.kutu(g, 0, HUCRE, 0, 0.06, 2.3, 2.36, MO_METAL)
+    _mo_paneller(g, c, 2.36, KAT)
+
+
+@parca("market", "Modern zemin: boydan cam vitrin, üstte marka renginde bant")
+def mo_vitrin(g):
+    c = on()
+    panel(g, c)
+    c.kutu(g, 0.05, HUCRE - 0.05, 0, 0.015, 0.12, 2.2, VIT)
+    for uu in (0.0, HUCRE / 2 - 0.03, HUCRE - 0.06):
+        c.kutu(g, uu, uu + 0.06, 0, 0.07, 0.0, 2.2, MO_METAL)
+    c.kutu(g, 0, HUCRE, 0, 0.07, 0.0, 0.12, MO_METAL)
+    c.kutu(g, 0, HUCRE, 0, 0.08, 2.2, 2.26, MO_METAL)
+    _mo_paneller(g, c, 2.26, KAT - 0.3)                                          # üstü kaplama: tabela bandı buraya oturur
+    c.kutu(g, 0, HUCRE, 0, 0.06, KAT - 0.3, KAT, MO_METAL)
+    c.kutu(g, 0.35, 1.0, 0.016, 0.02, 1.0, 1.7, PM("Afis", "#f5c84a"))
+
+
+@parca("cati", "Düz çatıda klima / havalandırma ünitesi (modern binalar)")
+def cati_klima(g):
+    # kök çatıdan 0,9 m yukarıda (baca_ince ile aynı kural): gövde çatıya iner
+    kutu(g, -0.55, 0.55, -0.35, 0.35, -0.85, -0.1, MO_METAL)
+    kutu(g, -0.5, 0.5, -0.3, 0.3, -0.1, -0.06, PM("Metal", "#a7afb6"), atla=())
+    for sx in (-0.26, 0.26):
+        dsil(g, sx, 0.0, -0.06, -0.02, 0.2, 8, PM("Metal", "#5f666d"), kapak=(False, True))
+    kutu(g, 0.55, 0.75, -0.08, 0.08, -0.85, -0.55, PM("Metal", "#7b838a"))
+
+
+@parca("kose", "Modern köşe: metal köşe profili")
+def mo_kose(g):
+    kutu(g, -A - 0.05, -A + 0.12, -A - 0.05, -A + 0.12, 0.0, KAT, MO_METAL)
+
+
+@parca("bant", "Modern kat bandı: ince metal")
+def mo_bant(g):
+    c = on()
+    c.kutu(g, -0.02, HUCRE + 0.02, 0, 0.07, -0.08, 0.0, MO_METAL)
+
+
 # ---------------------------------------------------------------- Londra sokak donatıları
 
 def kare_yuz(n, e):
@@ -5376,10 +5477,14 @@ def cit_bitki(g):
 #   aks    : ön sıradaki hücrelerin önüne sırayla konan dekorlar                 cephe : kapı sütununun en üst katındaki cephe süsü
 #   tepe   : kapı sütununun çatısına konan parça                                 vurgu : vurgu rengi (boşsa tohumdan)
 
-def _tur(ad, etiket, grup, onek="Bolge", tabela="", simge="", on="", kapi="", duvar="", tente=0, aks=(), cephe="", tepe="", vurgu="", bolge="karma"):
+def _tur(ad, etiket, grup, onek="Bolge", tabela="", simge="", on="", kapi="", duvar="", tente=0, aks=(), cephe="", tepe="", vurgu="", bolge="karma",
+         mimari=None):
+    """mimari: (üslup adı, duvar rengi, çatı rengi) ya da None. Verilirse türün binası fırçadaki tarzdan bağımsız o üslupla
+    kurulur (taş kaide ve merdiven blokları hariç), çatı tarzı üslubunkidir; renkler boşsa bloğun rengi kalır."""
     kasa, ic, arka, zemin, calisan = IC_TUR.get(ad, IC_TUR["_"])
+    us, dr, cr = mimari or ("", "", "")
     return dict(ad=ad, etiket=etiket, grup=grup, onek=onek, tabela=tabela, simge=simge, on=on, kapi=kapi, duvar=duvar, tente=tente,
-                aks=list(aks), cephe=cephe, tepe=tepe, vurgu=vurgu, bolge=bolge,
+                aks=list(aks), cephe=cephe, tepe=tepe, vurgu=vurgu, bolge=bolge, uslup=us, duvarRenk=dr, catiRenk=cr,
                 icKasa=kasa, ic=list(ic), icArka=arka, zemin=zemin, calisan=calisan, kepenk=1 if grup in ("Dükkân", "Market") else 0)
 
 
@@ -5454,26 +5559,26 @@ TURLER = [
     _tur("eczane", "Eczane", "Dükkân", onek="Dukkan_eczane", tabela="PHARMACY", simge="simge_hac", vurgu="#3f8a5a", cephe="hac_cephe", on="vitrin", kapi="kapi_vitrin"),
     _tur("bakkal24", "Köşe bakkal: 24/7 Corner Store", "Dükkân", onek="Dukkan_abc_nonstop", tabela="24/7 CORNER STORE", simge="simge_sepet", vurgu="#3f7d74", aks=("kasalar",), **_D),
     _tur("minimart", "Bakkal: Mini Mart", "Dükkân", onek="Dukkan_mini_abc", tabela="MINI MART", simge="simge_sepet", vurgu="#d9822b", aks=("kasalar",), **_D),
-    _tur("market", "Market: Sparx Express", "Market", onek="Market_szpar_express", tabela="SPARX EXPRESS", simge="simge_sepet", vurgu="#2f8a4a", on="vitrin_genis", kapi="kapi_otomatik", aks=("araba_yeri", "kasalar")),
-    _tur("supermarket", "Süpermarket: InterSparx", "Market", onek="Market_interszpar", tabela="INTERSPARX", simge="simge_sepet", vurgu="#c8342f", on="vitrin_genis", kapi="kapi_otomatik", aks=("araba_yeri", "", "araba_yeri")),
-    _tur("market24", "Market: Market 24", "Market", onek="Market_market_24", tabela="MARKET 24", simge="simge_sepet", vurgu="#3f6fd0", on="vitrin_genis", kapi="kapi_otomatik", aks=("kasalar",)),
+    _tur("market", "Market: Sparx Express", "Market", onek="Market_szpar_express", tabela="SPARX EXPRESS", simge="simge_sepet", vurgu="#2f8a4a", on="vitrin_genis", kapi="kapi_otomatik", aks=("araba_yeri", "kasalar"), mimari=("modern", "#e8ebee", "")),
+    _tur("supermarket", "Süpermarket: InterSparx", "Market", onek="Market_interszpar", tabela="INTERSPARX", simge="simge_sepet", vurgu="#c8342f", on="vitrin_genis", kapi="kapi_otomatik", aks=("araba_yeri", "", "araba_yeri"), mimari=("modern", "#dfe4e8", "")),
+    _tur("market24", "Market: Market 24", "Market", onek="Market_market_24", tabela="MARKET 24", simge="simge_sepet", vurgu="#3f6fd0", on="vitrin_genis", kapi="kapi_otomatik", aks=("kasalar",), mimari=("modern", "#e4e6ea", "")),
     _tur("bio", "Market: BioSparx", "Market", onek="Dukkan_bioszpar", tabela="BIOSPARX", simge="simge_cicek", vurgu="#5a8f4a", aks=("kasalar", "saksi"), **_D),
-    _tur("belediye", "Belediye", "Kamu", onek="Kamu", tabela="TOWN HALL", on="sutunlu", kapi="kapi_sutunlu", cephe="saat_cephe", tepe="alinlik_tas", vurgu="#2c3d70"),
-    _tur("hastane", "Hastane", "Kamu", onek="Kamu", tabela="HOSPITAL", simge="simge_hac", kapi="kapi_otomatik", cephe="hac_cephe", vurgu="#c8342f"),
-    _tur("itfaiye", "İtfaiye", "Kamu", onek="Kamu", tabela="FIRE STATION", on="kapi_garaj", kapi="kapi_ahsap", vurgu="#c8342f", tepe="bayrak"),
-    _tur("polis", "Polis", "Kamu", onek="Kamu", tabela="POLICE", simge="simge_yildiz", kapi="kapi_ahsap", vurgu="#2c3d70", aks=("polis_feneri",)),
-    _tur("postane", "Postane", "Kamu", onek="Kamu", tabela="POST OFFICE", kapi="kapi_vitrin", on="vitrin", vurgu="#b8382f", aks=("posta_kutusu",)),
-    _tur("okul", "Okul", "Kamu", onek="Kamu", tabela="SCHOOL", cephe="saat_cephe", tepe="bayrak", vurgu="#2f6048", aks=("demir_korkuluk",)),
-    _tur("kutuphane", "Kütüphane", "Kamu", onek="Kamu", tabela="LIBRARY", simge="simge_kitap", vurgu="#6b4a7a"),
-    _tur("depo", "Depo", "Sanayi", onek="Sanayi_depo", tabela="DEPOT", on="kapi_garaj", kapi="kapi_garaj", vurgu="#2f6048", aks=("kasalar",), bolge="sanayi"),
-    _tur("garaj", "Garaj / tamirhane", "Sanayi", onek="Sanayi_garaj", tabela="GARAGE", on="garaj_acik", kapi="kapi_ahsap", vurgu="#d9822b", aks=("fici",), bolge="sanayi"),
-    _tur("fabrika", "Fabrika", "Sanayi", onek="Sanayi_fabrika", tabela="FACTORY", kapi="kapi_garaj", tepe="baca_fabrika", vurgu="#2c3d70", bolge="sanayi"),
-    _tur("sera", "Sera", "Sanayi", onek="Sanayi_sera", duvar="sera_cam", kapi="kapi_vitrin", vurgu="#5a8f4a", bolge="sanayi"),
-    _tur("gar", "Gar", "Simge", tabela="CENTRAL STATION", cephe="saat_cephe", vurgu="#2f6048"),
-    _tur("otel", "Otel", "Simge", tabela="GRAND HOTEL", simge="simge_yildiz", on="vitrin", kapi="kapi_vitrin", tente=1, tepe="bayrak", vurgu="#8a5a78", aks=("saksi",)),
-    _tur("avm", "Büyük mağaza / AVM", "Simge", tabela="DEPARTMENT STORE", on="vitrin_genis", kapi="kapi_otomatik", tente=1, vurgu="#3f7d74", bolge="avm"),
-    _tur("pazar", "Kapalı pazar", "Simge", tabela="MARKET HALL", on="kemer_cam", kapi="kapi_kemerli", vurgu="#c46a2b", aks=("kasalar", "cicek_kovalari")),
-    _tur("opera", "Opera / tiyatro", "Simge", tabela="OPERA", on="sutunlu", kapi="kapi_sutunlu", vurgu="#8a2f4a", tepe="alinlik_tas"),
+    _tur("belediye", "Belediye", "Kamu", onek="Kamu", tabela="TOWN HALL", on="sutunlu", kapi="kapi_sutunlu", cephe="saat_cephe", tepe="alinlik_tas", vurgu="#2c3d70", mimari=("portland", "#ece5d3", "#6f7781")),
+    _tur("hastane", "Hastane", "Kamu", onek="Kamu", tabela="HOSPITAL", simge="simge_hac", kapi="kapi_otomatik", cephe="hac_cephe", vurgu="#c8342f", mimari=("modern", "#f0f1f3", "")),
+    _tur("itfaiye", "İtfaiye", "Kamu", onek="Kamu", tabela="FIRE STATION", on="kapi_garaj", kapi="kapi_ahsap", vurgu="#c8342f", tepe="bayrak", mimari=("gotik", "#c25e4c", "#6f7781")),
+    _tur("polis", "Polis", "Kamu", onek="Kamu", tabela="POLICE", simge="simge_yildiz", kapi="kapi_ahsap", vurgu="#2c3d70", aks=("polis_feneri",), mimari=("victorian", "#c4705a", "#6f7781")),
+    _tur("postane", "Postane", "Kamu", onek="Kamu", tabela="POST OFFICE", kapi="kapi_vitrin", on="vitrin", vurgu="#b8382f", aks=("posta_kutusu",), mimari=("portland", "#e9e0cc", "#6f7781")),
+    _tur("okul", "Okul", "Kamu", onek="Kamu", tabela="SCHOOL", cephe="saat_cephe", tepe="bayrak", vurgu="#2f6048", aks=("demir_korkuluk",), mimari=("gotik", "#d9c08c", "#6f7781")),
+    _tur("kutuphane", "Kütüphane", "Kamu", onek="Kamu", tabela="LIBRARY", simge="simge_kitap", vurgu="#6b4a7a", mimari=("victorian", "#d9c08c", "#6f7781")),
+    _tur("depo", "Depo", "Sanayi", onek="Sanayi_depo", tabela="DEPOT", on="kapi_garaj", kapi="kapi_garaj", vurgu="#2f6048", aks=("kasalar",), bolge="sanayi", mimari=("depo", "#b4664f", "#6f7781")),
+    _tur("garaj", "Garaj / tamirhane", "Sanayi", onek="Sanayi_garaj", tabela="GARAGE", on="garaj_acik", kapi="kapi_ahsap", vurgu="#d9822b", aks=("fici",), bolge="sanayi", mimari=("depo", "#a87460", "#6f7781")),
+    _tur("fabrika", "Fabrika", "Sanayi", onek="Sanayi_fabrika", tabela="FACTORY", kapi="kapi_garaj", tepe="baca_fabrika", vurgu="#2c3d70", bolge="sanayi", mimari=("fabrika", "#b9604b", "#6f7781")),
+    _tur("sera", "Sera", "Sanayi", onek="Sanayi_sera", duvar="sera_cam", kapi="kapi_vitrin", vurgu="#5a8f4a", bolge="sanayi", mimari=("sera", "#f4f6f3", "#d4e7ee")),
+    _tur("gar", "Gar", "Simge", tabela="CENTRAL STATION", cephe="saat_cephe", vurgu="#2f6048", mimari=("gotik", "#c25e4c", "#6f7781")),
+    _tur("otel", "Otel", "Simge", tabela="GRAND HOTEL", simge="simge_yildiz", on="vitrin", kapi="kapi_vitrin", tente=1, tepe="bayrak", vurgu="#8a5a78", aks=("saksi",), mimari=("siva", "#f5f0e6", "#6f7781")),
+    _tur("avm", "Büyük mağaza / AVM", "Simge", tabela="DEPARTMENT STORE", on="vitrin_genis", kapi="kapi_otomatik", tente=1, vurgu="#3f7d74", bolge="avm", mimari=("portland", "#e6dcc6", "#6f7781")),
+    _tur("pazar", "Kapalı pazar", "Simge", tabela="MARKET HALL", on="kemer_cam", kapi="kapi_kemerli", vurgu="#c46a2b", aks=("kasalar", "cicek_kovalari"), mimari=("depo", "#d4b483", "#6f7781")),
+    _tur("opera", "Opera / tiyatro", "Simge", tabela="OPERA", on="sutunlu", kapi="kapi_sutunlu", vurgu="#8a2f4a", tepe="alinlik_tas", mimari=("portland", "#efe8d8", "#6f7781")),
 ]
 TUR = {t["ad"]: t for t in TURLER}
 
@@ -5598,8 +5703,27 @@ USLUPLAR = [
            kose="gt_kose_ust", kose_zemin="gt_kose", silme="v_silme", silme_zemin="v_silme", cati=CT_BESIK),
     _uslup("depo", "Tuğla depo / atölye", "kapi_garaj", ["d_zemin", "d_zemin", "d_duz"], ["d_ust"], "d_duz", kose="d_kose", kose_zemin="d_kose",
            kaide="kaide", silme="v_silme", silme_zemin="v_silme", cati=CT_BESIK),
+    # türe özgü mimari (v9): yalnız türün kendisi seçer, fırçada da görünür
+    _uslup("fabrika", "Fabrika (tuğla, demir doğramalı geniş pencere, testere çatı)", "f_kapi", ["f_zemin"], ["f_ust"], "d_duz",
+           kose="d_kose", kose_zemin="d_kose", kaide="kaide", silme="v_silme", silme_zemin="v_silme", cati=CT_TESTERE),
+    _uslup("modern", "Modern (kaplama paneller, şerit pencere, düz çatı)", "kapi_otomatik", ["mo_duz"], ["mo_ust"], "mo_duz",
+           on_zemin=["mo_vitrin"], kose="mo_kose", kose_zemin="mo_kose", silme="mo_bant", silme_zemin="mo_bant", cati=CT_TERAS),
+    _uslup("sera", "Sera (cam ve beyaz demir)", "kapi_vitrin", ["sera_cam"], ["sera_cam"], "sera_cam", cati=CT_BESIK),
 ]
 TARZ_AD += [u["etiket"] for u in USLUPLAR]
+
+
+def tur_mimarisi(b, T):
+    """Türün kendi mimarisi varsa (TURLER: mimari) bloğun duvar tarzı o üsluba, çatı tarzı "Tarza göre"ye döner: fabrika,
+    market, hastane, okul ... fırçada hangi tarz seçilmiş olursa olsun kendi binası olur. Taş kaide ve merdiven değişmez.
+    C#: AtolyeKurucu.TurMimarisi."""
+    ad = T.get("uslup")
+    if not ad or b["tarz"] in (KAIDE, MERDIVEN):
+        return b
+    i = next((j for j, u in enumerate(USLUPLAR) if u["ad"] == ad), -1)
+    if i < 0:
+        return b
+    return dict(b, tarz=USLUP_TABAN + i, ct=CT_OTO)
 
 
 def uslup(tarz):
@@ -5722,10 +5846,10 @@ def ic_plan(blok, kapi, T):
 def yerlesim(t):
     """Tasarımdan parça yerleşimleri. Dönen: (yerler, çokgenler, kutular).
     yer: (parça, merkez x, merkez y, taban z, dönüş, z ölçeği, kaydırma, renkler, ölçek, açı)."""
-    bloklar = t.get("bloklar") or []
+    T = tur_bul(t)
+    bloklar = [tur_mimarisi(b, T) for b in (t.get("bloklar") or [])]
     blok = {(b["x"], b["y"], b["k"]): b for b in bloklar}
     tohum = t.get("tohum", 1)
-    T = tur_bul(t)
     metin = (t.get("tabela") or T["tabela"] or "").upper()
     yerler, cokgenler, kutular = [], [], []
 
@@ -5734,8 +5858,8 @@ def yerlesim(t):
         return b is not None and b["tarz"] != MERDIVEN
 
     def renk(b, yaprak=0):
-        dv = DUVAR_RENK[b["renk"] % len(DUVAR_RENK)]
-        ct = CATI_RENK[b["cati"] % len(CATI_RENK)]
+        dv = T["duvarRenk"] or DUVAR_RENK[b["renk"] % len(DUVAR_RENK)]
+        ct = T["catiRenk"] or CATI_RENK[b["cati"] % len(CATI_RENK)]
         vr = T["vurgu"] or VURGU_RENK[karma(tohum, b["renk"], b["cati"], 7) % len(VURGU_RENK)]
         yp = YAPRAK_RENK[yaprak % len(YAPRAK_RENK)]
         r = dict(D=dv, d=koyu(dv, 0.9), C=ct, c=koyu(ct, 0.86), K=vr, T=TENTE_RENK[t.get("tente", 0) % len(TENTE_RENK)], k=cizgi_rengi(yp))
@@ -6038,9 +6162,11 @@ def _cati(bolge, b0, k, tohum, koy, renk, cokgenler, kutular, dolu, blok, sade):
         for (x, y) in bolge:
             koy("duz_cati", x, y, z, 0, r)
         kenar_parcasi("korkuluk")
+        Ut = uslup(tarz)
+        modern = Ut is not None and Ut["ad"] == "modern"             # modern binada baca yok, klima ünitesi var
         for (x, y) in bolge:
-            if karma(x, y, k, tohum + 21) % 6 == 0:
-                koy("baca_ince", x, y, z + 0.9, 0, r, kay=(0.5, 0.4))
+            if karma(x, y, k, tohum + 21) % (3 if modern else 6) == 0:
+                koy("cati_klima" if modern else "baca_ince", x, y, z + 0.9, 0, r, kay=(0.5, 0.4))
         return
     if ct == CT_TESTERE:
         for (x, y) in bolge:
