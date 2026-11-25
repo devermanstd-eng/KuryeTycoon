@@ -194,8 +194,8 @@ namespace KuryeTycoon
                 if (Gorsel3D.Active)
                 {
                     int ts = GrafikKalitesi.TiltShiftModu;
-                    y.Kucuk("Maket bulanıklığı (tilt-shift): ekranın üst ve alt kenarı hafif bulanık, şehir minyatür maket gibi. Şu an: " +
-                            (ts == 2 ? "tam" : ts == 1 ? "hızlı (yalnız uzak taraf)" : "kapalı"));
+                    y.Kucuk("Maket bulanıklığı (tilt-shift): ekranın uzak kenarı hafif bulanık, şehir minyatür maket gibi. Şu an: " +
+                            (ts == 2 ? "açık (iki kenar)" : ts == 1 ? "açık" : "kapalı"));
                     y.Secim(EfektSecimleri, EfektIndeksi(GrafikKalitesi.TiltShiftSecimi), v => GrafikKalitesi.TiltShiftSecimi = EfektSecimi(v));
                     y.Kucuk("Ortam gölgesi (SSAO): binaların, ağaçların ve araçların yere bastığı yerde yumuşak temas gölgesi. Şu an: " +
                             (GrafikKalitesi.OrtamGolgesi ? "açık" : "kapalı"));

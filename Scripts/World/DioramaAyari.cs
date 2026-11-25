@@ -54,8 +54,11 @@ namespace KuryeTycoon
         [Header("Tilt-shift (minyatür maket bulanıklığı)")]
         [Tooltip("Ekranın üst ve alt kenarındaki en fazla bulanıklık (1080p'de piksel). Ortası hep net. 0 kapalı.")]
         [Range(0f, 12f)] public float tiltShiftPiksel = 4.5f;
-        [Tooltip("Orta kalitede (hızlı, yalnız uzak taraf) bulanıklığın en büyük yarıçapı")]
-        [Range(0.5f, 1.5f)] public float hizliBulaniklik = 0.9f;
+        [Tooltip("Hızlı bulanıklığın (Gaussian, yalnız uzak taraf: ekranın üstü) en büyük yarıçapı")]
+        [Range(0.5f, 1.5f)] public float hizliBulaniklik = 1.0f;
+        [Tooltip("Güçlü ekran kartı için: Yüksek kalitede iki kenarlı Bokeh bulanıklığı. 25.11'de M2 Air'de kare hızını yarıya " +
+                 "indirdi (24 → 12 FPS); kapalıyken her kalitede hızlı Gaussian.")]
+        public bool bokehTiltShift = false;
 
         [Header("Ortam gölgesi (SSAO): binaların, ağaçların ve araçların yere bastığı yer")]
         [Range(0f, 4f)] public float ssaoGucu = 2.1f;
