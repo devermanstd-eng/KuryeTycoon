@@ -1690,7 +1690,7 @@ namespace KuryeTycoon
         {
             if (m == null) return true;
             string n = m.name;
-            return n.StartsWith("Cizgi") || n.StartsWith("Kesit") || n.StartsWith("Cam") || n.StartsWith("Vitrin") || n.StartsWith("Vitray") || n.StartsWith("Isik") ||
+            return n.StartsWith("Cizgi") || n.StartsWith("Kesit") || n.StartsWith("Pastel_Cam") || n.StartsWith("Pastel_Isik") || n.StartsWith("Cam") || n.StartsWith("Vitrin") || n.StartsWith("Vitray") || n.StartsWith("Isik") ||
                    n.StartsWith("Simsek") || n.StartsWith("Bulut") || n.StartsWith("Yazi") || n.StartsWith("Su_") || n.StartsWith("PSu") ||
                    n.StartsWith("KirSu") || n.StartsWith("OfisCam") || n.StartsWith("Kar_") || n.StartsWith("Reklam") || n.StartsWith("Pano") ||
                    // Yollar: trafik karı eritir, kuryeler yolu görebilsin (yol yalnızca hafif beyazlar)

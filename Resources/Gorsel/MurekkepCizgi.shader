@@ -11,6 +11,7 @@ Shader "KuryeTycoon/MurekkepCizgi"
         _DerinlikEsik("Derinlik eşiği", Range(0.001, 0.2)) = 0.025
         _NormalEsik("Normal eşiği", Range(0.05, 1.5)) = 0.45
         _Titreme("Elle çizim titremesi", Range(0, 1)) = 0.55
+        _RenkliCizgi("Renkli kontur (0: mürekkep rengi, 1: yüzeyin koyusu)", Range(0, 1)) = 0
         _Doygunluk("Doygunluk", Range(0.5, 1.6)) = 1.12
         _GolgeMavi("Gölgeleri maviye kaydır", Range(0, 1)) = 0.35
         _IsikSicak("Işıkları sıcağa kaydır", Range(0, 1)) = 0.3
@@ -52,6 +53,7 @@ Shader "KuryeTycoon/MurekkepCizgi"
             float _DerinlikEsik;
             float _NormalEsik;
             float _Titreme;
+            float _RenkliCizgi;
             float _Doygunluk;
             float _GolgeMavi;
             float _IsikSicak;
@@ -195,8 +197,11 @@ Shader "KuryeTycoon/MurekkepCizgi"
                 float2 m = uv - 0.5;
                 c *= 1.0h - dot(m, m) * _Vinyet;
 
+                // Renkli kontur (pastel / elle çizilmiş görünüm): çizgi sabit mürekkep yerine altındaki yüzeyin koyusuna kayar.
+                // _RenkliCizgi = 0 iken sonuç eskisiyle aynı.
+                half3 murekkep = lerp(_Murekkep.rgb, c * half3(0.42, 0.36, 0.46), _RenkliCizgi);
                 if (!gokyuzu)
-                    c = lerp(c, c * 0.35h + _Murekkep.rgb * 0.65h, kenar * _Murekkep.a);
+                    c = lerp(c, c * 0.35h + murekkep * 0.65h, kenar * _Murekkep.a);
                 return half4(c, renk.a);
             }
             ENDHLSL
