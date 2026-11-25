@@ -470,6 +470,7 @@ namespace KuryeTycoon
             bool packTreesOk = UsePack && packTrees.Length > 0;
             kamuKalan = ownKamu != null ? new List<GameObject>(ownKamu) : new List<GameObject>();
             kiliseSayisi = 0;
+            atlikarincaSayisi = hobiSayisi = 0;
             bolgeSon.Clear();
             binaBolge = null;
             if (CityMap.Organik) Arazi.Hazirla();   // nehir yatağı ve tepeler: modeller araziye oturur
@@ -610,8 +611,9 @@ namespace KuryeTycoon
                                 }
                                 else
                                 {
-                                    // Park karesi (oyun parkı, çiçek bahçesi, gezinti yolu) ve köşelerinde ağaçlar
-                                    AddFlat(parkTiles[rng.Next(parkTiles.Length)], tile, 90f * rng.Next(4), 2);
+                                    // Park karesi (oyun parkı, çiçek bahçesi, gezinti yolu) ve köşelerinde ağaçlar. Atlıkarınca ve
+                                    // oyun alanı şehirde birkaç kez (her parkta tekrar etmesin); çoğu kare düz çim / çiçek / gezinti
+                                    AddFlat(ParkKaresi(rng), tile, 90f * rng.Next(4), 2);
                                     int nt = 1 + rng.Next(3);
                                     for (int i = 0; i < nt; i++)
                                     {
@@ -695,7 +697,7 @@ namespace KuryeTycoon
                                 else AddBox(tile, 0.55f, 0.18f + floors * 0.12f, CityMap.RoofColor(zone, x, y), null, false, front);
                                 AddTrees(tile, rng, 1, packTreesOk, -front * 2.2f, 0.12f);
                             }
-                            else if (CityMap.Organik && own && rng.NextDouble() < 0.7 && BolgeBinasi(zone, tile, face, rng)) { }
+                            else if (CityMap.Organik && own && rng.NextDouble() < (AtolyeAyari.YalnizAtolye ? 0.92 : 0.7) && BolgeBinasi(zone, tile, face, rng)) { }
                             else if (CityMap.Organik && BolgeHavuzu("ev") == null && own && ownHousesTum != null && ownHousesTum.Length > 0 && rng.NextDouble() < 0.15)
                             {
                                 // Organik şehirde bloklar düzensiz: yola değmeyen arsada da arka sıra ev (boş gri arsa kalmasın)
@@ -706,7 +708,7 @@ namespace KuryeTycoon
                             break;
 
                         default: // eski şehir, kule bloklar, çarşı, kampüs
-                            if (!frontage && CityMap.Organik && own && rng.NextDouble() < (zone == Zone.Campus ? 0.5 : 0.85) &&
+                            if (!frontage && CityMap.Organik && own && rng.NextDouble() < (zone == Zone.Campus ? 0.5 : AtolyeAyari.YalnizAtolye ? 0.97 : 0.85) &&
                                 BolgeBinasi(zone, tile, face, rng)) { }
                             else if (!frontage && CityMap.Organik && own && BolgeHavuzu(BolgeAnahtar(zone)) == null && rng.NextDouble() < 0.35)
                             {
@@ -2007,7 +2009,14 @@ namespace KuryeTycoon
                 var off = center + new Vector2((float)rng.NextDouble() * spread * 2f - spread, (float)rng.NextDouble() * spread * 2f - spread);
                 float h = 0.25f + (float)rng.NextDouble() * 0.25f;
                 if (packTreesOk)
-                    AddPrefab(packTrees[rng.Next(packTrees.Length)], tile, 0f, (float)rng.NextDouble() * 360f, null, off, h + 0.15f);
+                {
+                    var a = packTrees[rng.Next(packTrees.Length)];
+                    // çalı ağaç boyuna büyütülmesin (dev çalılar); ağaç türüne göre boy: kavak, çınar uzun, genç ağaç kısa
+                    if (a.name.StartsWith("Cali_")) h = 0.05f + (float)rng.NextDouble() * 0.07f;
+                    else if (a.name.Contains("kavak") || a.name.Contains("cinar")) h += 0.25f;
+                    else if (a.name.Contains("genc") || a.name.Contains("meyve")) h *= 0.7f;
+                    AddPrefab(a, tile, 0f, (float)rng.NextDouble() * 360f, null, off, h + (a.name.StartsWith("Cali_") ? 0f : 0.15f));
+                }
                 else
                 {
                     var c = Color.Lerp(new Color(0.16f, 0.42f, 0.22f), new Color(0.28f, 0.55f, 0.25f), (float)rng.NextDouble());
@@ -2043,7 +2052,9 @@ namespace KuryeTycoon
             if (CityMap.Organik && footprint > 0f)
             {
                 float r = faceAngle * Mathf.Deg2Rad;
-                footprint /= Mathf.Abs(Mathf.Cos(r)) + Mathf.Abs(Mathf.Sin(r));
+                float kucul = Mathf.Abs(Mathf.Cos(r)) + Mathf.Abs(Mathf.Sin(r));
+                // yalnız atölye şehrinde daha az küçülür (binalar arsayı doldursun; köşeler komşuya biraz değebilir)
+                footprint /= AtolyeAyari.YalnizAtolye && ArsaOlculu(prefab.name) ? Mathf.Sqrt(kucul) : kucul;
             }
             var holder = Holder(prefab.name, tile, offset);
             var inst = Instantiate(prefab, holder, false);
@@ -2345,6 +2356,22 @@ namespace KuryeTycoon
                 case Zone.Mixed: return cadde;            // karma bölgede yalnızca geniş caddeler ağaçlı
                 default: return false;                    // gökdelen, eski şehir, çarşı, meydan, AVM, sanayi, kır
             }
+        }
+
+        int atlikarincaSayisi, hobiSayisi;
+
+        /// <summary>Park karesi: atlıkarınca en çok 2, hobi / oyun alanı en çok 6 kez; gerisi düzenli çim, çiçek, gezinti yolu.</summary>
+        GameObject ParkKaresi(System.Random rng)
+        {
+            for (int deneme = 0; deneme < 8; deneme++)
+            {
+                var p = parkTiles[rng.Next(parkTiles.Length)];
+                if (p.name.Contains("atlikarinca")) { if (atlikarincaSayisi >= 2 || rng.NextDouble() < 0.7) continue; atlikarincaSayisi++; }
+                else if (p.name.Contains("hobi")) { if (hobiSayisi >= 6 || rng.NextDouble() < 0.4) continue; hobiSayisi++; }
+                return p;
+            }
+            foreach (var p in parkTiles) if (p.name.Contains("duzenli") || p.name.Contains("gezinti")) return p;
+            return parkTiles[0];
         }
 
         /// <summary>Düz parça: kareyi tam kaplar, yüzeyi zeminin hemen üstünde, yükselmez.</summary>

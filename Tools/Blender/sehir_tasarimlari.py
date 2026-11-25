@@ -238,15 +238,15 @@ KARMA_US = [GEO, VIC, VIC, SIVA, APT, APT, MEWS, PORT, GOT, MOD, FACH]
 
 def eski(u, n):
     l = []
-    sira_evler(u, l, n, [2, 3, 3, 4, 4, 5], ESKI_US, dukkan_orani=0.25)
-    moduller(u, l, 20, [2, 3, 3, 4, 4, 5], ESKI_US, 0.25)
+    sira_evler(u, l, n, [3, 4, 4, 5, 5, 6], ESKI_US, dukkan_orani=0.25)
+    moduller(u, l, 20, [3, 3, 4, 4, 5, 5, 6], ESKI_US, 0.25)
     return l
 
 
 def karma(u, n):
     l = []
-    sira_evler(u, l, n, [2, 3, 3, 4, 5], KARMA_US, dukkan_orani=0.6)
-    moduller(u, l, 20, [2, 3, 3, 4, 5], KARMA_US, 0.6)
+    sira_evler(u, l, n, [3, 3, 4, 4, 5], KARMA_US, dukkan_orani=0.6)
+    moduller(u, l, 20, [2, 3, 3, 4, 4, 5], KARMA_US, 0.6)
     return l
 
 
@@ -291,18 +291,19 @@ def mustakil(u, n, kucuk=False):
         renk, cati, ct = u.renk(tarz), u.cati(tarz), u.ct(tarz)
         if ct == CT_PARAPET and u.rnd.random() < 0.7:
             ct = u.sec([CT_KIRMA, CT_BESIK])
-        kat = u.sec([1, 2, 2, 2, 3]) if not kucuk else u.sec([1, 1, 2, 2])
-        y0 = u.sec([1, 2, 2])
+        kat = u.sec([2, 2, 2, 3, 3]) if not kucuk else u.sec([1, 2, 2, 2])
+        y0 = u.sec([1, 1, 1, 2]) if not kucuk else u.sec([0, 1, 1])
         bicim = u.rnd.random()
         if bicim < 0.22 and not kucuk:          # ikiz ev: iki yarım, farklı renk (biri bazen farklı üslup)
             r2 = u.renk(tarz) if u.rnd.random() < 0.7 else renk
             t2 = tarz if u.rnd.random() < 0.75 else u.sec(usluplar)
-            b = u.kutu(0, 1, y0, y0 + 1, kat, tarz, renk, cati, ct) + u.kutu(2, 3, y0, y0 + 1, kat, t2, r2, cati, ct)
-            dolu = [0, 1, 2, 3]
+            ww = u.sec([(0, 1, 2, 4), (0, 2, 3, 4), (0, 1, 2, 3)])
+            b = u.kutu(ww[0], ww[1], y0, y0 + 2, kat, tarz, renk, cati, ct) + u.kutu(ww[2], ww[3], y0, y0 + 2, kat, t2, r2, cati, ct)
+            dolu = list(range(ww[0], ww[3] + 1))
         elif bicim < 0.45:                      # L biçimli ev
-            x0 = u.sec([0, 1, 2])
-            b = u.kutu(x0, x0 + 2, y0, y0, kat, tarz, renk, cati, ct) + u.kutu(x0, x0, y0 + 1, min(4, y0 + 2), max(1, kat - u.sec([0, 1])), tarz, renk, cati, ct)
-            dolu = [x0, x0 + 1, x0 + 2]
+            x0 = u.sec([0, 1])
+            b = u.kutu(x0, x0 + 3, y0, y0 + 1, kat, tarz, renk, cati, ct) + u.kutu(x0, x0 + 1, y0 + 2, min(4, y0 + 3), max(1, kat - u.sec([0, 1])), tarz, renk, cati, ct)
+            dolu = [x0, x0 + 1, x0 + 2, x0 + 3]
         elif bicim < 0.6:                       # bungalov: geniş tek kat
             x0 = u.sec([0, 1])
             b = u.kutu(x0, x0 + u.sec([2, 3]), y0, y0 + 1, 1, tarz, renk, cati, u.sec([CT_KIRMA, CT_BESIK, CT_OTO]))
@@ -312,9 +313,10 @@ def mustakil(u, n, kucuk=False):
             b = u.kutu(x0, x0 + 1, y0, y0 + 1, kat, tarz, renk, cati, ct) + u.kutu(x0 - 1, x0 - 1, y0, y0, kat + 1, tarz, renk, cati, u.sec([CT_KIRMA, CT_OTO]))
             dolu = [x0 - 1, x0, x0 + 1]
         else:                                   # kare ev, yanında tek katlı ek (garaj / kış bahçesi)
-            x0 = u.sec([1, 2]) if not kucuk else u.sec([1, 2, 3])
-            w = u.sec([1, 2]) if kucuk else 2
-            b = u.kutu(x0, min(4, x0 + w - 1), y0, y0 + 1, kat, tarz, renk, cati, ct)
+            w = u.sec([2, 3]) if kucuk else u.sec([3, 3, 4])
+            x0 = u.sec(list(range(0, IZ - w + 1)))
+            d = u.sec([2, 2, 3])
+            b = u.kutu(x0, min(4, x0 + w - 1), y0, min(4, y0 + d - 1), kat, tarz, renk, cati, ct)
             dolu = list(range(x0, x0 + w))
             if u.rnd.random() < 0.5:
                 xe = x0 - 1 if x0 > 0 else x0 + w
