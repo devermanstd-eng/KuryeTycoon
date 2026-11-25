@@ -1,0 +1,56 @@
+{
+ "ad": "kucuk_ev",
+ "bolge": "ev",
+ "tohum": 2,
+ "dukkan": false,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 1,
+   "renk": 5,
+   "cati": 3
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 1,
+   "renk": 5,
+   "cati": 3
+  },
+  {
+   "x": 1,
+   "y": 3,
+   "k": 0,
+   "tarz": 1,
+   "renk": 5,
+   "cati": 3
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 1,
+   "renk": 5,
+   "cati": 3
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 1,
+   "renk": 5,
+   "cati": 3
+  },
+  {
+   "x": 2,
+   "y": 3,
+   "k": 0,
+   "tarz": 1,
+   "renk": 5,
+   "cati": 3
+  }
+ ]
+}
