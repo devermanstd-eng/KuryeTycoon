@@ -11,6 +11,7 @@ namespace KuryeTycoon
         public int hedefBitis, sonTeklifGunu = -999;
         public float kosul = 1f;
         public long toplamYatirim;
+        public long toplamTemettu;          // 24.11: yatırımcılara ödenen temettü toplamı (eski kayıtlarda 0)
         public int teklifTur = -1;
         public int hedefIlce, hedefTeslimat, hedefAbone;
     }
@@ -37,17 +38,26 @@ namespace KuryeTycoon
             public int enErkenGun, enAzTeslimat;   // teklifin gelmesi için
         }
 
+        // 24.11 (u30, 5 şehir × 120 gün): A serisi ~29. günde 20–25 bin € getiriyor, 60 ve 80 hesaplık paketler hemen
+        // alınıyordu; 120. günde kasada ~200 bin € birikiyordu. Turlar daha geç ve daha küçük; yatırımcı her gün temettü alır
+        // (Temettu). Tohum 10. → 14. gün; A 8 → 5 M, en erken 35. gün; B 32 → 20 M, 60. gün; C 100 → 60 M, 85. gün.
         public static readonly Tur[] Turlar =
         {
             new Tur { ad = "Tohum yatırım", yatirimci = "Swan Angels", tutar = 1600000, pay = 0.12f, sure = 60,
-                      ilce = 2, teslimat = 150, abone = 0, enErkenGun = 10, enAzTeslimat = 50 },
-            new Tur { ad = "A serisi", yatirimci = "Northwind Ventures", tutar = 8000000, pay = 0.18f, sure = 90,
-                      ilce = 3, teslimat = 500, abone = 300, enErkenGun = 0, enAzTeslimat = 150 },
-            new Tur { ad = "B serisi", yatirimci = "Summit Capital", tutar = 32000000, pay = 0.20f, sure = 120,
-                      ilce = 4, teslimat = 1200, abone = 1500, enErkenGun = 0, enAzTeslimat = 450 },
-            new Tur { ad = "C serisi", yatirimci = "Euro Growth Partners", tutar = 100000000, pay = 0.20f, sure = 150,
-                      ilce = 5, teslimat = 2500, abone = 5000, enErkenGun = 0, enAzTeslimat = 1000 },
+                      ilce = 2, teslimat = 150, abone = 0, enErkenGun = 14, enAzTeslimat = 80 },
+            new Tur { ad = "A serisi", yatirimci = "Northwind Ventures", tutar = 5000000, pay = 0.18f, sure = 90,
+                      ilce = 3, teslimat = 500, abone = 300, enErkenGun = 35, enAzTeslimat = 300 },
+            new Tur { ad = "B serisi", yatirimci = "Summit Capital", tutar = 20000000, pay = 0.20f, sure = 120,
+                      ilce = 4, teslimat = 1200, abone = 1500, enErkenGun = 60, enAzTeslimat = 700 },
+            new Tur { ad = "C serisi", yatirimci = "Euro Growth Partners", tutar = 60000000, pay = 0.20f, sure = 150,
+                      ilce = 5, teslimat = 2500, abone = 5000, enErkenGun = 85, enAzTeslimat = 1100 },
         };
+
+        /// <summary>Yatırımcılar her gün dünkü faaliyet kârından (tek seferlik alımlar hariç) paylarının bu oranını temettü alır.</summary>
+        public const float TemettuOrani = 0.5f;
+        /// <summary>Bugün yatırımcılara ödenen temettü (Ft).</summary>
+        public long BugunTemettu { get; private set; }
+        public long ToplamTemettu { get; private set; }
 
         public float pay = 1f;            // kurucu (oyuncu) payı
         public int tamamlanan;            // kabul edilen tur sayısı
@@ -67,6 +77,7 @@ namespace KuryeTycoon
         {
             pay = 1f; tamamlanan = 0; hedefAktif = false; hedefBitis = 0; baski = ret = 0;
             sonTeklifGunu = -999; kosul = 1f; toplamYatirim = 0; teklifTur = -1;
+            ToplamTemettu = 0; BugunTemettu = 0;
             hedefIlce = hedefTeslimat = hedefAbone = 0;
             GameClock.I.OnNewDay += YeniGun;
         }
@@ -121,8 +132,30 @@ namespace KuryeTycoon
             $"günde {HedefTeslimat} teslimat (7 gün ort. {OrtTeslimat:0})" +
             (HedefAbone > 0 ? $" · {HedefAbone} abone (şimdi {AboneSayisi})" : "");
 
+        /// <summary>
+        /// Temettü: yatırımcı payı (1 − kurucu payı) × TemettuOrani × dünkü faaliyet kârı. Geliştirme, bölge, sözleşme gibi tek
+        /// seferlik alımlar kârdan düşülmez (büyümeye yatırım temettüyü azaltmasın). Zarar günü ödeme yok.
+        /// Geç oyunda biriken parayı eritir: A'dan sonra kârın ~%14'ü, B'den sonra ~%21'i, C'den sonra ~%27'si.
+        /// </summary>
+        void Temettu()
+        {
+            BugunTemettu = 0;
+            if (tamamlanan == 0 || pay >= 0.999f) return;
+            var em = EconomyManager.I;
+            var dun = em != null ? em.Yesterday : null;
+            if (dun == null) return;
+            long faaliyet = dun.Profit + dun.yatirimHarcama;
+            if (faaliyet <= 0) return;
+            long t = (long)(faaliyet * (1f - pay) * TemettuOrani);
+            if (t < 1000) return;
+            em.Spend(t, "Yatırımcı temettüsü", ExpenseCategory.Diger);
+            BugunTemettu = t;
+            ToplamTemettu += t;
+        }
+
         void YeniGun()
         {
+            Temettu();
             var e = EventManager.I;
             if (hedefAktif)
             {
@@ -171,7 +204,8 @@ namespace KuryeTycoon
                     $"{t.yatirimci}, {Ft(tutar)} karşılığında şirketin %{p * 100f:0} payını istiyor (şirket değerlemesi {Ft(degerleme)}).{kosulYazi}\n\n" +
                     $"Şart: {t.sure} gün içinde {HedefMetni(t)}.\n" +
                     $"Tutturursan sonraki tur daha iyi gelir; tutturamazsan yönetim kurulu baskısı başlar. " +
-                    $"Payın %{pay * 100f:0} → %{pay * (1f - p) * 100f:0} olur; şirketi satarken marka puanı sana düşen paydan hesaplanır.")
+                    $"Payın %{pay * 100f:0} → %{pay * (1f - p) * 100f:0} olur; şirketi satarken marka puanı sana düşen paydan hesaplanır. " +
+                    $"Yatırımcılar her gün faaliyet kârının, paylarının yarısı kadarını temettü olarak alır (kabul edersen kârın ~%{(1f - pay * (1f - p)) * TemettuOrani * 100f:0}'i).")
                 .Ozet("Yatırım", Ft(tutar), 1)
                 .Ozet("Verilen pay", $"%{p * 100f:0}", 3)
                 .Ozet("Süre", $"{t.sure} gün")
@@ -229,7 +263,7 @@ namespace KuryeTycoon
         public YatirimSave Kaydet() => new YatirimSave
         {
             pay = pay, tamamlanan = tamamlanan, baski = baski, ret = ret, hedefAktif = hedefAktif, hedefBitis = hedefBitis,
-            sonTeklifGunu = sonTeklifGunu, kosul = kosul, toplamYatirim = toplamYatirim, teklifTur = teklifTur,
+            sonTeklifGunu = sonTeklifGunu, kosul = kosul, toplamYatirim = toplamYatirim, toplamTemettu = ToplamTemettu, teklifTur = teklifTur,
             hedefIlce = hedefIlce, hedefTeslimat = hedefTeslimat, hedefAbone = hedefAbone
         };
 
@@ -241,6 +275,7 @@ namespace KuryeTycoon
             baski = s.baski; ret = s.ret; hedefAktif = s.hedefAktif; hedefBitis = s.hedefBitis;
             hedefIlce = s.hedefIlce; hedefTeslimat = s.hedefTeslimat; hedefAbone = s.hedefAbone;
             sonTeklifGunu = s.sonTeklifGunu; kosul = s.kosul <= 0f ? 1f : s.kosul; toplamYatirim = s.toplamYatirim;
+            ToplamTemettu = s.toplamTemettu;
             // Kayıtta açık kalmış teklif kartı kaybolur (kartlar kayda girmez): teklifi yeniden sor
             teklifTur = -1;
         }

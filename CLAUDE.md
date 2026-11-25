@@ -36,8 +36,9 @@ Ekipte birden fazla kişi kendi Claude'uyla çalışıyor; bu kurallar kimsenin 
 - Sahneye bir şey yazma; ayarlar `Resources` altındaki dosyalarda (ör. `Resources/Gorsel/Atmosfer.asset`).
 
 ## Test ve Denge Doğrulama
-- Denge bandı: rakiplerin normal olduğu oyunda pazar payı **%45–55**; kurye platformu paketinin dolu kaldığı
-  süre **10–13 gün** (en fazla 13).
+- Denge bandı: rakiplerin normal olduğu oyunda pazar payı **%45–55** (oyunun ortası dahil); 22–60 kuryelik platform
+  paketleri **9–12 gün** dolu kalır (toplu testte 9'dan kısa `↓`, 13'ten uzun `!`); bütün bölgeler ~45–55. günde açık.
+  Toplu test özetindeki "en uzun ölü dönem" (hiçbir şey alınmayan kesintisiz gün) tempo ölçüsüdür.
 - Toplu simülasyon (Mac, Unity **kapalıyken**, repo kökünden): `Tools/toplu_test.sh` (5 şehir tohumu × 60 gün +
   senaryolar). Uzun vade: `--gun 120 --sec tohum`. Denge onayı için `--hiz 32`.
   Rapor: `<proje>/TopluTest/toplu_*/toplu_ozet.txt`.

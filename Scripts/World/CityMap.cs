@@ -39,7 +39,9 @@ namespace KuryeTycoon
 
         // Green Hill 1,2 M → 0,9 M (16.11 akşam). 21.11: West Harbour 750 → 600 bin, Green Hill 900 → 720 bin: 120 günlük testte
         // 39–44. ve 63–64. günde açılıyordu; 32 ve 45 hesaplık paketler bu bölgeleri beklerken 10–12 gün dolu kalıyordu.
-        public static readonly long[] UnlockCost = { 0, 0, 150000, 400000, 600000, 720000 };
+        // 24.11 (u30): fiyatlar sabitlenince bütün bölgeler 26–27. günde açılıyordu; hedef son bölge ~45–55. gün.
+        // East Side 150 → 600 bin, Industry & Campus 400 bin → 1 M, West Harbour 600 bin → 1,8 M, Green Hill 720 bin → 3,2 M.
+        public static readonly long[] UnlockCost = { 0, 0, 600000, 1000000, 1800000, 3200000 };
         public static readonly string[] DistrictNames = { "", "Downtown", "East Side", "Industry & Campus", "West Harbour", "Green Hill" };
 
         /// <summary>Karenin bölgesi (1–5). Bölge sınırındaki yol, açılış sırası önce gelen bölgeye aittir.</summary>
