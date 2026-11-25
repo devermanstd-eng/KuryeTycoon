@@ -4,7 +4,10 @@ from PIL import Image
 def hexrgb(h):
     h=h.lstrip('#'); return np.array([int(h[i:i+2],16) for i in (0,2,4)],float)/255
 
-def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224)):
+def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224), kenar=0.25, normal_kenar=False, kadraj=None):
+    """kenar: mürekkep çizgisi için derinlik farkı eşiği (m). normal_kenar: yüz yönü değişen yerlere de çizgi (oyundaki
+    mürekkep geçişi gibi). kadraj: ((x0, y0, z0), (x1, y1, z1)) verilirse görüntü bu kutuya göre ortalanır (aynı modelin
+    çatılı / çatısız hâli aynı kadrajda çıksın diye); yoksa modelin kendi sınırları."""
     V=np.array(g.v,float)
     S=size*ss
     a=math.radians(az); e=math.radians(el)
@@ -14,11 +17,18 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224)):
     right=np.cross(fwd,[0,0,1]); right/=np.linalg.norm(right)
     up=np.cross(right,fwd)
     sx=V@right; sy=V@up; dz=V@fwd
-    mn=np.array([sx.min(),sy.min()]); mx=np.array([sx.max(),sy.max()])
+    if kadraj is not None:
+        (a0,b0,c0),(a1,b1,c1)=kadraj
+        K=np.array([(x,y,z) for x in (a0,a1) for y in (b0,b1) for z in (c0,c1)],float)
+        kx=K@right; ky=K@up
+        mn=np.array([kx.min(),ky.min()]); mx=np.array([kx.max(),ky.max()])
+    else:
+        mn=np.array([sx.min(),sy.min()]); mx=np.array([sx.max(),sy.max()])
     sc=(S*0.92)/max(mx-mn)
     cx=(mn+mx)/2
     px=(sx-cx[0])*sc+S/2; py=S/2-(sy-cx[1])*sc
     zb=np.full((S,S),np.inf); img=np.zeros((S,S,3)); img[:]=np.array(arka)/255
+    nb=np.zeros((S,S,3)) if normal_kenar else None
     sun=np.array([0.45,-0.55,0.75]); sun/=np.linalg.norm(sun)
     cols={}
     for f,mi in zip(g.f,g.fm):
@@ -56,12 +66,16 @@ def render(g, HEX, size=520, az=-35, el=32, ss=2, yol=None, arka=(236,232,224)):
             upd=msk&(zz<sub)
             sub[upd]=zz[upd]
             img[y0:y1+1,x0:x1+1][upd]=col
+            if nb is not None: nb[y0:y1+1,x0:x1+1][upd]=n
     # mürekkep çizgisi: derinlik kenarları
     dd=np.where(np.isinf(zb),1e9,zb)
     ed=np.zeros((S,S),bool)
     for dy,dx in ((0,1),(1,0)):
         a1=dd; a2=np.roll(dd,(dy,dx),(0,1))
-        ed|=np.abs(a1-a2)>0.25
+        ed|=np.abs(a1-a2)>kenar
+        if nb is not None:
+            n2=np.roll(nb,(dy,dx),(0,1))
+            ed|=((nb*n2).sum(-1)<0.55)&(np.abs(a1-a2)<1e8)&((nb*nb).sum(-1)>0.5)&((n2*n2).sum(-1)>0.5)
     img[ed]=img[ed]*0.25+np.array([0.12,0.09,0.07])*0.75
     im=Image.fromarray((img*255).astype(np.uint8)).resize((size,size),Image.LANCZOS)
     if yol: im.save(yol)

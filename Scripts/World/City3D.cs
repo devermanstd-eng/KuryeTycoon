@@ -62,10 +62,22 @@ namespace KuryeTycoon
             { "Kebab King", "Dukkan_doner_kral" }, { "Starbocks", "Dukkan_starbocks" }, { "Pizza Hat", "Dukkan_pizza_hat" },
             { "KFG", "Dukkan_kfg" }, { "Sushi Samurai", "Dukkan_sushi_samurai" }, { "Fish & Ships", "Dukkan_fish_ships" },
             { "Station Snack Bar", "Dukkan_otogar_bufe" }, { "Villa Gourmet", "Dukkan_villa_gourmet" }, { "Non-Stop Gyros", "Dukkan_nonstop_gyros" },
-            { "BioSparx", "Dukkan_bioszpar" }, { "24/7 Corner Store", "Dukkan_abc_nonstop" }, { "Corner Shop", "Dukkan_sarok_kisbolt" },
+            { "BioSparx", "Dukkan_bioszpar" }, { "24/7 Corner Store", "Dukkan_abc_nonstop" }, { "Corner Shop", BakkalOnek },
             { "Day & Night Market", "Dukkan_ejjel_nappali" }, { "Mini Mart", "Dukkan_mini_abc" }, { "Harbour 24", "Dukkan_kikoto_nonstop" },
             { "Village Store", "Dukkan_falu_abc" },
         };
+        /// <summary>
+        /// Mahalle bakkalı (Blender: Tools/Blender/bakkal.py → Dukkan_bakkal_1): içi modelli, çatısı kalkan (CatiKaldir) yeni
+        /// tür bina. Bölge modelleri gibi 14 m arsaya göre çizildi (arsa levhası yok, sabit ölçek).
+        /// </summary>
+        const string BakkalOnek = "Dukkan_bakkal";
+        /// <summary>Yeni modelin prefabı henüz kurulmadıysa (Blender çalıştırılmadı) kullanılacak eski bina.</summary>
+        static readonly Dictionary<string, string> ShopModelYedek = new Dictionary<string, string>
+        {
+            { "Corner Shop", "Dukkan_sarok_kisbolt" },
+        };
+        /// <summary>14 m arsaya göre çizilmiş, arsa levhasız modeller: sabit ölçek, kök karenin ortasına (bkz. AddPrefab).</summary>
+        static bool ArsaOlculu(string ad) => ad.StartsWith("Bolge_") || ad.StartsWith(BakkalOnek);
         public static int OwnBuildingCount { get { LoadPack(); return ownAll.Length; } }
         // Kendi park parçalarımız (Resources/SehirPaketi/Parklar): park kareleri, göl, anıt, meydan çeşmesi
         static GameObject[] parkTiles, courtTiles, courtGardens, countryExtras, kirAlanlari, kirCimenler;
@@ -148,6 +160,14 @@ namespace KuryeTycoon
                         if (!ownByKey.TryGetValue(kv.Key, out var l)) ownByKey[kv.Key] = l = new List<GameObject>();
                         l.Add(p);
                     }
+            }
+            // Yeni modeli olmayan dükkân eski binasını kullanır
+            foreach (var kv in ShopModelYedek)
+            {
+                if (ownByKey.TryGetValue(kv.Key, out var mevcut) && mevcut.Count > 0) continue;
+                var yedek = new List<GameObject>();
+                foreach (var p in own) if (p.name.StartsWith(kv.Value)) yedek.Add(p);
+                if (yedek.Count > 0) ownByKey[kv.Key] = yedek;
             }
             ownAll = own.ToArray();
             bolgeHavuz = new Dictionary<string, GameObject[]>();
@@ -1670,7 +1690,7 @@ namespace KuryeTycoon
         {
             if (m == null) return true;
             string n = m.name;
-            return n.StartsWith("Cizgi") || n.StartsWith("Cam") || n.StartsWith("Vitrin") || n.StartsWith("Vitray") || n.StartsWith("Isik") ||
+            return n.StartsWith("Cizgi") || n.StartsWith("Kesit") || n.StartsWith("Cam") || n.StartsWith("Vitrin") || n.StartsWith("Vitray") || n.StartsWith("Isik") ||
                    n.StartsWith("Simsek") || n.StartsWith("Bulut") || n.StartsWith("Yazi") || n.StartsWith("Su_") || n.StartsWith("PSu") ||
                    n.StartsWith("KirSu") || n.StartsWith("OfisCam") || n.StartsWith("Kar_") || n.StartsWith("Reklam") || n.StartsWith("Pano") ||
                    // Yollar: trafik karı eritir, kuryeler yolu görebilsin (yol yalnızca hafif beyazlar)
@@ -1751,6 +1771,7 @@ namespace KuryeTycoon
         {
             if (r == null || r is ParticleSystemRenderer || r is SkinnedMeshRenderer || r.isPartOfStaticBatch) return;
             if (karKoku != null && r.transform.IsChildOf(karKoku)) return;
+            if (r.name.EndsWith(CatiKaldir.IcEki)) return;   // iç mekân (çatı kalkınca görünen): içeriye kar yağmaz
             var mf = r.GetComponent<MeshFilter>();
             if (mf == null || mf.sharedMesh == null) return;
             var mesh = mf.sharedMesh;
@@ -1910,7 +1931,7 @@ namespace KuryeTycoon
             float horiz = Mathf.Max(b.size.x, b.size.y);
             // Bölge modelleri (Bolge_*) hep 14 m arsaya göre çizildi, arsa levhası yok: sabit ölçek (bütün binalar aynı
             // metre ölçüsünde, bina boyları birbirine göre tutarlı) ve arsanın ortası (model kökü) karenin ortasına
-            bool bolge = prefab.name.StartsWith("Bolge_");
+            bool bolge = ArsaOlculu(prefab.name);
             // Blok binaları tam 10 m kare: ölçek sabit (1 m = 0,1 kare), çizgi kabuğu yüzünden küçülüp aralarında boşluk kalmasın
             float s = targetHeight > 0f ? targetHeight / Mathf.Max(0.001f, b.size.z)
                     : prefab.name.StartsWith("Blok_") ? footprint * 0.1f : bolge ? footprint / 14f : footprint / Mathf.Max(0.001f, horiz);
@@ -1930,6 +1951,8 @@ namespace KuryeTycoon
             pieces.Add(new Piece { t = holder, height = height * mul, prefab = true, tile = tile, shop = shop, varSeed = seed, heightMul = mul });
             if (targetHeight <= 0f && registerHeight) heightByTile[tile] = height * mul;
             Tint(renderers, !CityMap.I.IsUnlocked(tile), seed);
+            // İçi modelli binalar ("_Cati" çocuğu olanlar, ör. mahalle bakkalı): kamera yaklaşınca çatı kalkar
+            if (ownModel) CatiKaldir.Tak(inst);
         }
 
         // ---------- Renk: ortak malzeme kopyaları (performans) ----------

@@ -3564,10 +3564,14 @@ def blender_obje(g, ad, k):
 
 
 def fbx_kaydet(ob, yol):
+    """ob: tek obje ya da obje listesi. Liste verilirse hepsi aynı FBX'e yazılır (Unity'de prefabın çocuk objeleri olur;
+    ör. bakkal.py: gövde + iç mekân + kaldırılabilir çatı)."""
+    obler = list(ob) if isinstance(ob, (list, tuple)) else [ob]
     for o in bpy.context.view_layer.objects:
         o.select_set(False)
-    ob.select_set(True)
-    bpy.context.view_layer.objects.active = ob
+    for o in obler:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = obler[0]
     bpy.ops.export_scene.fbx(filepath=yol, use_selection=True, object_types={'MESH'},
                              apply_scale_options='FBX_SCALE_ALL', axis_forward='-Z', axis_up='Y',
                              bake_space_transform=True, mesh_smooth_type='FACE',
@@ -3617,7 +3621,9 @@ def onizleme(klasor):
         print(ad, g.ucgen())
 
 
-if IN_BLENDER:
+# Başka bir betik (ör. bakkal.py) çekirdeği import ettiğinde bütün bölge modelleri yeniden üretilmesin:
+# yalnızca doğrudan çalıştırılınca (blender -P, Unity menüsündeki sarıcı, Blender konsolunda exec) üretir.
+if IN_BLENDER and __name__ == "__main__":
     main()
 elif __name__ == "__main__" and "--onizleme" in sys.argv:
     onizleme(sys.argv[sys.argv.index("--onizleme") + 1])
