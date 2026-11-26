@@ -195,12 +195,12 @@ Shader "KuryeTycoon/Pastel"
                 half3 taban = tex.rgb * _BaseColor.rgb * i.color.rgb;
                 half alfa = tex.a * _BaseColor.a;
 
-                float3 N = normalize(i.normalWS);
+                float3 N = SafeNormalize(i.normalWS);            // sıfır normal (bozuk üçgen) NaN vermesin: bloom onu siyah daireye çevirir
                 float3 pw = i.positionWS;
 
                 // ---- yüzey üstünde iki eksen, MODEL uzayında (metre; model Y yukarı): duvarda yatay + dikey, düz yüzeyde X + Z
                 float3 po = i.positionOS;
-                float3 No = normalize(i.normalOS);
+                float3 No = SafeNormalize(i.normalOS);
                 float3 t1 = abs(No.y) > 0.9 ? float3(1.0, 0.0, 0.0) : normalize(cross(float3(0.0, 1.0, 0.0), No));
                 float3 t2 = normalize(cross(No, t1));
                 float2 yuzey = float2(dot(po, t1), dot(po, t2));
@@ -366,7 +366,7 @@ Shader "KuryeTycoon/Pastel"
             half4 fragN(VN i) : SV_Target
             {
                 PastelMevsimKirp();
-                float3 n = normalize(i.normalWS);
+                float3 n = SafeNormalize(i.normalWS);
                 #if defined(_GBUFFER_NORMALS_OCT)
                     float2 oct = PackNormalOctQuadEncode(n);
                     float2 r = saturate(oct * 0.5 + 0.5);

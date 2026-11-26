@@ -24,7 +24,7 @@ namespace KuryeTycoon
         public bool cevreModelleriniKullan = false;
         [Tooltip("Oyunda da modellerin kendi kalem çizgileri (Pastel_Cizgi) çizilsin. Kapalıyken konturu yalnız ekran geçişi " +
                  "(Mürekkep çizgisi) çizer: çift çizgi olmaz. Ekran geçişi kapalıysa bunu açın.")]
-        public bool oyundaKalemCizgisi = false;
+        public bool oyundaKalemCizgisi = true;
         [Tooltip("Şehrin zemini pastel görünsün: yol, kaldırım, bordür, şerit, çim ve meydan malzemeleri Bina Atölyesi'nin pastel " +
                  "paletine (Pastel gölgelendiricisi) geçer; organik zeminin dokusu ve çim tutamları da pastel tonlara döner. " +
                  "Yol ağı ve geometri aynı kalır. Kapalıyken eski görünüm.")]

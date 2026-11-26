@@ -131,7 +131,7 @@ Shader "KuryeTycoon/CizgiSalinim"
 
             half4 frag(V i) : SV_Target
             {
-                float3 n = normalize(i.normalWS);
+                float3 n = SafeNormalize(i.normalWS);   // sıfır normal NaN vermesin (siyah daireler)
                 #if defined(_GBUFFER_NORMALS_OCT)
                     float2 oct = PackNormalOctQuadEncode(n);
                     float2 r = saturate(oct * 0.5 + 0.5);

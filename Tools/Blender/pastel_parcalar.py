@@ -7111,8 +7111,16 @@ def _unity_parca(ad, g):
             sira.append(j)
         uc = alt.setdefault(g.mats[mi], [])
         for i in range(1, len(sira) - 1):
-            if len({sira[0], sira[i], sira[i + 1]}) == 3:
-                uc += [sira[0], sira[i], sira[i + 1]]
+            a, b, c = sira[0], sira[i], sira[i + 1]
+            if len({a, b, c}) < 3:
+                continue
+            # yuvarlamadan sonra alanı sıfıra inen (köşeleri bir doğruya düşen) üçgen atlanır: normali sıfır olur,
+            # gölgelendiricide NaN verir, bloom / alan derinliği onu büyük siyah dairelere çevirir
+            pa, pb, pc = v[a * 3:a * 3 + 3], v[b * 3:b * 3 + 3], v[c * 3:c * 3 + 3]
+            n = B.cross(B.sub(pb, pa), B.sub(pc, pa))
+            if n[0] * n[0] + n[1] * n[1] + n[2] * n[2] < 1e-10:
+                continue
+            uc += [a, b, c]
     grup, aciklama, hedef = PARCA_BILGI[ad]
     return dict(ad=ad, grup=grup, aciklama=aciklama, hedef=hedef, kucuk=bool(kucuk(ad)), sinir=IC_SINIR.get(ad, 0), v=v, alt=[dict(malzeme=m, uc=u) for m, u in alt.items()])
 

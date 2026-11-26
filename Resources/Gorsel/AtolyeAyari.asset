@@ -15,5 +15,5 @@ MonoBehaviour:
   binalariKullan: 1
   yalnizAtolye: 1
   cevreModelleriniKullan: 1
-  oyundaKalemCizgisi: 0
+  oyundaKalemCizgisi: 1
   oyundaPastelZemin: 1
