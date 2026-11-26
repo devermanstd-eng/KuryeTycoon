@@ -1004,6 +1004,15 @@ namespace KuryeTycoon
                                 p = new[] { new Vector3(pa.x, pa.y, z), new Vector3(pb.x, pb.y, z), new Vector3(pb.x, pb.y, z + hv), new Vector3(pa.x, pa.y, z + hu) },
                                 mat = alinMat, n = new Vector3(dx, dy, 0f),
                             });
+                            // Kenar saçağı (u63): alınlığın eğik üst kenarı boyunca çatı 22 cm taşar, altında beyaz saçak tahtası.
+                            // Önceden çatı yüzü alınlık duvarının düzleminde bitiyordu: ortak kenar yakında tırtıklı titreşiyor,
+                            // alınlık çıplak bir üçgen gibi duruyordu.
+                            Vector3 icY = new Vector3(-dx, -dy, 0f) * 0.06f, disY = new Vector3(dx, dy, 0f) * 0.22f;
+                            Vector3 ua = new Vector3(pa.x, pa.y, z + hu + 0.05f), ub = new Vector3(pb.x, pb.y, z + hv + 0.05f);
+                            Vector3 alt = new Vector3(0f, 0f, -0.16f);
+                            s.cokgenler.Add(new Cokgen { p = new[] { ua + icY, ub + icY, ub + disY, ua + disY }, mat = catiMat, n = new Vector3(0f, 0f, 1f) });
+                            s.cokgenler.Add(new Cokgen { p = new[] { ua + disY, ub + disY, ub + disY + alt, ua + disY + alt }, mat = Silme, n = new Vector3(dx, dy, 0f) });
+                            s.cokgenler.Add(new Cokgen { p = new[] { ua + disY + alt, ub + disY + alt, ub + alt, ua + alt }, mat = Silme, n = new Vector3(0f, 0f, -1f) });
                         }
                     }
                 }

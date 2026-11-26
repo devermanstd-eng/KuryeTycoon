@@ -6456,6 +6456,12 @@ def _cati(bolge, b0, k, tohum, koy, renk, cokgenler, kutular, dolu, blok, sade):
                     kutular.append((x0 - 0.05, x1 + 0.05, y0 - 0.05, y1 + 0.05, z + ust, z + ust + 0.09, SILME))
                 else:
                     cokgenler.append(([(pa[0], pa[1], z), (pb[0], pb[1], z), (pb[0], pb[1], z + hb), (pa[0], pa[1], z + ha)], am, (dx, dy, 0)))
+                    # kenar saçağı (u63): eğik üst kenar boyunca çatı 22 cm taşar, altında beyaz saçak tahtası (C#: AtolyeKurucu)
+                    def _p(q, h, o, dz):
+                        return (q[0] + dx * o, q[1] + dy * o, z + h + 0.05 + dz)
+                    cokgenler.append(([_p(pa, ha, -0.06, 0), _p(pb, hb, -0.06, 0), _p(pb, hb, 0.22, 0), _p(pa, ha, 0.22, 0)], cm, (0, 0, 1)))
+                    cokgenler.append(([_p(pa, ha, 0.22, 0), _p(pb, hb, 0.22, 0), _p(pb, hb, 0.22, -0.16), _p(pa, ha, 0.22, -0.16)], SILME, (dx, dy, 0)))
+                    cokgenler.append(([_p(pa, ha, 0.22, -0.16), _p(pb, hb, 0.22, -0.16), _p(pb, hb, 0, -0.16), _p(pa, ha, 0, -0.16)], SILME, (0, 0, -1)))
     # baca ve çatı penceresi (tohumlu)
     for (x, y) in bolge:
         hh = karma(x, y, k, tohum + 21) % 7
