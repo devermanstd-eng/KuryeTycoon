@@ -16,7 +16,7 @@ namespace KuryeTycoon
     /// </summary>
     public static class OrganikZemin
     {
-        const int PikselKare = 24;      // bir kare (10 m) dokuda 24 piksel
+        static int PikselKare = 24;     // bir kare (10 m) dokuda 24 piksel (büyük planda 20: doku ~3,5 milyon pikseli aşmasın)
         const int MeshAdim = 4;          // mesh: kare başına 4×4 hücre (nehir kıyısı eğimi için)
 
         enum Desen { Cim, Bahce, Kaldirim, Plaka, Beton, Kum }
@@ -36,6 +36,7 @@ namespace KuryeTycoon
         {
             if (!SehirPlani.Aktif) return null;
             int W = CityMap.Width, H = CityMap.Height;
+            PikselKare = W * H > 6500 ? 20 : 24;
             DokuUret(W, H);
 
             var sh = ornek != null ? ornek.shader : Shader.Find("Universal Render Pipeline/Lit");
@@ -66,16 +67,21 @@ namespace KuryeTycoon
                     v[j * (nx + 1) + i] = new Vector3(x, y, Arazi.Z(x, y) - 0.0006f);
                     uv[j * (nx + 1) + i] = new Vector2((float)i / nx, (float)j / ny);
                 }
-            var t = new int[nx * ny * 6];
-            int k = 0;
+            // Saf kır karelerinde (kare ve sekiz komşusu yolsuz, susuz kır: plan sürüm 2) şehir zemini yok: altta kır zemini,
+            // tarlalar ve parseller görünür. Şehir zemini kentsel karelerin bir kare ötesine kadar uzanır.
+            var tl = new List<int>(nx * ny * 6);
             for (int j = 0; j < ny; j++)
                 for (int i = 0; i < nx; i++)
                 {
+                    int kx = Mathf.Clamp(Mathf.RoundToInt(x0 + (i + 0.5f) / MeshAdim), 0, W - 1);
+                    int ky = Mathf.Clamp(Mathf.RoundToInt(y0 + (j + 0.5f) / MeshAdim), 0, H - 1);
+                    if (SehirPlani.SafKir(kx, ky)) continue;
                     int a = j * (nx + 1) + i, b = a + 1, c = a + nx + 1, d = c + 1;
                     // Yüz −Z (yukarı) baksın
-                    t[k++] = a; t[k++] = c; t[k++] = b;
-                    t[k++] = b; t[k++] = c; t[k++] = d;
+                    tl.Add(a); tl.Add(c); tl.Add(b);
+                    tl.Add(b); tl.Add(c); tl.Add(d);
                 }
+            var t = tl.ToArray();
             var mesh = new Mesh { name = "OrganikZemin", indexFormat = IndexFormat.UInt32 };
             mesh.vertices = v;
             mesh.uv = uv;
@@ -161,6 +167,7 @@ namespace KuryeTycoon
         {
             var z = CityMap.ZoneOf(x, y);
             if (!BinaBolgesi(z)) return z;
+            if (SehirPlani.Surum >= 2) return z;      // plan sürüm 2: bölgeler bütün, düzleme yok (City3D.BinaBolgesi gibi)
             var say = new int[16];
             for (int dx = -2; dx <= 2; dx++)
                 for (int dy = -2; dy <= 2; dy++)

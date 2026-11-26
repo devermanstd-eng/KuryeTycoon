@@ -702,8 +702,9 @@ namespace KuryeTycoon
                             {
                                 // Müstakil ev: yola yakın küçük bina, arkasında bahçe ağacı
                                 var front = FrontDir(map, tile) * 0.14f;
-                                // Bölgeye özel evler (kocka ház, aile evi, bungalov, modern, ikiz) çoğunlukta; Londra/Avrupa evleri karışır
-                                if (own && (CityMap.Organik || rng.NextDouble() < 0.9) && BolgeBinasi(zone, tile, face, rng)) break;
+                                // Bölgeye özel evler (kocka ház, aile evi, bungalov, modern, ikiz) çoğunlukta; Londra/Avrupa evleri karışır.
+                                // Plandaki banliyö kareleri ('B') küçük banliyö evlerinin havuzundan
+                                if (own && (CityMap.Organik || rng.NextDouble() < 0.9) && BolgeBinasi(zone, tile, face, rng, EvAnahtari(tile))) break;
                                 if (own && ownHouses.Length > 0)
                                 {
                                     // Kendi evlerimizin bahçesi ve ağaçları modelin içinde
@@ -717,7 +718,8 @@ namespace KuryeTycoon
                                 else AddBox(tile, 0.55f, 0.18f + floors * 0.12f, CityMap.RoofColor(zone, x, y), null, false, front);
                                 AddTrees(tile, rng, 1, packTreesOk, -front * 2.2f, 0.12f);
                             }
-                            else if (CityMap.Organik && own && rng.NextDouble() < (AtolyeAyari.YalnizAtolye ? 0.92 : 0.7) && BolgeBinasi(zone, tile, face, rng)) { }
+                            else if (CityMap.Organik && own && rng.NextDouble() < (AtolyeAyari.YalnizAtolye ? 0.92 : 0.7) * ArkaArsaDolulugu(tile) &&
+                                     BolgeBinasi(zone, tile, face, rng, EvAnahtari(tile))) { }
                             else if (CityMap.Organik && BolgeHavuzu("ev") == null && own && ownHousesTum != null && ownHousesTum.Length > 0 && rng.NextDouble() < 0.15)
                             {
                                 // Organik şehirde bloklar düzensiz: yola değmeyen arsada da arka sıra ev (boş gri arsa kalmasın)
@@ -873,6 +875,8 @@ namespace KuryeTycoon
         Zone BinaBolgesi(Vector2Int t, Zone z)
         {
             if (!BinaBolgesiMi(z)) return z;
+            // Plan sürüm 2'de bölgeler zaten bütün (mahalleler adalara göre); düzleme ince çarşı caddesi şeritlerini silerdi
+            if (SehirPlani.Surum >= 2) return z;
             if (binaBolge == null) binaBolge = new Dictionary<Vector2Int, Zone>();
             if (binaBolge.TryGetValue(t, out var hazir)) return hazir;
             var say = new int[16];
@@ -889,6 +893,18 @@ namespace KuryeTycoon
             binaBolge[t] = sonuc;
             return sonuc;
         }
+
+        /// <summary>Ev karesinin havuzu: plandaki banliyö karesi ('B') ve banliyö havuzu varsa "banliyo", yoksa bölgenin kendi havuzu (null).</summary>
+        static string EvAnahtari(Vector2Int t) =>
+            CityMap.Organik && SehirPlani.ZoneHarf(t.x, t.y) == 'B' && BolgeHavuzu("banliyo") != null ? "banliyo" : null;
+
+        /// <summary>
+        /// Yola değmeyen (arka) ev arsasına bina konma oranının çarpanı: planın yoğunluğuna göre (sürüm 2). Sık mahallede 1,
+        /// bahçeli evlerde ~0,65, banliyöde ~0,4: dışa doğru arka arsalar bahçe ve ağaç olur, şehir seyrelerek kıra karışır.
+        /// Eski planda (sürüm 1) hep 1.
+        /// </summary>
+        static float ArkaArsaDolulugu(Vector2Int t) =>
+            SehirPlani.Surum >= 2 ? Mathf.Lerp(0.3f, 1f, Mathf.InverseLerp(1f, 7f, SehirPlani.Yogunluk(t.x, t.y))) : 1f;
 
         static string BolgeAnahtar(Zone z)
         {
@@ -1173,7 +1189,8 @@ namespace KuryeTycoon
             KirParselleriKur(map);
             KirCimenKur(map);
             var anchor = map.HQTile;
-            if (UsePack && UseRoads && roadStraight != null)
+            // Plan kırsalı veriyorsa (sürüm 2) şehir dışı yollar eğri: OrganikSehir3D çizer, kare parça döşenmez
+            if (UsePack && UseRoads && roadStraight != null && !CityMap.KirPlanli)
             {
                 foreach (var r in CityMap.CountryRoads)
                 {
@@ -1197,7 +1214,10 @@ namespace KuryeTycoon
             {
                 BanliyoKur(map, rng, packTreesOk);
                 KoyleriKur(map, rng, packTreesOk);
-                KirOrman.Kur(root, map, organikOrnek, koyNoktalari, 2026);
+                // Orman ve çalılar köy evlerine ve (plan kırsalı veriyorsa şehrin hemen dışındaki) yol boyu evlere girmesin
+                var kirDolu = new List<Vector2>(koyNoktalari);
+                if (CityMap.KirPlanli) kirDolu.AddRange(banliyoEvleri);
+                KirOrman.Kur(root, map, organikOrnek, kirDolu, 2026);
                 Cim.Kur(root, map, banliyoEvleri);
             }
             int sira = 0;
@@ -1273,6 +1293,19 @@ namespace KuryeTycoon
 
             float Uzak(Vector2 p) => Mathf.Max(Mathf.Max(-p.x, p.x - (w - 1)), Mathf.Max(-p.y, p.y - (h - 1)));
 
+            // Plan kırsalı veriyorsa (sürüm 2): yol boyu evlerin yeri ve yönü plandan (köy evlerini KoyleriKur koyar)
+            if (CityMap.KirPlanli)
+            {
+                var pe = SehirPlani.KirEvleri;
+                if (pe != null)
+                    for (int i = 0; i < pe.Sayi; i++)
+                    {
+                        if (pe.tur != null && i < pe.tur.Length && pe.tur[i] != 0) continue;
+                        Ev(new Vector2(pe.x[i], pe.y[i]), pe.aci != null && i < pe.aci.Length ? pe.aci[i] : 90f * rng.Next(4));
+                    }
+                return;
+            }
+
             // 1) Kır yolları boyunca: iki yanda evler (şehirden uzaklaştıkça seyrek)
             foreach (var r in CityMap.CountryRoads)
             {
@@ -1334,6 +1367,37 @@ namespace KuryeTycoon
             float Uzak(Vector2 p) => Mathf.Max(Mathf.Max(-p.x, p.x - (w - 1)), Mathf.Max(-p.y, p.y - (h - 1)));
             var dolu = new HashSet<Vector2Int>();
             int koy = 0, ev = 0;
+            // Plan kırsalı veriyorsa (sürüm 2): köy evleri (tur 1) ve köy kilisesi (tur 2) plandaki yerlerinde, yola dönük
+            if (CityMap.KirPlanli)
+            {
+                var pe = SehirPlani.KirEvleri;
+                if (pe == null || pe.tur == null) return;
+                for (int i = 0; i < pe.Sayi && i < pe.tur.Length; i++)
+                {
+                    if (pe.tur[i] == 0) continue;
+                    var q = new Vector2(pe.x[i], pe.y[i]);
+                    if (CityMap.KirNehirYakin(q, 0.6f)) continue;
+                    float aci = pe.aci != null && i < pe.aci.Length ? pe.aci[i] : 180f;
+                    bool kilise = pe.tur[i] == 2 && buyuk.Length > 0;
+                    var prefab = kilise ? buyuk[rng.Next(buyuk.Length)] : evler[rng.Next(evler.Length)];
+                    AddPrefab(prefab, anchor, OwnFootprint(prefab, kilise ? 1.0f : 0.82f), aci, null, q - anchor, 0f, false, true);
+                    koyNoktalari.Add(q);
+                    banliyoEvleri.Add(q);
+                    ev++;
+                    if (kilise) koy++;
+                    // Arka bahçede bir ağaç (evin arkası: baktığı yönün tersi)
+                    if (packTreesOk && rng.NextDouble() < 0.6)
+                    {
+                        float r = aci * Mathf.Deg2Rad;
+                        var arka = q + new Vector2(Mathf.Sin(r), -Mathf.Cos(r)) * (0.7f + (float)rng.NextDouble() * 0.3f);
+                        if (!CityMap.KirNehirYakin(arka, 0.4f) && !CityMap.KirYoluYakin(arka, 0.2f))
+                            AddPrefab(packTrees[rng.Next(packTrees.Length)], anchor, 0f, (float)rng.NextDouble() * 360f, null, arka - anchor,
+                                      0.35f + (float)rng.NextDouble() * 0.25f, false);
+                    }
+                }
+                if (ev > 0) Debug.Log($"Kurye Tycoon: kırda {koy} köy, {ev} köy evi (plandan).");
+                return;
+            }
             foreach (var r in CityMap.CountryRoads)
             {
                 float L = Vector2.Distance(r.a, r.b);
@@ -1521,6 +1585,10 @@ namespace KuryeTycoon
                 var fc = Color.Lerp(f.c, KirTarlaTon[durum], KirTarlaKarisim[durum]);
                 bool yatay = ((fi * 7919) % 2) == 0;
                 float aralik = 0.38f + 0.08f * (fi % 3);
+                // Çokgen tarla (plan sürüm 2): ekin sıraları içindeki parsel dikdörtgeninin uzun kenarına paralel
+                bool cokgen = f.Cokgen;
+                float sa = 0f, ca = 1f;
+                if (cokgen) { sa = Mathf.Sin(f.aci * Mathf.Deg2Rad); ca = Mathf.Cos(f.aci * Mathf.Deg2Rad); }
                 int i0 = Mathf.Max(0, Mathf.FloorToInt((r.xMin - x0) / sx)), i1 = Mathf.Min(TW - 1, Mathf.CeilToInt((r.xMax - x0) / sx));
                 int j0 = Mathf.Max(0, Mathf.FloorToInt((r.yMin - y0) / sy)), j1 = Mathf.Min(TH - 1, Mathf.CeilToInt((r.yMax - y0) / sy));
                 for (int j = j0; j <= j1; j++)
@@ -1529,14 +1597,15 @@ namespace KuryeTycoon
                     for (int i = i0; i <= i1; i++)
                     {
                         float wx = x0 + (i + 0.5f) * sx;
-                        float kenar = Mathf.Min(Mathf.Min(wx - r.xMin, r.xMax - wx), Mathf.Min(wy - r.yMin, r.yMax - wy));
+                        float kenar = cokgen ? CityMap.TarlaIci(f, new Vector2(wx, wy))
+                                             : Mathf.Min(Mathf.Min(wx - r.xMin, r.xMax - wx), Mathf.Min(wy - r.yMin, r.yMax - wy));
                         if (kenar < 0f) continue;
                         int k = j * TW + i;
                         Color c;
                         if (kenar < 0.09f) c = (Color)px[k] * 0.8f;   // tarla kenarı: koyu çimen/çit izi
                         else
                         {
-                            float u = yatay ? wy - r.yMin : wx - r.xMin;
+                            float u = cokgen ? (wy - f.merkez.y) * ca - (wx - f.merkez.x) * sa + 100f : yatay ? wy - r.yMin : wx - r.xMin;
                             float serit = Mathf.Repeat(u / aralik, 1f) < 0.5f ? 0.9f : 1.04f;
                             float n = Mathf.PerlinNoise(wx * 0.35f + fi * 3.3f, wy * 0.35f + fi * 1.7f);
                             c = fc * (serit * (0.94f + 0.1f * n));
@@ -1585,13 +1654,26 @@ namespace KuryeTycoon
             {
                 fi++;
                 var r = f.r;
-                // Şehrin dikdörtgenine uzaklık
-                float dx = Mathf.Max(0f, Mathf.Max(-r.xMax, r.xMin - (CityMap.Width - 1)));
-                float dy = Mathf.Max(0f, Mathf.Max(-r.yMax, r.yMin - (CityMap.Height - 1)));
-                if (Mathf.Sqrt(dx * dx + dy * dy) > menzil) continue;
+                // Parselin oturacağı dikdörtgen: çokgen tarlada (plan sürüm 2) içine sığan eğik dikdörtgen, yoksa tarlanın kendisi
+                Vector2 pm = f.ParselMerkez, pb = f.ParselBoyut;
+                if (pb.x < 0.3f || pb.y < 0.3f) continue;
+                float uzak;
+                if (CityMap.KirPlanli) uzak = CityMap.KenteUzaklik(pm);          // şehir lekesine uzaklık
+                else
+                {
+                    // Şehrin dikdörtgenine uzaklık
+                    float dx = Mathf.Max(0f, Mathf.Max(-r.xMax, r.xMin - (CityMap.Width - 1)));
+                    float dy = Mathf.Max(0f, Mathf.Max(-r.yMax, r.yMin - (CityMap.Height - 1)));
+                    uzak = Mathf.Sqrt(dx * dx + dy * dy);
+                }
+                if (uzak > menzil) continue;
                 var prefab = KirSec(fi);
                 if (prefab == null) continue;
-                var inst = Instantiate(prefab, parent, false);
+                // Tutucu parsel merkezinde: model önce eksene paralel ölçeklenip oturtulur, sonra tutucu tarlanın açısına döndürülür
+                var tutucu = new GameObject("Parsel").transform;
+                tutucu.SetParent(parent, false);
+                tutucu.position = new Vector3(pm.x, pm.y, 0f);
+                var inst = Instantiate(prefab, tutucu, false);
                 inst.name = prefab.name;
                 bool cevir = ((fi * 2654435761u) >> 7) % 2 == 1;
                 inst.transform.localRotation = Quaternion.Euler(0f, 0f, cevir ? 180f : 0f) * Quaternion.Euler(-90f, 0f, 0f);
@@ -1599,21 +1681,22 @@ namespace KuryeTycoon
                 inst.transform.localScale = Vector3.one;
                 foreach (var col in inst.GetComponentsInChildren<Collider>()) Destroy(col);
                 var rs = inst.GetComponentsInChildren<Renderer>();
-                if (rs.Length == 0) { Destroy(inst); continue; }
+                if (rs.Length == 0) { Destroy(tutucu.gameObject); continue; }
                 var b = CombinedBounds(rs);
-                float ox = r.width / Mathf.Max(0.01f, b.size.x), oy = r.height / Mathf.Max(0.01f, b.size.y);
+                float ox = pb.x / Mathf.Max(0.01f, b.size.x), oy = pb.y / Mathf.Max(0.01f, b.size.y);
                 // FBX −90° X ile döndürülür: yerel X dünya X'i, yerel Z dünya Y'si, yerel Y yükseklik
                 inst.transform.localScale = new Vector3(ox, (ox + oy) * 0.5f, oy);
                 b = CombinedBounds(rs);
                 // Eksen karışırsa (FBX dönüşü) ölçeği dünya boyutuna göre düzelt
-                if (Mathf.Abs(b.size.x - r.width) > 0.05f || Mathf.Abs(b.size.y - r.height) > 0.05f)
+                if (Mathf.Abs(b.size.x - pb.x) > 0.05f || Mathf.Abs(b.size.y - pb.y) > 0.05f)
                 {
-                    var s = inst.transform.localScale;
-                    inst.transform.localScale = new Vector3(s.x * r.width / Mathf.Max(0.01f, b.size.x), s.y, s.z * r.height / Mathf.Max(0.01f, b.size.y));
+                    var sc = inst.transform.localScale;
+                    inst.transform.localScale = new Vector3(sc.x * pb.x / Mathf.Max(0.01f, b.size.x), sc.y, sc.z * pb.y / Mathf.Max(0.01f, b.size.y));
                     b = CombinedBounds(rs);
                 }
                 // Taban kır zemininin hemen üstünde (−Z yukarı: zeminin z'si +0,012)
-                inst.transform.position += new Vector3(r.center.x - b.center.x, r.center.y - b.center.y, 0.006f - b.max.z);
+                inst.transform.position += new Vector3(pm.x - b.center.x, pm.y - b.center.y, 0.006f - b.max.z);
+                if (f.Cokgen) tutucu.rotation = Quaternion.Euler(0f, 0f, f.aci);
                 foreach (var rr in rs)
                 {
                     rr.shadowCastingMode = GrafikKalitesi.ZeminGolgesi ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -1623,7 +1706,7 @@ namespace KuryeTycoon
                     for (int i = 0; i < mats.Length; i++) mats[i] = KirMalzemesi(mats[i]);
                     rr.sharedMaterials = mats;
                 }
-                kirParseller.Add(inst);
+                kirParseller.Add(tutucu.gameObject);
             }
             kirSonGuncelleme = -999f;
             KirGuncelle();
@@ -1685,7 +1768,23 @@ namespace KuryeTycoon
         static bool KirKaresi(int x, int y)
         {
             if (x < 0 || y < 0 || x >= CityMap.Width || y >= CityMap.Height) return true;
+            // Organik şehirde şehir zemini kentsel karelerin bir kare ötesine kadar uzanır: çayır parçaları yalnız saf kır karelerine
+            if (CityMap.Organik) return SehirPlani.SafKir(x, y);
             return CityMap.ZoneOf(x, y) == Zone.Country && !CityMap.RoadAt(x, y);
+        }
+
+        /// <summary>
+        /// Tarlanın parsel türü (model adının ön eki: "Kir_alan_ekin", "Kir_alan_surulmus" …): KirSec ile aynı tohum ve ağırlıklar.
+        /// CityMap tarlanın zemin rengini buna göre seçer (çokgen tarlada parselin çevresinde kalan pay parselle uyuşsun).
+        /// </summary>
+        public static string KirTuru(int fi)
+        {
+            float toplam = 0f;
+            foreach (var t in KirTurAgirlik) toplam += t.agirlik;
+            var rnd = new System.Random(fi * 7331 + 17);
+            float x = (float)rnd.NextDouble() * toplam;
+            foreach (var t in KirTurAgirlik) { if (x < t.agirlik) return t.on; x -= t.agirlik; }
+            return KirTurAgirlik[0].on;
         }
 
         /// <summary>Tarlaya parsel türü: tohumlu, ağırlıklı (her oyunda aynı tarlada aynı tür).</summary>
@@ -2601,7 +2700,9 @@ namespace KuryeTycoon
             // kutunun boyu tasarımın kat sayısından (3 m kat + çatı); arsa 14 m, karede 0,97
             int kat = AtolyeUretici.KatSayisi(prefab);
             float h = Mathf.Max(0.06f, (kat * 3f + 1.2f) * (0.97f / 14f)) * OwnHeightBoost;
-            AddBoxR(tile, new Vector2(footprint * 0.62f, footprint * 0.62f), h, new Color(0.88f, 0.86f, 0.82f), null, false, offset, false);
+            // Kutu rengi bölgenin çatı / duvar tonuna yakın: şehir kurulurken uzaktan beyaz kutu ormanı görünmesin
+            var yerRenk = Color.Lerp(CityMap.RoofColor(CityMap.ZoneOf(tile), tile.x, tile.y), new Color(0.80f, 0.74f, 0.66f), 0.5f);
+            AddBoxR(tile, new Vector2(footprint * 0.62f, footprint * 0.62f), h, yerRenk, null, false, offset, false);
             var p = pieces[pieces.Count - 1];
             if (!bekleyenler.TryGetValue(prefab, out var l)) bekleyenler[prefab] = l = new List<Bekleyen>();
             if (bekleyenler.Count == 1 && l.Count == 0) { arkaPlanKurulan = 0; arkaPlanBaslangic = Time.realtimeSinceStartup; }

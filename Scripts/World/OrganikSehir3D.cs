@@ -5,15 +5,29 @@ namespace KuryeTycoon
 {
     /// <summary>
     /// Organik şehrin 3D yol ağı ve nehri: plan çizgilerinden (SehirPlani) tek parça mesh.
-    ///  • Yollar: kaldırım şeridi (geniş, açık taş) + asfalt (dar, koyu) + caddelerde kesik orta çizgi. Köşelerde yuvarlak birleşim.
+    ///  • Yollar: kaldırım şeridi (geniş, açık taş) + asfalt (dar, koyu). Köşelerde yuvarlak birleşim. Genişlik ve çizgiler yolun
+    ///    sınıfına göre (SehirPlani.Cizgi.Sinif): ana yol 8 m, dört şerit, çift sarı orta çizgi; cadde 6,2 m, kesik orta çizgi ve
+    ///    kenar çizgisi; sokak 4,6 m, çizgisiz; ara sokak (mews, geçit) 3 m, arnavut kaldırımı, dar kaldırım, çizgisiz.
+    ///  • Köprülerde iki yanda korkuluk duvarı. Plan kırsalı veriyorsa şehir dışı yollar da buradan (asfalt ana yol, çakıl köy yolu).
     ///  • Nehir: su konturları (kulak kesme üçgenleme), yumuşak kıyı.
     /// Dünyada yukarı −Z; zemin z = 0. Izgara şehirde kullanılmaz.
     /// </summary>
     public static class OrganikSehir3D
     {
-        // Genişlikler (kare = 10 m). Cadde: iki yönde ikişer şerit (8 m), sokak: çift yönlü iki şerit (5,6 m)
-        public const float CaddeAsfalt = 0.80f, SokakAsfalt = 0.56f;
-        public const float Kaldirim = 0.10f;           // asfaltın iki yanında
+        // Asfalt genişlikleri (kare = 10 m), sınıfa göre: ana yol iki yönde ikişer şerit (8 m), cadde iki geniş şerit (6,2 m),
+        // sokak iki dar şerit (4,6 m), ara sokak tek şerit (3 m)
+        public const float AnaAsfalt = 0.80f, CaddeAsfalt = 0.62f, SokakAsfalt = 0.46f, AraAsfalt = 0.30f;
+        public const float Kaldirim = 0.10f, AraKaldirim = 0.05f;           // asfaltın iki yanında
+        // Şehir dışı yollar: ana yol, ikincil yol, köy yolu (çakıl)
+        public const float KirAnaAsfalt = 0.62f, KirCaddeAsfalt = 0.48f, KirYolu = 0.34f;
+
+        /// <summary>Sınıfın asfalt genişliği (kare).</summary>
+        public static float Asfalt(int sinif) =>
+            sinif == SehirPlani.Ana ? AnaAsfalt : sinif == SehirPlani.Cadde ? CaddeAsfalt : sinif == SehirPlani.AraSokak ? AraAsfalt : SokakAsfalt;
+        /// <summary>Sınıfın kaldırım genişliği (kare; asfaltın her iki yanında).</summary>
+        public static float KaldirimGenisligi(int sinif) => sinif == SehirPlani.AraSokak ? AraKaldirim : Kaldirim;
+        /// <summary>Şehir dışı yolun genişliği (kare).</summary>
+        public static float KirAsfalt(int sinif) => sinif == SehirPlani.Ana ? KirAnaAsfalt : sinif == SehirPlani.Cadde ? KirCaddeAsfalt : KirYolu;
         // Su yüzeyi zeminin altında: nehir yatağı OrganikZemin'de çukurlaşır, kıyılar eğimli iner (köprüler suyun üstünde kalır)
         const float ZKaldirim = -0.003f, ZAsfalt = -0.006f, ZCizgi = -0.0075f, ZSu = -0.0015f, ZPark = -0.001f;
 
@@ -24,6 +38,9 @@ namespace KuryeTycoon
         static readonly Color BordurRenk = new Color(0.62f, 0.60f, 0.57f);
         static readonly Color SuRenk = new Color(0.38f, 0.63f, 0.84f);
         static readonly Color ParkRenk = new Color(0.47f, 0.66f, 0.36f);
+        static readonly Color ArnavutRenk = new Color(0.43f, 0.41f, 0.39f);     // ara sokak: koyu arnavut kaldırımı
+        static readonly Color CakilRenk = new Color(0.66f, 0.60f, 0.48f);       // köy yolu: çakıl / sıkışmış toprak
+        static readonly Color YolKenariRenk = new Color(0.55f, 0.56f, 0.42f);   // kır yolunun banketi: kuru ot
 
         /// <summary>Yol ağını ve nehri kurar. ornek: şehrin bir malzemesi (aynı gölgelendirici kullanılsın: anime toon ya da URP Lit).</summary>
         public static List<GameObject> Kur(Transform parent, Material ornek)
@@ -37,22 +54,29 @@ namespace KuryeTycoon
             var asf = new MeshKurucu();
             var cizgi = new MeshKurucu();
             var sari = new MeshKurucu();
+            var ara = new MeshKurucu();
+            var korkuluk = new MeshKurucu();
             foreach (var c in SehirPlani.Yollar)
             {
-                if (c.Sayi < 2) continue;
-                float g = c.genis ? CaddeAsfalt : SokakAsfalt;
-                Serit(kal, c, g * 0.5f + Kaldirim, ZKaldirim);
+                if (c == null || c.Sayi < 2) continue;
+                int sinif = c.Sinif;
+                float g = Asfalt(sinif), kd = KaldirimGenisligi(sinif);
+                Serit(kal, c, g * 0.5f + kd, ZKaldirim);
                 Serit(bordur, c, g * 0.5f + 0.012f, ZKaldirim - 0.0008f);
-                Serit(asf, c, g * 0.5f, ZAsfalt);
+                // Ara sokağın taş döşemesi asfaltın biraz altında: kavşakta sokağın asfaltı üstte kalır (aynı düzlemde titreşmez)
+                if (sinif == SehirPlani.AraSokak) Serit(ara, c, g * 0.5f, ZAsfalt + 0.0005f);
+                else Serit(asf, c, g * 0.5f, ZAsfalt);
+                KopruKorkulugu(korkuluk, c, g * 0.5f + kd);
             }
             // Çizgiler asfaltın üstünde, ayrı geçişte: kavşakta başka yolun asfaltı çizgiyi örtmesin
             foreach (var c in SehirPlani.Yollar)
             {
-                if (c.Sayi < 2) continue;
-                float g = c.genis ? CaddeAsfalt : SokakAsfalt;
-                if (c.genis)
+                if (c == null || c.Sayi < 2) continue;
+                int sinif = c.Sinif;
+                float g = Asfalt(sinif);
+                if (sinif == SehirPlani.Ana)
                 {
-                    // Cadde: ortada çift sarı çizgi, iki yanda şerit kesikleri, kenarda beyaz kenar çizgisi, uçlarda yaya geçidi
+                    // Ana yol: ortada çift sarı çizgi, iki yanda şerit kesikleri, kenarda beyaz kenar çizgisi, uçlarda yaya geçidi
                     YanCizgi(sari, c, 0.016f, 0.006f, ZCizgi, false);
                     YanCizgi(sari, c, -0.016f, 0.006f, ZCizgi, false);
                     YanCizgi(cizgi, c, g * 0.25f, 0.007f, ZCizgi, true);
@@ -61,18 +85,47 @@ namespace KuryeTycoon
                     YanCizgi(cizgi, c, -(g * 0.5f - 0.03f), 0.006f, ZCizgi, false);
                     YayaGecidi(cizgi, c, g, ZCizgi - 0.0002f);
                 }
-                else
+                else if (sinif == SehirPlani.Cadde)
                 {
-                    // Sokak: ortada kesik beyaz çizgi (çift yönlü iki şerit)
+                    // Cadde: ortada kesik beyaz çizgi (çift yönlü iki şerit), ince kenar çizgisi, uçlarda yaya geçidi
                     YanCizgi(cizgi, c, 0f, 0.0075f, ZCizgi, true);
+                    YanCizgi(cizgi, c, g * 0.5f - 0.025f, 0.004f, ZCizgi, false);
+                    YanCizgi(cizgi, c, -(g * 0.5f - 0.025f), 0.004f, ZCizgi, false);
                     if (Uzunluk(c) > 2.2f) YayaGecidi(cizgi, c, g, ZCizgi - 0.0002f);
                 }
+                else if (sinif == SehirPlani.Sokak)
+                {
+                    // Sokak: çizgisiz (dar mahalle sokağı); yalnız uzun sokakların ucunda yaya geçidi
+                    if (Uzunluk(c) > 4f) YayaGecidi(cizgi, c, g, ZCizgi - 0.0002f);
+                }
+                // Ara sokak: çizgi yok
+            }
+            // Şehir dışı yollar (plan kırsalı veriyorsa): banket + asfalt (ana / ikincil) ya da çakıl (köy yolu)
+            var banket = new MeshKurucu();
+            var cakil = new MeshKurucu();
+            foreach (var c in SehirPlani.KirYollari)
+            {
+                if (c == null || c.Sayi < 2) continue;
+                int sinif = c.Sinif;
+                float g = KirAsfalt(sinif);
+                Serit(banket, c, g * 0.5f + 0.06f, ZKaldirim);
+                if (sinif == SehirPlani.Ana || sinif == SehirPlani.Cadde) Serit(asf, c, g * 0.5f, ZAsfalt);
+                else Serit(cakil, c, g * 0.5f, ZAsfalt + 0.0005f);
+            }
+            foreach (var c in SehirPlani.KirYollari)
+            {
+                if (c == null || c.Sayi < 2) continue;
+                if (c.Sinif == SehirPlani.Ana) YanCizgi(cizgi, c, 0f, 0.007f, ZCizgi, true);      // ana yol: kesik orta çizgi
             }
             sonuc.Add(Nesne("Kaldırımlar (organik)", parent, kal, Malzeme("OrganikKaldirim", KaldirimRenk)));
             sonuc.Add(Nesne("Bordürler (organik)", parent, bordur, Malzeme("OrganikBordur", BordurRenk)));
             sonuc.Add(Nesne("Yollar (organik)", parent, asf, Malzeme("OrganikAsfalt", AsfaltRenk)));
             if (cizgi.v.Count > 0) sonuc.Add(Nesne("Yol çizgileri (organik)", parent, cizgi, Malzeme("OrganikCizgi", CizgiRenk)));
             if (sari.v.Count > 0) sonuc.Add(Nesne("Yol çizgileri sarı (organik)", parent, sari, Malzeme("OrganikSariCizgi", SariRenk)));
+            if (ara.v.Count > 0) sonuc.Add(Nesne("Ara sokaklar (organik)", parent, ara, Malzeme("OrganikArnavut", ArnavutRenk)));
+            if (korkuluk.v.Count > 0) sonuc.Add(Nesne("Köprü korkulukları (organik)", parent, korkuluk, Malzeme("OrganikKopru", KopruRenk)));
+            if (banket.v.Count > 0) sonuc.Add(Nesne("Kır yolu banketi (organik)", parent, banket, Malzeme("OrganikYolKenari", YolKenariRenk)));
+            if (cakil.v.Count > 0) sonuc.Add(Nesne("Köy yolları (organik)", parent, cakil, Malzeme("OrganikCakil", CakilRenk)));
 
             // Parklar: plan konturlarından yumuşak kenarlı çim (kare park zemini kenarda basamak yapmasın)
             var park = new MeshKurucu();
@@ -130,6 +183,8 @@ namespace KuryeTycoon
             IslakAyarla("OrganikBordur", BordurRenk, 0.55f, 0.55f);
             IslakAyarla("OrganikCizgi", CizgiRenk, 0.3f, 0.7f);
             IslakAyarla("OrganikSariCizgi", SariRenk, 0.3f, 0.7f);
+            IslakAyarla("OrganikArnavut", ArnavutRenk, 0.8f, 0.8f);          // ıslak taş: asfalta yakın koyulaşır ve parlar
+            IslakAyarla("OrganikCakil", CakilRenk, 0.7f, 0.25f);             // ıslak çakıl koyulaşır, az parlar
         }
 
         static void IslakAyarla(string ad, Color asil, float koyuPay, float parlakPay)
@@ -267,6 +322,43 @@ namespace KuryeTycoon
             }
 
             public void Dortgen(Vector3 a, Vector3 b, Vector3 c, Vector3 d) { Ucgen(a, b, c); Ucgen(a, c, d); }
+
+            /// <summary>Dik duran dörtgen (duvar): iki sarımla da eklenir, arka yüzü ayıklayan gölgelendiricide de iki yandan görünür.</summary>
+            public void IkiYuz(Vector3 a, Vector3 b, Vector3 c, Vector3 d)
+            {
+                int i = v.Count;
+                v.Add(a); v.Add(b); v.Add(c); v.Add(d);
+                t.Add(i); t.Add(i + 1); t.Add(i + 2); t.Add(i); t.Add(i + 2); t.Add(i + 3);
+                t.Add(i); t.Add(i + 2); t.Add(i + 1); t.Add(i); t.Add(i + 3); t.Add(i + 2);
+            }
+        }
+
+        /// <summary>
+        /// Çizginin köprü karelerinden geçen parçalarına iki yanda korkuluk duvarı (yarım metre yüksek, iki yüzlü) ve üst şeridi.
+        /// ofs: yol ekseninden duvara uzaklık (asfaltın yarısı + kaldırım).
+        /// </summary>
+        static void KopruKorkulugu(MeshKurucu m, SehirPlani.Cizgi c, float ofs)
+        {
+            const float Yukseklik = 0.05f, Kalinlik = 0.012f;
+            for (int k = 0; k + 1 < c.Sayi; k++)
+            {
+                Vector2 a = c[k], b = c[k + 1];
+                var orta = (a + b) * 0.5f;
+                if (!CityMap.BridgeAt(Mathf.RoundToInt(orta.x), Mathf.RoundToInt(orta.y))) continue;
+                var d = b - a;
+                if (d.sqrMagnitude < 1e-6f) continue;
+                var n = new Vector2(-d.y, d.x).normalized;
+                for (int yan = -1; yan <= 1; yan += 2)
+                {
+                    Vector2 a0 = a + n * (ofs * yan), b0 = b + n * (ofs * yan);
+                    // duvar: tabandan (kaldırım) yukarı; iki sarımla da eklenir (hangi yandan bakılırsa bakılsın görünsün)
+                    Vector3 alt0 = V(a0, ZKaldirim), alt1 = V(b0, ZKaldirim), ust0 = V(a0, ZKaldirim - Yukseklik), ust1 = V(b0, ZKaldirim - Yukseklik);
+                    m.IkiYuz(alt0, alt1, ust1, ust0);
+                    // üst şerit (yukarı bakar)
+                    var kn = n * Kalinlik;
+                    m.Dortgen(V(a0 + kn, ZKaldirim - Yukseklik), V(b0 + kn, ZKaldirim - Yukseklik), V(b0 - kn, ZKaldirim - Yukseklik), V(a0 - kn, ZKaldirim - Yukseklik));
+                }
+            }
         }
 
         /// <summary>Çizgi boyunca yarı genişliği r olan şerit; köşe ve uçlarda yuvarlak disk (boşluk ve sivri uç kalmasın).</summary>

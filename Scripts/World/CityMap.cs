@@ -137,7 +137,22 @@ namespace KuryeTycoon
 
         /// <summary>Kare şehrin içinde mi (kır değil)? Yollar da şehre dahil.</summary>
         public static bool InCity(int x, int y) =>
-            Organik ? x >= 0 && y >= 0 && x < Width && y < Height : RoadAt(x, y) || ZoneOf(x, y) != Zone.Country;
+            Organik ? x >= 0 && y >= 0 && x < Width && y < Height && (!SehirPlani.KirPlanli || !SehirPlani.KirKaresi(x, y) || SehirPlani.Yol(x, y))
+                    : RoadAt(x, y) || ZoneOf(x, y) != Zone.Country;
+
+        /// <summary>Kırsal plandan mı geliyor (plan sürüm 2: tarla çokgenleri, kır yolları, köyler)? Değilse kır burada üretilir.</summary>
+        public static bool KirPlanli => Organik && SehirPlani.KirPlanli;
+
+        /// <summary>Noktanın şehre (en yakın kentsel kareye) uzaklığı (kare). Plan kırsalı vermiyorsa şehir dikdörtgenine uzaklık.</summary>
+        public static float KenteUzaklik(Vector2 p) => KirPlanli ? SehirPlani.KentUzakligi(p.x, p.y) : DisariUzaklik(p);
+
+        /// <summary>Yeni Play'de (alan yeniden yüklenmese de) plana bağlı önbellekler sıfırlanır.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void OyunBasiSifirla()
+        {
+            organikLm = null; organikKir = null; planKir = null;
+            kirNehir = null; kirNehirUzak = null; kirYolUzak = null;
+        }
 
         /// <summary>Haritada adı yazan yerler (organik şehirde plandan: meydan, park, nehir, semtler).</summary>
         public static Landmark[] Landmarks => Organik ? OrganikLandmarks() : IzgaraLandmarks;
@@ -166,7 +181,7 @@ namespace KuryeTycoon
             for (int x = 0; x < Width; x++)
                 for (int y = 0; y < Height; y++)
                 {
-                    if (RoadAt(x, y) || WaterAt(x, y)) continue;
+                    if (RoadAt(x, y) || WaterAt(x, y) || ZoneOf(x, y) == Zone.Country) continue;
                     int b = RegionOf(x, y);
                     top[b] += new Vector2(x, y);
                     say[b]++;
@@ -268,12 +283,14 @@ namespace KuryeTycoon
                     case 'O': return Zone.OldTown;
                     case 'H': return Zone.HighRise;
                     case 'E': return Zone.Houses;
+                    case 'B': return Zone.Houses;       // banliyö evi: oyun mantığında bahçeli ev; City3D küçük ev havuzundan seçer
                     case 'C': return Zone.Campus;
                     case 'W': return Zone.Warehouse;
                     case 'P': return Zone.Park;
                     case 'Z': return Zone.Plaza;
                     case 'A': return Zone.Mall;
                     case 'R': return Zone.River;
+                    case '.': return Zone.Country;      // plan dikdörtgeninin içindeki kır (şehir lekesinin dışı)
                     default: return Zone.Mixed;
                 }
             }
@@ -432,7 +449,69 @@ namespace KuryeTycoon
         // ---------- Şehir dışı (kır) ----------
 
         /// <summary>Şehrin dışına devam eden kır yolları: (başlangıç, bitiş) dünya koordinatı.</summary>
-        public static (Vector2 a, Vector2 b)[] CountryRoads => Organik ? OrganikKirYollari() : IzgaraKirYollari;
+        public static (Vector2 a, Vector2 b)[] CountryRoads => Organik ? (SehirPlani.KirPlanli ? PlanKirYollari() : OrganikKirYollari()) : IzgaraKirYollari;
+
+        static (Vector2 a, Vector2 b)[] planKir;
+        /// <summary>Plandaki şehir dışı yollar, kısa doğru parçaları olarak (eğri ve çapraz: eksene paralel değiller).</summary>
+        static (Vector2 a, Vector2 b)[] PlanKirYollari()
+        {
+            if (planKir != null) return planKir;
+            var l = new List<(Vector2, Vector2)>();
+            foreach (var c in SehirPlani.KirYollari)
+            {
+                if (c == null) continue;
+                for (int k = 0; k + 1 < c.Sayi; k++)
+                    if ((c[k + 1] - c[k]).sqrMagnitude > 1e-8f) l.Add((c[k], c[k + 1]));
+            }
+            planKir = l.ToArray();
+            return planKir;
+        }
+
+        // Plan kır yollarına uzaklık ızgarası (yarım kare çözünürlük): KirYoluYakin tepeler, orman, tarla, çim için çok sık sorulur
+        static float[,] kirYolUzak;
+        static int kyW, kyH;
+
+        static void KirYoluIzgarasi()
+        {
+            kyW = Mathf.CeilToInt((Width + 2f * KnPay) / KnAdim) + 1;
+            kyH = Mathf.CeilToInt((Height + 2f * KnPay) / KnAdim) + 1;
+            var g = new float[kyW, kyH];
+            for (int i = 0; i < kyW; i++) for (int j = 0; j < kyH; j++) g[i, j] = 99f;
+            const float Menzil = 4.5f;
+            foreach (var r in PlanKirYollari())
+            {
+                Vector2 a = r.a, b = r.b;
+                int i0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.x, b.x) - Menzil + KnPay) / KnAdim));
+                int i1 = Mathf.Min(kyW - 1, Mathf.CeilToInt((Mathf.Max(a.x, b.x) + Menzil + KnPay) / KnAdim));
+                int j0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.y, b.y) - Menzil + KnPay) / KnAdim));
+                int j1 = Mathf.Min(kyH - 1, Mathf.CeilToInt((Mathf.Max(a.y, b.y) + Menzil + KnPay) / KnAdim));
+                var ab = b - a;
+                float L2 = Mathf.Max(ab.sqrMagnitude, 1e-8f);
+                for (int i = i0; i <= i1; i++)
+                    for (int j = j0; j <= j1; j++)
+                    {
+                        var q = new Vector2(i * KnAdim - KnPay, j * KnAdim - KnPay);
+                        float t = Mathf.Clamp01(Vector2.Dot(q - a, ab) / L2);
+                        float d = Vector2.Distance(q, a + ab * t);
+                        if (d < g[i, j]) g[i, j] = d;
+                    }
+            }
+            kirYolUzak = g;
+        }
+
+        /// <summary>Noktanın plandaki en yakın şehir dışı yolun eksenine uzaklığı (kare; uzaktaysa 99). Yalnız plan kırsalı veriyorsa.</summary>
+        public static float KirYoluUzak(Vector2 p)
+        {
+            if (!KirPlanli) return 99f;
+            if (kirYolUzak == null) KirYoluIzgarasi();
+            float fx = (p.x + KnPay) / KnAdim, fy = (p.y + KnPay) / KnAdim;
+            if (fx < 0f || fy < 0f || fx > kyW - 1.001f || fy > kyH - 1.001f) return 99f;
+            int ix = (int)fx, iy = (int)fy;
+            float tx = fx - ix, ty = fy - iy;
+            float a = Mathf.Lerp(kirYolUzak[ix, iy], kirYolUzak[ix + 1, iy], tx);
+            float b = Mathf.Lerp(kirYolUzak[ix, iy + 1], kirYolUzak[ix + 1, iy + 1], tx);
+            return Mathf.Lerp(a, b, ty);
+        }
 
         static (Vector2 a, Vector2 b)[] organikKir;
         /// <summary>Organik şehirde kır yolları: harita kenarına değen caddeler dümdüz dışarı uzar.</summary>
@@ -511,6 +590,24 @@ namespace KuryeTycoon
         {
             kirNehir = new List<KirNehirKolu>();
             if (!Organik) return;
+            // Plan nehrin şehir dışındaki kollarını veriyorsa (sürüm 2) onlar kullanılır: tarlalar ve yollar o kollara göre üretildi
+            var planKollari = SehirPlani.KirNehir;
+            if (planKollari.Count > 0)
+            {
+                foreach (var c in planKollari)
+                {
+                    if (c == null || c.Sayi < 2) continue;
+                    var kol = new KirNehirKolu();
+                    for (int i = 0; i < c.Sayi; i++)
+                    {
+                        kol.P.Add(c[i]);
+                        kol.G.Add(c.g != null && i < c.g.Length ? Mathf.Max(1f, c.g[i]) : 3.5f);
+                    }
+                    kirNehir.Add(kol);
+                }
+                KirNehirIzgarasi();
+                return;
+            }
             int w = Width, h = Height;
             var cikislar = new List<(Vector2 merkez, Vector2 yon, float gen)>();
             void Tara(int n, System.Func<int, Vector2Int> kare, Vector2 yon)
@@ -638,7 +735,60 @@ namespace KuryeTycoon
             (new Vector2(32f, IzgaraH - 0.5f), new Vector2(32f, IzgaraH + 70f)),
         };
 
-        public struct Field { public Rect r; public Color c; }
+        /// <summary>
+        /// Tarla. Izgara şehirde ve eski organik planda eksene paralel dikdörtgen (r). Plan kırsalı veriyorsa (sürüm 2) dışbükey
+        /// çokgen (kose, saat yönünün tersi; r onu saran dikdörtgen) ve içine sığan eğik dikdörtgen (merkez, boyut, aci °):
+        /// 3D parsel modeli ve ekin sıraları o dikdörtgene göre.
+        /// </summary>
+        public struct Field
+        {
+            public Rect r; public Color c;
+            public Vector2[] kose; public Vector2 merkez, boyut; public float aci;
+            public bool Cokgen => kose != null && kose.Length >= 3;
+            /// <summary>Parsel dikdörtgeninin merkezi ve boyutu (çokgen değilse r).</summary>
+            public Vector2 ParselMerkez => Cokgen ? merkez : r.center;
+            public Vector2 ParselBoyut => Cokgen ? boyut : r.size;
+            public float ParselAci => Cokgen ? aci : 0f;
+        }
+
+        /// <summary>Noktanın tarlanın kenarlarına içeriden en küçük uzaklığı (kare; artı = içeride, eksi = dışarıda).</summary>
+        public static float TarlaIci(Field f, Vector2 p)
+        {
+            if (!f.Cokgen)
+                return Mathf.Min(Mathf.Min(p.x - f.r.xMin, f.r.xMax - p.x), Mathf.Min(p.y - f.r.yMin, f.r.yMax - p.y));
+            float en = float.MaxValue;
+            int n = f.kose.Length;
+            for (int i = 0; i < n; i++)
+            {
+                Vector2 a = f.kose[i], b = f.kose[(i + 1) % n];
+                var e = b - a;
+                float L = e.magnitude;
+                if (L < 1e-5f) continue;
+                float d = (e.x * (p.y - a.y) - e.y * (p.x - a.x)) / L;      // kenarın solu (içerisi) artı
+                if (d < en) en = d;
+            }
+            return en;
+        }
+
+        /// <summary>
+        /// Çokgen tarlanın zemin rengi: üstüne oturacak 3D parselin türüne göre (City3D.KirTuru; sıra numarası 1'den başlar).
+        /// Ekin: buğday / genç ekin / kolza; sürülmüş: toprak; saman: anız; çayır, bağ, bahçe, gölet, koru, sera: çimen.
+        /// </summary>
+        static Color TarlaRengi(int fi, int tur)
+        {
+            string t = City3D.KirTuru(fi);
+            if (t.EndsWith("ekin")) { int k = Mathf.Abs(tur) % 3; return TarlaRenkleri[k == 0 ? 0 : k == 1 ? 1 : 3]; }
+            if (t.EndsWith("surulmus")) return TarlaRenkleri[2];
+            if (t.EndsWith("saman")) return TarlaRenkleri[5];
+            return TarlaRenkleri[4];
+        }
+
+        static readonly Color[] TarlaRenkleri =
+        {
+            // Tarla renkleri (yumuşak): olgun buğday, genç ekin, sürülmüş toprak, kolza, çayır, anız
+            new Color(0.80f, 0.71f, 0.42f), new Color(0.55f, 0.66f, 0.33f), new Color(0.55f, 0.43f, 0.30f),
+            new Color(0.84f, 0.78f, 0.36f), new Color(0.48f, 0.60f, 0.32f), new Color(0.73f, 0.65f, 0.45f)
+        };
         public readonly List<Field> Fields = new List<Field>();
         public readonly List<Vector3> CountryTrees = new List<Vector3>();   // x, y, boy
         public readonly List<Vector2> Farms = new List<Vector2>();
@@ -650,7 +800,7 @@ namespace KuryeTycoon
 
         /// <summary>Nokta organik şehrin banliyö kuşağında mı (şehrin dışında, kenara Banliyo kareden yakın)?</summary>
         public static bool BanliyoKusagi(Vector2 p) =>
-            Organik && p.x > -Banliyo && p.y > -Banliyo && p.x < Width - 1 + Banliyo && p.y < Height - 1 + Banliyo;
+            Organik && !SehirPlani.KirPlanli && p.x > -Banliyo && p.y > -Banliyo && p.x < Width - 1 + Banliyo && p.y < Height - 1 + Banliyo;
 
         /// <summary>Nokta bir kır yoluna yakın mı (City3D banliyö evleri yola taşmasın)?</summary>
         public static bool KirYoluYakin(Vector2 p, float pay) => NearCountryRoad(p, pay);
@@ -669,21 +819,14 @@ namespace KuryeTycoon
             // Nehir uzantısı
             if (NehirUzantisiYakin(p, margin + (Organik ? 0.9f : 0f))) return true;
             // Kır yolları
-            foreach (var r in CountryRoads)
-            {
-                if (Mathf.Approximately(r.a.y, r.b.y))
-                {
-                    if (Mathf.Abs(p.y - r.a.y) < 0.4f + margin && p.x >= Mathf.Min(r.a.x, r.b.x) - margin && p.x <= Mathf.Max(r.a.x, r.b.x) + margin) return true;
-                }
-                else if (Mathf.Abs(p.x - r.a.x) < 0.4f + margin && p.y >= Mathf.Min(r.a.y, r.b.y) - margin && p.y <= Mathf.Max(r.a.y, r.b.y) + margin) return true;
-            }
-            return false;
+            return NearCountryRoad(p, margin);
         }
 
         /// <summary>Harita dışındaki (x, y) karesi bir kır yolunun üstünde mi?</summary>
         public static bool CountryRoadAt(int x, int y)
         {
             if (x >= 0 && y >= 0 && x < Width && y < Height) return false;
+            if (KirPlanli) return KirYoluUzak(new Vector2(x, y)) < 0.5f;
             foreach (var r in CountryRoads)
             {
                 if (Mathf.Approximately(r.a.y, r.b.y))
@@ -697,6 +840,7 @@ namespace KuryeTycoon
 
         static bool NearCountryRoad(Vector2 p, float margin)
         {
+            if (KirPlanli) return KirYoluUzak(p) < 0.4f + margin;       // eğri yollar: uzaklık ızgarasından
             foreach (var r in CountryRoads)
             {
                 if (Mathf.Approximately(r.a.y, r.b.y))
@@ -723,7 +867,10 @@ namespace KuryeTycoon
         bool InField(Vector2 p, float margin)
         {
             foreach (var f in Fields)
-                if (p.x > f.r.xMin - margin && p.x < f.r.xMax + margin && p.y > f.r.yMin - margin && p.y < f.r.yMax + margin) return true;
+            {
+                if (!(p.x > f.r.xMin - margin && p.x < f.r.xMax + margin && p.y > f.r.yMin - margin && p.y < f.r.yMax + margin)) continue;
+                if (!f.Cokgen || TarlaIci(f, p) > -margin) return true;
+            }
             return false;
         }
 
@@ -739,15 +886,36 @@ namespace KuryeTycoon
         void GenerateCountryside()
         {
             var rng = new System.Random(4242);
-            // Tarla renkleri (yumuşak, CityRT'deki gibi): olgun buğday, genç ekin, sürülmüş toprak, kolza, çayır, anız
-            var fieldColors = new[]
-            {
-                new Color(0.80f, 0.71f, 0.42f), new Color(0.55f, 0.66f, 0.33f), new Color(0.55f, 0.43f, 0.30f),
-                new Color(0.84f, 0.78f, 0.36f), new Color(0.48f, 0.60f, 0.32f), new Color(0.73f, 0.65f, 0.45f)
-            };
-            // Tarlalar: şehrin etrafında halka (kamera en çok bu kısmı görür)
+            var fieldColors = TarlaRenkleri;
             const float ring = 32f;
-            for (float x = -ring; x < Width + ring; x += 6f)
+            // Plan kırsalı veriyorsa (sürüm 2): tarlalar plandaki düzensiz çokgenler, çiftlikler plandaki yerlerinde
+            bool plan = KirPlanli;
+            if (plan)
+            {
+                foreach (var t in SehirPlani.Tarlalar)
+                {
+                    if (t == null || t.Sayi < 3) continue;
+                    var k = new Vector2[t.Sayi];
+                    float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+                    for (int i = 0; i < k.Length; i++)
+                    {
+                        k[i] = new Vector2(t.x[i], t.y[i]);
+                        x0 = Mathf.Min(x0, k[i].x); x1 = Mathf.Max(x1, k[i].x);
+                        y0 = Mathf.Min(y0, k[i].y); y1 = Mathf.Max(y1, k[i].y);
+                    }
+                    if (t.gen < 0.3f || t.boy < 0.3f) continue;
+                    Fields.Add(new Field
+                    {
+                        r = Rect.MinMaxRect(x0, y0, x1, y1), c = TarlaRengi(Fields.Count + 1, t.tur),
+                        kose = k, merkez = new Vector2(t.mx, t.my), boyut = new Vector2(t.gen, t.boy), aci = t.aci
+                    });
+                }
+                var cf = SehirPlani.Ciftlikler;
+                if (cf != null)
+                    for (int i = 0; i < cf.Sayi; i++) Farms.Add(new Vector2(cf.x[i], cf.y[i]));
+            }
+            // Tarlalar: şehrin etrafında halka (kamera en çok bu kısmı görür)
+            for (float x = -ring; x < Width + ring && !plan; x += 6f)
                 for (float y = -ring; y < Height + ring; y += 5f)
                 {
                     // Tarlalar yan yana dizilir (yama gibi), aralarında ince çit/çimen şeridi kalır; arada çayır boşlukları
@@ -760,7 +928,7 @@ namespace KuryeTycoon
 
             // Boşlukları doldur: şehrin girintili kenarı ve büyük tarlaların arasında kalan yerlere küçük tarlalar
             // (yoksa şehirle tarlalar arasında geniş boş çimen şeritleri kalıyordu)
-            for (float x = -ring; x < Width + ring; x += 3f)
+            for (float x = -ring; x < Width + ring && !plan; x += 3f)
                 for (float y = -ring; y < Height + ring; y += 2.6f)
                 {
                     if (rng.NextDouble() < 0.25) continue;
@@ -790,6 +958,26 @@ namespace KuryeTycoon
             // Eskiden çayıra rastgele 160 tek ağaç serpiliyordu; alakasız yerlerde duruyorlardı.
             foreach (var f in Fields)
             {
+                if (!f.Cokgen) continue;
+                // Çokgen tarla: bir kenarı boyunca (dışına) ağaç sırası
+                if (rng.NextDouble() > 0.4) continue;
+                int n = f.kose.Length, i0 = rng.Next(n);
+                Vector2 a = f.kose[i0], b = f.kose[(i0 + 1) % n];
+                var e = b - a;
+                float L = e.magnitude;
+                if (L < 1.2f) continue;
+                var yon = e / L;
+                var dis = new Vector2(yon.y, -yon.x);            // çokgen saat yönünün tersine: dışarısı kenarın sağı
+                for (float d = 0.3f; d < L - 0.2f; d += 0.65f + (float)rng.NextDouble() * 0.3f)
+                {
+                    var p = a + yon * d + dis * 0.1f;
+                    if (NearCountryRoad(p, 0.45f) || KirNehirYakin(p, 0.5f) || KenteUzaklik(p) < 1.6f) continue;
+                    CountryTrees.Add(new Vector3(p.x, p.y, 0.24f + (float)rng.NextDouble() * 0.18f));
+                }
+            }
+            foreach (var f in Fields)
+            {
+                if (f.Cokgen) continue;
                 if (rng.NextDouble() > 0.35) continue;
                 int kenar = rng.Next(4);
                 var r = f.r;
@@ -825,7 +1013,7 @@ namespace KuryeTycoon
                     for (int k = 4; k + 1 < kol.P.Count; k += 2)
                     {
                         var a = kol.P[k]; var b = kol.P[k + 1];
-                        if (DisariUzaklik(a) < Banliyo + 0.5f) continue;
+                        if (DisariUzaklik(a) < (plan ? 0.5f : Banliyo + 0.5f)) continue;
                         var yon = (b - a).normalized; var yan = new Vector2(-yon.y, yon.x);
                         for (int kiyi = -1; kiyi <= 1; kiyi += 2)
                         {
@@ -836,19 +1024,21 @@ namespace KuryeTycoon
                         }
                     }
 
-            // Şehrin kenarı boyunca ağaç sırası (şehir kırdan yumuşakça ayrılsın)
-            for (float x = -1.5f; x < Width + 1f; x += 1.1f)
+            // Şehrin kenarı boyunca ağaç sırası (şehir kırdan yumuşakça ayrılsın). Plan kırsalı veriyorsa şehrin kenarı dikdörtgen
+            // değil: kenar ağaçlarını orman ve çitler verir
+            for (float x = -1.5f; x < Width + 1f && !plan; x += 1.1f)
             {
                 if (rng.NextDouble() < 0.22) TryEdgeTree(new Vector2(x, -1.6f), rng);
                 if (rng.NextDouble() < 0.22) TryEdgeTree(new Vector2(x, Height + 0.6f), rng);
             }
-            for (float y = -1.5f; y < Height + 1f; y += 1.1f)
+            for (float y = -1.5f; y < Height + 1f && !plan; y += 1.1f)
             {
                 if (rng.NextDouble() < 0.22) TryEdgeTree(new Vector2(-1.6f, y), rng);
                 if (rng.NextDouble() < 0.22) TryEdgeTree(new Vector2(Width + 0.6f, y), rng);
             }
 
-            // Çiftlikler: yollara yakın
+            // Çiftlikler: yollara yakın (plan kırsalı veriyorsa plandaki yerlerinde: yukarıda eklendi)
+            if (!plan)
             foreach (var r in CountryRoads)
             {
                 var dir = (r.b - r.a).normalized;
@@ -961,6 +1151,7 @@ namespace KuryeTycoon
         /// <summary>Müşterilerin oturduğu (sipariş verebilen) bina karesi mi?</summary>
         public bool IsCustomerBuilding(Vector2Int t) => customerSet.Contains(t);
         readonly List<Vector2Int> shopTiles = new List<Vector2Int>();
+        readonly HashSet<Vector2Int> shopSet = new HashSet<Vector2Int>();
         readonly HashSet<Vector2Int> reserved = new HashSet<Vector2Int>();
 
         // Tekneler ve tren
@@ -1005,7 +1196,8 @@ namespace KuryeTycoon
                     var z = ZoneOf(x, y);
                     if (!IsFrontage(x, y)) continue;
                     if (CustomerZone(z)) { customerTiles.Add(t); customerSet.Add(t); }
-                    if (ShopZone(z)) shopTiles.Add(t);
+                    // Organik şehirde AVM karelerinin hepsine mağaza binası kurulur: dükkân oraya konmaz (binasız kalırdı)
+                    if (ShopZone(z) && !(Organik && z == Zone.Mall)) { shopTiles.Add(t); shopSet.Add(t); }
                 }
             }
 
@@ -1064,7 +1256,11 @@ namespace KuryeTycoon
             kirSprite.Add(Deco("Çayır", countryRoot, false, CountryColor, new Vector2((Width - 1) / 2f, (Height - 1) / 2f),
                  new Vector2(Width + pad * 2f, Height + pad * 2f), -10, false));
             foreach (var f in Fields)
-                kirSprite.Add(Deco("Tarla", countryRoot, false, f.c, f.r.center, f.r.size, -9, false));
+            {
+                var ts = Deco("Tarla", countryRoot, false, f.c, f.ParselMerkez, f.ParselBoyut, -9, false);
+                if (f.Cokgen) ts.transform.rotation = Quaternion.Euler(0f, 0f, f.aci);
+                kirSprite.Add(ts);
+            }
             // Nehir şehrin iki yanından kıvrılarak devam eder: eğriyi kısa, döndürülmüş parçalarla çiz
             // (önce biraz geniş çimen kıyı, üstüne su)
             const float step = 0.7f;
@@ -1097,6 +1293,8 @@ namespace KuryeTycoon
                         var water = Deco("Swan River", countryRoot, false, WaterColor, mid, new Vector2(len, kol.G[k]), -8, false);
                         water.transform.rotation = Quaternion.Euler(0f, 0f, ang);
                     }
+            // Plan kırsalı veriyorsa şehir dışı yolları OrganikSehir3D çizer (eğri şerit, araziye oturur): 2D kutu yok
+            if (!KirPlanli)
             foreach (var r in CountryRoads)
             {
                 var mid = (r.a + r.b) / 2f;
@@ -1129,11 +1327,17 @@ namespace KuryeTycoon
                     var p = new Vector2(x, y);
                     var z = ZoneOf(x, y);
 
+                    // Plan dikdörtgeninin içindeki kır kareleri: 2D süs yok (ağaçları orman ve çitler verir)
+                    if (KirPlanli && z == Zone.Country) continue;
                     if (BridgeAt(x, y))
                     {
-                        var rail = new Color(0.82f, 0.80f, 0.76f);
-                        Deco("Korkuluk", root, false, rail, p + new Vector2(-0.46f, 0f), new Vector2(0.06f, 1.01f), 3);
-                        Deco("Korkuluk", root, false, rail, p + new Vector2(0.46f, 0f), new Vector2(0.06f, 1.01f), 3);
+                        // Plan sürüm 2'de köprüler her yönde olabilir: korkuluğu OrganikSehir3D yol boyunca kurar
+                        if (!(Organik && SehirPlani.Surum >= 2))
+                        {
+                            var rail = new Color(0.82f, 0.80f, 0.76f);
+                            Deco("Korkuluk", root, false, rail, p + new Vector2(-0.46f, 0f), new Vector2(0.06f, 1.01f), 3);
+                            Deco("Korkuluk", root, false, rail, p + new Vector2(0.46f, 0f), new Vector2(0.06f, 1.01f), 3);
+                        }
                         continue;
                     }
                     if (RailAt(x, y) || RailCrossingAt(x, y))
@@ -1330,7 +1534,8 @@ namespace KuryeTycoon
                 {
                     if (RegionOf(t) != def.unlockLevel || reserved.Contains(t)) continue;
                     options.Add(t);
-                    if (PreferredShopZone(ZoneOf(t))) preferred.Add(t);
+                    // Plan sürüm 2: dükkânlar çarşı caddelerine (high street); teras mahalleleri (eski şehir bölgesi) konut ağırlıklı
+                    if (Organik && SehirPlani.Surum >= 2 ? ZoneOf(t) == Zone.Mixed : PreferredShopZone(ZoneOf(t))) preferred.Add(t);
                 }
                 var list = preferred.Count > 0 ? preferred : options;
                 if (list.Count == 0) continue;
@@ -1362,6 +1567,22 @@ namespace KuryeTycoon
         public Shop AddOwnShop(ShopDef def, Vector2Int? at = null)
         {
             Vector2Int tile;
+            // Kayıttan gelen yer bu haritada geçerli değilse (şehir planı değişmiş: yol, su, kır, park ya da bir dükkânın arsası) en
+            // yakın boş dükkân yerine taşınır; hiç yer yoksa aşağıdaki seçim devralır. Kendi dükkânlarımız aynı arsayı paylaşabilir
+            // (sanal mutfağın markaları tek mutfakta): dolu saymak için arsada sözleşmeli bir dükkân olmalı.
+            if (at.HasValue && (!shopSet.Contains(at.Value) || Shops.Exists(q => !q.own && q.tile == at.Value)))
+            {
+                var yakin = new Vector2Int(-1, -1);
+                float enYakin = float.MaxValue;
+                foreach (var t in shopTiles)
+                {
+                    if (reserved.Contains(t)) continue;
+                    float d = Vector2Int.Distance(t, at.Value) + (IsUnlocked(t) ? 0f : 1000f);
+                    if (d < enYakin) { enYakin = d; yakin = t; }
+                }
+                Debug.LogWarning($"Kurye Tycoon: kayıttaki dükkân yeri {at.Value} bu şehir planında geçersiz; {(yakin.x >= 0 ? yakin.ToString() : "yeni bir yer")} kullanılıyor.");
+                at = yakin.x >= 0 ? yakin : (Vector2Int?)null;
+            }
             if (at.HasValue) tile = at.Value;
             else
             {
@@ -1430,7 +1651,8 @@ namespace KuryeTycoon
                 sr.enabled = a > 0.01f;
             }
             foreach (var sr in kirSprite) Ayarla(sr);
-            for (int x = 0; x < Width; x++)
+            // Organik şehrin 3D zemini varken kareler kapalı kalır (kar zemin dokusuna ve çayır örtüsüne işlenir)
+            for (int x = 0; x < Width && !zemin3D; x++)
                 for (int y = 0; y < Height; y++)
                     if (ZoneOf(x, y) == Zone.Country && !RoadAt(x, y) && !WaterAt(x, y)) Ayarla(ground[x, y]);
         }

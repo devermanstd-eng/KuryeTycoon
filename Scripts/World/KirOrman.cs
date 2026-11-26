@@ -106,7 +106,30 @@ namespace KuryeTycoon
                 int j0 = Mathf.Max(0, Mathf.FloorToInt((r.yMin + Pay) / A)), j1 = Mathf.Min(gh - 1, Mathf.CeilToInt((r.yMax + Pay) / A));
                 for (int i = i0; i <= i1; i++) for (int j = j0; j <= j1; j++) izgara[i, j] = true;
             }
-            foreach (var f in map.Fields) Isaretle(new Rect(f.r.xMin - 0.15f, f.r.yMin - 0.15f, f.r.width + 0.3f, f.r.height + 0.3f));
+            bool plan = CityMap.KirPlanli;
+            foreach (var f in map.Fields)
+            {
+                if (!f.Cokgen) { Isaretle(new Rect(f.r.xMin - 0.15f, f.r.yMin - 0.15f, f.r.width + 0.3f, f.r.height + 0.3f)); continue; }
+                // Çokgen tarla: saran dikdörtgenin içinde, çokgene 0,15 kareden yakın hücreler
+                int i0 = Mathf.Max(0, Mathf.FloorToInt((f.r.xMin - 0.15f + Pay) / A)), i1 = Mathf.Min(gw - 1, Mathf.CeilToInt((f.r.xMax + 0.15f + Pay) / A));
+                int j0 = Mathf.Max(0, Mathf.FloorToInt((f.r.yMin - 0.15f + Pay) / A)), j1 = Mathf.Min(gh - 1, Mathf.CeilToInt((f.r.yMax + 0.15f + Pay) / A));
+                for (int i = i0; i <= i1; i++)
+                    for (int j = j0; j <= j1; j++)
+                        if (CityMap.TarlaIci(f, new Vector2(i * A - Pay, j * A - Pay)) > -0.3f) izgara[i, j] = true;
+            }
+            if (plan)
+            {
+                // Plan kırsalı veriyorsa: eğri yolların çevresi (uzaklık ızgarasından) ve şehir zemininin örttüğü kareler dolu
+                for (int i = 0; i < gw; i++)
+                    for (int j = 0; j < gh; j++)
+                    {
+                        var q = new Vector2(i * A - Pay, j * A - Pay);
+                        if (CityMap.KirYoluYakin(q, 0.4f)) { izgara[i, j] = true; continue; }
+                        int tx = Mathf.RoundToInt(q.x), ty = Mathf.RoundToInt(q.y);
+                        if (tx >= 0 && ty >= 0 && tx < W && ty < H && !SehirPlani.SafKir(tx, ty)) izgara[i, j] = true;
+                    }
+            }
+            else
             foreach (var r in CityMap.CountryRoads)
             {
                 var mn = Vector2.Min(r.a, r.b); var mx = Vector2.Max(r.a, r.b);
@@ -130,8 +153,9 @@ namespace KuryeTycoon
                 for (float y = -Pay; y < H - 1 + Pay; y += adim)
                 {
                     var p = new Vector2(x + ((float)rng.NextDouble() - 0.5f) * adim * 0.9f, y + ((float)rng.NextDouble() - 0.5f) * adim * 0.9f);
-                    float u = Uzak(p);
-                    if (u < B) continue;
+                    // Şehre uzaklık: plan kırsalı veriyorsa şehir lekesine (ağaçlar lekenin hemen dışında başlar), yoksa dikdörtgene
+                    float u = plan ? CityMap.KenteUzaklik(p) : Uzak(p);
+                    if (u < (plan ? 1.6f : B)) continue;
                     float tepe = Arazi.Tepe(p.x, p.y);
                     float leke = Mathf.PerlinNoise(p.x * 0.055f + 71.3f, p.y * 0.055f + 19.7f) * 0.75f
                                + Mathf.PerlinNoise(p.x * 0.16f + 5.1f, p.y * 0.16f + 88.2f) * 0.25f;
@@ -161,6 +185,31 @@ namespace KuryeTycoon
             float citOlasilik = 0.32f * yogunluk;
             foreach (var f in map.Fields)
             {
+                if (!f.Cokgen) continue;
+                // Çokgen tarla: kenarların bir kısmında (dışında, 0,1 kare) çalı sırası
+                int n = f.kose.Length;
+                for (int kenar = 0; kenar < n; kenar++)
+                {
+                    // çokgenin kenarı dikdörtgeninkinden çok (5–8): çalı sayısı eskisine yakın kalsın diye olasılık yarım
+                    if (rng.NextDouble() > citOlasilik * 0.5f) continue;
+                    Vector2 a = f.kose[kenar], b = f.kose[(kenar + 1) % n];
+                    var e = b - a;
+                    float boy = e.magnitude;
+                    if (boy < 0.8f) continue;
+                    var yon = e / boy;
+                    var dis = new Vector2(yon.y, -yon.x);
+                    for (float d = 0.1f; d < boy; d += 0.32f + (float)rng.NextDouble() * 0.14f)
+                    {
+                        var p = a + yon * d + dis * 0.1f;
+                        if (CityMap.KirYoluYakin(p, 0.3f) || CityMap.KirNehirYakin(p, 0.3f) || CityMap.KenteUzaklik(p) < 1.2f) continue;
+                        Cali(new Vector3(p.x, p.y, Z(p)), 0.8f + (float)rng.NextDouble() * 0.5f);
+                        cali++;
+                    }
+                }
+            }
+            foreach (var f in map.Fields)
+            {
+                if (f.Cokgen) continue;
                 if (Uzak(f.r.center) < B) continue;
                 for (int kenar = 0; kenar < 4; kenar++)
                 {

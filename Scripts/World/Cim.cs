@@ -165,6 +165,8 @@ namespace KuryeTycoon
             z = 0f; yogun = 0f;
             int W = CityMap.Width, H = CityMap.Height;
             kir = p.x < -0.5f || p.y < -0.5f || p.x > W - 0.5f || p.y > H - 0.5f;
+            // Plan dikdörtgeninin içindeki saf kır kareleri (şehir zemininin örtmediği) de kır: çayır otu, tarlalara girmez
+            if (!kir && SehirPlani.SafKir(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y))) kir = true;
             if (!kir)
             {
                 int tx = Mathf.RoundToInt(p.x), ty = Mathf.RoundToInt(p.y);

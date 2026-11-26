@@ -1,5 +1,8 @@
 """
-Kurye Tycoon — organik şehir planı üretici.
+Kurye Tycoon — organik şehir planı üretici (ESKİ: plan sürüm 1, görüntüden).
+Oyunun şimdiki planını sehir_uret.py üretir (prosedürel Londra tipi şehir, plan sürüm 2). Bu betik karşılaştırma için durur ve
+oyunun planına dokunmaz: çıktıyı Tools/SehirPlani/plan_goruntu.json ve onizleme_goruntu.png olarak yazar (oyunda denemek için
+dosyayı Resources/Sehir/plan.json'un yerine kopyala; SehirPlani.cs sürüm 1 planı da okur).
 Bir şehir haritası görüntüsünden (beyaz yollar, mavi su, yeşil park, gri bina) oyunun okuyacağı planı üretir:
   Resources/Sehir/plan.json  → yol çizgileri (dünya koordinatı), nehir/park konturları, kare rasterleri (yol, su, köprü,
                                 park, bina yoğunluğu), bölge türleri (zone), semtler (1–5) ve önemli yerler.
@@ -21,8 +24,8 @@ S = float(sys.argv[2]) if len(sys.argv) > 2 else 9.0           # kaç piksel = 1
 YOL_ESIK = float(sys.argv[3]) if len(sys.argv) > 3 else 2.0    # yol sayılacak en dar beyaz şeridin yarı genişliği (piksel)
 # Önemli yerler (kaynak haritanın pikselleri; x, y): yıldız kavşak merkez, büyük üçgen park belediye, nehrin güneyinde otogar
 ELLE = {"merkez": (268, 388), "belediye": (212, 268), "otogar": (120, 610)}
-CIKTI = os.path.join(BURA, "..", "..", "Resources", "Sehir", "plan.json")
-ONIZLEME = os.path.join(BURA, "onizleme.png")
+CIKTI = os.path.join(BURA, "plan_goruntu.json")
+ONIZLEME = os.path.join(BURA, "onizleme_goruntu.png")
 
 im = np.array(Image.open(KAYNAK).convert("RGB")).astype(int)
 r, g, b = im[..., 0], im[..., 1], im[..., 2]

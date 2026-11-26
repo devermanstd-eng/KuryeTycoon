@@ -19,7 +19,7 @@ namespace KuryeTycoon
     {
         const string Klasor = "SehirPaketi/Donatilar";
         const float Olcek = 0.1f;                    // 1 m → kare (biraz abartılı: üstten bakınca seçilsin)
-        const float CaddeAsfalt = OrganikSehir3D.CaddeAsfalt, SokakAsfalt = OrganikSehir3D.SokakAsfalt, Kaldirim = OrganikSehir3D.Kaldirim;
+        // Asfalt ve kaldırım genişliği yolun sınıfına göre: OrganikSehir3D.Asfalt / KaldirimGenisligi
         const float ZKaldirim = -0.003f;
 
         class Tur
@@ -145,7 +145,8 @@ namespace KuryeTycoon
             izgara = new Dictionary<Vector2Int, List<(Vector2, Vector2, float)>>();
             foreach (var c in SehirPlani.Yollar)
             {
-                float r = (c.genis ? CaddeAsfalt : SokakAsfalt) * 0.5f;
+                if (c == null) continue;
+                float r = OrganikSehir3D.Asfalt(c.Sinif) * 0.5f;
                 for (int k = 0; k + 1 < c.Sayi; k++)
                 {
                     Vector2 a = c[k], b = c[k + 1];
@@ -248,10 +249,13 @@ namespace KuryeTycoon
             foreach (var c in SehirPlani.Yollar)
             {
                 ci++;
-                if (c.Sayi < 2) continue;
-                float yari = (c.genis ? CaddeAsfalt : SokakAsfalt) * 0.5f;
-                float ofs = yari + Kaldirim * 0.55f;
-                float lambaAra = c.genis ? 1.9f : 2.4f;
+                if (c == null || c.Sayi < 2) continue;
+                int sinif = c.Sinif;
+                bool araSokak = sinif == SehirPlani.AraSokak;
+                float yari = OrganikSehir3D.Asfalt(sinif) * 0.5f;
+                float ofs = yari + OrganikSehir3D.KaldirimGenisligi(sinif) * 0.55f;
+                // Ara sokakta (mews, geçit) yalnız seyrek lamba: dar kaldırıma bank, çöp kutusu, levha sığmaz
+                float lambaAra = c.genis ? 1.9f : araSokak ? 3.2f : 2.4f;
                 float durakSonra = 4f + (float)rng.NextDouble() * 6f;
                 float yol = 0f, sonrakiLamba = 0.8f + (float)rng.NextDouble(), sonrakiAra = 0.4f + (float)rng.NextDouble();
                 int lambaNo = 0;
@@ -279,7 +283,7 @@ namespace KuryeTycoon
                                 Koy(top, Lamba(BolgeAt(p), c.genis), p, -sol * taraf, rng, 0.08f);
                             }
                         }
-                        if (s >= sonrakiAra)
+                        if (s >= sonrakiAra && !araSokak)
                         {
                             sonrakiAra = s + 0.38f + (float)rng.NextDouble() * 0.35f;
                             int taraf = rng.Next(2) == 0 ? -1 : 1;
@@ -298,7 +302,7 @@ namespace KuryeTycoon
                 }
 
                 // Sokak uçları: kavşağa yaklaşırken sağda levha; caddede trafik lambası
-                for (int uc = 0; uc < 2; uc++)
+                for (int uc = 0; uc < 2 && !araSokak; uc++)
                 {
                     Vector2 p0 = uc == 0 ? c[0] : c[c.Sayi - 1];
                     Vector2 p1 = uc == 0 ? c[1] : c[c.Sayi - 2];
@@ -319,6 +323,37 @@ namespace KuryeTycoon
 
             // Kır yolları: elektrik direkleri (bir yanda), tarlalarda saman balyaları
             int w = CityMap.Width, h = CityMap.Height;
+            // Plan kırsalı veriyorsa yollar eğri çizgiler: ana ve ikincil yollar boyunca (köy yollarında yok) aralıklı direkler
+            foreach (var c in SehirPlani.KirYollari)
+            {
+                if (c == null || c.Sayi < 2 || c.Sinif >= SehirPlani.Sokak) continue;
+                float yari = OrganikSehir3D.KirAsfalt(c.Sinif) * 0.5f;
+                float yol = 0f, sonraki = 0.7f;
+                for (int k = 0; k + 1 < c.Sayi; k++)
+                {
+                    Vector2 a = c[k], b = c[k + 1];
+                    float L = Vector2.Distance(a, b);
+                    if (L < 1e-4f) continue;
+                    var yon = (b - a) / L;
+                    var yan = new Vector2(-yon.y, yon.x);
+                    while (sonraki <= yol + L)
+                    {
+                        var m = a + yon * (sonraki - yol);
+                        sonraki += 2.2f;
+                        var p = m + yan * (yari + 0.14f);
+                        if (CityMap.KenteUzaklik(p) < 0.8f || CityMap.KirNehirYakin(p, 0.3f)) continue;
+                        Koy(top, "elektrik_diregi", p, -yan, rng, 0.1f);
+                        if (rng.NextDouble() < 0.12)
+                        {
+                            var q = m - yan * (0.9f + (float)rng.NextDouble() * 1.6f) + yon * (float)(rng.NextDouble() - 0.5);
+                            if (!CityMap.KirYoluYakin(q, 0.5f) && CityMap.KenteUzaklik(q) > 1.5f)
+                                Koy(top, "saman_balyasi", q, new Vector2((float)rng.NextDouble() - 0.5f, 1f).normalized, rng, 0.25f);
+                        }
+                    }
+                    yol += L;
+                }
+            }
+            if (!CityMap.KirPlanli)
             foreach (var r in CityMap.CountryRoads)
             {
                 var d = r.b - r.a;
@@ -330,7 +365,8 @@ namespace KuryeTycoon
                 {
                     var m = r.a + yon * s;
                     bool icerde = m.x > -0.5f && m.y > -0.5f && m.x < w - 0.5f && m.y < h - 0.5f;
-                    if (icerde) continue;
+                    // şehrin içi (plan kırsalı veriyorsa: dikdörtgenin içindeki kır kareleri şehir sayılmaz, direk dikilir)
+                    if (icerde && CityMap.InCity(Mathf.RoundToInt(m.x), Mathf.RoundToInt(m.y))) continue;
                     var p = m + yan * 0.42f;
                     if (Asfaltta(p, 0.05f)) continue;
                     Koy(top, "elektrik_diregi", p, -yan, rng, 0.1f);

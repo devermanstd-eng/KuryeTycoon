@@ -4,9 +4,13 @@ using UnityEngine;
 namespace KuryeTycoon
 {
     /// <summary>
-    /// Organik şehir planı (Resources/Sehir/plan.json; Tools/SehirPlani/plan_uret.py bir harita görüntüsünden üretir).
+    /// Organik şehir planı (Resources/Sehir/plan.json). Sürüm 2: Tools/SehirPlani/sehir_uret.py tohumlu, prosedürel bir
+    /// "Londra tipi" şehir üretir (sürüm 1: plan_uret.py bir harita görüntüsünden çıkarırdı; o planlar da okunur).
     ///  • Yollar gerçek çizgiler (eğri, çapraz) olarak gelir; oyun mantığı için kare ızgaraya da işlenmiştir (4 bağlı: kare kare yürünür).
+    ///    Sürüm 2'de her çizginin sınıfı (1 ana yol, 2 cadde, 3 sokak, 4 ara sokak) ve adı var: genişlik ve çizgiler sınıfa göre.
     ///  • Her kare: yol, köprü, su, park ya da yapı arsası; bölge türü (eski şehir, kule, ev, çarşı, kampüs, park …); semt (1–5).
+    ///    Sürüm 2'de plan dikdörtgeninin içinde kır kareleri de var ('.' bölgesi): şehir lekesi düzensiz, kenarı kıra karışır.
+    ///  • Sürüm 2 kırsalı da verir (KirPlanli): şehir dışı yollar, nehrin kolları, tarla çokgenleri, çiftlikler, köy ve yol boyu evler.
     ///  • Açık/kapalı: PlayerPrefs "KuryeTycoon.OrganikSehir" (editörde Kurye Tycoon > Organik Şehir menüsü). Kapalıyken eski ızgara şehir.
     /// Koordinat: 1 kare = 1 dünya birimi; x doğuya, y kuzeye artar.
     /// </summary>
@@ -14,20 +18,52 @@ namespace KuryeTycoon
     {
         public const string Anahtar = "KuryeTycoon.OrganikSehir";
 
+        /// <summary>Yol sınıfları (plan sürüm 2). Eski planda yalnız `genis` bayrağı var: geniş = ana yol, değilse sokak.</summary>
+        public const int Ana = 1, Cadde = 2, Sokak = 3, AraSokak = 4;
+
         [System.Serializable]
         public class Cizgi
         {
             public bool genis;
+            public int sinif;             // 1 ana yol, 2 cadde, 3 sokak, 4 ara sokak (0: eski plan, `genis`e bakılır)
+            public string ad;             // sokağın adı (boşsa numaradan türetilir)
             public float[] x;
             public float[] y;
-            public int Sayi => x != null ? x.Length : 0;
+            public float[] g;             // yalnız nehir kollarında: her noktadaki su genişliği (kare)
+            public int Sayi => x != null && y != null ? Mathf.Min(x.Length, y.Length) : 0;
             public Vector2 this[int i] => new Vector2(x[i], y[i]);
+            /// <summary>Geçerli sınıf (1–4).</summary>
+            public int Sinif => sinif >= Ana && sinif <= AraSokak ? sinif : (genis ? Ana : Sokak);
+        }
+
+        /// <summary>Kır tarlası: dışbükey çokgen (saat yönünün tersi) ve içine sığan eğik dikdörtgen (3D parsel modeli buraya oturur).</summary>
+        [System.Serializable]
+        public class Tarla
+        {
+            public float[] x;
+            public float[] y;
+            public float mx, my;          // dikdörtgenin merkezi
+            public float gen, boy;        // dikdörtgenin boyutu (kare): gen sıralar boyunca, boy sıralara dik
+            public float aci;             // dikdörtgenin dönüşü (derece, +x'ten saat yönünün tersine)
+            public int tur;               // renk / tür sırası (0–5)
+            public int Sayi => x != null && y != null ? Mathf.Min(x.Length, y.Length) : 0;
+        }
+
+        [System.Serializable]
+        public class Noktalar
+        {
+            public float[] x;
+            public float[] y;
+            public float[] aci;           // yalnız kır evlerinde: evin baktığı yön (City3D açı kuralı)
+            public int[] tur;             // yalnız kır evlerinde: 0 yol boyu ev, 1 köy evi, 2 köy kilisesi
+            public int Sayi => x != null && y != null ? Mathf.Min(x.Length, y.Length) : 0;
         }
 
         [System.Serializable]
         class Veri
         {
             public int surum;
+            public int tohum;
             public int W;
             public int H;
             public int[] merkez;
@@ -41,7 +77,17 @@ namespace KuryeTycoon
             public string[] zone;
             public string[] bolge;
             public string[] yogunluk;
+            // Sürüm 2: kırsal (yoksa null / boş: kır eski usulle oyunda üretilir)
+            public Cizgi[] kirYollari;
+            public Cizgi[] kirNehir;
+            public Tarla[] tarlalar;
+            public Noktalar ciftlikler;
+            public Noktalar kirEvleri;
         }
+
+        /// <summary>Yeni Play'de (alan yeniden yüklenmese de) plan yeniden okunur: plan.json yeniden üretilmiş olabilir.</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void OyunBasiSifirla() { yuklendi = false; v = null; aktifOkundu = false; }
 
         static bool yuklendi;
         static Veri v;
@@ -51,6 +97,10 @@ namespace KuryeTycoon
         static Vector2[,] yolYonu;        // her karede en yakın yolun yönü (binalar yola dönük dursun)
         static float[,] yolUzak;          // en yakın yol çizgisine uzaklık
         static float[,] yumusak;          // yumuşatılmış yapı yoğunluğu (0 çim … 1 taş): zemin rengi kare kare değişmesin
+        static float[,] kentUzak;         // her karenin en yakın kentsel (kır olmayan) kareye uzaklığı (kare)
+        static bool[,] safKir;            // kare ve sekiz komşusu kır (yol ve su yok): şehir zemini burayı örtmez
+        static readonly Cizgi[] BosCizgi = new Cizgi[0];
+        static readonly Tarla[] BosTarla = new Tarla[0];
 
         /// <summary>Organik şehir açık mı? (Plan dosyası varsa ve ayar açıksa.)</summary>
         public static bool Aktif
@@ -81,9 +131,23 @@ namespace KuryeTycoon
         public static Vector2Int Meydan => V2(v?.meydan);
         public static Vector2Int Belediye => V2(v?.belediye);
         public static Vector2Int Otogar => V2(v?.otogar);
-        public static IReadOnlyList<Cizgi> Yollar => v?.yollar ?? new Cizgi[0];
-        public static IReadOnlyList<Cizgi> Su => v?.su ?? new Cizgi[0];
-        public static IReadOnlyList<Cizgi> Park => v?.park ?? new Cizgi[0];
+        public static IReadOnlyList<Cizgi> Yollar => v?.yollar ?? BosCizgi;
+        public static IReadOnlyList<Cizgi> Su => v?.su ?? BosCizgi;
+        public static IReadOnlyList<Cizgi> Park => v?.park ?? BosCizgi;
+
+        /// <summary>Plan sürümü (1: görüntüden, 2: prosedürel) ve tohumu.</summary>
+        public static int Surum => v != null ? v.surum : 0;
+        public static int Tohum => v != null ? v.tohum : 0;
+        /// <summary>Planın kimliği ("sürüm:tohum:G×Y"): kayıt dosyasına yazılır; farklı planla kaydedilmiş oyun güvenli açılır.</summary>
+        public static string Kimlik => v != null ? $"{v.surum}:{v.tohum}:{v.W}x{v.H}" : "";
+
+        /// <summary>Plan kırsalı da veriyor mu (tarlalar, kır yolları)? Öyleyse kır plandan kurulur, oyunda üretilmez.</summary>
+        public static bool KirPlanli => v != null && ((v.tarlalar != null && v.tarlalar.Length > 0) || (v.kirYollari != null && v.kirYollari.Length > 0));
+        public static IReadOnlyList<Cizgi> KirYollari => v?.kirYollari ?? BosCizgi;
+        public static IReadOnlyList<Cizgi> KirNehir => v?.kirNehir ?? BosCizgi;
+        public static IReadOnlyList<Tarla> Tarlalar => v?.tarlalar ?? BosTarla;
+        public static Noktalar Ciftlikler => v?.ciftlikler;
+        public static Noktalar KirEvleri => v?.kirEvleri;
 
         static Vector2Int V2(int[] a) => a != null && a.Length >= 2 ? new Vector2Int(a[0], a[1]) : Vector2Int.zero;
 
@@ -95,6 +159,19 @@ namespace KuryeTycoon
         public static bool SuVar(int x, int y) => Kare(x, y) == 'S';
         public static bool ParkVar(int x, int y) => Kare(x, y) == 'P';
         public static char ZoneHarf(int x, int y) => Icinde(x, y) ? zone[x, y] : '.';
+        /// <summary>Kır karesi mi (plan dikdörtgeninin içinde, şehir lekesinin dışında)? Dikdörtgenin dışı da kır.</summary>
+        public static bool KirKaresi(int x, int y) => !Icinde(x, y) || zone[x, y] == '.';
+        /// <summary>Kare ve sekiz komşusu yolsuz, susuz kır mı? Şehir zemini (OrganikZemin) burayı örtmez: kır zemini ve tarlalar görünür.</summary>
+        public static bool SafKir(int x, int y) => !Icinde(x, y) || (safKir != null && safKir[x, y]);
+
+        /// <summary>Noktanın en yakın kentsel kareye uzaklığı (kare; şehrin içinde 0). Dikdörtgenin dışında kenara uzaklık eklenir.</summary>
+        public static float KentUzakligi(float x, float y)
+        {
+            if (v == null || kentUzak == null) return 0f;
+            float cx = Mathf.Clamp(x, 0f, v.W - 1f), cy = Mathf.Clamp(y, 0f, v.H - 1f);
+            float dis = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+            return kentUzak[Mathf.RoundToInt(cx), Mathf.RoundToInt(cy)] + dis;
+        }
         public static int Bolge(int x, int y) => Icinde(x, y) ? bolge[x, y] : 1;
         public static int Yogunluk(int x, int y) => Icinde(x, y) ? yogun[x, y] : 0;
         public static int YolNo(int x, int y) => Icinde(x, y) ? yolNo[x, y] : -1;
@@ -126,10 +203,57 @@ namespace KuryeTycoon
                     yogun[x, y] = (byte)Mathf.Clamp(Harf(v.yogunluk, x, y, '0') - '0', 0, 9);
                 }
             if (v.yollar != null) foreach (var c in v.yollar) Sik(c, 0.35f);   // yollar tepeli arazide kırılmadan uzansın
+            if (v.kirYollari != null) foreach (var c in v.kirYollari) Sik(c, 0.5f);
             YolBilgisiKur();
             YumusakKur();
-            Debug.Log($"Kurye Tycoon: organik şehir planı yüklendi ({w}×{h}, {v.yollar?.Length ?? 0} yol çizgisi).");
+            KirBilgisiKur();
+            Debug.Log($"Kurye Tycoon: organik şehir planı yüklendi (sürüm {v.surum}, tohum {v.tohum}, {w}×{h}, {v.yollar?.Length ?? 0} yol çizgisi" +
+                      (KirPlanli ? $", kır: {v.kirYollari?.Length ?? 0} yol, {v.tarlalar?.Length ?? 0} tarla)." : ")."));
             return true;
+        }
+
+        /// <summary>Kır kareleri: saf kır maskesi ve kentsel karelere uzaklık (iki geçişli pah uzaklığı).</summary>
+        static void KirBilgisiKur()
+        {
+            int w = v.W, h = v.H;
+            safKir = new bool[w, h];
+            kentUzak = new float[w, h];
+            bool Kent(int x, int y) { char k = kare[x, y]; return zone[x, y] != '.' || k == 'Y' || k == 'K' || k == 'S'; }
+            for (int x = 0; x < w; x++)
+                for (int y = 0; y < h; y++)
+                {
+                    kentUzak[x, y] = Kent(x, y) ? 0f : 1e6f;
+                    bool saf = true;
+                    for (int dx = -1; dx <= 1 && saf; dx++)
+                        for (int dy = -1; dy <= 1 && saf; dy++)
+                        {
+                            int xx = x + dx, yy = y + dy;
+                            if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+                            if (Kent(xx, yy)) saf = false;
+                        }
+                    safKir[x, y] = saf;
+                }
+            const float D = 1f, K = 1.4142f;
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                {
+                    float d = kentUzak[x, y];
+                    if (x > 0) d = Mathf.Min(d, kentUzak[x - 1, y] + D);
+                    if (y > 0) d = Mathf.Min(d, kentUzak[x, y - 1] + D);
+                    if (x > 0 && y > 0) d = Mathf.Min(d, kentUzak[x - 1, y - 1] + K);
+                    if (x < w - 1 && y > 0) d = Mathf.Min(d, kentUzak[x + 1, y - 1] + K);
+                    kentUzak[x, y] = d;
+                }
+            for (int y = h - 1; y >= 0; y--)
+                for (int x = w - 1; x >= 0; x--)
+                {
+                    float d = kentUzak[x, y];
+                    if (x < w - 1) d = Mathf.Min(d, kentUzak[x + 1, y] + D);
+                    if (y < h - 1) d = Mathf.Min(d, kentUzak[x, y + 1] + D);
+                    if (x < w - 1 && y < h - 1) d = Mathf.Min(d, kentUzak[x + 1, y + 1] + K);
+                    if (x > 0 && y < h - 1) d = Mathf.Min(d, kentUzak[x - 1, y + 1] + K);
+                    kentUzak[x, y] = d;
+                }
         }
 
         /// <summary>Çizginin noktalarını sıklaştırır (iki nokta arası en çok `adim` kare): yol şeridi arazinin yüksekliğini izler.</summary>
@@ -193,6 +317,7 @@ namespace KuryeTycoon
             for (int i = 0; i < v.yollar.Length; i++)
             {
                 var c = v.yollar[i];
+                if (c == null) continue;
                 for (int k = 0; k + 1 < c.Sayi; k++)
                 {
                     Vector2 a = c[k], b = c[k + 1];
@@ -217,8 +342,15 @@ namespace KuryeTycoon
             }
         }
 
-        /// <summary>Yol çizgisi geniş (cadde) mi?</summary>
-        public static bool Genis(int no) => v?.yollar != null && no >= 0 && no < v.yollar.Length && v.yollar[no].genis;
+        /// <summary>Yol çizgisi geniş (ana yol ya da cadde) mi?</summary>
+        public static bool Genis(int no) => v?.yollar != null && no >= 0 && no < v.yollar.Length && v.yollar[no] != null && v.yollar[no].genis;
+
+        /// <summary>Yol çizgisinin sınıfı (1 ana, 2 cadde, 3 sokak, 4 ara sokak); çizgi yoksa sokak.</summary>
+        public static int Sinif(int no) => v?.yollar != null && no >= 0 && no < v.yollar.Length && v.yollar[no] != null ? v.yollar[no].Sinif : Sokak;
+
+        /// <summary>Yol çizgisinin plandaki adı (yoksa null).</summary>
+        public static string YolAdi(int no) =>
+            v?.yollar != null && no >= 0 && no < v.yollar.Length && v.yollar[no] != null && !string.IsNullOrEmpty(v.yollar[no].ad) ? v.yollar[no].ad : null;
 
         /// <summary>
         /// Arsadaki binanın yola dönük açısı (derece, City3D'nin dönüş kuralıyla: 180 = güneye bakar).

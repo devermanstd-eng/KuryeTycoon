@@ -192,6 +192,7 @@ namespace KuryeTycoon
         public KargoSave kargo;                // kargo deposu ve sayıları (eski kayıtlarda yok)
         public GunPlaniSave gunPlani;          // grip dalgası (eski kayıtlarda yok)
         public int sehirNo;                    // Marka: oyunun şehri (0 = Northbrook; eski kayıtlarda 0)
+        public string sehirPlani;              // organik şehir planının kimliği (SehirPlani.Kimlik: sürüm:tohum:boyut; eski kayıtlarda boş)
         public long kayitUtc;                  // kaydın gerçek zamanı (UTC tick): oyun kapalıyken kazanç için
         public List<string> agacBonuslari;     // gelişim ağacında alınan küçük düğümler (eski kayıtlarda yok)
         public AbonelikSave abonelik;          // abonelik (eski kayıtlarda yok)
@@ -437,6 +438,7 @@ namespace KuryeTycoon
                 kargo = KargoAnlasmasi.I != null ? KargoAnlasmasi.I.Kaydet() : null,
                 gunPlani = GunPlani.I != null ? GunPlani.I.Kaydet() : null,
                 sehirNo = Marka.AktifSehir,
+                sehirPlani = CityMap.Organik ? SehirPlani.Kimlik : "",
                 kayitUtc = System.DateTime.UtcNow.Ticks,
                 agacBonuslari = GelisimAgaci.Kaydet(),
                 abonelik = Abonelik.I != null ? Abonelik.I.Kaydet() : null,
@@ -497,6 +499,16 @@ namespace KuryeTycoon
 
             // Harita: bölge ve dükkan sözleşmeleri
             CityMap.I.RestoreUnlockLevel(d.unlockLevel);
+            // Kayıt başka bir şehir planıyla alınmışsa (plan yeniden üretildi): dükkânlar bu haritada tohumla yeniden dağıtılır,
+            // kayıttaki depo / market / mutfak yerleri geçersizse en yakın boş dükkân yerine taşınır (CityMap.AddOwnShop);
+            // sözleşmeler ada göre eşleşir, kuryeler merkez ofisten başlar. Oyuncuya haber verilir.
+            if (CityMap.Organik && (d.sehirPlani ?? "") != SehirPlani.Kimlik)
+            {
+                Debug.LogWarning($"Kurye Tycoon: kayıt başka bir şehir planıyla alınmış (kayıt: \"{d.sehirPlani}\", şimdi: \"{SehirPlani.Kimlik}\"). " +
+                                 "Dükkân ve depo yerleri yeni haritaya göre yeniden yerleşti.");
+                if (EventManager.I != null)
+                    EventManager.I.Notify("Şehrin haritası yenilendi: dükkânlar ve depoların yeni adreslerine taşındı. Sözleşmelerin, kuryelerin ve kasan aynı.");
+            }
             foreach (var ss in d.shops)
             {
                 string ad = GameData.GuncelDukkanAdi(ss.name);   // eski kayıt: dükkan adları değişti

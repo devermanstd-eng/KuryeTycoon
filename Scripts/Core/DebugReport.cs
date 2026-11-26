@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-26 u63 (beşik çatı alınlığında kenar saçağı; yakın planda tilt-shift söner, odak araziye oturur: ince, açık renk, ayrıntı çizgileri soluk; AtolyeAyari'dan ayarlanır)";
+        public const string CodeVersion = "2026-11-27 u64 (Londra tipi prosedürel şehir planı: yol sınıfları ana/cadde/sokak/ara, teras blokları, meydan bahçeleri, düzensiz şehir lekesi, çokgen tarlalar ve eğri kır yolları plandan)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 

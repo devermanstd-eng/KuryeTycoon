@@ -39,6 +39,9 @@ namespace KuryeTycoon
             {
                 // Organik şehirde her yol çizgisinin kendi adı: geniş olanlar cadde, diğerleri sokak
                 int no = Mathf.Max(0, SehirPlani.YolNo(road.x, road.y));
+                // Plan sürüm 2: her yolun kendi adı var (High Street, Mews, Close, Crescent …)
+                string planAdi = SehirPlani.YolAdi(no);
+                if (planAdi != null) return planAdi;
                 return SehirPlani.Genis(no) ? AvenueNames[no % AvenueNames.Length] + " Avenue" : StreetNames[no % StreetNames.Length] + " Street";
             }
             if (IsAvenue(road)) return AvenueNames[(road.x / CityMap.Block) % AvenueNames.Length] + " Avenue";
