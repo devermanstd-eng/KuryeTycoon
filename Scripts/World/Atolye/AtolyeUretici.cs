@@ -128,6 +128,16 @@ namespace KuryeTycoon
             Yok(t);
         }
 
+        /// <summary>Verilen tasarımdan hemen bir şablon kurar (ör. oyuncunun merkez ofisi: adı ve rengi oyuna göre). Kurulamazsa null.</summary>
+        public static GameObject TasarimdanKur(BinaTasarimi t)
+        {
+            if (t == null || AtolyeKurucu.Kut == null) return null;
+            var go = Sablon(AtolyeKurucu.ModelAdi(t));
+            try { Doldur(go, t, true); }
+            catch (System.Exception ex) { Debug.LogError("Kurye Tycoon · atölye: '" + go.name + "' kurulamadı: " + ex); Yok(go); return null; }
+            return go;
+        }
+
         /// <summary>Şablonun mesh'leri henüz kurulmadı mı (City3D arka planda kurar, o sırada yerinde kutu durur).</summary>
         public static bool Kurulmadi(GameObject sablon) => sablon != null && bekleyen.ContainsKey(sablon);
 

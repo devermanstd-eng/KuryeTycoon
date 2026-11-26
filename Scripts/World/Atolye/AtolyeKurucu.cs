@@ -32,7 +32,7 @@ namespace KuryeTycoon
         static readonly string[] TemelTarzAd = { "Boyalı sıva teras (pastel)", "Yarı ahşap (Tudor) ev", "Taş kule", "Taş kaide / teras", "Taş merdiven" };
         /// <summary>Duvar tarzı adları: beş temel tarz + kütüphanedeki Londra üslupları (pastel_parcalar.py: TARZ_AD).</summary>
         public static string[] TarzAd => Kut != null && Kut.tarzAd != null && Kut.tarzAd.Length > 0 ? Kut.tarzAd : TemelTarzAd;
-        public static readonly string[] Bolgeler = { "eski", "karma", "kule", "ev", "kampus", "sanayi", "avm", "banliyo" };
+        public static readonly string[] Bolgeler = { "eski", "karma", "kule", "ev", "kampus", "sanayi", "avm", "banliyo", "park", "ciftlik" };
 
         // ---------------------------------------------------------------- kütüphane (JSON)
 
@@ -383,7 +383,7 @@ namespace KuryeTycoon
                 var kt = Kut;
                 string dv = !Bos(T.duvarRenk) ? T.duvarRenk : kt.duvarRenk[Mod(renk, kt.duvarRenk.Length)];
                 string ct = !Bos(T.catiRenk) ? T.catiRenk : kt.catiRenk[Mod(cati, kt.catiRenk.Length)];
-                string vr = !Bos(T.vurgu) ? T.vurgu : kt.vurguRenk[Sec(Karma(t.tohum, renk, cati, 7), kt.vurguRenk.Length)];
+                string vr = !Bos(t.vurgu) ? t.vurgu : !Bos(T.vurgu) ? T.vurgu : kt.vurguRenk[Sec(Karma(t.tohum, renk, cati, 7), kt.vurguRenk.Length)];
                 string yp = kt.yaprakRenk[Mod(yaprak, kt.yaprakRenk.Length)];
                 YaprakTonlari(yp, out string acik, out string golge);
                 return new Renkler

@@ -109,9 +109,11 @@ class Uretici:
             if 0 <= b["x"] < IZ and 0 <= b["y"] < IZ and 0 <= b["k"] < 8:
                 tek[(b["x"], b["y"], b["k"])] = b
         bloklar = [tek[k] for k in sorted(tek)]
-        if not bloklar:
+        if not bloklar and not susler:
             return False
-        imza = tuple(sorted((b["x"], b["y"], b["k"], b["tarz"], b["renk"]) for b in bloklar)) + (tur, tabela)
+        imza = tuple(sorted((b["x"], b["y"], b["k"], b["tarz"], b["renk"]) for b in bloklar)) + (tur, tabela, ad)
+        if not bloklar:
+            imza += tuple(sorted((s["ad"], s["x"], s["y"]) for s in susler))
         if imza in self.imzalar:
             return False
         self.imzalar.add(imza)
@@ -132,6 +134,8 @@ class Uretici:
                     susler.insert(0, dict(ad=z, x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0))
         if modul:
             ad = "s_%s_m%d%d_%03d" % (self.bolge, modul[0], modul[1], len(liste) + 1)
+        elif ad:
+            ad = "s_%s_%s_%03d" % (self.bolge, ad, len(liste) + 1)       # ör. s_park_meydan_001, s_eski_kilise_003
         else:
             ad = "s_%s_%03d" % (self.bolge, len(liste) + 1)
         liste.append(dict(ad=ad, bolge=self.bolge, tohum=self.rnd.randrange(1, 9999), dukkan=False,
@@ -239,6 +243,7 @@ KARMA_US = [GEO, VIC, VIC, SIVA, APT, APT, MEWS, PORT, GOT, MOD, FACH]
 def eski(u, n):
     l = []
     sira_evler(u, l, n, [3, 4, 4, 5, 5, 6], ESKI_US, dukkan_orani=0.25)
+    kiliseler(u, l, 3)
     moduller(u, l, 20, [3, 3, 4, 4, 5, 5, 6], ESKI_US, 0.25)
     return l
 
@@ -246,6 +251,7 @@ def eski(u, n):
 def karma(u, n):
     l = []
     sira_evler(u, l, n, [3, 3, 4, 4, 5], KARMA_US, dukkan_orani=0.6)
+    kiliseler(u, l, 2)
     moduller(u, l, 20, [2, 3, 3, 4, 4, 5], KARMA_US, 0.6)
     return l
 
@@ -392,10 +398,115 @@ def avm(u, n):
     return l
 
 
+AGAC_PARK = ["agac_cinar_1", "agac_cinar_2", "agac_cinar_3", "agac_mese_1", "agac_mese_2", "agac_ihlamur_1", "agac_ihlamur_2",
+             "agac_kestane_1", "agac_kestane_2", "agac_yuvarlak_1", "agac_yuvarlak_3", "agac_hus_1", "agac_sogut_1", "agac_sogut_2",
+             "agac_kavak_1", "agac_kavak_2", "agac_cam_2"]
+
+
+def park(u, n):
+    """Parklar (yalnız süs): çim, yürüyüş yolları, ağaçlar, banklar, lamba, çiçek tarhı; bazılarında çeşme, heykel, gölet.
+    Ayrıca meydan (çeşmeli, taş döşeli), anıt ve göl arsaları (City3D: meydan çeşmesi, City Park anıtı, park göleti)."""
+    l = []
+    deneme = 0
+    while len(l) < n and deneme < n * 30:
+        deneme += 1
+        s = []
+        yol = u.sec(["arti", "capraz", "kenar", "halka", "yok", "arti", "kenar"])
+        avlu = set()
+        if yol == "arti":
+            avlu = {(2, y) for y in range(IZ)} | {(x, 2) for x in range(IZ)}
+        elif yol == "kenar":
+            avlu = {(x, 0) for x in range(IZ)} | {(0, y) for y in range(IZ)}
+        elif yol == "halka":
+            avlu = {(x, y) for x in range(1, 4) for y in range(1, 4)} - {(2, 2)}
+        elif yol == "capraz":
+            avlu = {(i, i) for i in range(IZ)} | {(i, IZ - 1 - i) for i in range(IZ)}
+        gol = None
+        if u.rnd.random() < 0.2:
+            gol = u.sec([(c, d) for c in range(IZ) for d in range(IZ) if (c, d) not in avlu])
+        for x in range(IZ):
+            for y in range(IZ):
+                z = "arsa_gol" if (x, y) == gol else "arsa_avlu" if (x, y) in avlu else ("arsa_bahce" if u.rnd.random() < 0.12 else "arsa_cim")
+                s.append(dict(ad=z, x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0))
+        bos = [(x, y) for x in range(IZ) for y in range(IZ) if (x, y) not in avlu and (x, y) != gol]
+        u.rnd.shuffle(bos)
+        for (x, y) in bos[:u.sec([2, 3, 3, 4, 5])]:
+            s.append(u.sus(u.sec(AGAC_PARK), hucre_m(x) + u.rnd.uniform(-0.5, 0.5), hucre_m(y) + u.rnd.uniform(-0.5, 0.5), u.rnd.uniform(0.75, 1.05), u.rnd.randrange(3)))
+        for (x, y) in bos[5:5 + u.sec([1, 2, 3])]:
+            s.append(u.sus(u.sec(CALI + ["cicek_tarhi", "cicek_obegi", "ot_obegi"]), hucre_m(x), hucre_m(y)))
+        yollar = sorted(avlu)
+        u.rnd.shuffle(yollar)
+        for (x, y) in yollar[:u.sec([2, 3, 4])]:
+            s.append(u.sus(u.sec(["bank", "bank", "sokak_lambasi", "cop_kutusu", "bisiklet_park"]), hucre_m(x) + 1.0, hucre_m(y) + u.rnd.uniform(-0.6, 0.6)))
+        if u.rnd.random() < 0.25 and avlu:
+            x, y = u.sec(sorted(avlu))
+            s.append(u.sus(u.sec(["cesme", "heykel", "cicek_havuzu"]), hucre_m(x), hucre_m(y)))
+        u.kaydet(l, "", "konut", [], susler=s, zemin=None)
+    # meydan (çeşmeli), anıt, göl: City3D bunları adlarından tanır
+    for i in range(3):
+        s = [dict(ad="arsa_avlu", x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0) for x in range(IZ) for y in range(IZ)]
+        s += [u.sus("cesme", 0, 0, 1.4), u.sus("bank", -3.0, 0, 1.0), u.sus("bank", 3.0, 0, 1.0), u.sus("sokak_lambasi", -5.6, -5.6), u.sus("sokak_lambasi", 5.6, 5.6),
+              u.sus(u.sec(AGAC_PARK), -5.0, 5.0, 0.9), u.sus(u.sec(AGAC_PARK), 5.0, -5.0, 0.9), u.sus("cicek_tarhi", 0, -4.2), u.sus("cicek_tarhi", 0, 4.2)]
+        u.kaydet(l, "meydan", "konut", [], susler=s, zemin=None)
+    for i in range(2):
+        s = [dict(ad="arsa_avlu" if (x in (1, 2, 3) and y in (1, 2, 3)) else "arsa_cim", x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0)
+             for x in range(IZ) for y in range(IZ)]
+        s += [u.sus("heykel", 0, 0, 1.8), u.sus("cicek_tarhi", -2.8, 0), u.sus("cicek_tarhi", 2.8, 0)] + \
+             [u.sus(u.sec(AGAC_PARK), hucre_m(x), hucre_m(y), 0.9) for x, y in ((0, 0), (4, 0), (0, 4), (4, 4))]
+        u.kaydet(l, "anit", "konut", [], susler=s, zemin=None)
+    for i in range(2):
+        s = [dict(ad="arsa_gol" if (1 <= x <= 3 and 1 <= y <= 3) else "arsa_cim", x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0)
+             for x in range(IZ) for y in range(IZ)]
+        s += [u.sus("agac_sogut_1", -5.4, 5.2, 0.9), u.sus("agac_sogut_2", 5.2, -5.4, 0.9), u.sus("bank", 0, -6.0, 1.0), u.sus("kayik", 0.5, 0.5, 0.8)]
+        u.kaydet(l, "gol", "konut", [], susler=s, zemin=None)
+    return l
+
+
+def ciftlik(u, n):
+    """Kırsal: çiftlik evi, ahır / samanlık, sera; çim avlu, saman balyası, kuyu, sebze bahçesi, koyun, meyve ağacı."""
+    l = []
+    deneme = 0
+    while len(l) < n and deneme < n * 30:
+        deneme += 1
+        b = []
+        ev_t = u.sec([FACH, TAS, VIC, APT, FACH])
+        x0 = u.sec([0, 1, 2])
+        b += u.kutu(x0, x0 + u.sec([1, 2]), 1, 2, u.sec([1, 2, 2]), ev_t, u.renk(ev_t), u.cati(ev_t), u.sec([CT_BESIK, CT_KIRMA, CT_OTO]))
+        dolu = {(bb["x"], bb["y"]) for bb in b}
+        ek = u.sec(["ahir", "ahir", "sera", "yok", "ahir"])
+        if ek != "yok":
+            t2 = DEPO if ek == "ahir" else SERA
+            xa = 3 if x0 <= 1 else 0
+            ya = u.sec([2, 3])
+            b += u.kutu(xa, min(4, xa + 1), ya, min(4, ya + 1), 1 if ek == "sera" else u.sec([1, 2]), t2,
+                        u.sec([12, 13, 7]) if ek == "ahir" else 6, u.sec([5, 9, 8]), CT_BESIK if ek == "ahir" else CT_OTO)
+        s = []
+        dolu = {(bb["x"], bb["y"]) for bb in b}
+        bos = [(x, y) for x in range(IZ) for y in range(IZ) if (x, y) not in dolu]
+        u.rnd.shuffle(bos)
+        for (x, y) in bos[:u.sec([3, 4, 5])]:
+            s.append(u.sus(u.sec(["saman_balyasi", "kuyu", "sebze_bahcesi", "koyun", "koyun", "odun_yigini", "agac_meyve_1", "agac_meyve_2", "cit_ahsap", "kutuk"]),
+                           hucre_m(x) + u.rnd.uniform(-0.5, 0.5), hucre_m(y) + u.rnd.uniform(-0.5, 0.5)))
+        u.kaydet(l, "", "konut", b, susler=s, zemin=u.sec(["cim", "cim", "bahce"]))
+    return l
+
+
+def kiliseler(u, l, n):
+    """Gotik kilise: nef (beşik çatı) ve sivri kuleli çan kulesi. Adında _kilise_: City3D şehirde en çok ikisini koyar."""
+    for i in range(n):
+        renk = u.sec([10, 11, 12, 15, 6])
+        nef = u.kutu(1, 3, 0, 3, u.sec([2, 3]), GOT, renk, u.sec(ARDUVAZ), CT_BESIK)
+        kx = u.sec([0, 4])
+        kule = u.kutu(kx, kx, 0, 0, u.sec([4, 5, 6]), GOT, renk, u.sec(ARDUVAZ), CT_OTO)
+        s = [u.sus(u.sec(AGAC_PARK), hucre_m(4 - kx), hucre_m(4), 0.9), u.sus("bank", hucre_m(kx), hucre_m(2), 1.0)]
+        u.kaydet(l, "kilise", "konut", nef + kule, susler=s, zemin="cim")
+
+
 # bölge → (üretici, tam tasarım sayısı). Eski şehir ve çarşıda ayrıca 12 şerit yuvası × 20 şerit; şehirde çıkanlar oyun
 # çalışırken (arka planda, kameraya yakın olanlar önce) kurulur.
 BOLGELER = [("eski", eski, 30), ("karma", karma, 30), ("kule", kule, 60), ("ev", lambda u, n: mustakil(u, n), 120),
-            ("banliyo", lambda u, n: mustakil(u, n, kucuk=True), 100), ("kampus", kampus, 30), ("sanayi", sanayi, 60), ("avm", avm, 16)]
+            ("banliyo", lambda u, n: mustakil(u, n, kucuk=True), 100), ("kampus", kampus, 30), ("sanayi", sanayi, 60), ("avm", avm, 16),
+            ("park", park, 30), ("ciftlik", ciftlik, 30)]
 
 
 def tasarimlar():

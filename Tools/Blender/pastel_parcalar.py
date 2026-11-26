@@ -1378,6 +1378,141 @@ def arsa_bahce(g):
         meyve(g, -e + 0.25 + i * 0.47, e - 0.17, 0.2, 0.12, CICEK[i % len(CICEK)], n=5)
 
 
+# ---------------------------------------------------------------- eksik sokak donatıları (v10: şehir yalnız atölye modelleriyle)
+
+_GRI = PM("Metal", "#7d8590")
+_YESIL_M = PM("Metal", "#4f7a5f")
+
+
+@_cevre("Reklam panosu (iki ayaklı)", "donati:reklam_panosu")
+def reklam_panosu(g):
+    for sx in (-0.9, 0.9):
+        cubuk(g, (sx, 0, 0), (sx, 0, 1.2), 0.07, _GRI)
+    kutu(g, -1.2, 1.2, -0.08, 0.08, 1.2, 2.7, PM("Ahsap", "#5d4336"))
+    kutu(g, -1.1, 1.1, -0.1, -0.08, 1.3, 2.6, PM("Afis", "#f5c84a"), atla=())
+    kutu(g, -1.0, 0.1, -0.11, -0.1, 1.45, 2.4, PM("Afis", "#e8607a"), atla=())
+    kutu(g, 0.2, 1.0, -0.11, -0.1, 1.9, 2.45, PM("Afis", "#5f8fb8"), atla=())
+
+
+@_cevre("Büfe / gazete kulübesi", "donati:bufe")
+def bufe(g):
+    kutu(g, -0.9, 0.9, -0.7, 0.7, 0.0, 2.2, PM("Ahsap", "#2f6048"))
+    kutu(g, -0.75, 0.75, -0.71, -0.69, 0.95, 1.8, VIT, atla=())
+    kutu(g, -1.0, 1.0, -0.95, 0.8, 2.2, 2.32, PM("Tente", "#c8553f"))
+    kutu(g, -0.8, 0.8, -0.95, -0.7, 0.9, 0.98, SILME)
+    kutu(g, -0.6, 0.6, -0.72, -0.7, 1.9, 2.15, PM("Afis", "#fff6dc"), atla=())
+
+
+@_cevre("Yangın musluğu", "donati:yangin_musluk")
+def yangin_musluk(g):
+    kr = PM("Kirmizi", "#c8413a")
+    dsil(g, 0, 0, 0, 0.08, 0.16, 8, kr)
+    dsil(g, 0, 0, 0.08, 0.62, 0.11, 8, kr)
+    top(g, (0, 0, 0.66), 0.12, 0.12, 0.08, kr)
+    for s in (-1, 1):
+        cubuk(g, (0, 0, 0.45), (0.17 * s, 0, 0.45), 0.05, kr)
+
+
+@_cevre("Trafo kutusu", "donati:trafo")
+def trafo(g):
+    kutu(g, -0.55, 0.55, -0.3, 0.3, 0.0, 1.25, _YESIL_M)
+    kutu(g, -0.6, 0.6, -0.35, 0.35, 1.25, 1.31, _GRI, atla=())
+    kutu(g, -0.45, -0.02, -0.31, -0.3, 0.1, 1.1, PM("Metal", "#5d8a6c"), atla=())
+    kutu(g, 0.02, 0.45, -0.31, -0.3, 0.1, 1.1, PM("Metal", "#5d8a6c"), atla=())
+    kutu(g, -0.1, 0.1, -0.32, -0.31, 0.95, 1.05, PM("Afis", "#f5c84a"), atla=())
+
+
+@_cevre("Geri dönüşüm kumbaraları", "donati:geri_donusum")
+def geri_donusum(g):
+    for i, h in enumerate(("#3f7d4a", "#3f5f8a", "#d9a441")):
+        x = -0.75 + i * 0.75
+        kutu(g, x - 0.33, x + 0.33, -0.33, 0.33, 0.0, 1.25, PM("Metal", h))
+        dsil(g, x, 0, 1.25, 1.45, 0.28, 8, PM("Metal", h), r1=0.12, kapak=(False, True))
+        kutu(g, x - 0.12, x + 0.12, -0.34, -0.33, 0.95, 1.05, DEMIR, atla=())
+
+
+@_cevre("Elektrikli araç şarj istasyonu", "donati:sarj")
+def sarj(g):
+    kutu(g, -0.22, 0.22, -0.15, 0.15, 0.0, 1.5, PM("Metal", "#e8ecef"))
+    kutu(g, -0.18, 0.18, -0.16, -0.15, 0.9, 1.3, PM("Afis", "#3fa86a"), atla=())
+    kutu(g, -0.24, 0.24, -0.17, 0.17, 1.5, 1.58, _GRI, atla=())
+    cubuk(g, (0.22, -0.1, 0.9), (0.5, -0.3, 0.1), 0.03, DEMIR)
+
+
+@_cevre("Trafik lambası", "donati:trafik_lambasi")
+def trafik_lambasi(g):
+    dsil(g, 0, 0, 0, 3.0, 0.07, 6, DEMIR_S)
+    kutu(g, -0.16, 0.16, -0.18, 0.06, 2.0, 2.95, DEMIR_S)
+    for i, h in enumerate(("#e0453a", "#f2b23a", "#4fb36a")):
+        z = 2.8 - i * 0.3
+        dsil(g, 0, -0.19, z - 0.1, z + 0.1, 0.09, 8, PM("Isik", h))
+
+
+@_cevre("Saman balyası", "donati:saman_balyasi")
+def saman_balyasi(g):
+    silindir(g, (-0.6, 0, 0.6), (0.6, 0, 0.6), 0.6, 0.6, 10, PM("Saman", "#e3c26a"))
+    for x in (-0.3, 0.3):
+        silindir(g, (x - 0.02, 0, 0.6), (x + 0.02, 0, 0.6), 0.61, 0.61, 10, PM("Saman", "#c9a24f"))
+
+
+@_cevre("Modern sokak lambası", "donati:lamba_modern")
+def lamba_modern(g):
+    dsil(g, 0, 0, 0, 4.2, 0.07, 6, _GRI, r1=0.05)
+    cubuk(g, (0, 0, 4.15), (0.8, 0, 4.25), 0.05, _GRI)
+    kutu(g, 0.55, 1.05, -0.13, 0.13, 4.12, 4.28, _GRI)
+    kutu(g, 0.6, 1.0, -0.1, 0.1, 4.08, 4.12, ISIK, atla=())
+
+
+def _levha(g, sekil, renk, yazi=None):
+    dsil(g, 0, 0, 0, 2.2, 0.04, 6, _GRI)
+    if sekil == "daire":
+        dsil(g, 0, -0.06, 1.85, 1.87, 0.32, 12, renk)
+        silindir(g, (0, -0.05, 2.15), (0, -0.07, 2.15), 0.3, 0.3, 12, renk)
+    elif sekil == "ucgen":
+        cokgen(g, C((-0.32, -0.05), (1, 0), (0, -1), 0.64), [(0, 1.8), (0.64, 1.8), (0.32, 2.35)], renk, 0.02)
+    else:
+        kutu(g, -0.3, 0.3, -0.07, -0.04, 1.8, 2.4, renk)
+    if yazi:
+        kutu(g, -0.15, 0.15, -0.09, -0.07, 1.98, 2.22, yazi, atla=())
+
+
+@_cevre("Trafik işareti: dur", "donati:isaret_dur")
+def isaret_dur(g):
+    _levha(g, "daire", PM("Levha", "#c8413a"), PM("Levha", "#fbf7ee"))
+
+
+@_cevre("Trafik işareti: yol ver", "donati:isaret_yol_ver")
+def isaret_yol_ver(g):
+    _levha(g, "ucgen", PM("Levha", "#fbf7ee"))
+
+
+@_cevre("Trafik işareti: yaya geçidi", "donati:isaret_yaya")
+def isaret_yaya(g):
+    _levha(g, "kare", PM("Levha", "#3f6fb0"), PM("Levha", "#fbf7ee"))
+
+
+@_cevre("Trafik işareti: park yeri", "donati:isaret_park")
+def isaret_park(g):
+    _levha(g, "kare", PM("Levha", "#3f6fb0"), PM("Levha", "#fbf7ee"))
+
+
+@_cevre("Elektrik direği (ahşap)", "donati:elektrik_diregi")
+def elektrik_diregi(g):
+    dsil(g, 0, 0, 0, 7.0, 0.13, 6, PM("Ahsap", "#7a5a44"), r1=0.1)
+    kutu(g, -0.9, 0.9, -0.06, 0.06, 6.4, 6.55, PM("Ahsap", "#6a4d3a"))
+    for x in (-0.75, 0.0, 0.75):
+        dsil(g, x, 0, 6.55, 6.72, 0.05, 6, PM("Seramik", "#e8e4dc"))
+
+
+@_cevre("Arsa zemini: gölet (bir hücre)")
+def arsa_gol(g):
+    e = HUCRE / 2
+    kutu(g, -e, e, -e, e, 0.0, 0.02, ARSA_TAS)
+    kutu(g, -e + 0.25, e - 0.25, -e + 0.25, e - 0.25, 0.02, 0.06, PM("Su", "#8fc3dd"))
+    for a, b, c, d in ((-e, e, -e, -e + 0.25), (-e, e, e - 0.25, e), (-e, -e + 0.25, -e, e), (e - 0.25, e, -e, e)):
+        kutu(g, a, b, c, d, 0.02, 0.12, ARSA_TAS2)        # taş kenar
+
+
 @_cevre("Sebze bahçesi")
 def sebze_bahcesi(g):
     kutu(g, -1.3, 1.3, -0.9, 0.9, 0.0, 0.1, PM("Toprak", "#8a6a55"))
@@ -5541,7 +5676,7 @@ IC_TUR = {
     "cicekci": ("ic_kasa", ("ic_cicek", "ic_cicek"), "ic_cicek", "ic_zemin_ahsap", 1),
     "kitapci": ("ic_kasa", ("ic_kitaplik", "ic_kitaplik", "ic_okuma"), "ic_kitaplik", "ic_zemin_ahsap", 1),
     "eczane": ("ic_eczane", ("ic_raf", "ic_bekleme"), "ic_raf", "ic_zemin_karo", 1),
-    "bakkal24": _MK, "minimart": _MK, "market": _MK, "supermarket": _MK, "market24": _MK, "bio": _MK,
+    "bakkal24": _MK, "minimart": _MK, "bakkal": _MK, "gece_market": _MK, "liman24": _MK, "koy_bakkal": _MK, "market": _MK, "supermarket": _MK, "market24": _MK, "bio": _MK,
     "belediye": ("ic_gise", ("ic_bekleme", "ic_ofis", "ic_bekleme"), "ic_ofis", "ic_zemin_ahsap", 1),
     "postane": ("ic_gise", ("ic_bekleme", "ic_palet"), "ic_ofis", "ic_zemin_karo", 1),
     "hastane": ("ic_resepsiyon", ("ic_bekleme", "ic_muayene", "ic_pano", "ic_sedye", "ic_muayene", "ic_tekerlekli"), "ic_bekleme", "ic_zemin_karo", 1),
@@ -5593,6 +5728,10 @@ TURLER = [
     _tur("eczane", "Eczane", "Dükkân", onek="Dukkan_eczane", tabela="PHARMACY", simge="simge_hac", vurgu="#3f8a5a", cephe="hac_cephe", on="vitrin", kapi="kapi_vitrin"),
     _tur("bakkal24", "Köşe bakkal: 24/7 Corner Store", "Dükkân", onek="Dukkan_abc_nonstop", tabela="24/7 CORNER STORE", simge="simge_sepet", vurgu="#3f7d74", aks=("kasalar",), **_D),
     _tur("minimart", "Bakkal: Mini Mart", "Dükkân", onek="Dukkan_mini_abc", tabela="MINI MART", simge="simge_sepet", vurgu="#d9822b", aks=("kasalar",), **_D),
+    _tur("bakkal", "Köşe bakkalı: Corner Shop", "Dükkân", onek="Dukkan_bakkal", tabela="CORNER SHOP", simge="simge_sepet", vurgu="#c8553f", aks=("kasalar", "cicek_kovalari"), **_D),
+    _tur("gece_market", "Bakkal: Day & Night Market", "Dükkân", onek="Dukkan_ejjel_nappali", tabela="DAY & NIGHT", simge="simge_sepet", vurgu="#2c3d70", aks=("kasalar",), **_D),
+    _tur("liman24", "Bakkal: Harbour 24", "Dükkân", onek="Dukkan_kikoto_nonstop", tabela="HARBOUR 24", simge="simge_balik", vurgu="#3f6f9a", aks=("kasalar", "fici"), **_D),
+    _tur("koy_bakkal", "Köy bakkalı: Village Store", "Dükkân", onek="Dukkan_falu_abc", tabela="VILLAGE STORE", simge="simge_sepet", vurgu="#5a8f4a", aks=("kasalar", "saksi"), **_D),
     _tur("market", "Market: Sparx Express", "Market", onek="Market_szpar_express", tabela="SPARX EXPRESS", simge="simge_sepet", vurgu="#2f8a4a", on="vitrin_genis", kapi="kapi_otomatik", aks=("araba_yeri", "kasalar"), mimari=("modern", "#e8ebee", "")),
     _tur("supermarket", "Süpermarket: InterSparx", "Market", onek="Market_interszpar", tabela="INTERSPARX", simge="simge_sepet", vurgu="#c8342f", on="vitrin_genis", kapi="kapi_otomatik", aks=("araba_yeri", "", "araba_yeri"), mimari=("modern", "#dfe4e8", "")),
     _tur("market24", "Market: Market 24", "Market", onek="Market_market_24", tabela="MARKET 24", simge="simge_sepet", vurgu="#3f6fd0", on="vitrin_genis", kapi="kapi_otomatik", aks=("kasalar",), mimari=("modern", "#e4e6ea", "")),
@@ -5612,6 +5751,8 @@ TURLER = [
     _tur("otel", "Otel", "Simge", tabela="GRAND HOTEL", simge="simge_yildiz", on="vitrin", kapi="kapi_vitrin", tente=1, tepe="bayrak", vurgu="#8a5a78", aks=("saksi",), mimari=("siva", "#f5f0e6", "#6f7781")),
     _tur("avm", "Büyük mağaza / AVM", "Simge", tabela="DEPARTMENT STORE", on="vitrin_genis", kapi="kapi_otomatik", tente=1, vurgu="#3f7d74", bolge="avm", mimari=("portland", "#e6dcc6", "#6f7781")),
     _tur("pazar", "Kapalı pazar", "Simge", tabela="MARKET HALL", on="kemer_cam", kapi="kapi_kemerli", vurgu="#c46a2b", aks=("kasalar", "cicek_kovalari"), mimari=("depo", "#d4b483", "#6f7781")),
+    _tur("merkez", "Merkez ofis (oyuncunun şirketi)", "Simge", onek="Merkez", tabela="HQ", kapi="kapi_otomatik", tepe="bayrak", vurgu="#3f6fd0",
+         mimari=("modern", "#eef0f2", "")),
     _tur("opera", "Opera / tiyatro", "Simge", tabela="OPERA", on="sutunlu", kapi="kapi_sutunlu", vurgu="#8a2f4a", tepe="alinlik_tas", mimari=("portland", "#efe8d8", "#6f7781")),
 ]
 TUR = {t["ad"]: t for t in TURLER}
@@ -5894,7 +6035,7 @@ def yerlesim(t):
     def renk(b, yaprak=0):
         dv = T["duvarRenk"] or DUVAR_RENK[b["renk"] % len(DUVAR_RENK)]
         ct = T["catiRenk"] or CATI_RENK[b["cati"] % len(CATI_RENK)]
-        vr = T["vurgu"] or VURGU_RENK[karma(tohum, b["renk"], b["cati"], 7) % len(VURGU_RENK)]
+        vr = t.get("vurgu") or T["vurgu"] or VURGU_RENK[karma(tohum, b["renk"], b["cati"], 7) % len(VURGU_RENK)]
         yp = YAPRAK_RENK[yaprak % len(YAPRAK_RENK)]
         r = dict(D=dv, d=koyu(dv, 0.9), C=ct, c=koyu(ct, 0.86), K=vr, T=TENTE_RENK[t.get("tente", 0) % len(TENTE_RENK)], k=cizgi_rengi(yp))
         r.update(yaprak_tonlari(yp))
@@ -6603,6 +6744,16 @@ def ornekler():
         _sus("sokak_lambasi", -6.3, -6.3), _sus("telefon_kulubesi", 5.4, -6.2), _sus("posta_kutusu", 3.9, -6.3), _sus("bollard", -4.6, -6.5), _sus("bollard", -3.0, -6.5),
         _sus("demir_korkuluk", -5.6, -5.4), _sus("demir_korkuluk", -2.8, -5.4), _sus("demir_kapi", 0.0, -5.4), _sus("demir_korkuluk", 2.8, -5.4), _sus("demir_korkuluk", 5.6, -5.4)]
         + [_sus("cicek_obegi" if i % 2 else "ot_obegi", -1.8 + (i * 37 % 40) / 10.0, 1.6 + (i * 53 % 30) / 10.0, i * 40, 1.0, i) for i in range(6)]))
+    # ---- v10: eski modeli kalan dükkânların atölye binaları (şehir yalnız atölye modelleriyle)
+    o.append(_o("corner_shop", "bakkal", _blok(1, 3, 0, 2, 2, VICTORIAN, 12, 6, CT_KIRMA), _th(3, 1, 70), 0, "CORNER SHOP", bolge="karma",
+                susler=[_sus("kasalar", -3.6, -5.4), _sus("cicek_kovalari", 3.8, -5.5), _sus("posta_kutusu", 5.8, -6.0)]))
+    o.append(_o("corner_shop_2", "bakkal", _blok(0, 2, 0, 2, 3, GEORGIAN, 10, 6, P) + _blok(3, 3, 0, 1, 2, GEORGIAN, 10, 6, P), _th(3, 2, 71), 6, "CORNER SHOP", bolge="eski"))
+    o.append(_o("day_night", "gece_market", _blok(1, 3, 0, 2, 3, APARTMAN, 8, 7, CT_PARAPET), _th(3, 1, 72), 8, "DAY & NIGHT", bolge="karma"))
+    o.append(_o("harbour_24", "liman24", _blok(1, 3, 0, 2, 2, MEWS, 4, 6, P), _th(3, 0, 73), 2, "HARBOUR 24", bolge="karma",
+                susler=[_sus("fici", -3.4, -5.6), _sus("kasalar", 3.6, -5.6)]))
+    o.append(_o("village_store", "koy_bakkal", _blok(1, 3, 1, 2, 1, FACHWERK, 3, 0, CT_BESIK) + _blok(1, 3, 1, 2, 1, FACHWERK, 3, 0, CT_BESIK, k0=1), _th(3, 1, 74), 5,
+                "VILLAGE STORE", bolge="ev", susler=[_sus("arsa_cim", hx, hy) for hx in (-5.6, -2.8, 0, 2.8, 5.6) for hy in (-5.6, 2.8, 5.6)]
+                + [_sus("kasalar", -3.0, -5.0), _sus("saman_balyasi", 5.4, 4.6), _sus("agac_meyve_1", -5.2, 4.4)]))
     return o
 
 

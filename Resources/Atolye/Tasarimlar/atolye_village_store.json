@@ -1,0 +1,265 @@
+{
+ "ad": "village_store",
+ "bolge": "ev",
+ "tohum": 77,
+ "dukkan": false,
+ "tur": "koy_bakkal",
+ "tabela": "VILLAGE STORE",
+ "tente": 5,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 1,
+   "tarz": 1,
+   "renk": 3,
+   "cati": 0,
+   "ct": 2
+  }
+ ],
+ "susler": [
+  {
+   "ad": "arsa_cim",
+   "x": -5.6,
+   "y": -5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": -5.6,
+   "y": 2.8,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": -5.6,
+   "y": 5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": -2.8,
+   "y": -5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": -2.8,
+   "y": 2.8,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": -2.8,
+   "y": 5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 0,
+   "y": -5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 0,
+   "y": 2.8,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 0,
+   "y": 5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 2.8,
+   "y": -5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 2.8,
+   "y": 2.8,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 2.8,
+   "y": 5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 5.6,
+   "y": -5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 5.6,
+   "y": 2.8,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "arsa_cim",
+   "x": 5.6,
+   "y": 5.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "kasalar",
+   "x": -3.0,
+   "y": -5.0,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "saman_balyasi",
+   "x": 5.4,
+   "y": 4.6,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "agac_meyve_1",
+   "x": -5.2,
+   "y": 4.4,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  }
+ ]
+}
