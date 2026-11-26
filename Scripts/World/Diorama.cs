@@ -85,8 +85,11 @@ namespace KuryeTycoon
         {
             int mod = GrafikKalitesi.TiltShiftModu;    // 0 kapalı, 1 hızlı (Gaussian), 2 Bokeh (yalnız istenirse)
             var mc = MapCamera.I;
+            // Yakınlaşınca tilt-shift söner (u62): yakın planda yüksek bina ekranın büyük kısmını kaplar, çatısı ve arkasındaki
+            // bina odak düzleminin ötesine düşüp bulanıklaşıyordu. Zoom 0,62'den sonra azalır, 0,85'te kapalı.
+            float yakin = mc != null ? 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.62f, 0.85f, mc.Zoom)) : 1f;
             if (mod == 0 || a.tiltShiftPiksel <= 0.01f || cam == null || cam.orthographic || mc == null || mc.FlatMode ||
-                !OdakUzakligi(cam, out float P))
+                yakin < 0.03f || !OdakUzakligi(cam, out float P))
             {
                 if (dof.mode.value != DepthOfFieldMode.Off) dof.mode.Override(DepthOfFieldMode.Off);
                 return;
@@ -96,7 +99,7 @@ namespace KuryeTycoon
                 // URP Bokeh: CoC = (1 − P/derinlik) · maxCoC, maxCoC = (A·F)/(P − F), A = odak/diyafram, F = odak/1000 (m).
                 // Bulanıklık yarıçapı = CoC · 14 px. Kenarda istenen piksele göre diyafram hesaplanır (odak en uzun: 300 mm).
                 const float odak = 300f, F = odak / 1000f;
-                float M = a.tiltShiftPiksel / 14f / KenarOrani;
+                float M = a.tiltShiftPiksel * yakin / 14f / KenarOrani;
                 float diyafram = Mathf.Clamp(odak * odak / 1000f / (M * Mathf.Max(0.5f, P - F)), 1f, 32f);
                 dof.mode.Override(DepthOfFieldMode.Bokeh);
                 dof.focusDistance.Override(P);
@@ -109,8 +112,8 @@ namespace KuryeTycoon
             {
                 // Hızlı: yalnız uzak taraf (ekranın üstü) bulanıklaşır
                 dof.mode.Override(DepthOfFieldMode.Gaussian);
-                dof.gaussianStart.Override(P * 1.07f);
-                dof.gaussianEnd.Override(P * 1.5f);
+                dof.gaussianStart.Override(P * Mathf.Lerp(2.2f, 1.07f, yakin));
+                dof.gaussianEnd.Override(P * Mathf.Lerp(3.5f, 1.5f, yakin));
                 dof.gaussianMaxRadius.Override(a.hizliBulaniklik);
                 dof.highQualitySampling.Override(false);
             }
@@ -124,6 +127,15 @@ namespace KuryeTycoon
             if (ray.direction.z < 1e-4f) return false;            // kamera +Z'ye (yere) bakmıyor
             float t = -ray.origin.z / ray.direction.z;
             if (t <= 0.1f) return false;
+            // Şehir tepeli (u58): odak düzlem z = 0'a değil, arazinin kendisine (birkaç adımda yaklaşır)
+            if (CityMap.Organik)
+                for (int i = 0; i < 4; i++)
+                {
+                    Vector3 h = ray.origin + ray.direction * t;
+                    float t2 = (Arazi.Z(h.x, h.y) - ray.origin.z) / ray.direction.z;
+                    if (t2 <= 0.1f) break;
+                    t = t2;
+                }
             P = t * Vector3.Dot(ray.direction, cam.transform.forward);
             return P > 0.2f;
         }
