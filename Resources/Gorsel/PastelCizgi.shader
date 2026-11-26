@@ -13,6 +13,8 @@
 //    incelir; ayrıntı çizgileri daha erken tamamen söner. Uzaktan şehir çizgi ağına dönmez.
 //  • _PastelCizgiGizle (global) 1 ise hiçbir şey çizmez: oyunda ekran geçişi (MurekkepCizgi) konturu çizerken çift çizgi
 //    olmasın diye (City3D, Resources/Gorsel/AtolyeAyari).
+//  • Oyunda yumuşak çizgi (u60): _Kalinlik, _CizgiGuc, _AyrintiGuc, _Acik, _CizgiYakin, _CizgiUzak oyunda AtolyeAyari'dan gelir
+//    (AtolyeKurucu.Malzeme); atölye önizlemesi varsayılanlarla, güçlü çizgiyle kalır.
 Shader "KuryeTycoon/PastelCizgi"
 {
     Properties
@@ -24,6 +26,9 @@ Shader "KuryeTycoon/PastelCizgi"
         _CizgiYakin("Bu uzaklığa kadar çizgi tam (dünya birimi = kare)", Range(1, 60)) = 11
         _CizgiUzak("Bu uzaklıkta çizgi en soluk (kare)", Range(2, 120)) = 30
         _CizgiUzakAlfa("En uzakta ana çizginin saydamlığı", Range(0, 1)) = 0.12
+        _CizgiGuc("Ana çizgi koyuluğu (yakında)", Range(0, 1)) = 1
+        _AyrintiGuc("Ayrıntı çizgisi koyuluğu (pencere, kiremit; yakında)", Range(0, 1)) = 0.8
+        _Acik("Çizgi rengini açma (0: yüzeyin koyusu, 1: çok açık)", Range(0, 1)) = 0
     }
 
     SubShader
@@ -56,6 +61,9 @@ Shader "KuryeTycoon/PastelCizgi"
                 float _CizgiYakin;
                 float _CizgiUzak;
                 float _CizgiUzakAlfa;
+                float _CizgiGuc;
+                float _AyrintiGuc;
+                float _Acik;
             CBUFFER_END
 
             float _PastelCizgiGizle;
@@ -135,7 +143,7 @@ Shader "KuryeTycoon/PastelCizgi"
                         cp.xy += kay * 2.0 / _ScreenParams.xy * cp.w;
                     }
                     alfa = saturate((boy - _Silinme * 0.5) / max(_Silinme, 0.01));
-                    alfa *= abs(v.uv.x) < 0.75 ? 0.8h : 1.0h;       // ayrıntı çizgisi: biraz saydam
+                    alfa *= abs(v.uv.x) < 0.75 ? (half)_AyrintiGuc : (half)_CizgiGuc;     // ayrıntı çizgisi daha saydam
                 }
                 // uzaklık solması: ayrıntı çizgileri (pencere, kapı, kiremit) daha erken ve tamamen, ana hatlar _CizgiUzakAlfa'ya kadar
                 alfa *= ayrinti ? (half)(1.0 - smoothstep(_CizgiYakin * 0.7, _CizgiUzak * 0.75, uzaklik))
@@ -147,6 +155,7 @@ Shader "KuryeTycoon/PastelCizgi"
                 #ifndef UNITY_COLORSPACE_GAMMA
                     c = c * (c * (c * 0.305306011h + 0.682171111h) + 0.012522878h);   // sRGB → doğrusal (yaklaşık)
                 #endif
+                c = lerp(c, saturate(c * 1.6h + 0.06h), (half)_Acik);        // çizgi rengi açılır: kalem bastırmaz, hafif dokunur
                 o.color = half4(c * _BaseColor.rgb, alfa * _BaseColor.a);
                 o.positionOS = v.positionOS.xyz;
                 o.kabuk = abs(v.uv.x) > 0.05 ? 0.0 : 1.0;

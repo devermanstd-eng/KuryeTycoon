@@ -296,6 +296,8 @@ namespace KuryeTycoon
                 {
                     data.renderPostProcessing = true;
                     data.renderShadows = true;
+                    // Bir pikselde NaN / sonsuz çıkarsa (bozuk normal) bloom ve alan derinliği onu büyük siyah daireye çevirmesin
+                    data.stopNaN = true;
                     data.antialiasing = GrafikKalitesi.KenarYumusatma;
                 }
             }

@@ -152,8 +152,8 @@ Shader "KuryeTycoon/CimKart"
                 renk *= 0.9 + 0.2 * Hs(i.kok * 91.7);
                 renk = lerp(renk, float3(0.92, 0.94, 0.97), _Kar * smoothstep(0.3, 1.0, t) * 0.85);
 
-                float3 n = normalize(i.normalWS) * (on ? 1.0 : -1.0);
-                float3 N = normalize(lerp(n, float3(0, 0, -1), 0.75));
+                float3 n = SafeNormalize(i.normalWS) * (on ? 1.0 : -1.0);
+                float3 N = SafeNormalize(lerp(n, float3(0, 0, -1), 0.75));
                 Light L = GetMainLight(TransformWorldToShadowCoord(i.positionWS));
                 float atten = L.shadowAttenuation * L.distanceAttenuation;
                 float ndl = dot(N, L.direction) * 0.5 + 0.5;

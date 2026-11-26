@@ -28,6 +28,19 @@ namespace KuryeTycoon
         [Tooltip("Oyunda da modellerin kendi kalem çizgileri (Pastel_Cizgi) çizilsin. Kapalıyken konturu yalnız ekran geçişi " +
                  "(Mürekkep çizgisi) çizer: çift çizgi olmaz. Ekran geçişi kapalıysa bunu açın.")]
         public bool oyundaKalemCizgisi = true;
+        [Header("Oyunda kalem çizgisi (atölye önizlemesi etkilenmez)")]
+        [Tooltip("Çizgi kalınlığı, piksel (atölyede 1,15).")]
+        [Range(0.4f, 2f)] public float cizgiKalinlik = 0.75f;
+        [Tooltip("Bina ana hatlarının koyuluğu, yakında (1: tam).")]
+        [Range(0f, 1f)] public float cizgiKoyuluk = 0.55f;
+        [Tooltip("Pencere, kapı, kiremit, cam çatı gibi ayrıntı çizgilerinin koyuluğu, yakında.")]
+        [Range(0f, 1f)] public float ayrintiKoyuluk = 0.28f;
+        [Tooltip("Çizgi rengini açar (0: yüzeyin koyusu; büyüdükçe kalem daha hafif dokunur).")]
+        [Range(0f, 1f)] public float cizgiAcik = 0.35f;
+        [Tooltip("Bu uzaklığa (kare) kadar çizgi tam; sonra solmaya başlar.")]
+        [Range(1f, 60f)] public float cizgiYakin = 6f;
+        [Tooltip("Bu uzaklıkta (kare) çizgi en soluk; ayrıntı çizgileri bundan önce tamamen söner.")]
+        [Range(2f, 120f)] public float cizgiUzak = 22f;
         [Tooltip("Şehrin zemini pastel görünsün: yol, kaldırım, bordür, şerit, çim ve meydan malzemeleri Bina Atölyesi'nin pastel " +
                  "paletine (Pastel gölgelendiricisi) geçer; organik zeminin dokusu ve çim tutamları da pastel tonlara döner. " +
                  "Yol ağı ve geometri aynı kalır. Kapalıyken eski görünüm.")]
@@ -54,6 +67,19 @@ namespace KuryeTycoon
         public static bool YalnizAtolye => Binalar && Al() != null && Al().yalnizAtolye;
         public static bool SehirYukseltisi => Al() != null && Al().sehirYukseltisi;
         public static bool OyundaKalemCizgisi => Al() != null && Al().oyundaKalemCizgisi;
+        /// <summary>Oyunda kalem çizgisi malzemesine yumuşak çizgi ayarlarını yazar (AtolyeKurucu.Malzeme, yalnız oyun çalışırken).</summary>
+        public static void CizgiAyarla(Material m)
+        {
+            var a = Al();
+            if (m == null || a == null) return;
+            m.SetFloat("_Kalinlik", a.cizgiKalinlik);
+            m.SetFloat("_CizgiGuc", a.cizgiKoyuluk);
+            m.SetFloat("_AyrintiGuc", a.ayrintiKoyuluk);
+            m.SetFloat("_Acik", a.cizgiAcik);
+            m.SetFloat("_CizgiYakin", a.cizgiYakin);
+            m.SetFloat("_CizgiUzak", Mathf.Max(a.cizgiUzak, a.cizgiYakin + 1f));
+        }
+
         public static bool PastelZemin => Al() != null && Al().oyundaPastelZemin;
 
         // Zemin malzemesi adının başı → pastel karşılığı (uzun önek önce). Yol parçalarının ve parkların malzemeleri adla eşlenir.

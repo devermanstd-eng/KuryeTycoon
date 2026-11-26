@@ -1552,6 +1552,7 @@ namespace KuryeTycoon
             if (cizgi)
             {
                 if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
+                if (Application.isPlaying) AtolyeAyari.CizgiAyarla(m);    // oyunda yumuşak çizgi; atölye önizlemesi güçlü kalır
                 malzemeOnbellek[ad] = m;
                 return m;
             }
