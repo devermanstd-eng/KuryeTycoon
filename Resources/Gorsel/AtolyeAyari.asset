@@ -17,10 +17,10 @@ MonoBehaviour:
   sehirYukseltisi: 1
   cevreModelleriniKullan: 1
   oyundaKalemCizgisi: 1
-  cizgiKalinlik: 0.75
-  cizgiKoyuluk: 0.55
-  ayrintiKoyuluk: 0.28
-  cizgiAcik: 0.35
-  cizgiYakin: 6
-  cizgiUzak: 22
+  cizgiKalinlik: 0.95
+  cizgiKoyuluk: 0.85
+  ayrintiKoyuluk: 0.5
+  cizgiAcik: 0.15
+  cizgiYakin: 9
+  cizgiUzak: 26
   oyundaPastelZemin: 1

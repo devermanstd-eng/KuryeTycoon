@@ -30,17 +30,17 @@ namespace KuryeTycoon
         public bool oyundaKalemCizgisi = true;
         [Header("Oyunda kalem çizgisi (atölye önizlemesi etkilenmez)")]
         [Tooltip("Çizgi kalınlığı, piksel (atölyede 1,15).")]
-        [Range(0.4f, 2f)] public float cizgiKalinlik = 0.75f;
+        [Range(0.4f, 2f)] public float cizgiKalinlik = 0.95f;
         [Tooltip("Bina ana hatlarının koyuluğu, yakında (1: tam).")]
-        [Range(0f, 1f)] public float cizgiKoyuluk = 0.55f;
+        [Range(0f, 1f)] public float cizgiKoyuluk = 0.85f;
         [Tooltip("Pencere, kapı, kiremit, cam çatı gibi ayrıntı çizgilerinin koyuluğu, yakında.")]
-        [Range(0f, 1f)] public float ayrintiKoyuluk = 0.28f;
+        [Range(0f, 1f)] public float ayrintiKoyuluk = 0.5f;
         [Tooltip("Çizgi rengini açar (0: yüzeyin koyusu; büyüdükçe kalem daha hafif dokunur).")]
-        [Range(0f, 1f)] public float cizgiAcik = 0.35f;
+        [Range(0f, 1f)] public float cizgiAcik = 0.15f;
         [Tooltip("Bu uzaklığa (kare) kadar çizgi tam; sonra solmaya başlar.")]
-        [Range(1f, 60f)] public float cizgiYakin = 6f;
+        [Range(1f, 60f)] public float cizgiYakin = 9f;
         [Tooltip("Bu uzaklıkta (kare) çizgi en soluk; ayrıntı çizgileri bundan önce tamamen söner.")]
-        [Range(2f, 120f)] public float cizgiUzak = 22f;
+        [Range(2f, 120f)] public float cizgiUzak = 26f;
         [Tooltip("Şehrin zemini pastel görünsün: yol, kaldırım, bordür, şerit, çim ve meydan malzemeleri Bina Atölyesi'nin pastel " +
                  "paletine (Pastel gölgelendiricisi) geçer; organik zeminin dokusu ve çim tutamları da pastel tonlara döner. " +
                  "Yol ağı ve geometri aynı kalır. Kapalıyken eski görünüm.")]
