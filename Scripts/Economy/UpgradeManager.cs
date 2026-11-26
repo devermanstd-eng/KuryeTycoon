@@ -33,7 +33,8 @@ namespace KuryeTycoon
     /// <summary>
     /// Kalıcı şirket geliştirmeleri. Her birinin seviyeleri var; her seviyenin bir kurulum bedeli ve günlük işletme gideri olur
     /// (yazılım aboneliği, kira, temizlik malzemesi, reklam bütçesi…). Gerçekçi kurallar:
-    ///  • Platform paketi kaç aktif kurye hesabı olabileceğini belirler; büyük paket ancak şehir büyüyünce (bölge açılınca) alınabilir.
+    ///  • Platform paketi kaç aktif kurye hesabı olabileceğini belirler. 22 ve 32 kurye yeni bölge ister, 45 ve 60 yalnız fiyatla,
+    ///    80 ve üstü bütün şehri (Green Hill) ister (26.11).
     ///  • Kuryeler serbest çalışır: dinlenme, yemek, araç bakımı ve çanta temizliği kendi işleri. Platform ancak avantaj programı,
     ///    anlaşmalı servisler ve uygulama özellikleriyle kolaylaştırır. Ofis destek ekibinin çalıştığı yerdir.
     ///  • Büyük ofis daha çok kira demek; reklam her gün bütçe harcar. İşletme gideri olan geliştirmeler küçültülebilir
@@ -71,7 +72,8 @@ namespace KuryeTycoon
             {
                 kind = UpgradeKind.Platform, name = "Kurye platformu paketi",
                 summary = "Kuryeler kendi işinin patronu ama her biri uygulamanda bir hesapla çalışır. Paket kaç aktif kurye hesabını " +
-                          "kaldırabileceğini belirler; büyük paketin sunucu ve lisans ücreti de yüksek. Büyük paketler şehir büyüdükçe açılır.",
+                          "kaldırabileceğini belirler; büyük paketin sunucu ve lisans ücreti de yüksek. İlk büyük paketler yeni bölge ister " +
+                          "(22 kurye East Side, 32 kurye Industry & Campus); 80 kurye ve üstü bütün şehri (Green Hill).",
                 // Metropol (32 → 45) 1,6 M → 1,1 M → 0,9 M, Kurumsal (45 → 60) 2,8 M → 2,4 M → 2,0 M → 1,3 M. 15.11'de 32'de 30 gün,
                 // 16.11 sabah 32'de 17, 45'te 18; 16.11 akşam 22'de 11, 32'de 11, 45'te yine 18 gün beklendi (hedef 10–13): Green Hill
                 // 5 810 € + Kurumsal 9 745 € ≈ 15 500 €, günde ~1 000 € birikirken. Green Hill de 1,2 M → 0,9 M (CityMap.UnlockCost).
@@ -85,12 +87,19 @@ namespace KuryeTycoon
                 // 25.11 ikinci tur (u34, 2 şehir × 120 gün): bekleme inişli çıkışlıydı, 22: 4–6, 32: 17–25, 45: 1–2, 60: 14–21,
                 // 80: 9–11 gün; 100 → 125 geçişi 38–53 gün. Yük 32 ve 60'tan 22 ve 45'e kaydı: 22: 800 bin → 1 M, 32: 1,4 → 1 M,
                 // 45: 2,2 → 3 M, 60: 3 → 2,4 M, 125: 36 → 24 M.
-                costs = new[] { 80000, 200000, 1000000, 1000000, 3000000, 2400000, 8000000, 14000000, 24000000, 70000000, 120000000 },
+                // 26.11 yapısal düzeltme (u35, 2 şehir × 120 gün: 22: 1–3, 32: 20–23, 45: 1–10, 60: 19–36, 80: 5, 100: 33–40 gün):
+                // paketin ne kadar beklediğini fiyat değil önündeki bölge kilidi belirliyordu (45 West Harbour'u, 60 Green Hill'i
+                // bekliyordu; Green Hill açılınca 45 bir günde bitiyordu) ve fiyat oynatınca duvar bir paketten öbürüne kayıyordu.
+                // 45 ve 60'ın bölge kilidi kalktı (32 gibi Industry & Campus yeter); 80 ve üstü bütün şehri ister. Fiyatlar her
+                // adımda ~×1,4–1,75 büyüyen düz bir eğri: 32: 1 → 1,4 M, 45: 3 → 2,2 M, 60: 2,4 → 3,2 M, 80: 8 → 5,6 M,
+                // 100: 14 → 9 M, 125: 24 → 14 M, 150: 70 → 24 M, 180: 120 → 40 M (125'ten sonra 70 M'lik duvar 40 günlük ölü dönem
+                // yapardı; B ve C yatırım turları 60. ve 85. günden sonra gelir, 100 ve 150'yi hızlandırır).
+                costs = new[] { 80000, 200000, 1000000, 1400000, 2200000, 3200000, 5600000, 9000000, 14000000, 24000000, 40000000 },
                 daily = new[] { 0, 1500, 3000, 5000, 8000, 12000, 17000, 24000, 34000, 46000, 62000, 85000 },
                 levelNames = new[] { "Başlangıç", "Büyüme", "Profesyonel", "Bölgesel", "Şehir", "Metropol", "Kurumsal", "Kurumsal+",
                                      "Büyük şehir", "Büyük şehir+", "Bölge lideri", "Pazar lideri" },
                 effect = lv => $"{AccountCap[lv]} kurye hesabı",
-                reqDistrict = new[] { 0, 0, 2, 3, 4, 5, 5, 5, 5, 5, 5 },
+                reqDistrict = new[] { 0, 0, 2, 3, 3, 3, 5, 5, 5, 5, 5 },   // 22: East Side, 32–60: Industry & Campus, 80+: Green Hill
                 extraLock = lv => lv == 8 ? Need(UpgradeKind.Ofis, 2)
                                 : lv == 9 ? FirstLock(Need(UpgradeKind.Ofis, 3), Need(UpgradeKind.Hub, 1))
                                 : lv == 10 ? FirstLock(Need(UpgradeKind.Hub, 2), Need(UpgradeKind.Dispatcher, 3))
