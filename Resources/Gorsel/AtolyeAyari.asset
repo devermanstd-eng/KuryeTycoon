@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: AtolyeAyari
   m_EditorClassIdentifier: Assembly-CSharp::KuryeTycoon.AtolyeAyari
   binalariKullan: 1
-  cevreModelleriniKullan: 0
+  yalnizAtolye: 1
+  cevreModelleriniKullan: 1
   oyundaKalemCizgisi: 0
-  oyundaPastelZemin: 0
+  oyundaPastelZemin: 1

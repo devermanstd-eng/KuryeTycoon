@@ -430,9 +430,14 @@ namespace KuryeTycoon.EditorTools
                     Yenile();
                 }
                 tv = AtolyeKurucu.TurBul(tasarim);
-                EditorGUILayout.HelpBox("Tür, binanın ZEMİN KATINDA sokağa (kırmızı çizgiye) bakan cepheyi değiştirir: vitrin, kapı, tente, tabela, " +
-                                        "ön dekor. Üst katlar ve çatı fırçadaki tarz/renkle kurulur. Türün tam hâlini görmek için aşağıdaki " +
-                                        "düğmeyle hazır örneğini yükleyip üzerinde oynayabilirsin.", MessageType.Info);
+                if (!string.IsNullOrEmpty(tv.uslup))
+                    EditorGUILayout.HelpBox("Bu türün kendi mimarisi var (" + tv.uslup + "): bütün katlar, çatı ve duvar rengi türe göre kurulur; " +
+                                            "fırçadaki duvar tarzı, çatı tarzı ve renkler bu binada kullanılmaz (taş kaide ve merdiven hariç). " +
+                                            "Blokla yalnız binanın biçimini (genişlik, kat, girinti) belirlersin.", MessageType.Info);
+                else
+                    EditorGUILayout.HelpBox("Tür, binanın ZEMİN KATINDA sokağa (kırmızı çizgiye) bakan cepheyi değiştirir: vitrin, kapı, tente, tabela, " +
+                                            "ön dekor. Üst katlar ve çatı fırçadaki tarz/renkle kurulur (dükkânlar ve konut Londra sıra evlerinin " +
+                                            "zemin katında olur). Türün tam hâlini görmek için aşağıdaki düğmeyle hazır örneğini yükleyebilirsin.", MessageType.Info);
                 if (!SokagaBakanZeminVar())
                     EditorGUILayout.HelpBox("Zemin katta sokağa bakan açık cephe yok: tür hiçbir şey göstermez. Kat 0'da, kırmızı çizgiye " +
                                             "en yakın sıraya (önünde blok olmayan) apartman / ahşap / taş bloğu koy.", MessageType.Warning);

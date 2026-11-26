@@ -51,6 +51,14 @@ namespace KuryeTycoon
         // Her bölgeye özel binalar (Blender: Tools/Blender/bolge_modelleri.py → Bolge_<bölge>_<tür>_<n>):
         // eski şehir, çarşı, kule, evler, banliyö, kampüs, sanayi, AVM. Anahtar: bölge adı ("eski", "karma" ...).
         static Dictionary<string, GameObject[]> bolgeHavuz;
+        // Sıra ev şeritleri (Tools/Blender/sehir_tasarimlari.py: s_<bölge>_m<x0><w>_<n>): bölge → (x0, genişlik) → şeritler.
+        // Bir arsa 2–4 şeridin birleşimiyle kurulur: mesh'ler paylaşılır, her arsada başka cephe çıkar.
+        static Dictionary<string, Dictionary<Vector2Int, GameObject[]>> modulHavuz;
+        static readonly int[][] ModulBolum =
+        {
+            new[] { 2, 3 }, new[] { 3, 2 }, new[] { 1, 2, 2 }, new[] { 2, 1, 2 }, new[] { 2, 2, 1 }, new[] { 1, 3, 1 },
+            new[] { 3, 1, 1 }, new[] { 1, 1, 3 }, new[] { 1, 2, 1, 1 }, new[] { 2, 1, 1, 1 }, new[] { 1, 1, 2, 1 }, new[] { 3, 2 }, new[] { 2, 3 },
+        };
         int kiliseSayisi;                                    // bu kurulumda yerleşen kilise (şehirde en çok iki)
         readonly Dictionary<string, GameObject> bolgeSon = new Dictionary<string, GameObject>();
         /// <summary>Dükkan adı → kendi binasının ad parçası (FastFood_burger_queen_1_1 gibi).</summary>
@@ -108,7 +116,7 @@ namespace KuryeTycoon
         /// oyun çalışırken kurulan şablonlardır ve Play bitince yok olur; eski listede kalırlarsa MissingReferenceException.
         /// </summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void OyunBasiOnbellekSifirla() { packBuildings = null; }
+        static void OyunBasiOnbellekSifirla() { packBuildings = null; merkezOfis = null; }
 
         static void LoadPack()
         {
@@ -143,6 +151,7 @@ namespace KuryeTycoon
             blokDuz = new Dictionary<int, List<GameObject>>();
             blokKose = new Dictionary<int, List<GameObject>>();
             var bolgeTmp = new Dictionary<string, List<GameObject>>();
+            var modulTmp = new Dictionary<string, Dictionary<Vector2Int, List<GameObject>>>();
             foreach (var p in loaded)
             {
                 if (!IsOwn(p.name)) { all.Add(p); continue; }
@@ -151,6 +160,13 @@ namespace KuryeTycoon
                 if (p.name.StartsWith("Bolge_"))
                 {
                     var parca = p.name.Split('_');
+                    if (ModulYuvasi(p.name, out var yuva) && parca.Length >= 3)
+                    {
+                        if (!modulTmp.TryGetValue(parca[1], out var md)) modulTmp[parca[1]] = md = new Dictionary<Vector2Int, List<GameObject>>();
+                        if (!md.TryGetValue(yuva, out var ml)) md[yuva] = ml = new List<GameObject>();
+                        ml.Add(p);
+                        continue;
+                    }
                     if (parca.Length >= 3)
                     {
                         if (!bolgeTmp.TryGetValue(parca[1], out var bl)) bolgeTmp[parca[1]] = bl = new List<GameObject>();
@@ -190,17 +206,40 @@ namespace KuryeTycoon
             if (AtolyeAyari.Binalar)
                 foreach (var atolyeListe in ownByKey.Values)
                     if (atolyeListe.Exists(atolyeAday => AtolyeAyari.AtolyeMi(atolyeAday.name))) atolyeListe.RemoveAll(atolyeAday => !AtolyeAyari.AtolyeMi(atolyeAday.name));
-            // Yeni modeli olmayan dükkân eski binasını kullanır
+            if (AtolyeAyari.YalnizAtolye)
+                foreach (var dukkanListe in ownByKey.Values) dukkanListe.RemoveAll(p => !AtolyeAyari.AtolyeMi(p.name));
+            // Yeni modeli olmayan dükkân eski binasını kullanır (yalnız atölye şehrinde eski bina yok)
             foreach (var kv in ShopModelYedek)
             {
+                if (AtolyeAyari.YalnizAtolye) break;
                 if (ownByKey.TryGetValue(kv.Key, out var mevcut) && mevcut.Count > 0) continue;
                 var yedek = new List<GameObject>();
                 foreach (var p in own) if (p.name.StartsWith(kv.Value)) yedek.Add(p);
                 if (yedek.Count > 0) ownByKey[kv.Key] = yedek;
             }
+            if (AtolyeAyari.YalnizAtolye)
+            {
+                // Şehir yalnız atölye binalarıyla: atölye modeli olan havuzlardan eskiler çıkar; paket binaları ve Londra blokları
+                // kullanılmaz (boş havuzlar bölge havuzuna düşer). Çiftlik gibi atölye karşılığı olmayan havuz eskisi gibi kalır.
+                foreach (var liste in new[] { houses, town, industry, kamu, refs, simge })
+                    if (liste.Exists(p => AtolyeAyari.AtolyeMi(p.name))) liste.RemoveAll(p => !AtolyeAyari.AtolyeMi(p.name));
+                    else liste.Clear();
+                foreach (var kv in bolgeTmp)
+                    if (kv.Value.Exists(p => AtolyeAyari.AtolyeMi(p.name))) kv.Value.RemoveAll(p => !AtolyeAyari.AtolyeMi(p.name));
+                blokDuz.Clear();
+                blokKose.Clear();
+                all.Clear();
+            }
             ownAll = own.ToArray();
             bolgeHavuz = new Dictionary<string, GameObject[]>();
             foreach (var kv in bolgeTmp) bolgeHavuz[kv.Key] = kv.Value.ToArray();
+            modulHavuz = new Dictionary<string, Dictionary<Vector2Int, GameObject[]>>();
+            foreach (var kv in modulTmp)
+            {
+                var d = new Dictionary<Vector2Int, GameObject[]>();
+                foreach (var y in kv.Value) d[y.Key] = y.Value.ToArray();
+                modulHavuz[kv.Key] = d;
+            }
             // Londra evleri varsa banliyöde sadece onlar (eski Avrupa evleri kullanılmaz)
             var londraEv = houses.FindAll(h => h.name.Contains("_londra_"));
             ownHouses = londraEv.Count > 0 ? londraEv.ToArray() : houses.ToArray();
@@ -226,6 +265,29 @@ namespace KuryeTycoon
             ownOld = old.Count > 0 ? old.ToArray() : ownTown;
             ownHigh = high.Count > 0 ? high.ToArray() : ownTown;
             ownMixed = mixed.ToArray();
+            if (AtolyeAyari.YalnizAtolye)
+            {
+                // boşalan eski havuzların yerine bölge havuzlarındaki atölye binaları (yedek yollar boş listeden seçmesin)
+                GameObject[] Birlesik(params string[] anahtarlar)
+                {
+                    var l = new List<GameObject>();
+                    foreach (var a in anahtarlar) if (bolgeHavuz.TryGetValue(a, out var h)) l.AddRange(h);
+                    return l.ToArray();
+                }
+                if (ownTown.Length == 0) ownTown = Birlesik("eski", "karma", "kule");
+                if (ownOld.Length == 0) ownOld = Birlesik("eski");
+                if (ownHigh.Length == 0) ownHigh = Birlesik("kule");
+                if (ownMixed.Length == 0) ownMixed = Birlesik("karma");
+                if (ownOld.Length == 0) ownOld = ownTown;
+                if (ownHigh.Length == 0) ownHigh = ownTown;
+                if (ownMixed.Length == 0) ownMixed = ownTown;
+                if (ownHouses.Length == 0) ownHouses = Birlesik("ev", "banliyo");
+                var ciftlik = Birlesik("ciftlik");
+                if (ciftlik.Length > 0) ownFarm = ciftlik;
+                if (ownHousesTum.Length == 0) ownHousesTum = ownHouses;
+                if (ownIndustry.Length == 0) ownIndustry = Birlesik("sanayi");
+                if (ownRef.Length == 0) ownRef = null;
+            }
 
             // Kendi yol parçalarımız (Yol_...) paketinkilerden önce bulunsun; kendi ağaçlarımız varsa sadece onlar
             System.Array.Sort(packRoads, (p, q) => (q.name.StartsWith("Yol_") ? 1 : 0) - (p.name.StartsWith("Yol_") ? 1 : 0));
@@ -254,6 +316,18 @@ namespace KuryeTycoon
                 else if (p.name == "Park_gol") parkPond = p;
                 else if (p.name == "Park_anit") parkMonument = p;
                 else if (p.name == "Meydan_cesme") plazaFountain = p;
+            }
+            if (AtolyeAyari.YalnizAtolye && bolgeHavuz != null && bolgeHavuz.TryGetValue("park", out var atolyePark) && atolyePark.Length > 0)
+            {
+                // parklar, meydan çeşmesi, anıt ve göl de atölye modelleri (sehir_tasarimlari.py: park)
+                tiles.Clear();
+                foreach (var p in atolyePark)
+                {
+                    if (p.name.Contains("_park_meydan_")) { if (plazaFountain == null || !AtolyeAyari.AtolyeMi(plazaFountain.name)) plazaFountain = p; }
+                    else if (p.name.Contains("_park_anit_")) { if (parkMonument == null || !AtolyeAyari.AtolyeMi(parkMonument.name)) parkMonument = p; }
+                    else if (p.name.Contains("_park_gol_")) { if (parkPond == null || !AtolyeAyari.AtolyeMi(parkPond.name)) parkPond = p; }
+                    else tiles.Add(p);
+                }
             }
             parkTiles = tiles.ToArray();
             courtTiles = courts.ToArray();
@@ -394,6 +468,7 @@ namespace KuryeTycoon
             packRoads = null;
             if (root != null) Destroy(root.gameObject);
             pieces.Clear();
+            bekleyenler.Clear();
             heightByTile.Clear();
             ClearTintCache();
             lastGrow = -1f;
@@ -412,6 +487,7 @@ namespace KuryeTycoon
             bool packTreesOk = UsePack && packTrees.Length > 0;
             kamuKalan = ownKamu != null ? new List<GameObject>(ownKamu) : new List<GameObject>();
             kiliseSayisi = 0;
+            atlikarincaSayisi = hobiSayisi = 0;
             bolgeSon.Clear();
             binaBolge = null;
             if (CityMap.Organik) Arazi.Hazirla();   // nehir yatağı ve tepeler: modeller araziye oturur
@@ -500,7 +576,7 @@ namespace KuryeTycoon
                     if (CityMap.Organik && tile == CityMap.PlazaCenter && tile != map.HQTile)
                     {
                         // Organik şehirde meydan tek kare: çeşme
-                        if (UsePack && plazaFountain != null) AddFlat(plazaFountain, tile, 0f, 2);
+                        if (UsePack && plazaFountain != null) ParkKoy(plazaFountain, tile, 0f);
                         else
                         {
                             AddBoxR(tile, new Vector2(0.5f, 0.5f), 0.06f, new Color(0.70f, 0.68f, 0.64f), null, false, default, false);
@@ -511,8 +587,11 @@ namespace KuryeTycoon
 
                     if (tile == map.HQTile)
                     {
-                        // Merkez ofis her zaman şirket renginde kutu: haritada hemen tanınsın
-                        AddBox(tile, 0.84f, 1.9f, CompanyProfile.Primary, null, true);
+                        // Merkez ofis: yalnız atölye şehrinde şirket adı tabelalı, şirket renginde bantlı modern ofis binası; yoksa
+                        // şirket renginde kutu (haritada hemen tanınsın)
+                        var hq = AtolyeAyari.YalnizAtolye ? MerkezOfisModeli() : null;
+                        if (hq != null) AddPrefab(hq, tile, 0.97f, face, null, default, 0f, true, true);
+                        else AddBox(tile, 0.84f, 1.9f, CompanyProfile.Primary, null, true);
                         continue;
                     }
 
@@ -532,7 +611,7 @@ namespace KuryeTycoon
                     {
                         case Zone.Plaza:
                             if (tile == CityMap.PlazaCenter && UsePack && plazaFountain != null)
-                                AddFlat(plazaFountain, tile, 0f, 2);
+                                ParkKoy(plazaFountain, tile, 0f);
                             else if (tile == CityMap.PlazaCenter)
                             {
                                 // Meydan çeşmesi ve heykel
@@ -548,12 +627,13 @@ namespace KuryeTycoon
                                 if (CityMap.IsBlockCenter(x, y))
                                 {
                                     var orta = tile == CityMap.BelediyeCenter ? parkMonument : parkPond;
-                                    AddFlat(orta != null ? orta : parkTiles[rng.Next(parkTiles.Length)], tile, 90f * rng.Next(4), 2);
+                                    ParkKoy(orta != null ? orta : parkTiles[rng.Next(parkTiles.Length)], tile, 90f * rng.Next(4));
                                 }
                                 else
                                 {
-                                    // Park karesi (oyun parkı, çiçek bahçesi, gezinti yolu) ve köşelerinde ağaçlar
-                                    AddFlat(parkTiles[rng.Next(parkTiles.Length)], tile, 90f * rng.Next(4), 2);
+                                    // Park karesi (oyun parkı, çiçek bahçesi, gezinti yolu) ve köşelerinde ağaçlar. Atlıkarınca ve
+                                    // oyun alanı şehirde birkaç kez (her parkta tekrar etmesin); çoğu kare düz çim / çiçek / gezinti
+                                    ParkKoy(ParkKaresi(rng), tile, 90f * rng.Next(4));
                                     int nt = 1 + rng.Next(3);
                                     for (int i = 0; i < nt; i++)
                                     {
@@ -637,7 +717,7 @@ namespace KuryeTycoon
                                 else AddBox(tile, 0.55f, 0.18f + floors * 0.12f, CityMap.RoofColor(zone, x, y), null, false, front);
                                 AddTrees(tile, rng, 1, packTreesOk, -front * 2.2f, 0.12f);
                             }
-                            else if (CityMap.Organik && own && rng.NextDouble() < 0.7 && BolgeBinasi(zone, tile, face, rng)) { }
+                            else if (CityMap.Organik && own && rng.NextDouble() < (AtolyeAyari.YalnizAtolye ? 0.92 : 0.7) && BolgeBinasi(zone, tile, face, rng)) { }
                             else if (CityMap.Organik && BolgeHavuzu("ev") == null && own && ownHousesTum != null && ownHousesTum.Length > 0 && rng.NextDouble() < 0.15)
                             {
                                 // Organik şehirde bloklar düzensiz: yola değmeyen arsada da arka sıra ev (boş gri arsa kalmasın)
@@ -648,7 +728,7 @@ namespace KuryeTycoon
                             break;
 
                         default: // eski şehir, kule bloklar, çarşı, kampüs
-                            if (!frontage && CityMap.Organik && own && rng.NextDouble() < (zone == Zone.Campus ? 0.5 : 0.85) &&
+                            if (!frontage && CityMap.Organik && own && rng.NextDouble() < (zone == Zone.Campus ? 0.5 : AtolyeAyari.YalnizAtolye ? 0.97 : 0.85) &&
                                 BolgeBinasi(zone, tile, face, rng)) { }
                             else if (!frontage && CityMap.Organik && own && BolgeHavuzu(BolgeAnahtar(zone)) == null && rng.NextDouble() < 0.35)
                             {
@@ -856,9 +936,49 @@ namespace KuryeTycoon
         /// <summary>Bölgeye özel binayı kareye koy; havuz boşsa false.</summary>
         bool BolgeBinasi(Zone zone, Vector2Int tile, float face, System.Random rng, string anahtar = null)
         {
-            var b = BolgeSec(anahtar ?? BolgeAnahtar(zone), rng);
+            anahtar = anahtar ?? BolgeAnahtar(zone);
+            if (rng.NextDouble() < 0.85 && ModulBinasi(anahtar, tile, face, rng)) return true;
+            var b = BolgeSec(anahtar, rng);
             if (b == null) return false;
             AddPrefab(b, tile, 0.97f, face, null, default, 0f, true, true);
+            return true;
+        }
+
+        // Yollar 10 m'lik kareye göre (OrganikSehir3D), atölye arsası 14 m: 14 m'yi bir kareye sığdırmak binaları gerçeğin ~%70'ine
+        // küçültüyordu (yollar binalardan büyük görünüyordu). Yalnız atölye şehrinde arsa 12,5 m'ye sığar (komşu arsanın bahçe
+        // şeridine biraz taşar; sıra evler bitişik görünür) ve binalar biraz daha uzun.
+        const float AtolyeBoyCarpani = 1.32f;
+        static bool AtolyeSehirOlcegi(string ad) => AtolyeAyari.YalnizAtolye && ad.StartsWith("Bolge_") && AtolyeAyari.AtolyeMi(ad);
+
+        /// <summary>Ad sıra ev şeridi mi ("..._atolye_s_&lt;bölge&gt;_m&lt;x0&gt;&lt;w&gt;_&lt;n&gt;"); öyleyse yuvası (x0, genişlik).</summary>
+        static bool ModulYuvasi(string ad, out Vector2Int yuva)
+        {
+            yuva = default;
+            int i = ad.IndexOf("_atolye_s_", System.StringComparison.Ordinal);
+            if (i < 0) return false;
+            int m = ad.IndexOf("_m", i + 10, System.StringComparison.Ordinal);
+            if (m < 0 || m + 4 > ad.Length || !char.IsDigit(ad[m + 2]) || !char.IsDigit(ad[m + 3])) return false;
+            yuva = new Vector2Int(ad[m + 2] - '0', ad[m + 3] - '0');
+            return true;
+        }
+
+        /// <summary>
+        /// Arsayı 2–4 sıra ev şeridinden kurar (her şerit ayrı bina, kendi üslubu / rengi / boyu): aynı modelden kurulan iki
+        /// arsa yok denecek kadar az. Bölgenin şeridi yoksa ya da bir yuva boşsa false (bütün arsa tek binaya kalır).
+        /// </summary>
+        bool ModulBinasi(string anahtar, Vector2Int tile, float face, System.Random rng)
+        {
+            if (anahtar == null || modulHavuz == null || !modulHavuz.TryGetValue(anahtar, out var yuvalar) || yuvalar.Count == 0) return false;
+            var bolum = ModulBolum[rng.Next(ModulBolum.Length)];
+            int x = 0;
+            var secilen = new List<GameObject>(4);
+            foreach (int w in bolum)
+            {
+                if (!yuvalar.TryGetValue(new Vector2Int(x, w), out var liste) || liste.Length == 0) return false;
+                secilen.Add(liste[rng.Next(liste.Length)]);
+                x += w;
+            }
+            foreach (var b in secilen) AddPrefab(b, tile, 0.97f, face, null, default, 0f, true, true);
             return true;
         }
 
@@ -1915,7 +2035,14 @@ namespace KuryeTycoon
                 var off = center + new Vector2((float)rng.NextDouble() * spread * 2f - spread, (float)rng.NextDouble() * spread * 2f - spread);
                 float h = 0.25f + (float)rng.NextDouble() * 0.25f;
                 if (packTreesOk)
-                    AddPrefab(packTrees[rng.Next(packTrees.Length)], tile, 0f, (float)rng.NextDouble() * 360f, null, off, h + 0.15f);
+                {
+                    var a = packTrees[rng.Next(packTrees.Length)];
+                    // çalı ağaç boyuna büyütülmesin (dev çalılar); ağaç türüne göre boy: kavak, çınar uzun, genç ağaç kısa
+                    if (a.name.StartsWith("Cali_")) h = 0.05f + (float)rng.NextDouble() * 0.07f;
+                    else if (a.name.Contains("kavak") || a.name.Contains("cinar")) h += 0.25f;
+                    else if (a.name.Contains("genc") || a.name.Contains("meyve")) h *= 0.7f;
+                    AddPrefab(a, tile, 0f, (float)rng.NextDouble() * 360f, null, off, h + (a.name.StartsWith("Cali_") ? 0f : 0.15f));
+                }
                 else
                 {
                     var c = Color.Lerp(new Color(0.16f, 0.42f, 0.22f), new Color(0.28f, 0.55f, 0.25f), (float)rng.NextDouble());
@@ -1939,12 +2066,21 @@ namespace KuryeTycoon
                        Vector2 offset = default, float targetHeight = 0f, bool registerHeight = true, bool ownModel = false)
         {
             if (prefab == null) return;
+            // Şehir yalnız atölye binalarıyla kuruluyorsa (yüzlerce şablon): kurulmamış şablonun yerine önce kutu, model arka
+            // planda (kameraya yakın olan önce) kurulunca yerine geçer. Dükkân binaları hemen kurulur (canlı dükkân bağlanır).
+            if (shop == null && AtolyeAyari.YalnizAtolye && AtolyeUretici.Kurulmadi(prefab))
+            {
+                YerTutucu(prefab, tile, footprint, faceAngle, offset, targetHeight, registerHeight, ownModel);
+                return;
+            }
             AtolyeUretici.Hazirla(prefab);   // atölye şablonu: mesh'leri ilk kullanımda kurulur
             // Organik şehirde binalar yola dönük, açıları 90'ın katı değil: döndürülmüş kare komşuya taşmasın diye küçülür
             if (CityMap.Organik && footprint > 0f)
             {
                 float r = faceAngle * Mathf.Deg2Rad;
-                footprint /= Mathf.Abs(Mathf.Cos(r)) + Mathf.Abs(Mathf.Sin(r));
+                float kucul = Mathf.Abs(Mathf.Cos(r)) + Mathf.Abs(Mathf.Sin(r));
+                // yalnız atölye şehrinde daha az küçülür (binalar arsayı doldursun; köşeler komşuya biraz değebilir)
+                footprint /= AtolyeAyari.YalnizAtolye && ArsaOlculu(prefab.name) ? Mathf.Sqrt(kucul) : kucul;
             }
             var holder = Holder(prefab.name, tile, offset);
             var inst = Instantiate(prefab, holder, false);
@@ -1974,7 +2110,7 @@ namespace KuryeTycoon
             bool bolge = ArsaOlculu(prefab.name);
             // Blok binaları tam 10 m kare: ölçek sabit (1 m = 0,1 kare), çizgi kabuğu yüzünden küçülüp aralarında boşluk kalmasın
             float s = targetHeight > 0f ? targetHeight / Mathf.Max(0.001f, b.size.z)
-                    : prefab.name.StartsWith("Blok_") ? footprint * 0.1f : bolge ? footprint / 14f : footprint / Mathf.Max(0.001f, horiz);
+                    : prefab.name.StartsWith("Blok_") ? footprint * 0.1f : bolge ? footprint / (AtolyeSehirOlcegi(prefab.name) ? 12.5f : 14f) : footprint / Mathf.Max(0.001f, horiz);
             inst.transform.localScale = Vector3.one * s;
             b = CombinedBounds(renderers);
             if (bolge) inst.transform.position += new Vector3(0f, 0f, -b.max.z);
@@ -1987,9 +2123,10 @@ namespace KuryeTycoon
             // Aynı model her karede biraz farklı renkte (duvar, kapı, panjur, çatı): şehir tekrar eden kopyalar gibi görünmesin
             int seed = ownModel ? ((tile.x + 101) * 73856093 ^ (tile.y + 37) * 19349663 ^ (int)(offset.x * 1000f)) & 0x7fffffff : -1;
 
-            float mul = ownModel && targetHeight <= 0f ? OwnHeightBoost : 1f;
+            float mul = ownModel && targetHeight <= 0f ? (AtolyeSehirOlcegi(prefab.name) ? AtolyeBoyCarpani : OwnHeightBoost) : 1f;
             pieces.Add(new Piece { t = holder, height = height * mul, prefab = true, tile = tile, shop = shop, varSeed = seed, heightMul = mul });
-            if (targetHeight <= 0f && registerHeight) heightByTile[tile] = height * mul;
+            // bir arsada birden çok şerit olabilir: en yüksek olanı
+            if (targetHeight <= 0f && registerHeight) heightByTile[tile] = heightByTile.TryGetValue(tile, out float eskiH) ? Mathf.Max(eskiH, height * mul) : height * mul;
             if (AgacSalinimi.AgacMi(prefab)) AgacSalinimi.Uygula(renderers);   // rüzgârda salınım (renklendirmeden önce: kopyalar asıl sayılsın)
             Tint(renderers, !CityMap.I.IsUnlocked(tile), seed);
             // İçi modelli binalar ("_Cati" çocuğu olanlar, ör. mahalle bakkalı): kamera yaklaşınca çatı kalkar
@@ -2247,6 +2384,61 @@ namespace KuryeTycoon
             }
         }
 
+        int atlikarincaSayisi, hobiSayisi;
+
+        static GameObject merkezOfis;
+        static string merkezOfisAnahtar;
+
+        /// <summary>Oyuncunun merkez ofisi (şirket adı ve rengiyle, oyun başında bir kez kurulur; ad / renk değişirse yeniden).</summary>
+        static GameObject MerkezOfisModeli()
+        {
+            string renk = "#" + ColorUtility.ToHtmlStringRGB(CompanyProfile.Primary).ToLowerInvariant();
+            string ad = (CompanyProfile.Name ?? "HQ").ToUpperInvariant();
+            if (ad.Length > 22) ad = ad.Substring(0, 22);
+            string anahtar = ad + renk;
+            if (merkezOfis != null && merkezOfisAnahtar == anahtar) return merkezOfis;
+            var t = ScriptableObject.CreateInstance<BinaTasarimi>();
+            t.hideFlags = HideFlags.HideAndDontSave;
+            t.ad = "merkez_ofis";
+            t.tur = "merkez";
+            t.bolge = "karma";
+            t.tohum = 7;
+            t.tabela = ad;
+            t.vurgu = renk;
+            for (int x = 0; x < 5; x++)
+                for (int y = 0; y < 3; y++)
+                    for (int k = 0; k < 2; k++) t.bloklar.Add(new BinaTasarimi.Blok { x = x, y = y, k = k });
+            for (int x = 1; x < 4; x++)
+                for (int y = 0; y < 3; y++)
+                    for (int k = 2; k < 7; k++) t.bloklar.Add(new BinaTasarimi.Blok { x = x, y = y, k = k });
+            merkezOfis = AtolyeUretici.TasarimdanKur(t);
+            merkezOfisAnahtar = anahtar;
+            Object.Destroy(t);
+            return merkezOfis;
+        }
+
+        /// <summary>Park / meydan parçası: atölye modeli arsa gibi yerleşir (14 m), eskisi kareyi kaplayan düz parça.</summary>
+        void ParkKoy(GameObject p, Vector2Int tile, float aci)
+        {
+            if (p == null) return;
+            if (AtolyeAyari.AtolyeMi(p.name)) AddPrefab(p, tile, 0.99f, aci, null, default, 0f, false, true);
+            else AddFlat(p, tile, aci, 2);
+        }
+
+        /// <summary>Park karesi: atlıkarınca en çok 2, hobi / oyun alanı en çok 6 kez; gerisi düzenli çim, çiçek, gezinti yolu.</summary>
+        GameObject ParkKaresi(System.Random rng)
+        {
+            for (int deneme = 0; deneme < 8; deneme++)
+            {
+                var p = parkTiles[rng.Next(parkTiles.Length)];
+                if (p.name.Contains("atlikarinca")) { if (atlikarincaSayisi >= 2 || rng.NextDouble() < 0.7) continue; atlikarincaSayisi++; }
+                else if (p.name.Contains("hobi")) { if (hobiSayisi >= 6 || rng.NextDouble() < 0.4) continue; hobiSayisi++; }
+                return p;
+            }
+            foreach (var p in parkTiles) if (p.name.Contains("duzenli") || p.name.Contains("gezinti")) return p;
+            return parkTiles[0];
+        }
+
         /// <summary>Düz parça: kareyi tam kaplar, yüzeyi zeminin hemen üstünde, yükselmez.</summary>
         void AddFlat(GameObject prefab, Vector2Int tile, float angle, int order = 1, Vector2 offset = default)
         {
@@ -2367,9 +2559,85 @@ namespace KuryeTycoon
             TintVersion++;
         }
 
+        // ---------- Atölye binaları arka planda ----------
+
+        class Bekleyen
+        {
+            public Vector2Int tile;
+            public float footprint, face, targetHeight;
+            public Vector2 offset;
+            public bool registerHeight, own;
+            public Piece yer;
+        }
+        readonly Dictionary<GameObject, List<Bekleyen>> bekleyenler = new Dictionary<GameObject, List<Bekleyen>>();
+        int arkaPlanKurulan;
+        float arkaPlanBaslangic;
+
+        /// <summary>Şehirde henüz kurulmamış atölye modeli kaldı mı (yükleme ekranı / hata raporu için).</summary>
+        public int BekleyenModel => bekleyenler.Count;
+
+        /// <summary>Kurulmamış şablonun yerine geçici kutu (kare boyu kaydedilmez: gerçek bina kurulunca yazılır).</summary>
+        void YerTutucu(GameObject prefab, Vector2Int tile, float footprint, float face, Vector2 offset, float targetHeight, bool registerHeight, bool own)
+        {
+            // kutunun boyu tasarımın kat sayısından (3 m kat + çatı); arsa 14 m, karede 0,97
+            int kat = AtolyeUretici.KatSayisi(prefab);
+            float h = Mathf.Max(0.06f, (kat * 3f + 1.2f) * (0.97f / 14f)) * OwnHeightBoost;
+            AddBoxR(tile, new Vector2(footprint * 0.62f, footprint * 0.62f), h, new Color(0.88f, 0.86f, 0.82f), null, false, offset, false);
+            var p = pieces[pieces.Count - 1];
+            if (!bekleyenler.TryGetValue(prefab, out var l)) bekleyenler[prefab] = l = new List<Bekleyen>();
+            if (bekleyenler.Count == 1 && l.Count == 0) { arkaPlanKurulan = 0; arkaPlanBaslangic = Time.realtimeSinceStartup; }
+            l.Add(new Bekleyen { tile = tile, footprint = footprint, face = face, targetHeight = targetHeight, offset = offset, registerHeight = registerHeight, own = own, yer = p });
+        }
+
+        /// <summary>Her karede ~10 ms: kameranın baktığı yere en yakın bekleyen şablonu kurar, kutuları gerçek binayla değiştirir.</summary>
+        void ArkaPlanAdim()
+        {
+            if (bekleyenler.Count == 0) return;
+            var cam = Camera.main;
+            Vector2 odak = default;
+            bool odakVar = cam != null && MapCamera.I != null && MapCamera.I.GroundPoint(cam, new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), out odak);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            do
+            {
+                GameObject enIyi = null;
+                float enYakin = float.MaxValue;
+                foreach (var kv in bekleyenler)
+                {
+                    float d = 0f;
+                    if (odakVar)
+                    {
+                        d = float.MaxValue;
+                        foreach (var e in kv.Value) d = Mathf.Min(d, (new Vector2(e.tile.x, e.tile.y) - odak).sqrMagnitude);
+                    }
+                    if (d < enYakin) { enYakin = d; enIyi = kv.Key; }
+                    if (!odakVar) break;
+                }
+                if (enIyi == null) break;
+                var liste = bekleyenler[enIyi];
+                bekleyenler.Remove(enIyi);
+                AtolyeUretici.Hazirla(enIyi);
+                foreach (var e in liste)
+                {
+                    pieces.Remove(e.yer);
+                    if (e.yer.t != null) Destroy(e.yer.t.gameObject);
+                    AddPrefab(enIyi, e.tile, e.footprint, e.face, null, e.offset, e.targetHeight, e.registerHeight, e.own);
+                }
+                arkaPlanKurulan++;
+            } while (bekleyenler.Count > 0 && sw.ElapsedMilliseconds < 10);
+            lastGrow = -1f;      // yeni parçalar yükselme oranını ve görünürlüğünü alsın
+            if (bekleyenler.Count == 0)
+            {
+                Debug.Log($"Kurye Tycoon · atölye: {arkaPlanKurulan} şehir modeli arka planda kuruldu ({Time.realtimeSinceStartup - arkaPlanBaslangic:0.0} sn)");
+                AtolyeUretici.SureyiYaz();
+                Refresh(true);           // mevsim malzemeleri ve kilit solgunluğu yeni binalara
+                Built?.Invoke();         // gece ışıkları yeni pencereleri toplasın
+            }
+        }
+
         void LateUpdate()
         {
             if (CityMap.I == null || MapCamera.I == null || pieces.Count == 0) return;
+            ArkaPlanAdim();
             KirGuncelle();
             SehirMevsimGuncelle();
             if (CityMap.I.UnlockLevel != lastUnlock || ContractCount() != lastContracts) Refresh(true);

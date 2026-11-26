@@ -81,15 +81,26 @@ namespace KuryeTycoon
             var dosyalar = Resources.LoadAll<TextAsset>(AtolyeKurucu.TasarimKaynak);
             System.Array.Sort(dosyalar, (p, q) => string.CompareOrdinal(p.name, q.name));
             var adlar = new HashSet<string>();
+            // Bir dosyada tek tasarım ya da paket ({"tasarimlar": ["<tasarım JSON'u>", ...]}: Tools/Blender/sehir_tasarimlari.py)
+            var metinler = new List<(string metin, string kaynak)>();
             foreach (var d in dosyalar)
             {
-                var t = AtolyeKurucu.TasarimOku(d.text);
+                if (d.text.StartsWith("{\"tasarimlar\""))
+                {
+                    var paket = JsonUtility.FromJson<TasarimPaketi>(d.text);
+                    if (paket?.tasarimlar != null) foreach (var m in paket.tasarimlar) metinler.Add((m, d.name));
+                }
+                else metinler.Add((d.text, d.name));
+            }
+            foreach (var (metin, kaynak) in metinler)
+            {
+                var t = AtolyeKurucu.TasarimOku(metin);
                 if (t == null) continue;
                 if (t.bloklar.Count == 0 && t.susler.Count == 0) { Yok(t); continue; }
                 string ad = AtolyeKurucu.ModelAdi(t);
                 if (!adlar.Add(ad))
                 {
-                    Debug.LogWarning("Kurye Tycoon · atölye: aynı adlı iki tasarım (" + ad + "), ikincisi atlandı: " + d.name);
+                    Debug.LogWarning("Kurye Tycoon · atölye: aynı adlı iki tasarım (" + ad + "), ikincisi atlandı: " + kaynak);
                     Yok(t);
                     continue;
                 }
@@ -99,6 +110,8 @@ namespace KuryeTycoon
             }
             return binalar;
         }
+
+        [System.Serializable] class TasarimPaketi { public string[] tasarimlar; }
 
         /// <summary>Şablonun mesh'leri kurulmadıysa kurar (atölye şablonu değilse hiçbir şey yapmaz). City3D kullanmadan önce çağırır.</summary>
         public static void Hazirla(GameObject sablon)
@@ -113,6 +126,28 @@ namespace KuryeTycoon
             toplamMs += sw.Elapsed.TotalMilliseconds;
             kurulan++;
             Yok(t);
+        }
+
+        /// <summary>Verilen tasarımdan hemen bir şablon kurar (ör. oyuncunun merkez ofisi: adı ve rengi oyuna göre). Kurulamazsa null.</summary>
+        public static GameObject TasarimdanKur(BinaTasarimi t)
+        {
+            if (t == null || AtolyeKurucu.Kut == null) return null;
+            var go = Sablon(AtolyeKurucu.ModelAdi(t));
+            try { Doldur(go, t, true); }
+            catch (System.Exception ex) { Debug.LogError("Kurye Tycoon · atölye: '" + go.name + "' kurulamadı: " + ex); Yok(go); return null; }
+            return go;
+        }
+
+        /// <summary>Şablonun mesh'leri henüz kurulmadı mı (City3D arka planda kurar, o sırada yerinde kutu durur).</summary>
+        public static bool Kurulmadi(GameObject sablon) => sablon != null && bekleyen.ContainsKey(sablon);
+
+        /// <summary>Kurulmamış şablonun tasarımındaki kat sayısı (yer tutucu kutunun boyu için; bilinmiyorsa 2).</summary>
+        public static int KatSayisi(GameObject sablon)
+        {
+            if (sablon == null || !bekleyen.TryGetValue(sablon, out var t) || t.bloklar == null || t.bloklar.Count == 0) return 2;
+            int k = 0;
+            foreach (var b in t.bloklar) k = Mathf.Max(k, b.k + 1);
+            return k;
         }
 
         /// <summary>Şehir kurulunca: kaç model kuruldu, ne kadar sürdü (Console; hata raporunda da görünür).</summary>

@@ -43,8 +43,10 @@ namespace KuryeTycoon
             // Bina Atölyesi donatıları (Donati_bank_atolye_1) dosya değil: oyun çalışırken kurulan şablonlar (AtolyeUretici).
             // Klasörde eski kaydedilmiş atölye prefabı kaldıysa kullanılmaz.
             var adaylar = new List<GameObject>();
-            foreach (var eski in Resources.LoadAll<GameObject>(Klasor))
-                if (eski != null && !AtolyeAyari.AtolyeMi(eski.name)) adaylar.Add(eski);
+            // yalnız atölye şehrinde eski donatılar hiç kullanılmaz (her türün atölye modeli var)
+            if (!(AtolyeAyari.YalnizAtolye && AtolyeAyari.Cevre))
+                foreach (var eski in Resources.LoadAll<GameObject>(Klasor))
+                    if (eski != null && !AtolyeAyari.AtolyeMi(eski.name)) adaylar.Add(eski);
             if (AtolyeAyari.Cevre) adaylar.AddRange(AtolyeUretici.Donatilar());
             foreach (var p in adaylar)
             {

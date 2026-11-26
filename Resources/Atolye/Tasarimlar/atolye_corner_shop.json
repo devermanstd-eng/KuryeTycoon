@@ -1,0 +1,199 @@
+{
+ "ad": "corner_shop",
+ "bolge": "karma",
+ "tohum": 70,
+ "dukkan": false,
+ "tur": "bakkal",
+ "tabela": "CORNER SHOP",
+ "tente": 0,
+ "bloklar": [
+  {
+   "x": 1,
+   "y": 0,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 1,
+   "y": 0,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 1,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 1,
+   "y": 2,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 2,
+   "y": 0,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 2,
+   "y": 0,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 2,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 2,
+   "y": 2,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 3,
+   "y": 0,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 3,
+   "y": 0,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 3,
+   "y": 1,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 0,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  },
+  {
+   "x": 3,
+   "y": 2,
+   "k": 1,
+   "tarz": 6,
+   "renk": 12,
+   "cati": 6,
+   "ct": 1
+  }
+ ],
+ "susler": [
+  {
+   "ad": "kasalar",
+   "x": -3.6,
+   "y": -5.4,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "cicek_kovalari",
+   "x": 3.8,
+   "y": -5.5,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  },
+  {
+   "ad": "posta_kutusu",
+   "x": 5.8,
+   "y": -6.0,
+   "aci": 0.0,
+   "olcek": 1.0,
+   "renk": 0
+  }
+ ]
+}

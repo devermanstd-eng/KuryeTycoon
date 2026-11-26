@@ -42,6 +42,8 @@ namespace KuryeTycoon
         public string tur = "";
         /// <summary>Tabela yazısı (boşsa türün varsayılanı). Büyük harf, rakam ve &amp; ' - / . çizilir.</summary>
         public string tabela = "";
+        // Tasarımın kendi vurgu rengi (tabela, kapı, bant; "#rrggbb"). Boşsa türün ya da paletin rengi. Merkez ofis: şirket rengi.
+        public string vurgu = "";
         /// <summary>Tente rengi sırası.</summary>
         public int tente;
         public List<Blok> bloklar = new List<Blok>();
