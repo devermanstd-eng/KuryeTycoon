@@ -140,6 +140,7 @@ DEMIR = PM("Demir", "#4a4550")
 SAKSI = PM("Saksi", "#c9785a")
 YAPRAK = PM("Yaprak", "#8fbf7a")
 ISIK = PM("Isik", "#ffe9b0")
+ISIK_SOKAK = PM("Isik_Sokak", "#ffe9b0")      # sokak lambası başı: GeceIsiklari gerçek ışık kaynağı koyar (IsStreetLamp)
 PIRINC = PM("Pirinc", "#d9b45a")
 CICEK = [PM("Cicek", h) for h in ("#e8607a", "#f5c84a", "#ffffff", "#b58ad9")]
 
@@ -1345,10 +1346,11 @@ def cicek_tarhi(g):
 
 
 # ---- arsa zemini (v10): bina tasarımlarında boş hücrelere konur, arsa çıplak kalmasın (bir hücre: 2,8 × 2,8 m)
-ARSA_CIM = PM("Cim", "#b5d79a")
-ARSA_CIM2 = PM("Cim", "#a6cc8c")
-ARSA_TAS = PM("Meydan", "#ddd2bf")
-ARSA_TAS2 = PM("Meydan", "#cfc3ae")
+# "_Iz" etiketi: kalem konturu almaz (arsa zemini hücre hücre çizgi ızgarasına dönmesin)
+ARSA_CIM = PM("Cim_Iz", "#b5d79a")
+ARSA_CIM2 = PM("Cim_Iz", "#a6cc8c")
+ARSA_TAS = PM("Meydan_Iz", "#ddd2bf")
+ARSA_TAS2 = PM("Meydan_Iz", "#cfc3ae")
 
 
 @_cevre("Arsa zemini: çim (bir hücre)")
@@ -1460,7 +1462,7 @@ def lamba_modern(g):
     dsil(g, 0, 0, 0, 4.2, 0.07, 6, _GRI, r1=0.05)
     cubuk(g, (0, 0, 4.15), (0.8, 0, 4.25), 0.05, _GRI)
     kutu(g, 0.55, 1.05, -0.13, 0.13, 4.12, 4.28, _GRI)
-    kutu(g, 0.6, 1.0, -0.1, 0.1, 4.08, 4.12, ISIK, atla=())
+    kutu(g, 0.6, 1.0, -0.1, 0.1, 4.08, 4.12, ISIK_SOKAK, atla=())
 
 
 def _levha(g, sekil, renk, yazi=None):
@@ -1537,7 +1539,7 @@ def sokak_lambasi(g):
     dsil(g, 0, 0, 0, 0.3, 0.14, 6, DEMIR, r1=0.08)
     dsil(g, 0, 0, 0.3, 3.3, 0.05, 6, DEMIR, kapak=(False, False))
     cubuk(g, (0, 0, 3.25), (0.45, 0, 3.25), 0.04, DEMIR)
-    kutu(g, 0.33, 0.57, -0.12, 0.12, 2.85, 3.15, ISIK, atla=())
+    kutu(g, 0.33, 0.57, -0.12, 0.12, 2.85, 3.15, ISIK_SOKAK, atla=())
     kati(g, [(0.28, -0.17, 3.15), (0.62, -0.17, 3.15), (0.62, 0.17, 3.15), (0.28, 0.17, 3.15), (0.45, 0, 3.4)],
          [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]], DEMIR)
 
@@ -4817,7 +4819,7 @@ def sokak_lambasi(g):
     dsil(g, 0, 0, 3.0, 3.08, 0.12, 6, DEMIR_S)
     kati(g, [(-0.11, -0.11, 3.08), (0.11, -0.11, 3.08), (0.11, 0.11, 3.08), (-0.11, 0.11, 3.08),
              (-0.2, -0.2, 3.5), (0.2, -0.2, 3.5), (0.2, 0.2, 3.5), (-0.2, 0.2, 3.5)],
-         [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [0, 1, 2, 3], [4, 5, 6, 7]], ISIK)
+         [[0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7], [0, 1, 2, 3], [4, 5, 6, 7]], ISIK_SOKAK)
     kati(g, [(-0.24, -0.24, 3.5), (0.24, -0.24, 3.5), (0.24, 0.24, 3.5), (-0.24, 0.24, 3.5), (0, 0, 3.74)],
          [[0, 1, 2, 3], [0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]], DEMIR_S)
     meyve(g, 0, 0, 3.72, 0.05, DEMIR_S, n=5, rz=0.16)
@@ -4825,7 +4827,7 @@ def sokak_lambasi(g):
 
 def _sokak_lambasi_hafif(g):
     cubuk(g, (0, 0, 0), (0, 0, 3.1), 0.12, DEMIR_S)
-    kutu(g, -0.17, 0.17, -0.17, 0.17, 3.1, 3.55, ISIK, atla=())
+    kutu(g, -0.17, 0.17, -0.17, 0.17, 3.1, 3.55, ISIK_SOKAK, atla=())
 
 
 PARCA_HAFIF["sokak_lambasi"] = _sokak_lambasi_hafif

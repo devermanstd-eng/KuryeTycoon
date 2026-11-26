@@ -9,6 +9,8 @@
 //  • uv.x = 0 olan üçgenler açılmaz: ağaç taçlarının "ters kabuğu" (biraz büyük, yüzleri ters kopya) aynı malzemeyle dış hat olur.
 //  • Renk köşe renginden (yüzey renginin koyusu). Işıksız; gölge düşürmez; derinlik / normal dokusuna yazmaz (ekran
 //    geçişindeki mürekkep çizgisi bu şeritleri görmez).
+//  • Uzaklık solması (u59): kameradan _CizgiYakin karede tam, _CizgiUzak karede ana hatlar _CizgiUzakAlfa'ya kadar solar ve
+//    incelir; ayrıntı çizgileri daha erken tamamen söner. Uzaktan şehir çizgi ağına dönmez.
 //  • _PastelCizgiGizle (global) 1 ise hiçbir şey çizmez: oyunda ekran geçişi (MurekkepCizgi) konturu çizerken çift çizgi
 //    olmasın diye (City3D, Resources/Gorsel/AtolyeAyari).
 Shader "KuryeTycoon/PastelCizgi"
@@ -19,6 +21,9 @@ Shader "KuryeTycoon/PastelCizgi"
         _Kalinlik("Kalınlık (piksel)", Range(0.5, 4)) = 1.15
         _Titreme("El titremesi", Range(0, 1)) = 0.55
         _Silinme("Bu boydan kısa görünen çizgi silinir (piksel)", Range(0, 12)) = 3
+        _CizgiYakin("Bu uzaklığa kadar çizgi tam (dünya birimi = kare)", Range(1, 60)) = 11
+        _CizgiUzak("Bu uzaklıkta çizgi en soluk (kare)", Range(2, 120)) = 30
+        _CizgiUzakAlfa("En uzakta ana çizginin saydamlığı", Range(0, 1)) = 0.12
     }
 
     SubShader
@@ -48,6 +53,9 @@ Shader "KuryeTycoon/PastelCizgi"
                 float _Kalinlik;
                 float _Titreme;
                 float _Silinme;
+                float _CizgiYakin;
+                float _CizgiUzak;
+                float _CizgiUzakAlfa;
             CBUFFER_END
 
             float _PastelCizgiGizle;
@@ -106,6 +114,10 @@ Shader "KuryeTycoon/PastelCizgi"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 float4 cp = PC_Kirpma(v.positionOS.xyz);
+                // Uzaklaştıkça çizgi solar ve incelir: uzaktan şehir çizgi ağına dönmesin (yakında el çizimi, uzakta yumuşak)
+                float uzaklik = abs(TransformWorldToView(TransformObjectToWorld(v.positionOS.xyz)).z);
+                float sol = smoothstep(_CizgiYakin, _CizgiUzak, uzaklik);
+                bool ayrinti = abs(v.uv.x) > 0.05 && abs(v.uv.x) < 0.75;
                 half alfa = 1.0h;
                 if (abs(v.uv.x) > 0.05)
                 {
@@ -118,13 +130,16 @@ Shader "KuryeTycoon/PastelCizgi"
                     {
                         d /= boy;
                         float2 n = float2(-d.y, d.x) * v.uv.y;       // iki uçta aynı yöne bakan dik
-                        float kal = _Kalinlik * lerp(1.0, 0.55 + 0.9 * PC_Hash(v.positionOS.xyz * 3.7 + 1.3), _Titreme);
+                        float kal = _Kalinlik * lerp(1.0, 0.55 + 0.9 * PC_Hash(v.positionOS.xyz * 3.7 + 1.3), _Titreme) * lerp(1.0, 0.65, sol);
                         float2 kay = n * v.uv.x * kal * 0.5 - d * kal * 0.3;     // yana aç, uçtan biraz taşır
                         cp.xy += kay * 2.0 / _ScreenParams.xy * cp.w;
                     }
                     alfa = saturate((boy - _Silinme * 0.5) / max(_Silinme, 0.01));
                     alfa *= abs(v.uv.x) < 0.75 ? 0.8h : 1.0h;       // ayrıntı çizgisi: biraz saydam
                 }
+                // uzaklık solması: ayrıntı çizgileri (pencere, kapı, kiremit) daha erken ve tamamen, ana hatlar _CizgiUzakAlfa'ya kadar
+                alfa *= ayrinti ? (half)(1.0 - smoothstep(_CizgiYakin * 0.7, _CizgiUzak * 0.75, uzaklik))
+                                : (half)lerp(1.0, _CizgiUzakAlfa, sol);
                 if (_PastelCizgiGizle > 0.5) cp = float4(2.0, 2.0, 2.0, 1.0);    // kırpma hacminin dışı: çizilmez
                 if (_PastelKis > 0.5 && abs(v.uv.x) <= 0.05 && v.uv.y > 1.5) cp = float4(2.0, 2.0, 2.0, 1.0);
                 o.positionCS = cp;

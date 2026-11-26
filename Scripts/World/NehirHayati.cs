@@ -258,11 +258,14 @@ namespace KuryeTycoon
                             float boy = 0.09f + (float)rng.NextDouble() * 0.08f;
                             var ust = new Vector3(q.x + ((float)rng.NextDouble() - 0.5f) * 0.03f, q.y + ((float)rng.NextDouble() - 0.5f) * 0.03f, zb - boy);
                             float r = 0.006f;
+                            // Ön ve arka yüz AYRI köşelerle: aynı köşeleri iki yönde paylaşmak RecalculateNormals'ta sıfır normal
+                            // veriyordu → gölgelendiricide NaN → bloom / alan derinliği onu kıyıda büyük siyah daireye çeviriyordu
+                            var a0 = new Vector3(q.x - r, q.y, zb); var a1 = new Vector3(q.x + r, q.y, zb);
+                            var c0 = new Vector3(q.x, q.y - r, zb); var c1 = new Vector3(q.x, q.y + r, zb);
                             int b0 = v.Count;
-                            v.Add(new Vector3(q.x - r, q.y, zb)); v.Add(new Vector3(q.x + r, q.y, zb)); v.Add(ust);
-                            v.Add(new Vector3(q.x, q.y - r, zb)); v.Add(new Vector3(q.x, q.y + r, zb)); v.Add(ust);
-                            tr.Add(b0); tr.Add(b0 + 1); tr.Add(b0 + 2); tr.Add(b0 + 2); tr.Add(b0 + 1); tr.Add(b0);
-                            tr.Add(b0 + 3); tr.Add(b0 + 4); tr.Add(b0 + 5); tr.Add(b0 + 5); tr.Add(b0 + 4); tr.Add(b0 + 3);
+                            v.Add(a0); v.Add(a1); v.Add(ust); v.Add(a1); v.Add(a0); v.Add(ust);
+                            v.Add(c0); v.Add(c1); v.Add(ust); v.Add(c1); v.Add(c0); v.Add(ust);
+                            for (int j = 0; j < 12; j++) tr.Add(b0 + j);
                         }
                     }
                 }

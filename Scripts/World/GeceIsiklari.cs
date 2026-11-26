@@ -107,7 +107,7 @@ namespace KuryeTycoon
         static bool IsOffice(string n) => n.StartsWith("CamKoyu") || n.StartsWith("OfisCam");
         static bool IsShop(string n) => n.StartsWith("Vitrin_") || n.StartsWith("Pastel_Vitrin_");
         static bool IsSign(string n) => n.StartsWith("Yazi_") || n.StartsWith("Pastel_Yazi_");
-        static bool IsStreetLamp(string n) => n.StartsWith("YIsik") || n.StartsWith("PIsik");
+        static bool IsStreetLamp(string n) => n.StartsWith("YIsik") || n.StartsWith("PIsik") || n.StartsWith("Pastel_Isik_Sokak");   // atölye lambaları
         static bool IsLamp(string n) => !n.StartsWith("IsikHavuz") && (IsStreetLamp(n) || n.StartsWith("Isik_") || n.StartsWith("Pastel_Isik_") || n.StartsWith("TSari_isik"));
 
         static uint Hash(int a, int b, int c)
