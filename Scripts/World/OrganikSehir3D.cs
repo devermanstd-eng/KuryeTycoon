@@ -87,6 +87,7 @@ namespace KuryeTycoon
             if (park.v.Count > 0) sonuc.Add(Nesne("Parklar (organik)", parent, park, Malzeme("OrganikPark", ParkRenk)));
 
             var su = new MeshKurucu();
+            duz = true;                // su yüzeyi düz
             foreach (var c in SehirPlani.Su)
             {
                 if (c.Sayi < 3) continue;
@@ -101,6 +102,7 @@ namespace KuryeTycoon
                 sonuc.Add(Nesne("Swan River (organik)", parent, su, suMat != null ? suMat : Malzeme("OrganikSu", SuRenk), golgeAl: false));
             }
             KirNehirKur(parent, sonuc);
+            duz = false;
             IslakUygula();          // şehir yeniden kurulunca yağmurdaki ıslaklık kaybolmasın
             return sonuc;
         }
@@ -278,7 +280,16 @@ namespace KuryeTycoon
                 var n = new Vector2(-d.y, d.x).normalized * r;
                 m.Dortgen(V(a + n, z), V(b + n, z), V(b - n, z), V(a - n, z));
             }
-            for (int k = 0; k < c.Sayi; k++) Disk(m, c[k], r, z, 12);
+            // disk yalnız uçlarda ve yön değiştiren köşelerde (sıklaştırılmış düz parçalarda gereksiz)
+            for (int k = 0; k < c.Sayi; k++)
+            {
+                if (k > 0 && k < c.Sayi - 1)
+                {
+                    Vector2 d0 = (c[k] - c[k - 1]).normalized, d1 = (c[k + 1] - c[k]).normalized;
+                    if (Vector2.Dot(d0, d1) > 0.997f) continue;
+                }
+                Disk(m, c[k], r, z, 12);
+            }
         }
 
         static void Disk(MeshKurucu m, Vector2 o, float r, float z, int n)
@@ -425,14 +436,26 @@ namespace KuryeTycoon
                         if (UcgenIcinde(p[k], a, b, c)) icerde = true;
                     }
                     if (icerde) continue;
-                    m.Ucgen(V(a, z), V(b, z), V(c, z));
+                    UcgenBol(m, a, b, c, z);
                     idx.RemoveAt(i);
                     kesildi = true;
                     break;
                 }
                 if (!kesildi) break;     // bozuk çokgen: kalan kısmı bırak
             }
-            if (idx.Count == 3) m.Ucgen(V(p[idx[0]], z), V(p[idx[1]], z), V(p[idx[2]], z));
+            if (idx.Count == 3) UcgenBol(m, p[idx[0]], p[idx[1]], p[idx[2]], z);
+        }
+
+        /// <summary>Büyük üçgeni (park, su) kenarı ~0,8 kareden kısa parçalara böler: tepeli arazide düz üçgen zemine gömülmesin.</summary>
+        static void UcgenBol(MeshKurucu m, Vector2 a, Vector2 b, Vector2 c, float z, int derinlik = 0)
+        {
+            float enUzun = Mathf.Max((a - b).sqrMagnitude, Mathf.Max((b - c).sqrMagnitude, (c - a).sqrMagnitude));
+            if (duz || enUzun < 0.64f || derinlik > 6) { m.Ucgen(V(a, z), V(b, z), V(c, z)); return; }
+            Vector2 ab = (a + b) * 0.5f, bc = (b + c) * 0.5f, ca = (c + a) * 0.5f;
+            UcgenBol(m, a, ab, ca, z, derinlik + 1);
+            UcgenBol(m, ab, b, bc, z, derinlik + 1);
+            UcgenBol(m, ca, bc, c, z, derinlik + 1);
+            UcgenBol(m, ab, bc, ca, z, derinlik + 1);
         }
 
         static bool UcgenIcinde(Vector2 p, Vector2 a, Vector2 b, Vector2 c)
@@ -444,7 +467,9 @@ namespace KuryeTycoon
             return !(neg && pos);
         }
 
-        static Vector3 V(Vector2 p, float z) => new Vector3(p.x, p.y, z);
+        // Kara üstündeki her köşe arazinin yüksekliğine oturur (yollar tepeye çıkar, vadiye iner); su yüzeyi düz kalır (duz = true)
+        static bool duz;
+        static Vector3 V(Vector2 p, float z) => new Vector3(p.x, p.y, z + (duz ? 0f : Arazi.Z(p.x, p.y)));
 
         static GameObject Nesne(string ad, Transform parent, MeshKurucu k, Material mat, bool golgeAl = true)
         {

@@ -974,7 +974,8 @@ namespace KuryeTycoon
         public bool InBounds(Vector2Int p) => p.x >= 0 && p.y >= 0 && p.x < Width && p.y < Height;
         public bool IsUnlocked(int x, int y) => RegionOf(x, y) <= UnlockLevel;
         public bool IsUnlocked(Vector2Int t) => IsUnlocked(t.x, t.y);
-        public static Vector3 ToWorld(Vector2 t) => new Vector3(t.x, t.y, 0f);
+        /// <summary>Kare → dünya. Organik şehirde z arazinin yüksekliği (−Z yukarı): kuryeler, işaretler, etiketler tepeye oturur.</summary>
+        public static Vector3 ToWorld(Vector2 t) => new Vector3(t.x, t.y, Organik ? Arazi.Z(t.x, t.y) : 0f);
         public static int Manhattan(Vector2Int a, Vector2Int b) => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
 
         public void Generate()

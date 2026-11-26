@@ -156,7 +156,7 @@ namespace KuryeTycoon
             a.to = NextTile(at, at - Vector2Int.up);
             a.progress = (float)rng.NextDouble();
             a.visual = Target(a);
-            a.t.localPosition = new Vector3(a.visual.x, a.visual.y, -0.003f);
+            a.t.localPosition = new Vector3(a.visual.x, a.visual.y, -0.003f + (CityMap.Organik ? Arazi.Z(a.visual.x, a.visual.y) : 0f));
             agents.Add(a);
             return a;
         }
@@ -298,7 +298,7 @@ namespace KuryeTycoon
                 var target = Target(a);
                 // Dönüşlerde şerit değişimi yumuşak olsun
                 a.visual = Vector2.Lerp(a.visual, target, paused ? 0f : Mathf.Clamp01(Time.deltaTime * 10f));
-                a.t.localPosition = new Vector3(a.visual.x, a.visual.y, -0.003f);
+                a.t.localPosition = new Vector3(a.visual.x, a.visual.y, -0.003f + (CityMap.Organik ? Arazi.Z(a.visual.x, a.visual.y) : 0f));
 
                 var d = (Vector2)(a.to - a.from);
                 if (d.sqrMagnitude > 0.0001f)

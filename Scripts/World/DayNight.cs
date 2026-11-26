@@ -238,7 +238,7 @@ namespace KuryeTycoon
                         else if (!araYol || !((x % b == 2 && y % b == 0) || (y % b == 2 && x % b == 0))) continue;
                     }
                     if (CityMap.WaterAt(x, y)) continue;
-                    var sp = cam.WorldToScreenPoint(new Vector3(x, y, -0.05f));
+                    var sp = cam.WorldToScreenPoint(CityMap.ToWorld(new Vector2(x, y)) + new Vector3(0f, 0f, -0.05f));
                     if (!OnScreen(vp, sp, size)) continue;
                     // Yer yer yanıp sönen, sıcak sarı lambalar
                     float flicker = Rand01(x, y, 7) < 0.04f ? (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 9f + x)) : 1f;
@@ -271,7 +271,7 @@ namespace KuryeTycoon
                 if (Rand01(t.x, t.y, daySalt) > lit) continue;
                 if (!CityMap.I.IsUnlocked(t) && Rand01(t.x, t.y, 3) > 0.5f) continue;   // kilitli bölge daha sönük
                 float h = kv.Value * grow;
-                var basePos = new Vector3(t.x, t.y, 0f);
+                var basePos = CityMap.ToWorld(t);
                 var top = cam.WorldToScreenPoint(basePos + new Vector3(0f, 0f, -h));
                 if (!OnScreen(vp, top, tilePx)) continue;
                 var bottom = cam.WorldToScreenPoint(basePos);

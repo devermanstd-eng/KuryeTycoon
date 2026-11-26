@@ -252,6 +252,14 @@ namespace KuryeTycoon
             if (Mathf.Abs(ray.direction.z) < 1e-5f) return false;
             float t = -ray.origin.z / ray.direction.z;
             var p = ray.origin + ray.direction * t;
+            // Arazi tepeliyse ışını zemin yüksekliğine birkaç adımda yaklaştır (tepedeki kuryeye tıklama doğru yere düşsün)
+            if (CityMap.Organik)
+                for (int i = 0; i < 4; i++)
+                {
+                    float z = Arazi.Z(p.x, p.y);
+                    t = (z - ray.origin.z) / ray.direction.z;
+                    p = ray.origin + ray.direction * t;
+                }
             world = new Vector2(p.x, p.y);
             return true;
         }

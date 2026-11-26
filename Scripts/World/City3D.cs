@@ -950,6 +950,22 @@ namespace KuryeTycoon
         const float AtolyeBoyCarpani = 1.32f;
         static bool AtolyeSehirOlcegi(string ad) => AtolyeAyari.YalnizAtolye && ad.StartsWith("Bolge_") && AtolyeAyari.AtolyeMi(ad);
 
+        /// <summary>
+        /// Model yokuşta: tabanı arsanın en alçak köşesine iner (yokuş yukarı tarafta biraz toprağa gömülür, havada kalmaz).
+        /// yari = arsanın yarı genişliği (kare); 0 ise yalnız merkez (ağaç, donatı).
+        /// </summary>
+        static float OturmaZ(float x, float y, float yari)
+        {
+            float z = Arazi.Z(x, y);
+            if (yari <= 0f) return z;
+            // −Z yukarı: en alçak zemin en büyük z
+            z = Mathf.Max(z, Arazi.Z(x - yari, y - yari));
+            z = Mathf.Max(z, Arazi.Z(x + yari, y - yari));
+            z = Mathf.Max(z, Arazi.Z(x - yari, y + yari));
+            z = Mathf.Max(z, Arazi.Z(x + yari, y + yari));
+            return z;
+        }
+
         /// <summary>Ad sıra ev şeridi mi ("..._atolye_s_&lt;bölge&gt;_m&lt;x0&gt;&lt;w&gt;_&lt;n&gt;"); öyleyse yuvası (x0, genişlik).</summary>
         static bool ModulYuvasi(string ad, out Vector2Int yuva)
         {
@@ -2119,7 +2135,8 @@ namespace KuryeTycoon
             // Kendi binalarımızın arsa levhasının üstü, yol kaldırımıyla aynı seviyede olsun (bina ne gömük ne havada)
             if (ownModel && !bolge) inst.transform.position += new Vector3(0f, 0f, OwnLotDepth * s + OwnSidewalkTop);
             // Araziye otur: tepelerde yukarıda, nehir kıyısında aşağıda (şehrin içi düz: 0)
-            if (CityMap.Organik) inst.transform.position += new Vector3(0f, 0f, Arazi.Z(holder.position.x, holder.position.y));
+            // Arazi yüksekliği tutucunun konumuna (modelin değil): yükselme animasyonu tutucuyu z'de ölçekler, ofset ölçeklenmesin
+            if (CityMap.Organik) holder.position += new Vector3(0f, 0f, OturmaZ(holder.position.x, holder.position.y, ownModel ? footprint * 0.45f : 0f));
             // Aynı model her karede biraz farklı renkte (duvar, kapı, panjur, çatı): şehir tekrar eden kopyalar gibi görünmesin
             int seed = ownModel ? ((tile.x + 101) * 73856093 ^ (tile.y + 37) * 19349663 ^ (int)(offset.x * 1000f)) & 0x7fffffff : -1;
 
@@ -2469,6 +2486,7 @@ namespace KuryeTycoon
             // Paket parçası: en üst yüzey zeminin hemen üstünde. Kendi parçalarımızda (lamba, trafik ışığı, ağaç var)
             // en üst nokta lambanın tepesi olur; onu hizalamak yolu zeminin altına gömüyordu. Onlarda asfalt yüzeyi (0,10 m) hizalanır.
             float z = IsOwnFlat(prefab.name) ? -b.max.z + OwnAsphalt * s - 0.002f : -0.002f - b.min.z;
+            if (CityMap.Organik) z += Arazi.Z(holder.position.x, holder.position.y);
             inst.transform.position += new Vector3(holder.position.x - b.center.x, holder.position.y - b.center.y, z);
             pieces.Add(new Piece { t = holder, prefab = true, flat = true, tile = tile });
             Tint(renderers, !CityMap.I.IsUnlocked(tile));
@@ -2484,6 +2502,7 @@ namespace KuryeTycoon
         {
             var holder = Holder(shop != null ? shop.def.name + " (3D)" : hq ? "Merkez Ofis (3D)" : "Bina", tile, offset);
             holder.localScale = new Vector3(size.x, size.y, 0.001f);
+            if (CityMap.Organik) holder.position += new Vector3(0f, 0f, OturmaZ(holder.position.x, holder.position.y, size.x * 0.5f));
             var mf = holder.gameObject.AddComponent<MeshFilter>();
             var mr = holder.gameObject.AddComponent<MeshRenderer>();
             mr.sharedMaterial = mat;

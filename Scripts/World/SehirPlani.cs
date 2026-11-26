@@ -125,10 +125,28 @@ namespace KuryeTycoon
                     bolge[x, y] = (byte)Mathf.Clamp(Harf(v.bolge, x, y, '1') - '0', 1, 5);
                     yogun[x, y] = (byte)Mathf.Clamp(Harf(v.yogunluk, x, y, '0') - '0', 0, 9);
                 }
+            if (v.yollar != null) foreach (var c in v.yollar) Sik(c, 0.35f);   // yollar tepeli arazide kırılmadan uzansın
             YolBilgisiKur();
             YumusakKur();
             Debug.Log($"Kurye Tycoon: organik şehir planı yüklendi ({w}×{h}, {v.yollar?.Length ?? 0} yol çizgisi).");
             return true;
+        }
+
+        /// <summary>Çizginin noktalarını sıklaştırır (iki nokta arası en çok `adim` kare): yol şeridi arazinin yüksekliğini izler.</summary>
+        static void Sik(Cizgi c, float adim)
+        {
+            if (c == null || c.Sayi < 2) return;
+            var xs = new List<float>(c.Sayi * 2);
+            var ys = new List<float>(c.Sayi * 2);
+            for (int i = 0; i + 1 < c.Sayi; i++)
+            {
+                Vector2 a = c[i], b = c[i + 1];
+                int n = Mathf.Max(1, Mathf.CeilToInt((b - a).magnitude / adim));
+                for (int k = 0; k < n; k++) { var p = Vector2.Lerp(a, b, k / (float)n); xs.Add(p.x); ys.Add(p.y); }
+            }
+            xs.Add(c.x[c.Sayi - 1]); ys.Add(c.y[c.Sayi - 1]);
+            c.x = xs.ToArray();
+            c.y = ys.ToArray();
         }
 
         static char Harf(string[] satirlar, int x, int y, char varsayilan)
