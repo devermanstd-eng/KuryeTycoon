@@ -2,8 +2,15 @@
 Kurye Tycoon — prosedürel, tohumlu "Londra tipi" şehir planı üretici (plan sürümü 2).
 
 Bir görüntüye bağlı değildir (eski üretici: plan_uret.py). Ürettiği dünya:
-  • Swan River: şehrin içinden kıvrılarak geçer (batıdan doğuya genişler), şehir dışında da akar; 5 köprü.
-  • Yol hiyerarşisi: merkezden ışınsal çıkan eğri ana yollar (eski köy yolları), iç ve dış halka, nehir kıyısı caddeleri;
+  • Swan River: şehrin içinden kıvrılarak geçer (batıdan doğuya genişler), şehir dışında da akar; 7 köprü.
+  • Büyük şehir (u65: 144 × 134 kare, ~10 500 kentsel kare): köylerden birleşmiş. Ana ışınsalların üstünde mahalle merkezleri
+    (her birinin çarşı caddesi, kilise sokağı, küçük taş meydanı, sıkışık eski dokusu); şehir lekesi buralarda dışarı taşar.
+    Kuzey yaka: bahçeli meydanlı teraslar, set, büyük park (City Park, çevresinde Park Lane), doğuda Docklands ve kuleler.
+    Güney yaka: boydan boya rıhtım / ambar şeridi (Bankside), sık işçi sokakları, doğuda sanayi.
+    Demiryolu: kuzeydoğudaki terminalden (Swan Cross) kıra uzanan hat ve bir banliyö durağı (yol değil: 'D' şeridi + çizgi).
+    Bir caddeye yaslanan parklar, iki mezarlık ('G'), okullar ve üniversite kampüsü ('C').
+  • Yol hiyerarşisi: merkezden ışınsal çıkan eğri ana yollar (eski köy yolları), iç halka, ara yay (Crescent), dış halka
+    (Circular), çevre caddesi (Orbital), nehir kıyısı caddeleri;
     aralarındaki adalarda mahalle sokakları (kılavuz caddeye paralel sıralar + şaşırtmalı kesen sokaklar: uzun teras blokları),
     merkezde küçük bloklar ve dar ara sokaklar (mews), bahçeli meydanlar (square), dış halkada kıvrımlı sokaklar, en dışta
     çıkmazlı banliyö. Sınıflar: 1 ana · 2 cadde · 3 sokak · 4 ara.
@@ -20,14 +27,18 @@ plan.json alanları (1 kare = 1 dünya birimi ≈ 10 m; x doğuya, y kuzeye arta
   yollar[]      {genis, sinif (1 ana, 2 cadde, 3 sokak, 4 ara), ad, x[], y[]}      şehir içi yol çizgileri
   su[], park[]  {x[], y[]}                                                          nehir ve park çokgenleri
   kare[]        satır başına metin: Y yol · K köprü · S su · P park · . yapı arsası / kır
-  zone[]        O eski şehir (teraslar) · M çarşı · H kule · E bahçeli ev · B banliyö evi · C kampüs · W sanayi/liman ·
-                A AVM/otogar · P park · Z meydan · R nehir · . kır
+  zone[]        O eski şehir (teraslar) · M çarşı · H kule · E bahçeli ev · B banliyö evi · C kampüs / okul · W sanayi/liman ·
+                A AVM/otogar · P park · Z meydan · R nehir kıyısı · G mezarlık · D demiryolu şeridi · . kır
   bolge[]       semt 1–5 (kır kareleri 1: kilitlenmez);  yogunluk[]  0–9 yapı yoğunluğu
   kirYollari[]  {genis, sinif, x[], y[]}        şehir dışındaki yollar (kare değil: kurye gitmez)
   kirNehir[]    {x[], y[], g[]}                 nehrin şehir dışındaki kolları (orta çizgi + genişlik)
   tarlalar[]    {x[], y[], mx, my, gen, boy, aci, tur}   dışbükey tarla çokgeni (saat yönünün tersi) ve içine sığan
                                                           eğik dikdörtgen (merkez, boyut, açı °: 3D parsel modeli buraya oturur)
   ciftlikler    {x[], y[]};   kirEvleri {x[], y[], aci[], tur[]}  (tur 0 yol boyu ev, 1 köy evi, 2 köy kilisesi)
+  demiryolu[]   {x[], y[]}                      hat (terminalden kıra); yol değil, kurye gitmez
+  mezarlik[]    {x[], y[]}                      mezarlık çokgenleri
+  yerler[]      {ad, x, y, tur, aci}            adı yazan yerler: tur 0 mahalle merkezi, 1 istasyon (aci: hattın yönü °), 2 mezarlık,
+                                                3 park, 4 okul / kampüs
 
 Kullanım:  python3 sehir_uret.py [tohum=20261127] [--yazma]     (--yazma: plan.json'a dokunmaz, yalnız önizleme /tmp'ye)
 Gerekenler: numpy, scipy, pillow.  Ölçüm: python3 plan_olc.py
@@ -46,7 +57,8 @@ CIKTI = os.path.join(BURA, "..", "..", "Resources", "Sehir", "plan.json")
 ONIZLEME = os.path.join(BURA, "onizleme.png") if not YAZMA else "/tmp/onizleme_deneme.png"
 
 rs = np.random.RandomState(TOHUM)
-W, H = 90, 88                  # plan dikdörtgeni (kare)
+W, H = 144, 134                # plan dikdörtgeni (kare)
+R1, RM, R2, R3 = 16.5, 25.0, 33.5, 49.0     # halkalar (kare): iç halka, ara yay, dış halka (Circular), çevre caddesi (Orbital)
 PAD, F = 50, 4                 # çalışma alanı: dikdörtgenin PAD kare ötesine kadar; ince raster: kare başına F piksel
 GW, GH = (W + 2 * PAD) * F, (H + 2 * PAD) * F
 ANA, CADDE, SOKAK, ARA = 1, 2, 3, 4
@@ -217,6 +229,33 @@ def yari_duzlem_kes(poly, a, n, d):
     return out
 
 
+def kosular(gecerli, enaz=10, bosluk=2):
+    """Mantıksal dizideki True koşuları [(bas, son)] (kısa boşluklar kapatılır)."""
+    g = np.array(gecerli, bool)
+    n = len(g)
+    i = 0
+    while i < n:
+        if not g[i]:
+            j = i
+            while j < n and not g[j]:
+                j += 1
+            if 0 < i and j < n and j - i <= bosluk:
+                g[i:j] = True
+            i = j
+        else:
+            i += 1
+    out, bas = [], None
+    for i in range(n + 1):
+        if i < n and g[i]:
+            if bas is None:
+                bas = i
+        elif bas is not None:
+            if i - bas >= enaz:
+                out.append((bas, i - 1))
+            bas = None
+    return out
+
+
 class Yol:
     def __init__(self, pts, sinif, tur="", ad=""):
         self.pts = np.asarray(pts, float)
@@ -230,8 +269,8 @@ def nehir_uret():
     kp = [(-PAD + 2, .56 + j(.05)), (-30, .49 + j(.05)), (-13, .57 + j(.04)), (0.02 * W, .525 + j(.02)), (.17 * W, .47 + j(.02)),
           (.31 * W, .39 + j(.012)), (.46 * W, .375 + j(.008)), (.60 * W, .425 + j(.012)), (.74 * W, .40 + j(.02)),
           (.88 * W, .315 + j(.02)), (1.0 * W, .30 + j(.02)), (W + 14, .36 + j(.04)), (W + 30, .27 + j(.05)), (W + PAD - 2, .33 + j(.05))]
-    c = yeniden(catmull([(x, y * H) for x, y in kp], 16), 0.25)
-    g = 3.3 + 1.4 * np.clip(c[:, 0] / W, 0, 1) + 0.9 * np.clip(np.maximum(-c[:, 0], c[:, 0] - W) / 30.0, 0, 1)
+    c = yeniden(catmull([(x, (y + 0.07) * H) for x, y in kp], 16), 0.25)
+    g = 3.6 + 1.7 * np.clip(c[:, 0] / W, 0, 1) + 0.9 * np.clip(np.maximum(-c[:, 0], c[:, 0] - W) / 30.0, 0, 1)
     return c, g
 
 
@@ -257,12 +296,13 @@ def nehir_noktasi(x):
 
 
 # ====================================================================== 2) merkez, iskelet
-MX = int(round(W * 0.455))
+MX = int(round(W * 0.48))
 _mi = nehir_noktasi(MX)
 MY = int(round(NEHIR[_mi, 1] + NEHIR_G[_mi] / 2 + 6.5))
 MERKEZ = np.array([MX, MY], float)             # Clock Tower Square
 NM = NEHIR[_mi].copy()                          # halkaların merkezi: nehrin merkez hizasındaki noktası
 iskelet = []                                    # Yol listesi (şehir içi + dışarı uzayan ham çizgiler)
+HALKA_TAM = {}                                  # halka adı → kırpılmamış çizgi (halkanın içi maskesi için)
 
 
 def kopru(i, pay=1.3):
@@ -271,7 +311,7 @@ def kopru(i, pay=1.3):
     return NEHIR[i] - NN[i] * yari, NEHIR[i] + NN[i] * yari
 
 
-def isinsal(bas, aci, sinif, tur, menzil=95.0, sapma=0.5, merkez=None):
+def isinsal(bas, aci, sinif, tur, menzil=140.0, sapma=0.5, merkez=None):
     """bas noktasından aci (rad) yönünde dışarı doğru kıvrılarak giden yol (eski köy yolu gibi)."""
     merkez = MERKEZ if merkez is None else merkez
     g = gur(3, 1.0)
@@ -317,12 +357,12 @@ def iskelet_kur():
     iskelet.append(Yol(yeniden(kare, 0.25), CADDE, "meydan", "Clock Tower Square"))
 
     # --- köprüler: merkez + halkaların nehri kestiği yerler
-    R1, R2 = 15.5, 28.5
     ki = {"m": nehir_noktasi(MX)}
-    for ad, dx in (("b1", -R1), ("d1", R1), ("b2", -R2), ("d2", R2)):
+    for ad, dx in (("b1", -R1), ("d1", R1), ("b2", -R2), ("d2", R2), ("b3", -R3), ("d3", R3)):
         ki[ad] = nehir_noktasi(MX + dx)
     kp = {a: kopru(i) for a, i in ki.items()}
-    adlar = {"m": "Clock Tower Bridge", "b1": "Abbey Bridge", "d1": "Tower Bridge", "b2": "West Harbour Bridge", "d2": "Docklands Bridge"}
+    adlar = {"m": "Clock Tower Bridge", "b1": "Abbey Bridge", "d1": "Tower Bridge", "b2": "West Harbour Bridge", "d2": "Docklands Bridge",
+             "b3": "Kew Bridge", "d3": "Woolwich Bridge"}
     for a, (g_, k_) in kp.items():
         iskelet.append(Yol(yeniden([g_, k_], 0.25), ANA if a in ("m", "b2", "d2") else CADDE, "kopru", adlar[a]))
 
@@ -347,8 +387,8 @@ def iskelet_kur():
 
     HM1 = np.array([MX, (MY + NM[1]) / 2 + 0.5])           # iç halkanın merkezi: meydanla nehir arası
     # --- halkalar: tam daire değil; yarıçapı açıya göre belirgin oynayan, yol noktalarından geçen eğri (köprülerde nehri dik geçer)
-    def yay(r, ustte, sinif, ad, oyna):
-        b, d = ("b1", "d1") if r == R1 else ("b2", "d2")
+    def yay(r, ustte, sinif, ad, oyna, basik=1.0):
+        b, d = {R1: ("b1", "d1"), R2: ("b2", "d2"), R3: ("b3", "d3")}[r]
         ib, id_ = ki[b], ki[d]
         yon = 1.0 if ustte else -1.0
         ub, ud = (kp[b][1], kp[d][1]) if ustte else (kp[b][0], kp[d][0])
@@ -369,35 +409,61 @@ def iskelet_kur():
         nok = [ub, ub + NN[ib] * yon * 2.2]
         for j in range(1, n):
             a = ab + (ad_ - ab) * j / n
-            rr = r * (1 + eps[j])
+            rr = r * (1 + eps[j]) / math.sqrt(math.cos(a) ** 2 + (math.sin(a) / basik) ** 2)
             nok.append(hm + np.array([math.cos(a), math.sin(a)]) * rr)
         nok += [ud + NN[id_] * yon * 2.2, ud]
         y = Yol(yeniden(catmull(nok, 14), 0.25), sinif, "halka", ad)
+        HALKA_TAM[ad] = y.pts.copy()
         return y
 
     iskelet.append(yay(R1, True, CADDE, "Inner Ring North", 0.20))
     iskelet.append(yay(R1, False, CADDE, "Inner Ring South", 0.16))
     iskelet.append(yay(R2, True, ANA, "North Circular", 0.17))
     iskelet.append(yay(R2, False, ANA, "South Circular", 0.13))
+    iskelet.append(yay(R3, True, CADDE, "Orbital Avenue North", 0.11, 0.88))
+    iskelet.append(yay(R3, False, CADDE, "Orbital Avenue South", 0.10, 0.86))
 
     # --- kıyı caddeleri: kuzey ve güney yakada, dış halka köprüleri arasında (liman kesiminde kıyıdan içeride)
-    i0, i1 = ki["b2"], ki["d2"]
+    i0, i1 = ki["b3"], ki["d3"]
     for yaka, ad in ((1, "Victoria Embankment"), (-1, "Bankside")):
         ii = np.arange(i0, i1 + 1)
         t = (NEHIR[ii, 0] - MX) / R2
-        # doğuda (akış aşağı) liman: yol kıyıdan 3 kare içeride; merkezde kıyının hemen yanında
-        ofs = NEHIR_G[ii] / 2 + 1.3 + 2.2 * np.clip((t - 0.52) / 0.15, 0, 1)
-        if yaka < 0:
-            ofs += 0.9 * np.clip((-t - 0.5) / 0.15, 0, 1) * 2.0          # güneybatıda rıhtım
+        # kuzey yaka: doğuda (akış aşağı) liman, yol kıyıdan 3 kare içeride; merkezde ve batıda kıyının hemen yanında (set)
+        ofs = NEHIR_G[ii] / 2 + 1.3
+        if yaka > 0:
+            ofs = ofs + 2.2 * np.clip((t - 0.85) / 0.10, 0, 1)
+        else:
+            ofs = ofs + 2.2 * np.clip((np.abs(t) - 0.50) / 0.10, 0, 1)        # güney yaka: çekirdeğin dışında rıhtım ve ambarlar
         p = NEHIR[ii] + NN[ii] * (yaka * ofs)[:, None]
         iskelet.append(Yol(yeniden(p, 0.25), CADDE, "kiyi", ad))
 
 
 iskelet_kur()
 
+# Mahalle merkezleri: şehir, büyürken yuttuğu köylerden oluşur. Her biri bir ana ışınsalın üstünde; kendi çarşı caddesi
+# (ışınsalın o kesimi + onu kesen cadde), küçük meydanı ve sıkışık eski dokusu olur; şehir lekesi buralarda dışarı taşar.
+MAHALLE = []          # dict(ad, c, yon, yol_ad, r)
+for _yol_ad, _ad, _r in (("Northgate Road", "Northgate", 47.0), ("Green Hill Road", "Green Hill Village", 49.0),
+                         ("Abbey Road", "Abbey Wood", 47.0), ("West End Road", "Westbourne", 50.0),
+                         ("Harbour Road", "Harbour Green", 45.0), ("Old Kent Road", "Kentish Green", 41.0),
+                         ("Greenwich Road", "Greenwich", 47.0)):
+    _y = [y for y in iskelet if y.ad == _yol_ad]
+    if not _y:
+        continue
+    _p = _y[0].pts
+    _uz = np.hypot(_p[:, 0] - NM[0], _p[:, 1] - NM[1])
+    _k = np.nonzero(_uz >= _r)[0]
+    if len(_k) == 0 or _k[0] < 8 or _k[0] > len(_p) - 9:
+        continue
+    _i = int(_k[0])
+    if any(math.hypot(*(_p[_i] - m_["c"])) < 22 for m_ in MAHALLE):       # iki köy üst üste binmesin
+        continue
+    _t = _p[_i + 6] - _p[_i - 6]
+    MAHALLE.append(dict(ad=_ad, c=_p[_i].copy(), yon=_t / math.hypot(*_t), yol_ad=_yol_ad, r=_r, g=gur_aci(3)))
+
 # ====================================================================== 3) şehir lekesi (kentsel alan)
 BM = np.array([MX + 1.0, (MY + NM[1]) / 2 + 1.0])
-_ra = np.hypot(WX - BM[0], WY - BM[1])
+_ra = np.hypot((WX - BM[0]) / 1.10, (WY - BM[1]) / 0.93)
 _th = np.arctan2(WY - BM[1], WX - BM[0])
 _g1, _g2, _g3 = gur_aci(4), gur_aci(3), gur_aci(5)
 _isin = np.zeros((GH, GW), bool)
@@ -405,9 +471,12 @@ for y in iskelet:
     if y.tur == "isin":
         _isin |= np.array(ciz(y.pts)) > 0
 ISIN_UZAK = ndi.distance_transform_edt(~_isin) / F
-RMIN = 36.5 * (1 + 0.10 * _g1(_th))
-RMAX = 43.5 * (1 + 0.05 * _g2(_th))
+RMIN = 55.5 * (1 + 0.10 * _g1(_th))
+RMAX = 64.5 * (1 + 0.05 * _g2(_th))
 KENT_F = (_ra < RMIN) | ((_ra < RMAX) & (ISIN_UZAK < 5.0 + 2.0 * _g3(_th)))
+for _m in MAHALLE:
+    _mth = np.arctan2(WY - _m["c"][1], WX - _m["c"][0])
+    KENT_F |= np.hypot(WX - _m["c"][0], WY - _m["c"][1]) < 9.0 * (1 + 0.22 * _m["g"](_mth))
 KENT_F &= (WX > 1.6) & (WX < W - 2.6) & (WY > 1.6) & (WY < H - 2.6)
 KENT_F = ndi.binary_closing(KENT_F, iterations=6)
 KENT_F = ndi.binary_opening(KENT_F, iterations=8)
@@ -426,9 +495,9 @@ def kentte(p):
 # İkincil ışınsallar ve dış yay parçaları (lekeyi bilince)
 def ikincil_kur():
     d2r = math.pi / 180
-    # ana ışınsalların arasına cadde: iç halkadan başlar
-    for a, r0, ad in ((28, 17.5, "Mile End Road"), (70, 17.0, "Camden Road"), (114, 17.5, "Highgate Road"), (157, 17.0, "Kilburn Lane"),
-                      (196, 30.5, "Riverside West"), (-14, 30.0, "Wapping Lane")):
+    # ana ışınsalların arasına cadde: iç halkanın hemen dışından başlar
+    for a, r0, ad in ((28, R1 + 2.0, "Mile End Road"), (70, R1 + 1.5, "Camden Road"), (114, R1 + 2.0, "Highgate Road"), (157, R1 + 1.5, "Kilburn Lane"),
+                      (196, R2 + 2.0, "Riverside West"), (-14, R2 + 1.5, "Wapping Lane")):
         aci = a * d2r
         bas = MERKEZ + np.array([math.cos(aci), math.sin(aci)]) * r0
         if ornek(KIYI_UZAK, bas) < 2.5 or ornek(YAKA, bas) < 0:
@@ -437,17 +506,26 @@ def ikincil_kur():
         y.ad = ad
         iskelet.append(y)
     gk = kopru(nehir_noktasi(MX))[0] - NN[nehir_noktasi(MX)] * 4.2
-    for a, r0, ad in ((245, 9.5, "Camberwell Road"), (293, 9.5, "Deptford Road")):
+    for a, r0, ad in ((245, 10.5, "Camberwell Road"), (293, 10.5, "Deptford Road")):
         aci = a * d2r
         bas = gk + np.array([math.cos(aci), math.sin(aci)]) * r0
         y = isinsal(bas, aci + rs.uniform(-0.08, 0.08), CADDE, "isin2", sapma=0.7, merkez=gk + np.array([0, 3.0]))
         y.ad = ad
         iskelet.append(y)
-    # dış yay (r ≈ 33): yalnız lekenin yeterince içinde kalan kesimler
+    # güney yakanın iki ucunda dış halkadan başlayan caddeler
+    for a, ad in ((203, "Wandsworth Road"), (338, "Woolwich Road")):
+        aci = a * d2r
+        bas = NM + np.array([math.cos(aci), math.sin(aci)]) * (R2 + 2.0)
+        if ornek(KIYI_UZAK, bas) < 3.0 or ornek(YAKA, bas) > 0 or not kentte(bas):
+            continue
+        y = isinsal(bas, aci + rs.uniform(-0.06, 0.06), CADDE, "isin2", sapma=0.6, merkez=NM)
+        y.ad = ad
+        iskelet.append(y)
+    # ara yay (RM): iç halkayla dış halka arasında; lekenin içinde ve kıyıdan uzak kesimler (Crescent)
     g = gur_aci(3)
     aci = np.linspace(-math.pi, math.pi, 1200)
-    r = 36.5 * (1 + 0.08 * g(aci))
-    p = np.stack([BM[0] + r * np.cos(aci), BM[1] + r * np.sin(aci)], 1)
+    r = RM * (1 + 0.07 * g(aci))
+    p = np.stack([NM[0] + r * np.cos(aci), NM[1] + 2.0 + r * np.sin(aci)], 1)
     ic = (ornek(KENT_UZAK, p) > 2.4) & (ornek(KIYI_UZAK, p) > 2.5)
     bas = None
     for i in range(len(p) + 1):
@@ -456,8 +534,26 @@ def ikincil_kur():
                 bas = i
         elif bas is not None:
             if i - bas > 60:
-                iskelet.append(Yol(yeniden(p[bas:i], 0.25), CADDE, "yay", "Orbital Avenue"))
+                kuzeyde = ornek(YAKA, p[(bas + i) // 2]) > 0
+                iskelet.append(Yol(yeniden(p[bas:i], 0.25), CADDE, "yay", "Queens Crescent" if kuzeyde else "Kings Crescent"))
             bas = None
+    # mahalle merkezlerinin kesen caddesi (köyün kilise sokağı): ışınsala dik, iki yana 8–13 kare, hafif eğri
+    for m in MAHALLE:
+        c, yon = m["c"], m["yon"]
+        if not kentte(c):
+            continue
+        nrm = np.array([-yon[1], yon[0]])
+        L1, L2 = rs.uniform(8, 13), rs.uniform(8, 13)
+        egri = rs.uniform(-0.012, 0.012)
+        t = np.arange(-L1, L2 + 0.01, 0.25)
+        p = c[None] + nrm[None] * t[:, None] + yon[None] * (egri * t * t)[:, None]
+        gec = kentte(p) & (ornek(KIYI_UZAK, p) > 2.5) & (ornek(KENT_UZAK, p) > 1.2)
+        orta = int(np.argmin(np.abs(t)))
+        ks = [k_ for k_ in kosular(gec, enaz=16, bosluk=0) if k_[0] <= orta <= k_[1]]
+        if not ks:
+            continue
+        iskelet.append(Yol(p[ks[0][0]:ks[0][1] + 1], CADDE, "koy", m["ad"].split()[0] + " Church Street"))
+        m["kesen"] = iskelet[-1]
 
 
 ikincil_kur()
@@ -500,6 +596,55 @@ def iskelet_kirp():
     return sehir, kirlar
 
 
+PARK_F = np.zeros((GH, GW), bool)         # büyük parkın içi (ince raster)
+
+
+def buyuk_park():
+    """City Park: kuzeybatıda iç halkayla dış halka arasında büyük park. Çevresini bir cadde dolanır (Park Lane); ışınsal ve
+    yay caddeleri parkın kenarında biter (parkın içinden araç yolu geçmez)."""
+    global PARK_F
+    aci = math.radians(119 + rs.uniform(-4, 4))
+    yon = np.array([math.cos(aci), math.sin(aci)])
+    ic = HALKA_TAM["Inner Ring North"]
+    dis = HALKA_TAM["North Circular"]
+
+    def kesisim(pts):
+        d = np.abs((pts[:, 0] - NM[0]) * (-yon[1]) + (pts[:, 1] - NM[1]) * yon[0])
+        d[((pts - NM) @ yon) < 0] = 1e9
+        return float(np.hypot(*(pts[int(np.argmin(d))] - NM)))
+
+    r_ic, r_dis = kesisim(ic), kesisim(dis)
+    b = float(np.clip((r_dis - r_ic) / 2 - 1.5, 5.0, 8.5))        # ışınsal yarı eksen
+    a = float(np.clip(205.0 / (math.pi * b), 7.5, 12.5))          # teğet yarı eksen (alan ≈ 205 kare)
+    c = NM + yon * (r_ic + r_dis) / 2
+    tg = np.array([-yon[1], yon[0]])
+    g = gur_aci(4)
+    fi = np.linspace(0, 2 * math.pi, 400)
+    rr = 1 + 0.09 * g(fi)
+    p = c[None] + tg[None] * (a * rr * np.cos(fi))[:, None] + yon[None] * (b * rr * np.sin(fi))[:, None]
+    p[-1] = p[0]
+    im = Image.new("L", (GW, GH), 0)
+    ImageDraw.Draw(im).polygon([((x + PAD) * F, (y_ + PAD) * F) for x, y_ in p], fill=255)
+    PARK_F = np.array(im) > 0
+    # parkın içinden geçen ışınsal / yay / köy caddeleri kenarda kesilir (iki örnek içeri taşar: çevre caddesine kare kare değsin)
+    yeni = []
+    for y in iskelet:
+        if y.tur not in ("isin", "isin2", "yay", "koy"):
+            yeni.append(y)
+            continue
+        icte = ornek(PARK_F, y.pts)
+        if not icte.any():
+            yeni.append(y)
+            continue
+        for (i0, i1) in kosular(~icte, enaz=12, bosluk=0):
+            z = Yol(y.pts[max(0, i0 - 2):min(len(y.pts), i1 + 3)], y.sinif, y.tur, y.ad)
+            yeni.append(z)
+    iskelet[:] = yeni
+    iskelet.append(Yol(yeniden(p, 0.25), CADDE, "park_cevre", "Park Lane"))
+    return c
+
+
+PARK_MERKEZ = buyuk_park()
 SEHIR_ISK, KIR_ANA = iskelet_kirp()
 
 
@@ -526,6 +671,59 @@ def uclari_oturt(yollar):
 
 
 uclari_oturt(SEHIR_ISK)
+
+# ====================================================================== 3b) demiryolu
+RAY = None             # hattın tamamı (terminalden kıra), 0,25 kare aralıklı noktalar
+ISTASYON = []          # dict(ad, p, yon, terminal)
+
+
+def demiryolu_kur():
+    """Demiryolu: kuzeydoğuda ara yayın hemen dışındaki terminalden (Swan Cross) çıkar, iki ışınsal caddenin arasından şehri
+    terk edip kıra uzanır. Yol değildir (kurye gitmez): planda ayrı çizgi, karelerde 'D' bölgesi (yapısız şerit). Mahalle
+    sokakları hattı geçmez; yalnız iskelet caddeleri keser (hemzemin geçit)."""
+    global RAY
+    a = [y for y in SEHIR_ISK if y.ad == "Northgate Road"]
+    b = [y for y in SEHIR_ISK if y.ad == "Camden Road"]
+    if not a or not b:
+        return
+
+    def nokta(y, r):
+        uz = np.hypot(y.pts[:, 0] - NM[0], y.pts[:, 1] - NM[1])
+        k = np.nonzero(uz >= r)[0]
+        return y.pts[int(k[0])] if len(k) else y.pts[-1]
+
+    r0 = RM * 1.07 + 3.6
+    orta = (nokta(a[0], r0) + nokta(b[0], r0)) / 2
+    yon = (orta - NM) / math.hypot(*(orta - NM))
+    bas = NM + yon * r0
+    y = isinsal(bas, math.atan2(yon[1], yon[0]), 9, "ray", menzil=170.0, sapma=0.16, merkez=NM)
+    p = y.pts
+    son = np.nonzero(ornek(DIS_KENAR, p) > 43)[0]        # oyundaki kır zemini dikdörtgenin 44 kare ötesinde biter
+    RAY = p[:int(son[0])] if len(son) else p
+    t, _ = teget_normal(RAY, 8)
+    ISTASYON.append(dict(ad="Swan Cross Station", p=RAY[0].copy(), yon=t[0].copy(), terminal=True))
+    # banliyö durağı: hattın çevre caddesini (Orbital Avenue) geçtiği yerin hemen dışı
+    orb = HALKA_TAM.get("Orbital Avenue North")
+    if orb is not None:
+        d, _ = cKDTree(orb).query(RAY)
+        i = int(np.argmin(d))
+        if d[i] < 1.0 and i + 14 < len(RAY) and kentte(RAY[i + 14]):
+            ISTASYON.append(dict(ad="Northgate Halt", p=RAY[i + 14].copy(), yon=t[i + 14].copy(), terminal=False))
+
+
+DIS_KENAR = np.maximum(np.maximum(-0.5 - WX, WX - (W - 0.5)), np.maximum(-0.5 - WY, WY - (H - 0.5)))      # dikdörtgenin dışına uzaklık
+demiryolu_kur()
+if RAY is not None:
+    RAY_UZAK = ndi.distance_transform_edt(np.array(ciz(RAY)) == 0) / F
+else:
+    RAY_UZAK = np.full((GH, GW), 99.0)
+# istasyon alanları (gar binası, peronlar): mahalle sokakları ve oyuk alanlar buraya girmez
+ISTASYON_F = np.zeros((GH, GW), bool)
+for _i in ISTASYON:
+    _u = (WX - _i["p"][0]) * _i["yon"][0] + (WY - _i["p"][1]) * _i["yon"][1]
+    _v = np.abs(-(WX - _i["p"][0]) * _i["yon"][1] + (WY - _i["p"][1]) * _i["yon"][0])
+    ISTASYON_F |= ((_u > -1.3) & (_u < 5.2) & (_v < 1.1)) if _i["terminal"] else ((np.abs(_u) < 2.4) & (_v < 0.95))
+RAY_UZAK = np.minimum(RAY_UZAK, ndi.distance_transform_edt(~ISTASYON_F) / F + 0.5) if ISTASYON_F.any() else RAY_UZAK
 
 # iskelet rasterleri
 ISK_NO = Image.new("I", (GW, GH), 0)
@@ -554,81 +752,159 @@ def halka_ici(anahtar):
 IC1 = halka_ici("Inner")
 IC2 = halka_ici("Circular")
 
+IC3_POLY = np.vstack([HALKA_TAM["Orbital Avenue North"], HALKA_TAM["Orbital Avenue South"][::-1]])
+_im = Image.new("L", (GW, GH), 0)
+ImageDraw.Draw(_im).polygon([((x + PAD) * F, (y_ + PAD) * F) for x, y_ in IC3_POLY], fill=255)
+IC3 = np.array(_im) > 0                   # çevre caddesinin (Orbital) içi
+
+# ====================================================================== 3c) oyuk alanlar: parklar, mezarlık, okullar, kampüs
+# Büyük adaların içinden bir iskelet caddesine yaslanan alanlar ayrılır (kendi adaları olur): mahalle sokakları buralara girmez.
+OYUK = []                                  # dict(tur, ad, maske, c)
+OYUK_F = np.zeros((GH, GW), bool)
+OYUK_YAKIN = np.zeros((GH, GW), bool)      # oyuk alanların 3 kare çevresi (yenisi buraya konmaz)
+
+
+def oyuk_ekle(tur, ad, maske):
+    global OYUK_F, OYUK_YAKIN
+    ys, xs = np.nonzero(maske)
+    c = np.array([xs.mean() / F - PAD, ys.mean() / F - PAD])
+    OYUK.append(dict(tur=tur, ad=ad, maske=maske, c=c))
+    OYUK_F |= maske
+    r0, r1, c0, c1 = max(0, ys.min() - 14), ys.max() + 15, max(0, xs.min() - 14), xs.max() + 15
+    OYUK_YAKIN[r0:r1, c0:c1] |= ndi.binary_dilation(maske[r0:r1, c0:c1], iterations=12)
+
+
+def oyuk_yerlestir(tur, ad, kosul, L, D, us=3.2):
+    """Bir iskelet caddesine yaslanan alan: cadde boyunca L, caddeden içeri D kare (yuvarlatılmış dikdörtgen; us büyüdükçe köşeli).
+    Leke kenarından, kıyıdan, demiryolundan, öbür oyuk alanlardan ve başka iskelet yollarından uzak ilk uygun yer seçilir."""
+    aday = []
+    for y in SEHIR_ISK:
+        if y.tur in ("kopru", "meydan", "park_cevre"):
+            continue
+        t, nr = teget_normal(y.pts, 8)
+        for i in range(10, len(y.pts) - 10, 5):
+            for k in (1, -1):
+                c = y.pts[i] + nr[i] * k * (D / 2 + 0.45)
+                if kosul(c):
+                    aday.append((t[i], nr[i] * k, c))
+    yari = int((max(L, D) / 2 + 1.5) * F)
+    for j in rs.permutation(len(aday))[:500]:
+        tg, n, c = aday[j]
+        cc, rr = fpx(c)
+        r0, r1, c0, c1 = max(0, rr - yari), min(GH, rr + yari + 1), max(0, cc - yari), min(GW, cc + yari + 1)
+        u = (WX[r0:r1, c0:c1] - c[0]) * tg[0] + (WY[r0:r1, c0:c1] - c[1]) * tg[1]
+        v = (WX[r0:r1, c0:c1] - c[0]) * n[0] + (WY[r0:r1, c0:c1] - c[1]) * n[1]
+        m = (np.abs(u) / (L / 2)) ** us + (np.abs(v) / (D / 2)) ** us < 1.0
+        if m.sum() < L * D * F * F * 0.6:
+            continue
+        if (KENT_UZAK[r0:r1, c0:c1][m] < 2.6).any() or (KIYI_UZAK[r0:r1, c0:c1][m] < 3.0).any() or (RAY_UZAK[r0:r1, c0:c1][m] < 1.7).any():
+            continue
+        if OYUK_YAKIN[r0:r1, c0:c1][m].any() or PARK_F[r0:r1, c0:c1][m].any():
+            continue
+        ic = m & (v > -D / 2 + 1.3)                 # yaslandığı caddenin kenar şeridi dışında başka iskelet yolu olmasın
+        if (ISK_UZAK[r0:r1, c0:c1][ic] < 1.1).any():
+            continue
+        tam = np.zeros((GH, GW), bool)
+        tam[r0:r1, c0:c1] = m
+        oyuk_ekle(tur, ad, tam)
+        return True
+    return False
+
+
+def oyuklari_kur():
+    def bil(c):
+        d = c - MERKEZ
+        return (math.degrees(math.atan2(d[1], d[0])) % 360, math.hypot(*(c - NM)), ornek(YAKA, c), ornek(IC1, c), ornek(IC2, c), ornek(IC3, c))
+
+    # büyük park (çevre caddesinin içi; caddenin kendisi iskelette)
+    if PARK_F.any():
+        oyuk_ekle("park", "City Park", ndi.binary_erosion(PARK_F, iterations=2))
+    K = lambda f: (lambda c: f(*bil(c)))
+    # (tür, ad, koşul(açı°, nehir merkezine uzaklık, yaka, iç halkada, dış halkada, çevre caddesinde), boy, derinlik, köşelilik)
+    istek = [
+        ("kampus", "Swan University", K(lambda a, r, yk, i1, i2, i3: yk > 0 and (a < 75 or a > 345) and not i1 and 21 < r < 46), 10.5, 7.5, 3.6),
+        ("park", "Riverside Common", K(lambda a, r, yk, i1, i2, i3: yk < 0 and i2 and not i1), 12.0, 7.0, 2.6),
+        ("park", "Northgate Fields", K(lambda a, r, yk, i1, i2, i3: yk > 0 and 18 < a < 84 and not i2 and i3), 11.0, 7.0, 2.6),
+        ("park", "Westbourne Common", K(lambda a, r, yk, i1, i2, i3: yk > 0 and 138 < a < 186 and not i2), 12.5, 8.0, 2.4),
+        ("park", "Greenwich Park", K(lambda a, r, yk, i1, i2, i3: yk < 0 and not i2 and a > 285), 13.0, 8.0, 2.4),
+        ("park", "Kentish Fields", K(lambda a, r, yk, i1, i2, i3: yk < 0 and not i2 and 215 < a < 268), 10.5, 6.5, 2.6),
+        ("park", "Abbey Gardens", K(lambda a, r, yk, i1, i2, i3: yk > 0 and i2 and not i1 and 20 < a < 100), 7.0, 5.0, 3.0),
+        ("mezarlik", "Highgate Cemetery", K(lambda a, r, yk, i1, i2, i3: yk > 0 and 84 < a < 142 and not i2), 10.0, 6.5, 4.2),
+        ("mezarlik", "Southfields Cemetery", K(lambda a, r, yk, i1, i2, i3: yk < 0 and not i2 and 215 < a < 330), 8.0, 5.5, 4.2),
+        ("okul", "Green Hill School", K(lambda a, r, yk, i1, i2, i3: yk > 0 and 62 < a < 118 and not i2), 5.5, 4.5, 4.0),
+        ("okul", "Abbey School", K(lambda a, r, yk, i1, i2, i3: yk > 0 and 120 < a < 176 and not i1 and r > 24), 5.5, 4.5, 4.0),
+        ("okul", "Harbour School", K(lambda a, r, yk, i1, i2, i3: yk < 0 and not i1 and 190 < a < 255), 5.5, 4.5, 4.0),
+        ("okul", "Greenwich Academy", K(lambda a, r, yk, i1, i2, i3: yk < 0 and not i2 and a > 275), 6.0, 4.5, 4.0),
+        ("okul", "Mile End School", K(lambda a, r, yk, i1, i2, i3: yk > 0 and (a < 60) and not i1 and i3), 5.5, 4.5, 4.0),
+    ]
+    eksik = []
+    for tur, ad, kosul, L, D, us in istek:
+        if not oyuk_yerlestir(tur, ad, kosul, L, D, us):
+            eksik.append(ad)
+    return eksik
+
+
+OYUK_EKSIK = oyuklari_kur()
+
 # ====================================================================== 4) adalar (iskeletin böldüğü hücreler)
-ENGEL = (ISK_NO > 0) | (KIYI_UZAK < 0.6) | ~KENT_F
-ADA, ADA_N = ndi.label(~ENGEL)
-# engel: iskelet dışında (kıyı, leke kenarı) sokakların yaklaşmaması gereken yerler
-SINIR_UZAK = ndi.distance_transform_edt(~((KIYI_UZAK < 0.6) | ~KENT_F)) / F
+ENGEL = (ISK_NO > 0) | (KIYI_UZAK < 0.6) | ~KENT_F | (RAY_UZAK < 0.75)
+ADA, ADA_N = ndi.label(~ENGEL & ~OYUK_F)
+for _o in OYUK:
+    _m = _o["maske"] & ~ENGEL
+    if _m.sum() < 4 * F * F:
+        _o["ada"] = 0
+        continue
+    ADA_N += 1
+    ADA[_m] = ADA_N
+    _o["ada"] = ADA_N
+# engel: iskelet dışında (kıyı, leke kenarı, demiryolu) sokakların yaklaşmaması gereken yerler
+SINIR_UZAK = ndi.distance_transform_edt(~((KIYI_UZAK < 0.6) | ~KENT_F | (RAY_UZAK < 0.5))) / F
 ada_alan = ndi.sum(np.ones_like(ADA), ADA, range(1, ADA_N + 1)) / (F * F)
 ada_mer = ndi.center_of_mass(np.ones_like(ADA), ADA, range(1, ADA_N + 1))
 ada_mer = [np.array([c[1] / F - PAD, c[0] / F - PAD]) for c in ada_mer]
 
 
 def ada_turleri():
-    """Her adaya tür: cekirdek, teras, ev, banliyo, sanayi, kampus, park, bos."""
+    """Her adaya tür: cekirdek, teras (kuzey yaka), teras_g (güney yaka), ev, banliyo, sanayi, kampus, okul, park, mezarlik, bos."""
     tur = {}
+    oyuk_ada = {o["ada"]: o for o in OYUK if o["ada"]}
+    buyuk = None
     for k in range(1, ADA_N + 1):
+        if k in oyuk_ada:
+            tur[k] = oyuk_ada[k]["tur"]
+            if oyuk_ada[k]["ad"] == "City Park":
+                buyuk = k
+            continue
         a, c = ada_alan[k - 1], ada_mer[k - 1]
         if a < 5:
             tur[k] = "bos"
             continue
-        r = math.hypot(*(c - MERKEZ))
-        rn = math.hypot(*(c - NM))
         yaka = ornek(YAKA, c)
         ky = ornek(KIYI_UZAK, c)
-        aci = math.degrees(math.atan2(c[1] - MERKEZ[1], c[0] - MERKEZ[0]))
         dogu = c[0] - MX
         if ornek(IC1, c):
             t = "cekirdek"
         elif ornek(IC2, c):
-            t = "teras"
-        elif rn < 38.5:
+            t = "teras" if yaka > 0 else "teras_g"      # iki yakanın karakteri farklı: kuzey bahçeli meydanlar, güney sık işçi sokakları
+        elif ornek(IC3, c):
             t = "ev"
         else:
             t = "banliyo"
         if math.hypot(*(c - MERKEZ)) < 1.2:
             t = "meydan"
-        # nehir boyu liman / sanayi: doğuda (akış aşağı) kıyı şeridi ve arkasındaki ada; güneybatıda rıhtım
-        if dogu > 16.5 and ky < 4.2 and t != "cekirdek":
-            t = "sanayi"
-        if dogu > 27 and ky < 12 and yaka > 0:
-            t = "sanayi"
-        if dogu < -16.5 and yaka < 0 and ky < 4.0 and t != "cekirdek":
-            t = "sanayi"
+        # nehir boyu liman / sanayi. Kuzey yaka: yalnız doğuda (akış aşağı) Docklands. Güney yaka: çekirdeğin dışında boydan boya
+        # rıhtım ve ambar şeridi (Bankside), doğuda büyük sanayi alanı.
+        if t != "cekirdek":
+            if yaka > 0 and dogu > R2 - 4 and ky < 4.5:
+                t = "sanayi"
+            if yaka > 0 and dogu > R2 + 4 and ky < 13:
+                t = "sanayi"
+            if yaka < 0 and ky < 4.4 and abs(dogu) < R3 + 5:
+                t = "sanayi"
+            if yaka < 0 and dogu > R2 - 3 and ky < 10:
+                t = "sanayi"
         tur[k] = t
-    # büyük park: kuzeybatıda iç halkayla dış halka arasındaki en uygun ada (City Park)
-    def sec(kosul, puan):
-        aday = [k for k in tur if tur[k] not in ("bos", "sanayi", "cekirdek", "meydan") and kosul(k)]
-        return max(aday, key=puan) if aday else None
-
-    def aci_of(k):
-        c = ada_mer[k - 1]
-        return math.degrees(math.atan2(c[1] - MERKEZ[1], c[0] - MERKEZ[0])) % 360
-
-    def r_of(k):
-        return math.hypot(*(ada_mer[k - 1] - NM))
-
-    yk = lambda k: ornek(YAKA, ada_mer[k - 1])
-    p1 = sec(lambda k: yk(k) > 0 and 95 < aci_of(k) < 175 and 15 < r_of(k) < 28 and 60 < ada_alan[k - 1] < 190,
-             lambda k: -abs(ada_alan[k - 1] - 110))
-    if p1:
-        tur[p1] = "park"
-    # ikinci park: güney yakada (Riverside Common)
-    p2 = sec(lambda k: yk(k) < 0 and 14 < r_of(k) < 30 and 45 < ada_alan[k - 1] < 150 and ada_mer[k - 1][0] > MX - 4,
-             lambda k: -abs(ada_alan[k - 1] - 80))
-    if p2:
-        tur[p2] = "park"
-    # üçüncü: kuzeydoğu dış halkada küçük park (Northgate Fields)
-    p3 = sec(lambda k: yk(k) > 0 and 25 < aci_of(k) < 85 and 24 < r_of(k) < 36 and 35 < ada_alan[k - 1] < 120,
-             lambda k: -abs(ada_alan[k - 1] - 60))
-    if p3:
-        tur[p3] = "park"
-    # kampüs: doğuda / kuzeydoğuda iç-dış halka arası (Industry & Campus semti)
-    kmp = sec(lambda k: yk(k) > 0 and (aci_of(k) < 62 or aci_of(k) > 335) and 16 < r_of(k) < 40 and 35 < ada_alan[k - 1] < 220,
-              lambda k: -abs(ada_alan[k - 1] - 90) - 2.0 * abs(r_of(k) - 30))
-    if kmp:
-        tur[kmp] = "kampus"
-    return tur, p1
+    return tur, buyuk
 
 
 ADA_TUR, BUYUK_PARK = ada_turleri()
@@ -645,8 +921,9 @@ TUM_UZAK = ISK_UZAK.copy()
 # ada türüne göre: sıra aralıkları (kare; sırayla döner), kesen sokak aralığı (min, max), dalga genliği, ara sokak / geçit /
 # meydan bahçesi olasılığı, "boş" sayılan yol uzaklığı (bundan uzak cep kalırsa yeni sıra açılır)
 ADA_AYAR = {
-    "cekirdek": dict(dar=0.4, sira=[4, 3], kesen=(4, 6), dalga=0.0, ara=0.85, gecit=0.0, bahce=0.6, bos=2.5),
+    "cekirdek": dict(dar=0.45, sira=[4, 3, 3], kesen=(4, 6), dalga=0.0, ara=0.85, gecit=0.0, bahce=0.7, bos=2.5),
     "teras": dict(dar=0.2, sira=[3, 4, 3, 3], kesen=(7, 10), dalga=0.2, ara=0.8, gecit=0.5, bahce=0.85, bos=2.6),
+    "teras_g": dict(dar=0.35, sira=[3, 3, 4], kesen=(6, 9), dalga=0.1, ara=0.5, gecit=0.7, bahce=0.25, bos=2.6),
     "ev": dict(dar=0.0, sira=[3], kesen=(9, 13), dalga=0.7, ara=0.0, gecit=0.0, bahce=0.0, bos=2.9),
     "banliyo": dict(dar=0.0, sira=[6], kesen=(11, 15), dalga=1.0, ara=0.0, gecit=0.0, bahce=0.0, bos=4.3),
     "sanayi": dict(dar=0.0, sira=[5, 4], kesen=(7, 10), dalga=0.0, ara=0.0, gecit=0.0, bahce=0.0, bos=3.6),
@@ -683,33 +960,6 @@ def yuru(p, yon, enfazla, maske, enaz=0.5):
         if not maske[r, c] or SINIR_UZAK[r, c] < 0.8:
             return None
     return None
-
-
-def kosular(gecerli, enaz=10, bosluk=2):
-    """Mantıksal dizideki True koşuları [(bas, son)] (kısa boşluklar kapatılır)."""
-    g = np.array(gecerli, bool)
-    n = len(g)
-    i = 0
-    while i < n:
-        if not g[i]:
-            j = i
-            while j < n and not g[j]:
-                j += 1
-            if 0 < i and j < n and j - i <= bosluk:
-                g[i:j] = True
-            i = j
-        else:
-            i += 1
-    out, bas = [], None
-    for i in range(n + 1):
-        if i < n and g[i]:
-            if bas is None:
-                bas = i
-        elif bas is not None:
-            if i - bas >= enaz:
-                out.append((bas, i - 1))
-            bas = None
-    return out
 
 
 def kafes(k, tur, g, tut0, yan, maske, genis):
@@ -966,7 +1216,7 @@ def ada_doldur(k, tur):
         kafes(k, tur, g, np.ones(len(g), bool), 1 if sol >= sag else -1, maske, genis)
 
     # 2) kalan cepler: en derin noktadan, en yakın yola paralel yeni bir sokak açılır; iki yanına sıralar
-    for _ in range(14):
+    for _ in range(max(14, int(ada_alan[k - 1] / 30))):
         b = bos_cepler(ay["bos"])
         if b.sum() / (F * F) < 2.5:
             break
@@ -1153,7 +1403,8 @@ kent_ic = ornek(KENT_UZAK, TP)
 yaka_k = ornek(YAKA, TP)
 rn_k = np.hypot(TX - NM[0], TY - NM[1])
 rm_k = np.hypot(TX - MERKEZ[0], TY - MERKEZ[1])
-HARF = {"cekirdek": "O", "teras": "O", "ev": "E", "banliyo": "B", "sanayi": "W", "kampus": "C", "park": "P", "meydan": "Z"}
+HARF = {"cekirdek": "O", "teras": "O", "teras_g": "O", "ev": "E", "banliyo": "B", "sanayi": "W", "kampus": "C", "okul": "C", "park": "P",
+        "mezarlik": "G", "meydan": "Z"}
 zone = np.full((H, W), ".", dtype="<U1")
 for yy_ in range(H):
     for x in range(W):
@@ -1164,33 +1415,71 @@ for yy_ in range(H):
             t = "teras" if ornek(IC2, TP[yy_, x]) else "ev"
         zone[yy_, x] = HARF[t]
 # dışa doğru seyrelme: leke kenarına yakın evler banliyö, içeride kalan banliyö adası bahçeli ev
-zone[(zone == "E") & (kent_ic < 4.2)] = "B"
-zone[(zone == "B") & (kent_ic > 8.0)] = "E"
+zone[(zone == "E") & (kent_ic < 5.5)] = "B"
+zone[(zone == "B") & (kent_ic > 9.0)] = "E"
 zone[(zone == "O") & (kent_ic < 2.6)] = "E"
+# Docklands: kuzey yakanın doğu ucunda kıyı boyunca liman / ambar (ada sınırlarına bakmadan)
+zone[(yaka_k > 0) & (TX - MX > R2 + 3) & (kiyi < 8.5) & np.isin(zone, ["E", "B", "O"])] = "W"
+# mahalle merkezleri (eski köyler): sıkışık eski doku (teraslar), çevresinde bahçeli evler
+mah_k = np.full((H, W), 99.0)
+for _m in MAHALLE:
+    if not kentte(_m["c"]):
+        continue
+    _d = np.hypot(TX - _m["c"][0], TY - _m["c"][1])
+    _rr = 6.0 * (1 + 0.2 * _m["g"](np.arctan2(TY - _m["c"][1], TX - _m["c"][0]) + 1.3))
+    zone[(_d < _rr) & np.isin(zone, ["E", "B"])] = "O"
+    zone[(_d >= _rr) & (_d < _rr + 3.5) & (zone == "B")] = "E"
+    mah_k = np.minimum(mah_k, _d)
 
 # çarşı caddeleri (high street): ışınsal ana yolların iç kesimi, iç halka, meydan çevresi, köprü başları
 _cars = Image.new("I", (GW, GH), 0)
 for y in SEHIR_ISK:
     if y.tur == "isin":
-        ic = ornek(IC2, y.pts) | (np.hypot(y.pts[:, 0] - NM[0], y.pts[:, 1] - NM[1]) < 31.5)
+        ic = ornek(IC2, y.pts) | (np.hypot(y.pts[:, 0] - NM[0], y.pts[:, 1] - NM[1]) < R2 + 2.5)
         if ic.sum() > 4:
             ciz(y.pts[ic], 1, 255, _cars)
     elif y.tur == "meydan" or (y.tur == "halka" and "Inner" in y.ad):
         ciz(y.pts, 1, 255, _cars)
     elif y.tur == "isin2":
-        ic = np.hypot(y.pts[:, 0] - NM[0], y.pts[:, 1] - NM[1]) < 23.0
+        ic = np.hypot(y.pts[:, 0] - NM[0], y.pts[:, 1] - NM[1]) < RM + 1.5
         if ic.sum() > 4:
             ciz(y.pts[ic], 1, 255, _cars)
+# mahalle merkezlerinin çarşısı: ışınsalın köyden geçen kesimi + kesen cadde (kilise sokağı)
+for _m in MAHALLE:
+    if not kentte(_m["c"]):
+        continue
+    _kesen = _m["ad"].split()[0] + " Church Street"
+    for y in SEHIR_ISK:
+        if y.ad not in (_m["yol_ad"], _kesen):
+            continue
+        ic = np.hypot(y.pts[:, 0] - _m["c"][0], y.pts[:, 1] - _m["c"][1]) < (5.6 if y.ad == _m["yol_ad"] else 4.4)
+        for (a_, b_) in kosular(ic, enaz=4, bosluk=0):
+            ciz(y.pts[a_:b_ + 1], 1, 255, _cars)
 CARSI_UZAK = ndi.distance_transform_edt(np.array(_cars) == 0) / F
 cars_k = ornek(CARSI_UZAK, TP)
 zone[(cars_k < 1.5) & np.isin(zone, ["O", "E"])] = "M"
 # kuleler: merkezin doğusunda küçük bir iş merkezi, güney köprü başında birkaç kule
 KULE1 = MERKEZ + np.array([7.0, 2.2])
 KULE2 = NM + np.array([-3.5, -6.5])
-zone[(np.hypot(TX - KULE1[0], TY - KULE1[1]) < 3.1) & np.isin(zone, ["O", "M"])] = "H"
-zone[(np.hypot(TX - KULE2[0], TY - KULE2[1]) < 2.1) & np.isin(zone, ["O", "M"])] = "H"
+zone[(np.hypot(TX - KULE1[0], TY - KULE1[1]) < 3.6) & np.isin(zone, ["O", "M"])] = "H"
+zone[(np.hypot(TX - KULE2[0], TY - KULE2[1]) < 2.4) & np.isin(zone, ["O", "M"])] = "H"
+# Docklands'in ucunda yeni iş merkezi (cam kuleler)
+KULE3 = NM + np.array([R2 + 7.5, 7.0])
+zone[(np.hypot(TX - KULE3[0], TY - KULE3[1]) < 2.7) & (yaka_k > 0) & np.isin(zone, ["O", "M", "W", "E"])] = "H"
 # meydan
 zone[MY - 1:MY + 2, MX - 1:MX + 2] = "Z"
+# mahalle meydancıkları: kavşağın bir köşesinde üç dört karelik taş meydan (pazar yeri)
+for _m in MAHALLE:
+    if not kentte(_m["c"]):
+        continue
+    _n = np.array([-_m["yon"][1], _m["yon"][0]]) * (1 if rs.rand() < 0.5 else -1)
+    _q = _m["c"] + (_m["yon"] * (1 if rs.rand() < 0.5 else -1) + _n) * 1.35
+    _ad = sorted((float(np.hypot(x - _q[0], yy_ - _q[1])), x, yy_) for yy_ in range(H) for x in range(W)
+                 if abs(x - _q[0]) < 2.2 and abs(yy_ - _q[1]) < 2.2 and zone[yy_, x] in "OME" and not yolK[yy_, x] and kent[yy_, x])
+    for _, x, yy_ in _ad[:4]:
+        if np.hypot(x - _q[0], yy_ - _q[1]) < 1.9:
+            zone[yy_, x] = "Z"
+    _m["meydan"] = _q
 # meydan bahçeleri
 bahce_k = np.zeros((H, W), bool)
 for b in BAHCELER:
@@ -1233,6 +1522,20 @@ def avm_yeri(isk_ad1, isk_ad2, adet=7):
 
 AVM1 = avm_yeri("Northgate Road", "North Circular")
 AVM2 = avm_yeri("Harbour Road", "South Circular")
+AVM3 = avm_yeri("Greenwich Road", "Orbital Avenue South", 6)
+AVM4 = avm_yeri("Abbey Road", "Orbital Avenue North", 6)
+# demiryolu: hattın geçtiği kareler yapısız şerit ('D'); istasyonlarda peronlar için genişler, terminalin önünde taş meydan
+ray_k = ornek(RAY_UZAK, TP)
+_dmask = (ray_k < 0.62) & kent & ~yolK & ~su
+for _i in ISTASYON:
+    _u = (TX - _i["p"][0]) * _i["yon"][0] + (TY - _i["p"][1]) * _i["yon"][1]
+    _v = np.abs(-(TX - _i["p"][0]) * _i["yon"][1] + (TY - _i["p"][1]) * _i["yon"][0])
+    if _i["terminal"]:
+        _dmask |= (_u > -0.4) & (_u < 5.2) & (_v < 1.55) & kent & ~yolK & ~su
+        zone[(_u <= -0.4) & (_u > -2.6) & (_v < 2.0) & kent & ~yolK & ~su & np.isin(zone, ["O", "M", "E", "H"])] = "Z"
+    else:
+        _dmask |= (np.abs(_u) < 2.4) & (_v < 1.3) & kent & ~yolK & ~su
+zone[_dmask] = "D"
 zone[yolK & (zone == ".")] = "E"       # (olmamalı) kır karesinde yol kalmasın diye
 
 # kare türü
@@ -1243,15 +1546,17 @@ kare[yolK] = "Y"
 kare[yolK & su] = "K"
 
 # yoğunluk
-YOG = {"O": 7, "M": 8, "H": 9, "E": 4, "B": 2, "C": 4, "W": 6, "A": 6, "Z": 9, "P": 0, "R": 0, ".": 0}
+YOG = {"O": 7, "M": 8, "H": 9, "E": 4, "B": 2, "C": 4, "W": 6, "A": 6, "Z": 9, "P": 0, "R": 0, "G": 0, "D": 0, ".": 0}
 yog = np.vectorize(lambda z: YOG[z])(zone)
-yog[(zone == "O") & (rm_k < 12)] = 9
-yog[(zone == "O") & (rm_k >= 12) & (rn_k < 20)] = 8
+yog[(zone == "O") & (rm_k < 13)] = 9
+yog[(zone == "O") & (rm_k >= 13) & (rn_k < 23)] = 8
+yog[(zone == "O") & (mah_k < 3.6)] = 8
 yog[(zone == "E") & (kent_ic < 7)] = 3
-yog[(zone == "B") & (kent_ic < 2.5)] = 1
+yog[(zone == "B") & (kent_ic < 3.2)] = 1
 
 
 # semtler (1 Downtown · 2 East Side · 3 Industry & Campus · 4 West Harbour · 5 Green Hill)
+SEMT_ACI, SEMT_GUNEY = 80.0, 8.0          # kuzey yakada East Side / Green Hill sınır açısı; güney yakada doğu / batı sınırı
 def semt_of(c, tur):
     yk = ornek(YAKA, c)
     rn = math.hypot(*(c - NM))
@@ -1259,10 +1564,10 @@ def semt_of(c, tur):
     if ornek(IC1, c) or tur == "meydan":
         return 1
     if yk > 0:
-        if aci < 80 or aci > 325:
-            return 3 if (c[0] - MX > 31 or tur in ("sanayi", "kampus")) else 2
+        if aci < SEMT_ACI or aci > 325:
+            return 3 if (c[0] - MX > R2 + 5 or tur in ("sanayi", "kampus")) else 2
         return 5
-    return 3 if c[0] > MX + 9 else 4
+    return 3 if c[0] > MX + SEMT_GUNEY else 4
 
 
 ada_semt = {k: semt_of(ada_mer[k - 1], ADA_TUR.get(k, "bos")) for k in range(1, ADA_N + 1)}
@@ -1401,7 +1706,7 @@ def kir_yollari():
     hepsi = np.vstack([y.pts for y in KIR])
     kd = cKDTree(hepsi)
     n = 0
-    for dene in range(60):
+    for dene in range(120):
         i = rs.randint(40, len(cev) - 40)
         p0 = cev[i]
         dis = p0 - BM
@@ -1419,7 +1724,7 @@ def kir_yollari():
         hepsi = np.vstack([hepsi, p])
         kd = cKDTree(hepsi)
         n += 1
-        if n >= 9:
+        if n >= 14:
             break
 
 
@@ -1427,6 +1732,13 @@ kir_yollari()
 _kr = Image.new("I", (GW, GH), 0)
 for y in KIR:
     ciz(y.pts, 1, 255, _kr)
+# demiryolunun kırdaki kesimi: tarlalar yol gibi iki yanına dizilir, çiftlik ve evler üstüne konmaz (yol değildir)
+RAY_KIR = []
+if RAY is not None:
+    _dis = np.nonzero(ornek(KENT_DIS, RAY) > 0.5)[0]
+    if len(_dis) > 20:
+        RAY_KIR = [Yol(RAY[int(_dis[0]):], 9, "ray")]
+        ciz(RAY_KIR[0].pts, 1, 255, _kr)
 KIRYOL_UZAK = ndi.distance_transform_edt(np.array(_kr) == 0) / F
 DOLU = Image.new("L", (GW, GH), 0)          # tarla konmayacak yerler: köyler, çiftlikler, yol boyu evler
 _dd = ImageDraw.Draw(DOLU)
@@ -1450,7 +1762,7 @@ def kir_yerlesimi():
                 if rs.rand() > 0.8 * math.exp(-u / 5.5):
                     continue
                 q = p[i] + nr[i] * k * 0.74
-                if ornek(KIYI_UZAK, q) < 1.2 or ornek(KENT_DIS, q) < 0.9:
+                if ornek(KIYI_UZAK, q) < 1.2 or ornek(KENT_DIS, q) < 0.9 or ornek(RAY_UZAK, q) < 1.1:
                     continue
                 KIR_EV.append((q[0], q[1], bakis_acisi(-nr[i] * k), 0))
                 dolu_daire(q, 0.85)
@@ -1473,11 +1785,11 @@ def kir_yerlesimi():
                 if rs.rand() < 0.16 and not (j == 0 and k == 1):
                     continue
                 q = p[i] + nr[i] * k * (0.76 + rs.uniform(0, 0.12))
-                if ornek(KIYI_UZAK, q) < 1.0:
+                if ornek(KIYI_UZAK, q) < 1.0 or ornek(RAY_UZAK, q) < 1.1:
                     continue
                 KIR_EV.append((q[0], q[1], bakis_acisi(-nr[i] * k), 2 if (j == 0 and k == 1) else 1))
                 dolu_daire(q, 1.25)
-        if len(koy_mer) >= 4:
+        if len(koy_mer) >= 6:
             break
     # çiftlikler: köy yollarının kenarında (çiftlik evi + ahır + meyve bahçesi için yer ayrılır)
     adaylar = [y for y in KIR if y.tur in ("cevre", "tarla_yolu", "kir_isin2")]
@@ -1486,7 +1798,7 @@ def kir_yerlesimi():
         if ornek(KIYI_UZAK, p) > 3 and ornek(DIS, p) < KIR_MENZIL - 4:
             CIFTLIK.append((p[0], p[1]))
     for dene in range(400):
-        if len(CIFTLIK) >= 15 or not adaylar:
+        if len(CIFTLIK) >= 22 or not adaylar:
             break
         y = adaylar[rs.randint(len(adaylar))]
         i = rs.randint(8, max(9, len(y.pts) - 8))
@@ -1522,11 +1834,12 @@ def tarlalari_uret():
         return ic & zk[np.clip(yi, 0, H - 1), np.clip(xi, 0, W - 1)]
 
     def yasak(p):
-        return (ornek(KENT_DIS, p) < 1.1) | (ornek(KIYI_UZAK, p) < 1.5) | ornek(DOLU_F, p) | (ornek(DIS, p) > KIR_MENZIL) | zeminde(p)
+        return (ornek(KENT_DIS, p) < 1.1) | (ornek(KIYI_UZAK, p) < 1.5) | ornek(DOLU_F, p) | (ornek(DIS, p) > KIR_MENZIL) | zeminde(p) | \
+            (ornek(RAY_UZAK, p) < 0.55)
 
     tohum = []
-    # yol boyunca: iki yanda karşılıklı tohumlar (iki sıra derinlik)
-    for y in KIR:
+    # yol (ve demiryolu) boyunca: iki yanda karşılıklı tohumlar (iki sıra derinlik)
+    for y in KIR + RAY_KIR:
         p = y.pts
         if len(p) < 16:
             continue
@@ -1549,12 +1862,12 @@ def tarlalari_uret():
     tohum = sec
     # serpme tohumlar (en az 4,4–6,4 kare aralıklı)
     kd_pts = list(tohum)
-    for dene in range(9000):
+    for dene in range(15000):
         q = np.array([rs.uniform(-KIR_MENZIL - 4, W + KIR_MENZIL + 4), rs.uniform(-KIR_MENZIL - 4, H + KIR_MENZIL + 4)])
         if ornek(KENT_F, q) or ornek(KIRYOL_UZAK, q) < 2.0:
             continue
         ara = rs.uniform(4.4, 6.4)
-        arr = np.array(kd_pts[-2500:])
+        arr = np.array(kd_pts[-4500:])
         if len(arr) and ((arr[:, 0] - q[0]) ** 2 + (arr[:, 1] - q[1]) ** 2).min() < ara * ara:
             continue
         kd_pts.append(q)
@@ -1563,9 +1876,9 @@ def tarlalari_uret():
     cer = [(x, y_) for x in np.linspace(-PAD - 20, W + PAD + 20, 24) for y_ in (-PAD - 20, H + PAD + 20)] + \
           [(x, y_) for y_ in np.linspace(-PAD - 20, H + PAD + 20, 24) for x in (-PAD - 20, W + PAD + 20)]
     vor = Voronoi(np.vstack([tohum, np.array(cer)]))
-    kyol = cKDTree(np.vstack([y.pts for y in KIR]))
-    kyol_pts = np.vstack([y.pts for y in KIR])
-    kyol_t = np.vstack([teget_normal(y.pts, 4)[0] for y in KIR])
+    kyol = cKDTree(np.vstack([y.pts for y in KIR + RAY_KIR]))
+    kyol_pts = np.vstack([y.pts for y in KIR + RAY_KIR])
+    kyol_t = np.vstack([teget_normal(y.pts, 4)[0] for y in KIR + RAY_KIR])
     for si in range(len(tohum)):
         reg = vor.regions[vor.point_region[si]]
         if not reg or -1 in reg:
@@ -1716,7 +2029,11 @@ ADLAR = ["Abbey", "Albion", "Alma", "Arundel", "Baker", "Bedford", "Belgrave", "
          "Marlow", "Mason", "Milk", "Mill", "Montague", "Mount", "Neal", "Norfolk", "Old Forge", "Orchard", "Oxford", "Paternoster", "Pembroke",
          "Penny", "Portland", "Priory", "Queen", "Regent", "Rectory", "Rose", "Russell", "Saddler", "Savile", "Seymour", "Silver", "Sloane",
          "Somerset", "Spring", "Stable", "Station", "Sussex", "Swan", "Tanner", "Temple", "Thistle", "Tudor", "Vicarage", "Victoria",
-         "Warwick", "Weaver", "Wharf", "Willow", "Windsor", "York"]
+         "Warwick", "Weaver", "Wharf", "Willow", "Windsor", "York", "Acorn", "Alder", "Anchor", "Barley", "Beech", "Bishop", "Bramble",
+         "Cannon", "Cedar", "Chandler", "Cherry", "Clover", "Copper", "Cutler", "Drover", "Elm", "Falcon", "Fern", "Finch", "Fisher",
+         "Forge", "Garland", "Glover", "Hawthorn", "Hazel", "Heron", "Holly", "Ivy", "Jubilee", "Kestrel", "Larch", "Laurel", "Linden",
+         "Maple", "Mercer", "Miller", "Nelson", "Oak", "Osprey", "Pilgrim", "Poplar", "Quarry", "Raven", "Rowan", "Saffron", "Sorrel",
+         "Tallow", "Thrush", "Turner", "Vine", "Walnut", "Wren", "Yew"]
 
 
 def adlandir():
@@ -1788,10 +2105,10 @@ def sinir_izi(maske):
     return np.stack([(p[:, 0] - 0.5) / F - PAD, (p[:, 1] - 0.5) / F - PAD], 1)
 
 
-def park_cokgenleri():
+def park_cokgenleri(tur_adi="park"):
     out = []
     for k, t in ADA_TUR.items():
-        if t != "park":
+        if t != tur_adi:
             continue
         m = ndi.binary_erosion(ADA == k, iterations=1)
         e, n = ndi.label(m)
@@ -1806,12 +2123,34 @@ def park_cokgenleri():
         for _ in range(2):
             iz = np.vstack([np.vstack([a * 0.75 + b * 0.25, a * 0.25 + b * 0.75]) for a, b in zip(iz, np.roll(iz, -1, axis=0))])
         out.append(rdp_kapali(iz, 0.06))
-    for b in BAHCELER:
-        out.append(rdp_kapali(b, 0.05))
+    if tur_adi == "park":
+        for b in BAHCELER:
+            out.append(rdp_kapali(b, 0.05))
     return [p for p in out if len(p) >= 3 and abs(alan_poly(p)) > 1.0]
 
 
 PARK_POLY = park_cokgenleri()
+MEZAR_POLY = park_cokgenleri("mezarlik")
+
+
+def yerler_listesi():
+    """Haritada adı yazan yerler: tur 0 mahalle merkezi, 1 istasyon, 2 mezarlık, 3 park, 4 okul / kampüs. İstasyonda aci: hattın yönü (°)."""
+    out = []
+    for m in MAHALLE:
+        if kentte(m["c"]):
+            out.append(dict(ad=m["ad"], x=round(float(m["c"][0]), 2), y=round(float(m["c"][1]), 2), tur=0, aci=0.0))
+    for i in ISTASYON:
+        out.append(dict(ad=i["ad"], x=round(float(i["p"][0]), 2), y=round(float(i["p"][1]), 2), tur=1,
+                        aci=round(math.degrees(math.atan2(i["yon"][1], i["yon"][0])), 1)))
+    for o in OYUK:
+        if not o["ada"] or o["ad"] == "City Park":
+            continue
+        t = {"mezarlik": 2, "park": 3, "okul": 4, "kampus": 4}[o["tur"]]
+        out.append(dict(ad=o["ad"], x=round(float(o["c"][0]), 2), y=round(float(o["c"][1]), 2), tur=t, aci=0.0))
+    return out
+
+
+YERLER = yerler_listesi()
 
 
 def su_cokgeni():
@@ -1862,6 +2201,9 @@ plan = {
     "tarlalar": [{"x": y2(t["poly"][:, 0]), "y": y2(t["poly"][:, 1]), "mx": round(t["mx"], 2), "my": round(t["my"], 2),
                   "gen": round(t["gen"], 2), "boy": round(t["boy"], 2), "aci": round(t["aci"], 1), "tur": t["tur"]} for t in TARLA],
     "ciftlikler": {"x": y2([c[0] for c in CIFTLIK]), "y": y2([c[1] for c in CIFTLIK])},
+    "demiryolu": [cizgi_json(RAY, 0.05)] if RAY is not None else [],
+    "mezarlik": [cizgi_json(p, 0.0) for p in MEZAR_POLY],
+    "yerler": YERLER,
     "kirEvleri": {"x": y2([e[0] for e in KIR_EV]), "y": y2([e[1] for e in KIR_EV]), "aci": [round(float(e[2]), 1) for e in KIR_EV],
                   "tur": [int(e[3]) for e in KIR_EV]},
 }
@@ -1880,6 +2222,12 @@ print(f"  kentsel kare {int(kent.sum())} · yola bakan arsa {int((_on & kent & ~
       f"park {int((zone == 'P').sum())} · meydan bahçesi {len(BAHCELER)} · kopuk yol karesi {KOPUK} · budanan kör uç {BUDANAN}")
 print(f"  seviye bağlantısı için semti kaydırılan kare: {SEVIYE_KAYAN} · taş meydan {len(MEYDANCIK)}")
 print(f"  kır: yol {len(KIR)}, tarla {len(TARLA)}, çiftlik {len(CIFTLIK)}, ev {len(KIR_EV)} · merkez {MX},{MY} · belediye {BELEDIYE} · otogar {OTOGAR}")
+print(f"  mahalle merkezi {sum(1 for y in YERLER if y['tur'] == 0)} · istasyon {len(ISTASYON)} · demiryolu {uzunluk(RAY) if RAY is not None else 0:.0f} kare "
+      f"(şerit karesi {int((zone == 'D').sum())}) · oyuk alan {len(OYUK)} (yerleşmeyen: {', '.join(OYUK_EKSIK) or 'yok'}) · mezarlık karesi {int((zone == 'G').sum())} · "
+      f"kampüs / okul karesi {int((zone == 'C').sum())}")
+for _h in "OMHEBCWAZPRGD":
+    print(f"    bölge {_h}: {int(((zone == _h) & ~yolK & ~su).sum())}", end="")
+print()
 
 
 # ====================================================================== 11) önizleme
@@ -1915,7 +2263,8 @@ def onizleme():
     d.polygon([P(p) for p in np.vstack([NEHIR + NN * (NEHIR_G / 2)[:, None], (NEHIR - NN * (NEHIR_G / 2)[:, None])[::-1]])], fill=(118, 172, 222))
     # şehir kareleri
     ZR = {"O": (226, 190, 168), "M": (232, 176, 160), "H": (206, 186, 222), "E": (236, 226, 190), "B": (224, 232, 196), "C": (236, 222, 176),
-          "W": (198, 204, 214), "A": (244, 206, 150), "Z": (236, 228, 208), "P": (150, 200, 130), "R": (176, 210, 156)}
+          "W": (198, 204, 214), "A": (244, 206, 150), "Z": (236, 228, 208), "P": (150, 200, 130), "R": (176, 210, 156),
+          "G": (170, 196, 160), "D": (200, 192, 178)}
     BR = {"O": (176, 104, 84), "M": (196, 84, 80), "H": (120, 96, 168), "E": (196, 150, 96), "B": (170, 140, 100), "C": (190, 160, 90),
           "W": (112, 126, 148), "A": (214, 140, 60)}
     for yy_ in range(H):
@@ -1928,6 +2277,15 @@ def onizleme():
             d.rectangle([x0, y0, x1, y1], fill=ZR[z])
     for p in PARK_POLY:
         d.polygon([P(q) for q in p], fill=(132, 190, 112))
+    for p in MEZAR_POLY:
+        d.polygon([P(q) for q in p], fill=(160, 188, 150), outline=(110, 120, 110))
+        xs_, ys_ = p[:, 0], p[:, 1]
+        for gx in np.arange(math.floor(xs_.min()), xs_.max(), 0.5):
+            for gy in np.arange(math.floor(ys_.min()), ys_.max(), 0.7):
+                c_, r_ = fpx((gx, gy))
+                if OYUK_F[r_, c_] and ornek(ADA, (gx, gy)) in [o["ada"] for o in OYUK if o["tur"] == "mezarlik"]:
+                    a_, b_ = P((gx - 0.08, gy + 0.12)), P((gx + 0.08, gy - 0.12))
+                    d.rectangle([a_[0], a_[1], b_[0], b_[1]], fill=(226, 226, 220))
     d.polygon([P(p) for p in SU_POLY], fill=(118, 172, 222))
     # binalar: yola bakan arsa koyu, arka arsa (bahçe / avlu) açık
     for yy_ in range(H):
@@ -1975,6 +2333,23 @@ def onizleme():
         if y.tur == "kopru":
             cizgi(y.pts, (120, 110, 100), GENISLIK[y.sinif] * Z + 3.5)
             cizgi(y.pts, RENK[y.sinif], GENISLIK[y.sinif] * Z)
+    # demiryolu: balast şeridi, ray ve traversler; istasyonlar
+    if RAY is not None:
+        cizgi(RAY, (150, 140, 128), 5.0)
+        cizgi(RAY, (60, 60, 66), 1.6)
+        t_, n_ = teget_normal(RAY, 4)
+        for i in range(0, len(RAY), 3):
+            d.line([P(RAY[i] + n_[i] * 0.22), P(RAY[i] - n_[i] * 0.22)], fill=(60, 60, 66), width=S)
+        for i_ in ISTASYON:
+            nn_ = np.array([-i_["yon"][1], i_["yon"][0]])
+            L_ = 4.6 if i_["terminal"] else 2.0
+            b0 = i_["p"] if i_["terminal"] else i_["p"] - i_["yon"] * L_
+            b1 = i_["p"] + i_["yon"] * L_
+            for k_ in (-1, 1):
+                d.polygon([P(b0 + nn_ * k_ * 0.45), P(b1 + nn_ * k_ * 0.45), P(b1 + nn_ * k_ * 1.0), P(b0 + nn_ * k_ * 1.0)], fill=(214, 210, 200), outline=(120, 116, 110))
+            if i_["terminal"]:
+                g0 = i_["p"] - i_["yon"] * 0.5
+                d.polygon([P(g0 + nn_ * 1.5), P(g0 - nn_ * 1.5), P(g0 - nn_ * 1.5 + i_["yon"] * 1.0), P(g0 + nn_ * 1.5 + i_["yon"] * 1.0)], fill=(168, 92, 70), outline=(90, 50, 40))
     # semt sınırları ve önemli yerler
     for yy_ in range(H):
         for x in range(W):
@@ -1989,6 +2364,22 @@ def onizleme():
         x0, y0 = P((p[0] - 0.9, p[1] + 0.9))
         x1, y1 = P((p[0] + 0.9, p[1] - 0.9))
         d.ellipse([x0, y0, x1, y1], outline=renk, width=3 * S)
+    # yer adları
+    try:
+        from PIL import ImageFont
+        font = ImageFont.truetype("DejaVuSans-Bold.ttf", 13 * S)
+    except Exception:
+        font = None
+    YR = {0: (120, 30, 30), 1: (30, 30, 40), 2: (70, 80, 70), 3: (20, 100, 40), 4: (130, 90, 10)}
+    etiket = [(y_["ad"], (y_["x"], y_["y"]), YR[y_["tur"]]) for y_ in YERLER] + [("City Park", BELEDIYE, YR[3]), ("Clock Tower Sq.", (MX, MY + 2.2), (160, 20, 20))]
+    for ad, p, renk in etiket:
+        x_, y_ = P(p)
+        kutu = d.textbbox((0, 0), ad, font=font)
+        gw_, gh_ = kutu[2] - kutu[0], kutu[3] - kutu[1]
+        for ox in (-S, 0, S):
+            for oy in (-S, 0, S):
+                d.text((x_ - gw_ / 2 + ox, y_ - gh_ / 2 + oy), ad, fill=(255, 255, 255), font=font)
+        d.text((x_ - gw_ / 2, y_ - gh_ / 2), ad, fill=renk, font=font)
     # plan dikdörtgeni
     x0, y0 = P((-0.5, H - 0.5))
     x1, y1 = P((W - 0.5, -0.5))

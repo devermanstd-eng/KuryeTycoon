@@ -6,6 +6,7 @@ rota = 4 bağlı yol kareleri üzerinde en kısa yol, yalnız açık semtlerden)
   • her açılış seviyesinde (1–5) yol ağı tek parça mı, ulaşılamayan bina var mı
   • rastgele 500 bina çifti arasındaki ortalama yol uzunluğu ve dolanma oranı (yol / kuş uçuşu Manhattan)
   • dükkân → müşteri (yarıçap 16, oyundaki olasılıkla) ortalama teslimat yolu
+  • seviye 1 / 3 / 5'te dükkânlar rastgele yerleşince: merkez ofis → dükkân yolu ve uzak sipariş (%20) yolu
 Kullanım:  python3 plan_olc.py [plan.json] [ikinci_plan.json ...]
 Gerekenler: yalnız standart kitaplık.
 """
@@ -17,6 +18,7 @@ VARSAYILAN = os.path.join(BURA, "..", "..", "Resources", "Sehir", "plan.json")
 MUSTERI = set("OHEMCWTB")        # CityMap.CustomerZone (bilinmeyen harf = çarşı)
 DUKKAN_TERCIH = set("M")        # plan sürüm 2'de dükkânlar önce çarşı (high street) karelerine (CityMap.PlaceShops)
 YON = [(-1, 0), (1, 0), (0, -1), (0, 1)]   # CityMap.Dirs: sol, sağ, aşağı, yukarı
+UZAK_MENZIL, UZAK_ESIK = 54, 12000        # CityMap.UzakSiparisMenzili (Manhattan, kare) ve geçerli olduğu plan büyüklüğü (W × H)
 
 
 class Plan:
@@ -34,7 +36,7 @@ class Plan:
                 if not any(self.yolmu(x + dx, y + dy) for dx, dy in YON):
                     continue
                 z = self.zone[y][x]
-                if z in "PZR." :
+                if z in "PZRGD.":           # park, meydan, kıyı, mezarlık, demiryolu şeridi, kır: yapı yok
                     continue
                 if z != "A":
                     self.musteri.append((x, y))
@@ -136,6 +138,44 @@ def olc(yol, tohum=7):
             break
     print(f"   dükkân → müşteri (yarıçap {R}), {n} teslimat: ortalama yol {top / n:.1f} kare (≈ {top / n * 10:.0f} m), "
           f"Manhattan {man / n:.1f}, dolanma ×{top / max(man, 1):.2f}")
+    # dükkân yerleşimi (CityMap.PlaceShops: her dükkân kendi semtinin çarşı karelerinden rastgele birine) ve uzak siparişler
+    # (OrderManager: siparişlerin %20'si açık semtlerdeki rastgele bir binaya; CityMap.UzakSiparisMenzili ile sınırlı)
+    ADET = {1: 8, 2: 5, 3: 4, 4: 4, 5: 3}           # GameData.Shops: semt başına dükkân sayısı
+    menzil = UZAK_MENZIL if W * H > UZAK_ESIK else 10 ** 9
+    for s in (1, 3, 5):
+        ofis_top = uzak_top = uzak_sinirsiz = 0.0
+        n1 = n2 = n3 = 0
+        for _ in range(40):
+            dler = []
+            for b in range(1, s + 1):
+                hav = [t for t in P.dukkan if P.b(t) == b and P.zone[t[1]][t[0]] in DUKKAN_TERCIH] or [t for t in P.dukkan if P.b(t) == b]
+                dler += rnd.sample(hav, min(ADET[b], len(hav)))
+            acik = [t for t in P.musteri if P.b(t) <= s]
+            uzo = P.bfs(okapi, s)
+            for dk_ in dler:
+                kd = P.kapi(dk_)
+                if kd in uzo:
+                    ofis_top += uzo[kd]
+                    n1 += 1
+            for dk_ in rnd.sample(dler, min(4, len(dler))):
+                uz = P.bfs(P.kapi(dk_), s)
+                for _ in range(25):
+                    t = rnd.choice(acik)
+                    k = P.kapi(t)
+                    if k not in uz:
+                        continue
+                    uzak_sinirsiz += uz[k] + 2
+                    n3 += 1
+                    for _ in range(80):
+                        if abs(t[0] - dk_[0]) + abs(t[1] - dk_[1]) <= menzil:
+                            break
+                        t = rnd.choice(acik)
+                    k = P.kapi(t)
+                    if k in uz:
+                        uzak_top += uz[k] + 2
+                        n2 += 1
+        print(f"   seviye {s}: merkez ofis → dükkân ortalama yol {ofis_top / max(n1, 1):.1f} kare · uzak sipariş (dükkân → açık semtlerde rastgele bina) "
+              f"{uzak_top / max(n2, 1):.1f} kare" + (f" (menzil sınırı {menzil} olmasa {uzak_sinirsiz / max(n3, 1):.1f})" if menzil < 10 ** 8 else ""))
     return P
 
 

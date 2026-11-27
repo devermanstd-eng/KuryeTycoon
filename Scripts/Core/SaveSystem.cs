@@ -502,7 +502,8 @@ namespace KuryeTycoon
             // Kayıt başka bir şehir planıyla alınmışsa (plan yeniden üretildi): dükkânlar bu haritada tohumla yeniden dağıtılır,
             // kayıttaki depo / market / mutfak yerleri geçersizse en yakın boş dükkân yerine taşınır (CityMap.AddOwnShop);
             // sözleşmeler ada göre eşleşir, kuryeler merkez ofisten başlar. Oyuncuya haber verilir.
-            if (CityMap.Organik && (d.sehirPlani ?? "") != SehirPlani.Kimlik)
+            bool planDegisti = CityMap.Organik && (d.sehirPlani ?? "") != SehirPlani.Kimlik;
+            if (planDegisti)
             {
                 Debug.LogWarning($"Kurye Tycoon: kayıt başka bir şehir planıyla alınmış (kayıt: \"{d.sehirPlani}\", şimdi: \"{SehirPlani.Kimlik}\"). " +
                                  "Dükkân ve depo yerleri yeni haritaya göre yeniden yerleşti.");
@@ -585,6 +586,11 @@ namespace KuryeTycoon
             if (d.feed != null) EventManager.I.Feed.AddRange(d.feed);
             if (Guide.I != null) Guide.I.RestoreSave(d.guide);
             if (CityEvents.I != null) CityEvents.I.RestoreSave(d.cityEvents);
+            // Plan değiştiyse (ör. u64 90 × 88 → u65 144 × 134): süren şehir etkinliğinin kayıtlı yeri eski haritanın karesidir
+            // (eski meydan / park); yeni haritada rastgele bir sokağa düşmesin diye yeni meydana taşınır.
+            if (planDegisti && CityEvents.I != null)
+                foreach (var etkinlik in CityEvents.I.Events)
+                    if (etkinlik != null && etkinlik.HasSpot) { etkinlik.spotX = CityMap.PlazaCenter.x; etkinlik.spotY = CityMap.PlazaCenter.y; }
             if (CrisisManager.I != null) CrisisManager.I.RestoreSave(d.crisis);
             if (CourierMessages.I != null) CourierMessages.I.RestoreSave(d.messages);
             Telemetry.Restore(d.telemetry);   // null / eski kayıt: rehber yok, menüler şarta göre açılır

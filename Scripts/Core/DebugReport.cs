@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-27 u64 (Londra tipi prosedürel şehir planı: yol sınıfları ana/cadde/sokak/ara, teras blokları, meydan bahçeleri, düzensiz şehir lekesi, çokgen tarlalar ve eğri kır yolları plandan)";
+        public const string CodeVersion = "2026-11-27 u65 (büyük şehir: plan 144 × 134, ~10 500 kentsel kare, 3 106 müşteri binası; mahalle merkezleri, City Park, demiryolu ve istasyonlar, mezarlıklar, okullar; uzak sipariş menzili 54, müşteri seçimi bina sayısına göre ölçekli; zemin dokusu 16 px/kare)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 

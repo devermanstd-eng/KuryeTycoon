@@ -203,7 +203,8 @@ namespace KuryeTycoon
                 cam.fieldOfView = fov;
                 dist = size / Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad);
                 cam.nearClipPlane = Mathf.Max(0.05f, dist * 0.02f);
-                cam.farClipPlane = dist + 200f;
+                // u65: büyük şehirde (144 × 134) eğik bakışta karşı kenar 200 kareden uzak olabilir
+                cam.farClipPlane = dist + Mathf.Max(200f, (CityMap.Width + CityMap.Height) * 0.9f);
             }
             else
             {

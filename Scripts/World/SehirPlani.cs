@@ -11,6 +11,9 @@ namespace KuryeTycoon
     ///  • Her kare: yol, köprü, su, park ya da yapı arsası; bölge türü (eski şehir, kule, ev, çarşı, kampüs, park …); semt (1–5).
     ///    Sürüm 2'de plan dikdörtgeninin içinde kır kareleri de var ('.' bölgesi): şehir lekesi düzensiz, kenarı kıra karışır.
     ///  • Sürüm 2 kırsalı da verir (KirPlanli): şehir dışı yollar, nehrin kolları, tarla çokgenleri, çiftlikler, köy ve yol boyu evler.
+    ///  • u65 (büyük şehir, 144 × 134): demiryolu hattı (Demiryolu: çizgi; karelerde 'D' bölgesi, yol değil), mezarlık çokgenleri
+    ///    (Mezarlik; karelerde 'G'), adı yazan yerler (Yerler: mahalle merkezleri, istasyonlar, parklar, okullar). Hepsi isteğe bağlı:
+    ///    eski planlarda yoktur, boş liste döner.
     ///  • Açık/kapalı: PlayerPrefs "KuryeTycoon.OrganikSehir" (editörde Kurye Tycoon > Organik Şehir menüsü). Kapalıyken eski ızgara şehir.
     /// Koordinat: 1 kare = 1 dünya birimi; x doğuya, y kuzeye artar.
     /// </summary>
@@ -59,6 +62,19 @@ namespace KuryeTycoon
             public int Sayi => x != null && y != null ? Mathf.Min(x.Length, y.Length) : 0;
         }
 
+        /// <summary>Adı yazan yer: tur 0 mahalle merkezi, 1 istasyon (aci: hattın yönü, derece, +x'ten saat yönünün tersine),
+        /// 2 mezarlık, 3 park, 4 okul / kampüs.</summary>
+        [System.Serializable]
+        public class Yer
+        {
+            public string ad;
+            public float x, y;
+            public int tur;
+            public float aci;
+            public Vector2 Konum => new Vector2(x, y);
+        }
+        public const int YerMahalle = 0, YerIstasyon = 1, YerMezarlik = 2, YerPark = 3, YerOkul = 4;
+
         [System.Serializable]
         class Veri
         {
@@ -83,6 +99,10 @@ namespace KuryeTycoon
             public Tarla[] tarlalar;
             public Noktalar ciftlikler;
             public Noktalar kirEvleri;
+            // u65: demiryolu, mezarlıklar, adı yazan yerler (yoksa null)
+            public Cizgi[] demiryolu;
+            public Cizgi[] mezarlik;
+            public Yer[] yerler;
         }
 
         /// <summary>Yeni Play'de (alan yeniden yüklenmese de) plan yeniden okunur: plan.json yeniden üretilmiş olabilir.</summary>
@@ -101,6 +121,7 @@ namespace KuryeTycoon
         static bool[,] safKir;            // kare ve sekiz komşusu kır (yol ve su yok): şehir zemini burayı örtmez
         static readonly Cizgi[] BosCizgi = new Cizgi[0];
         static readonly Tarla[] BosTarla = new Tarla[0];
+        static readonly Yer[] BosYer = new Yer[0];
 
         /// <summary>Organik şehir açık mı? (Plan dosyası varsa ve ayar açıksa.)</summary>
         public static bool Aktif
@@ -148,6 +169,16 @@ namespace KuryeTycoon
         public static IReadOnlyList<Tarla> Tarlalar => v?.tarlalar ?? BosTarla;
         public static Noktalar Ciftlikler => v?.ciftlikler;
         public static Noktalar KirEvleri => v?.kirEvleri;
+        /// <summary>Demiryolu hatları (terminalden kıra uzanan çizgi). Yol değildir: kurye ve trafik gitmez; yalnız görsel ve yapısız şerit.</summary>
+        public static IReadOnlyList<Cizgi> Demiryolu => v?.demiryolu ?? BosCizgi;
+        /// <summary>Mezarlık çokgenleri (karelerde 'G' bölgesi).</summary>
+        public static IReadOnlyList<Cizgi> Mezarlik => v?.mezarlik ?? BosCizgi;
+        /// <summary>Adı yazan yerler: mahalle merkezleri, istasyonlar, mezarlıklar, parklar, okullar.</summary>
+        public static IReadOnlyList<Yer> Yerler => v?.yerler ?? BosYer;
+        /// <summary>Kare demiryolu şeridinde mi ('D': balast ve raylar; yapı ve çim yok)?</summary>
+        public static bool RayKaresi(int x, int y) => Icinde(x, y) && zone[x, y] == 'D';
+        /// <summary>Kare mezarlıkta mı ('G')?</summary>
+        public static bool MezarlikKaresi(int x, int y) => Icinde(x, y) && zone[x, y] == 'G';
 
         static Vector2Int V2(int[] a) => a != null && a.Length >= 2 ? new Vector2Int(a[0], a[1]) : Vector2Int.zero;
 
@@ -204,6 +235,7 @@ namespace KuryeTycoon
                 }
             if (v.yollar != null) foreach (var c in v.yollar) Sik(c, 0.35f);   // yollar tepeli arazide kırılmadan uzansın
             if (v.kirYollari != null) foreach (var c in v.kirYollari) Sik(c, 0.5f);
+            if (v.demiryolu != null) foreach (var c in v.demiryolu) Sik(c, 0.35f);
             YolBilgisiKur();
             YumusakKur();
             KirBilgisiKur();

@@ -189,6 +189,18 @@ namespace KuryeTycoon
             var renk = new[] { Color.white, new Color(1f, 0.86f, 0.70f), new Color(1f, 0.90f, 0.80f), new Color(0.80f, 0.92f, 0.90f), new Color(0.75f, 0.90f, 1f), new Color(0.80f, 1f, 0.75f) };
             for (int b = 1; b <= 5; b++)
                 if (say[b] > 0) l.Add(new Landmark(DistrictNames[b], top[b] / say[b], renk[b]));
+            // u65: plandaki adlı yerler (mahalle merkezleri, istasyonlar, mezarlıklar, parklar, üniversite; okullar yazılmaz: kalabalık)
+            foreach (var yer in SehirPlani.Yerler)
+            {
+                if (yer == null || string.IsNullOrEmpty(yer.ad)) continue;
+                if (yer.tur == SehirPlani.YerOkul && !yer.ad.Contains("University")) continue;
+                Color yr = yer.tur == SehirPlani.YerMahalle ? new Color(1f, 0.90f, 0.78f)
+                         : yer.tur == SehirPlani.YerIstasyon ? new Color(0.88f, 0.90f, 1f)
+                         : yer.tur == SehirPlani.YerMezarlik ? new Color(0.84f, 0.90f, 0.84f)
+                         : yer.tur == SehirPlani.YerPark ? new Color(0.70f, 1f, 0.70f)
+                         : new Color(1f, 0.95f, 0.70f);
+                l.Add(new Landmark(yer.ad, yer.Konum, yr));
+            }
             organikLm = l.ToArray();
             return organikLm;
         }
@@ -290,6 +302,10 @@ namespace KuryeTycoon
                     case 'Z': return Zone.Plaza;
                     case 'A': return Zone.Mall;
                     case 'R': return Zone.River;
+                    // u65: mezarlık ('G') ve demiryolu şeridi ('D') oyun mantığında nehir kıyısı gibi yapısız yeşil şerittir (bina, dükkân,
+                    // müşteri yok); mezar taşlarını, balastı ve rayları OrganikSehir3D çizer
+                    case 'G': return Zone.River;
+                    case 'D': return Zone.River;
                     case '.': return Zone.Country;      // plan dikdörtgeninin içindeki kır (şehir lekesinin dışı)
                     default: return Zone.Mixed;
                 }
@@ -478,7 +494,15 @@ namespace KuryeTycoon
             var g = new float[kyW, kyH];
             for (int i = 0; i < kyW; i++) for (int j = 0; j < kyH; j++) g[i, j] = 99f;
             const float Menzil = 4.5f;
-            foreach (var r in PlanKirYollari())
+            // Demiryolu da ızgaraya işlenir (yol listesine değil): orman, çalı, çayır, tepeler hattın üstüne gelmesin
+            var parcalar = new List<(Vector2 a, Vector2 b)>(PlanKirYollari());
+            foreach (var c in SehirPlani.Demiryolu)
+            {
+                if (c == null) continue;
+                for (int k = 0; k + 1 < c.Sayi; k++)
+                    if ((c[k + 1] - c[k]).sqrMagnitude > 1e-8f) parcalar.Add((c[k], c[k + 1]));
+            }
+            foreach (var r in parcalar)
             {
                 Vector2 a = r.a, b = r.b;
                 int i0 = Mathf.Max(0, Mathf.FloorToInt((Mathf.Min(a.x, b.x) - Menzil + KnPay) / KnAdim));
@@ -1484,7 +1508,7 @@ namespace KuryeTycoon
 
             // Su yüzeyi hafifçe dalgalansın
             shimmerTimer += Time.deltaTime;
-            if (shimmerTimer > 0.12f && ground != null)
+            if (shimmerTimer > 0.12f && ground != null && !zemin3D)      // 3D zemin varken 2D su kareleri kapalı
             {
                 shimmerTimer = 0f;
                 float tm = Time.time;
@@ -1660,7 +1684,8 @@ namespace KuryeTycoon
         public void RefreshColors()
         {
             if (ground == null) return;
-            for (int x = 0; x < Width; x++)
+            // Organik şehrin 3D zemini varken 2D kareler kapalıdır (Zemin3D): 19 296 karenin rengini boşuna hesaplama
+            for (int x = 0; x < Width && !zemin3D; x++)
                 for (int y = 0; y < Height; y++)
                 {
                     var c = groundBase[x, y];
@@ -1736,12 +1761,33 @@ namespace KuryeTycoon
             return true;
         }
 
+        // u65: şehir büyüdü (müşteri binası 1 419 → 3 106, 90 × 88 → 144 × 134). Sipariş sayısı bina sayısına bağlı değil (dükkân
+        // başına üretilir), ama müşteri seçimi bütün binalardan rastgele deneyerek yapılıyor: deneme sayısı sabit kalsa küçük
+        // yarıçaplı / tek semtli seçimler daha sık tutmaz, "şehirde herhangi bir bina"ya düşerdi. Deneme sayısı bina sayısıyla
+        // ölçeklenir (u64 şehri = 1 420 bina referans), böylece tutma olasılığı eski şehirdeki gibi kalır.
+        const int ReferansBina = 1420;
+        int Deneme(int taban) => Mathf.Max(taban, (int)((long)taban * customerTiles.Count / ReferansBina));
+
+        /// <summary>
+        /// Uzak sipariş menzili (Manhattan, kare): büyük planda "şehrin herhangi bir yerinden" gelen siparişler (OrderManager
+        /// farOrderChance, kargo, işletme teslimatı) dükkâna en çok bu kadar uzak binadan gelir. Sınırsızken büyük şehirde uzak
+        /// siparişin ortalama yolu 46,5 → 68 kareye çıkıyordu (plan_olc.py, seviye 5); 54 ile 43,7 (seviye 3: 37,2 → 41,7).
+        /// u64 ve daha küçük planlarda (W × H ≤ 12 000) sınır yok. Tools/SehirPlani/plan_olc.py aynı değeri kullanır.
+        /// </summary>
+        public const int UzakSiparisMenzili = 54;
+        const int UzakMenzilEsigi = 12000;
+
         public Vector2Int RandomCustomerTile(Vector2Int avoid)
         {
-            for (int i = 0; i < 80; i++)
+            bool sinirli = Organik && Width * Height > UzakMenzilEsigi && InBounds(avoid);
+            int deneme = Deneme(80);
+            for (int i = 0; i < deneme; i++)
             {
                 var t = customerTiles[Random.Range(0, customerTiles.Count)];
-                if (IsUnlocked(t) && t != avoid && !reserved.Contains(t)) return t;
+                if (!IsUnlocked(t) || t == avoid || reserved.Contains(t)) continue;
+                // son çeyrekte sınır kalkar: menzilde hiç açık bina yoksa (ör. şehrin ucundaki depo) sipariş yine bir binaya gitsin
+                if (sinirli && i < deneme * 3 / 4 && Manhattan(t, avoid) > UzakSiparisMenzili) continue;
+                return t;
             }
             // Çok nadir: rastgele denemeler tutmadıysa açık bölgedeki ilk uygun bina
             foreach (var t in customerTiles)
@@ -1755,7 +1801,8 @@ namespace KuryeTycoon
         /// </summary>
         public Vector2Int RandomCustomerTileNear(Vector2Int shopTile, int radius)
         {
-            for (int i = 0; i < 120; i++)
+            int deneme = Deneme(120);
+            for (int i = 0; i < deneme; i++)
             {
                 var t = customerTiles[Random.Range(0, customerTiles.Count)];
                 if (!IsUnlocked(t) || t == shopTile || reserved.Contains(t)) continue;
@@ -1814,36 +1861,62 @@ namespace KuryeTycoon
                 return result;
             }
 
-            var prev = new Dictionary<Vector2Int, Vector2Int>();
-            var queue = new Queue<Vector2Int>();
-            queue.Enqueue(from);
-            prev[from] = from;
-
-            while (queue.Count > 0)
+            // u65: yol karesi 1 995 → 3 981. Sözlük ve kuyruk yerine kare numaralı diziler (damgalı: her aramada temizlenmez):
+            // aynı komşu sırası, aynı sonuç; arama başına bellek ayrılmaz.
+            int w = Width, h = Height, n = w * h;
+            if (!InBounds(from) || !InBounds(to))
             {
-                var cur = queue.Dequeue();
-                if (cur == to) break;
-                foreach (var d in Dirs)
+                result.Add(from);
+                result.Add(to);
+                return result;
+            }
+            if (yolOnceki == null || yolOnceki.Length != n)
+            {
+                yolOnceki = new int[n];
+                yolDamga = new int[n];
+                yolKuyruk = new int[n];
+                yolDamgaNo = 0;
+            }
+            if (yolDamgaNo == int.MaxValue) { System.Array.Clear(yolDamga, 0, n); yolDamgaNo = 0; }
+            yolDamgaNo++;
+            int bas = from.y * w + from.x, hedef = to.y * w + to.x;
+            int kb = 0, ks = 0;
+            yolKuyruk[ks++] = bas;
+            yolDamga[bas] = yolDamgaNo;
+            yolOnceki[bas] = bas;
+            while (kb < ks)
+            {
+                int cur = yolKuyruk[kb++];
+                if (cur == hedef) break;
+                int cx = cur % w, cy = cur / w;
+                for (int di = 0; di < Dirs.Length; di++)
                 {
-                    var n = cur + d;
-                    if (!InBounds(n) || prev.ContainsKey(n)) continue;
-                    if (n != to && !(IsRoad(n.x, n.y) && IsUnlocked(n))) continue;
-                    prev[n] = cur;
-                    queue.Enqueue(n);
+                    int nx = cx + Dirs[di].x, ny = cy + Dirs[di].y;
+                    if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+                    int ni = ny * w + nx;
+                    if (yolDamga[ni] == yolDamgaNo) continue;
+                    if (ni != hedef && !(IsRoad(nx, ny) && IsUnlocked(nx, ny))) continue;
+                    yolDamga[ni] = yolDamgaNo;
+                    yolOnceki[ni] = cur;
+                    yolKuyruk[ks++] = ni;
                 }
             }
 
-            if (!prev.ContainsKey(to))
+            if (yolDamga[hedef] != yolDamgaNo)
             {
                 result.Add(from);
                 result.Add(to);
                 return result;
             }
 
-            for (var p = to; p != from; p = prev[p]) result.Add(p);
+            for (int p = hedef; p != bas; p = yolOnceki[p]) result.Add(new Vector2Int(p % w, p / w));
             result.Add(from);
             result.Reverse();
             return result;
         }
+
+        // FindPath çalışma dizileri (kare numarası = y × Width + x)
+        int[] yolOnceki, yolDamga, yolKuyruk;
+        int yolDamgaNo;
     }
 }

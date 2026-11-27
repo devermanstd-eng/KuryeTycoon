@@ -16,7 +16,8 @@ namespace KuryeTycoon
     /// </summary>
     public static class OrganikZemin
     {
-        static int PikselKare = 24;     // bir kare (10 m) dokuda 24 piksel (büyük planda 20: doku ~3,5 milyon pikseli aşmasın)
+        static int PikselKare = 24;     // bir kare (10 m) dokuda 24 piksel; büyük planda 20, çok büyük planda (u65: 144 × 134) 16:
+                                        // doku 2304 × 2144 (≈ 4,9 milyon piksel; sınır 4096)
         const int MeshAdim = 4;          // mesh: kare başına 4×4 hücre (nehir kıyısı eğimi için)
 
         enum Desen { Cim, Bahce, Kaldirim, Plaka, Beton, Kum }
@@ -24,7 +25,7 @@ namespace KuryeTycoon
         static Texture2D doku;
         static Material malzeme;
         static Color32[] taban;          // desenli, kilit/kar uygulanmamış piksel
-        static float[] kilitAgirlik;     // piksel başına kilitli bölge ağırlığı
+        static Color32[] boya;           // Renkle'nin çalışma dizisi (her boyamada yeniden ayrılmaz)
         static int tw, th;
         static int sonKilit = -1, sonKar = -1, sonIslak = -1;
         static GameObject nesne;
@@ -36,7 +37,8 @@ namespace KuryeTycoon
         {
             if (!SehirPlani.Aktif) return null;
             int W = CityMap.Width, H = CityMap.Height;
-            PikselKare = W * H > 6500 ? 20 : 24;
+            PikselKare = W * H > 14000 ? 16 : W * H > 6500 ? 20 : 24;
+            while (PikselKare > 8 && Mathf.Max(W, H) * PikselKare > 4096) PikselKare -= 2;      // doku kenarı 4096'yı geçmesin
             DokuUret(W, H);
 
             var sh = ornek != null ? ornek.shader : Shader.Find("Universal Render Pipeline/Lit");
@@ -126,6 +128,7 @@ namespace KuryeTycoon
         static Desen KareDeseni(int x, int y)
         {
             if (CityMap.WaterAt(x, y)) return Desen.Kum;
+            if (SehirPlani.RayKaresi(x, y)) return Desen.Kum;        // demiryolu şeridi, peron çevresi: cüruf / çakıl (çim bitmez)
             var z = DuzBolge(x, y);
             bool on = OnCephe(x, y);
             switch (z)
@@ -283,7 +286,12 @@ namespace KuryeTycoon
             for (int x = 0; x < W; x++)
                 for (int y = 0; y < H; y++) desen[x, y] = KareDeseni(x, y);
             taban = new Color32[tw * th];
-            kilitAgirlik = new float[tw * th];
+            // Saf kır kareleri (kare ve sekiz komşusu yolsuz, susuz kır) zemin mesh'inde yok: dört komşu karesi de saf kır olan
+            // pikseller hesaplanmaz (büyük planda dikdörtgenin ~%40'ı); alfa 0 ile işaretlenir, Renkle de atlar.
+            var saf = new bool[W, H];
+            for (int x = 0; x < W; x++)
+                for (int y = 0; y < H; y++) saf[x, y] = SehirPlani.SafKir(x, y);
+            var bosRenk = new Color32(128, 172, 88, 0);
             var agirlik = new float[6];
             for (int j = 0; j < th; j++)
             {
@@ -294,6 +302,7 @@ namespace KuryeTycoon
                     // Dört komşu karenin ağırlıkları (kare merkezleri tam sayıda), kenara yakın daha keskin geçiş
                     float gx = Mathf.Clamp(wx, 0f, W - 1.0001f), gy = Mathf.Clamp(wy, 0f, H - 1.0001f);
                     int ix = Mathf.FloorToInt(gx), iy = Mathf.FloorToInt(gy);
+                    if (saf[ix, iy] && saf[ix + 1, iy] && saf[ix, iy + 1] && saf[ix + 1, iy + 1]) { taban[j * tw + i] = bosRenk; continue; }
                     float fx = Yumusat(gx - ix), fy = Yumusat(gy - iy);
                     for (int q = 0; q < 6; q++) agirlik[q] = 0f;
                     agirlik[(int)desen[ix, iy]] += (1 - fx) * (1 - fy);
@@ -345,7 +354,8 @@ namespace KuryeTycoon
             for (int x = 0; x < W; x++)
                 for (int y = 0; y < H; y++) kilitli[x, y] = map.IsUnlocked(x, y) ? 0f : 1f;
             float karA = kar / 8f * 0.85f, islakA = islak / 4f * 0.3f;
-            var px = new Color32[taban.Length];
+            if (boya == null || boya.Length != taban.Length) boya = new Color32[taban.Length];
+            var px = boya;
             var karRenk = new Color(0.93f, 0.95f, 0.98f);
             for (int j = 0; j < th; j++)
             {
@@ -355,6 +365,8 @@ namespace KuryeTycoon
                 float fy = Yumusat(gy - iy);
                 for (int i = 0; i < tw; i++)
                 {
+                    var tb = taban[j * tw + i];
+                    if (tb.a == 0) { tb.a = 255; px[j * tw + i] = tb; continue; }      // saf kır: zemin mesh'i burayı çizmez
                     float wx = -0.5f + (i + 0.5f) / PikselKare;
                     float gx = Mathf.Clamp(wx, 0f, W - 1.0001f);
                     int ix = Mathf.FloorToInt(gx);

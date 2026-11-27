@@ -10,6 +10,8 @@ namespace KuryeTycoon
     ///    kenar çizgisi; sokak 4,6 m, çizgisiz; ara sokak (mews, geçit) 3 m, arnavut kaldırımı, dar kaldırım, çizgisiz.
     ///  • Köprülerde iki yanda korkuluk duvarı. Plan kırsalı veriyorsa şehir dışı yollar da buradan (asfalt ana yol, çakıl köy yolu).
     ///  • Nehir: su konturları (kulak kesme üçgenleme), yumuşak kıyı.
+    ///  • u65: demiryolu (çift hat: balast, traversler, raylar; yolu hemzemin geçer), terminal ve banliyö durağı (peronlar, gar
+    ///    binası, peron çatısı), mezarlıklar (duvar, mezar taşı sıraları). Hepsi plan çizgilerinden basit mesh; model kullanılmaz.
     /// Dünyada yukarı −Z; zemin z = 0. Izgara şehirde kullanılmaz.
     /// </summary>
     public static class OrganikSehir3D
@@ -139,6 +141,9 @@ namespace KuryeTycoon
             }
             if (park.v.Count > 0) sonuc.Add(Nesne("Parklar (organik)", parent, park, Malzeme("OrganikPark", ParkRenk)));
 
+            DemiryoluKur(parent, sonuc);
+            MezarlikKur(parent, sonuc);
+
             var su = new MeshKurucu();
             duz = true;                // su yüzeyi düz
             foreach (var c in SehirPlani.Su)
@@ -158,6 +163,217 @@ namespace KuryeTycoon
             duz = false;
             IslakUygula();          // şehir yeniden kurulunca yağmurdaki ıslaklık kaybolmasın
             return sonuc;
+        }
+
+        // ------------------------------------------------------------------ demiryolu, istasyonlar, mezarlık (u65)
+
+        static readonly Color BalastRenk = new Color(0.52f, 0.48f, 0.43f);
+        static readonly Color RayRenk = new Color(0.27f, 0.27f, 0.30f);
+        static readonly Color TraversRenk = new Color(0.36f, 0.27f, 0.20f);
+        static readonly Color PeronRenk = new Color(0.74f, 0.72f, 0.68f);
+        static readonly Color GarRenk = new Color(0.62f, 0.36f, 0.28f);          // tuğla
+        static readonly Color GarCatiRenk = new Color(0.36f, 0.40f, 0.44f);      // arduvaz / cam çatı
+        static readonly Color MezarTasiRenk = new Color(0.80f, 0.80f, 0.77f);
+        // Balast kaldırımın ve bordürün üstünde, asfaltın altında: hemzemin geçitte asfalt balastı ve traversleri örter, raylar
+        // asfaltın ve yol çizgilerinin üstünde kalır
+        const float ZBalast = -0.0045f, ZTravers = -0.0052f, ZRay = -0.009f;
+        const float HatAraligi = 0.16f;          // çift hattın eksenden uzaklığı (kare)
+        const float RayAcikligi = 0.07f;         // hat ekseninden raya (kare; 1,4 m)
+
+        /// <summary>
+        /// Demiryolu: plan çizgisi boyunca çift hat (balast şeridi, ahşap traversler, çelik raylar) ve istasyonlar (plan Yerler,
+        /// tur 1): hattın ilk noktasındaki istasyon terminaldir (gar binası, saat kulesi, peron çatısı, iki yan + orta peron),
+        /// ötekiler banliyö durağı (iki yan peron, küçük sundurma). Yol değil: kurye ve trafik kullanmaz.
+        /// </summary>
+        static void DemiryoluKur(Transform parent, List<GameObject> sonuc)
+        {
+            var hatlar = SehirPlani.Demiryolu;
+            if (hatlar == null || hatlar.Count == 0) return;
+            var balast = new MeshKurucu();
+            var travers = new MeshKurucu();
+            var ray = new MeshKurucu();
+            foreach (var c in hatlar)
+            {
+                if (c == null || c.Sayi < 2) continue;
+                Serit(balast, c, HatAraligi + 0.2f, ZBalast);
+                for (int h = -1; h <= 1; h += 2)
+                {
+                    float eksen = h * HatAraligi;
+                    Traversler(travers, c, eksen, 0.11f, 0.022f, 0.15f, ZTravers);
+                    YanCizgi(ray, c, eksen + RayAcikligi, 0.011f, ZRay, false);
+                    YanCizgi(ray, c, eksen - RayAcikligi, 0.011f, ZRay, false);
+                }
+            }
+            if (balast.v.Count == 0) return;
+            sonuc.Add(Nesne("Demiryolu balastı (organik)", parent, balast, Malzeme("OrganikBalast", BalastRenk)));
+            if (travers.v.Count > 0) sonuc.Add(Nesne("Demiryolu traversleri (organik)", parent, travers, Malzeme("OrganikTravers", TraversRenk)));
+            if (ray.v.Count > 0) sonuc.Add(Nesne("Raylar (organik)", parent, ray, Malzeme("OrganikRay", RayRenk)));
+
+            var peron = new MeshKurucu();
+            var gar = new MeshKurucu();
+            var cati = new MeshKurucu();
+            foreach (var yer in SehirPlani.Yerler)
+            {
+                if (yer == null || yer.tur != SehirPlani.YerIstasyon) continue;
+                var p = yer.Konum;
+                var yon = new Vector2(Mathf.Cos(yer.aci * Mathf.Deg2Rad), Mathf.Sin(yer.aci * Mathf.Deg2Rad));
+                var yan = new Vector2(-yon.y, yon.x);
+                bool terminal = false;
+                foreach (var c in hatlar)
+                    if (c != null && c.Sayi > 0 && (c[0] - p).sqrMagnitude < 0.36f) terminal = true;
+                if (terminal)
+                {
+                    // peronlar: iki yanda ve iki hattın arasında dar orta peron (hattın ilk 4,6 karesi)
+                    var orta = p + yon * 2.45f;
+                    KutuMesh(peron, peron, orta + yan * 0.62f, yon, 2.25f, 0.2f, 0f, 0.022f);
+                    KutuMesh(peron, peron, orta - yan * 0.62f, yon, 2.25f, 0.2f, 0f, 0.022f);
+                    // peron çatısı (tren hangarı): hattın başını örten yüksek çatı, altı açık; dört köşede direk
+                    var hangar = p + yon * 1.45f;
+                    KutuMesh(cati, cati, hangar, yon, 1.25f, 0.86f, 0.17f, 0.2f);
+                    for (int a = -1; a <= 1; a += 2)
+                        for (int b = -1; b <= 1; b += 2)
+                            KutuMesh(gar, gar, hangar + yon * (1.2f * a) + yan * (0.82f * b), yon, 0.025f, 0.025f, 0f, 0.17f);
+                    // gar binası: hattın başında, hatta dik uzun tuğla bina; ortasında saat kulesi
+                    var bina = p - yon * 0.42f;
+                    KutuMesh(cati, gar, bina, yon, 0.36f, 0.92f, 0f, 0.26f);
+                    KutuMesh(cati, gar, bina, yon, 0.11f, 0.11f, 0f, 0.46f);
+                    // tampon: hatların ucunda
+                    KutuMesh(gar, gar, p + yon * 0.12f, yon, 0.03f, 0.32f, 0f, 0.03f);
+                }
+                else
+                {
+                    KutuMesh(peron, peron, p + yan * 0.6f, yon, 1.9f, 0.18f, 0f, 0.022f);
+                    KutuMesh(peron, peron, p - yan * 0.6f, yon, 1.9f, 0.18f, 0f, 0.022f);
+                    KutuMesh(cati, gar, p + yan * 0.66f, yon, 0.45f, 0.1f, 0.022f, 0.11f);       // sundurma
+                    KutuMesh(cati, gar, p - yan * 0.66f, yon, 0.3f, 0.1f, 0.022f, 0.11f);
+                }
+            }
+            if (peron.v.Count > 0) sonuc.Add(Nesne("Peronlar (organik)", parent, peron, Malzeme("OrganikPeron", PeronRenk)));
+            if (gar.v.Count > 0) sonuc.Add(Nesne("İstasyon binaları (organik)", parent, gar, Malzeme("OrganikGar", GarRenk)));
+            if (cati.v.Count > 0) sonuc.Add(Nesne("İstasyon çatıları (organik)", parent, cati, Malzeme("OrganikGarCati", GarCatiRenk)));
+        }
+
+        /// <summary>Çizginin `ofs` kadar yanında, `periyot` aralıklı, çizgiye dik kısa dörtgenler (traversler).</summary>
+        static void Traversler(MeshKurucu m, SehirPlani.Cizgi c, float ofs, float yariBoy, float yariEn, float periyot, float z)
+        {
+            double s = 0.0;
+            for (int k = 0; k + 1 < c.Sayi; k++)
+            {
+                Vector2 a = c[k], b = c[k + 1];
+                float L = Vector2.Distance(a, b);
+                if (L < 1e-5f) continue;
+                var yon = (b - a) / L;
+                var n = new Vector2(-yon.y, yon.x);
+                long j0 = (long)System.Math.Ceiling(s / periyot);
+                long j1 = (long)System.Math.Floor((s + L) / periyot);
+                for (long j = j0; j <= j1; j++)
+                {
+                    float d = (float)(j * (double)periyot - s);
+                    if (d < 0f || d >= L) continue;
+                    var o = a + yon * d + n * ofs;
+                    m.Dortgen(V(o + n * yariBoy - yon * yariEn, z), V(o + n * yariBoy + yon * yariEn, z),
+                              V(o - n * yariBoy + yon * yariEn, z), V(o - n * yariBoy - yon * yariEn, z));
+                }
+                s += L;
+            }
+        }
+
+        /// <summary>
+        /// Zemine oturan (ya da `alt` kadar yukarıda duran) kutu: merkez, uzun eksenin yönü, yarı boy (yön boyunca), yarı en,
+        /// altının ve üstünün zeminden yüksekliği (kare). Üst yüz `ust` mesh'ine, dört duvar (iki yüzlü) `duvar` mesh'ine eklenir.
+        /// Taban merkezin arazi yüksekliğine göre düzdür; alt = 0 ise duvarlar yamaçta açık kalmasın diye biraz zemine gömülür.
+        /// </summary>
+        static void KutuMesh(MeshKurucu ust, MeshKurucu duvar, Vector2 merkez, Vector2 yon, float yariBoy, float yariEn, float alt, float ustY)
+        {
+            var n = new Vector2(-yon.y, yon.x);
+            Vector2 p0 = merkez - yon * yariBoy - n * yariEn, p1 = merkez + yon * yariBoy - n * yariEn;
+            Vector2 p2 = merkez + yon * yariBoy + n * yariEn, p3 = merkez - yon * yariBoy + n * yariEn;
+            float zc = Arazi.Z(merkez.x, merkez.y);
+            float zu = zc - ustY;                                  // −Z yukarı
+            float za = alt > 0f ? zc - alt : zc + 0.02f;
+            ust.Dortgen(new Vector3(p0.x, p0.y, zu), new Vector3(p1.x, p1.y, zu), new Vector3(p2.x, p2.y, zu), new Vector3(p3.x, p3.y, zu));
+            if (alt > 0f)       // havada duran levhanın altı da görünsün
+                ust.IkiYuz(new Vector3(p0.x, p0.y, za), new Vector3(p1.x, p1.y, za), new Vector3(p2.x, p2.y, za), new Vector3(p3.x, p3.y, za));
+            var k = new[] { p0, p1, p2, p3 };
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 a = k[i], b = k[(i + 1) % 4];
+                duvar.IkiYuz(new Vector3(a.x, a.y, za), new Vector3(b.x, b.y, za), new Vector3(b.x, b.y, zu), new Vector3(a.x, a.y, zu));
+            }
+        }
+
+        /// <summary>
+        /// Mezarlıklar: plan çokgeninin çevresinde alçak taş duvar; içinde en uzun kenara paralel sıralar hâlinde mezar taşları
+        /// (yerde taş levha + dik baş taşı). Ortada haç biçiminde boş yürüyüş yolu kalır. Zemin çimen (OrganikZemin).
+        /// </summary>
+        static void MezarlikKur(Transform parent, List<GameObject> sonuc)
+        {
+            var alanlar = SehirPlani.Mezarlik;
+            if (alanlar == null || alanlar.Count == 0) return;
+            var tas = new MeshKurucu();
+            foreach (var c in alanlar)
+            {
+                if (c == null || c.Sayi < 3) continue;
+                var p = new List<Vector2>(c.Sayi);
+                for (int i = 0; i < c.Sayi; i++) p.Add(c[i]);
+                if ((p[0] - p[p.Count - 1]).sqrMagnitude < 1e-4f) p.RemoveAt(p.Count - 1);
+                int n = p.Count;
+                if (n < 3) continue;
+                // duvar ve en uzun kenar
+                Vector2 uzun = Vector2.right, agirlik = Vector2.zero;
+                float enUzun = 0f;
+                for (int i = 0; i < n; i++)
+                {
+                    Vector2 a = p[i], b = p[(i + 1) % n];
+                    agirlik += a;
+                    float L = (b - a).magnitude;
+                    if (L > enUzun) { enUzun = L; uzun = (b - a) / L; }
+                    if (L < 1e-4f) continue;
+                    tas.IkiYuz(V(a, 0.004f), V(b, 0.004f), V(b, -0.028f), V(a, -0.028f));
+                    var kn = new Vector2(-(b - a).y, (b - a).x) / L * 0.012f;
+                    tas.Dortgen(V(a + kn, -0.028f), V(b + kn, -0.028f), V(b - kn, -0.028f), V(a - kn, -0.028f));
+                }
+                agirlik /= n;
+                var dik = new Vector2(-uzun.y, uzun.x);
+                float yari = 0f;
+                for (int i = 0; i < n; i++) yari = Mathf.Max(yari, (p[i] - agirlik).magnitude);
+                // sıralar: uzun kenar boyunca 0,26, sıralar arası 0,42 kare
+                for (float v = -yari; v <= yari; v += 0.42f)
+                    for (float u = -yari; u <= yari; u += 0.26f)
+                    {
+                        if (Mathf.Abs(v) < 0.2f || Mathf.Abs(u) < 0.16f) continue;       // ortadaki haç biçimli yol
+                        var o = agirlik + uzun * u + dik * v;
+                        if (!CokgenIci(p, o, 0.3f)) continue;
+                        // tek düze dizilmesin: taşların bir kısmı eksik, boyları farklı
+                        int hx = Mathf.RoundToInt(o.x * 31f), hy = Mathf.RoundToInt(o.y * 17f);
+                        uint hsh = unchecked((uint)(hx * 73856093) ^ (uint)(hy * 19349663));
+                        if (hsh % 7u == 0u) continue;
+                        float boy = 0.032f + (hsh % 5u) * 0.005f;
+                        // yerdeki levha
+                        tas.Dortgen(V(o - uzun * 0.035f - dik * 0.08f, -0.0022f), V(o + uzun * 0.035f - dik * 0.08f, -0.0022f),
+                                    V(o + uzun * 0.035f + dik * 0.08f, -0.0022f), V(o - uzun * 0.035f + dik * 0.08f, -0.0022f));
+                        // baş taşı: küçük dik kutu (üstü ve yanları görünsün)
+                        KutuMesh(tas, tas, o + dik * 0.085f, uzun, 0.036f, 0.012f, 0f, boy);
+                    }
+            }
+            if (tas.v.Count > 0) sonuc.Add(Nesne("Mezarlıklar (organik)", parent, tas, Malzeme("OrganikMezarTasi", MezarTasiRenk)));
+        }
+
+        /// <summary>Nokta çokgenin içinde ve kenarlarına en az `pay` uzak mı (ışın sayma; çokgen içbükey olabilir)?</summary>
+        static bool CokgenIci(List<Vector2> p, Vector2 q, float pay)
+        {
+            bool ic = false;
+            int n = p.Count;
+            for (int i = 0, j = n - 1; i < n; j = i++)
+            {
+                Vector2 a = p[i], b = p[j];
+                if ((a.y > q.y) != (b.y > q.y) && q.x < (b.x - a.x) * (q.y - a.y) / (b.y - a.y) + a.x) ic = !ic;
+                var ab = b - a;
+                float L2 = ab.sqrMagnitude;
+                float t = L2 > 1e-8f ? Mathf.Clamp01(Vector2.Dot(q - a, ab) / L2) : 0f;
+                if ((a + ab * t - q).sqrMagnitude < pay * pay) return false;
+            }
+            return ic;
         }
 
         // ------------------------------------------------------------------ ıslak yol (Diorama)

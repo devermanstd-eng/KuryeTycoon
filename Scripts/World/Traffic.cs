@@ -125,20 +125,27 @@ namespace KuryeTycoon
                     if (CityMap.RoadAt(x, y)) roads.Add(new Vector2Int(x, y));
             if (roads.Count == 0) return;
 
-            for (int i = 0; i < carCount; i++)
+            // u65: büyük organik şehirde (yol karesi 1 995 → 3 981) aynı sayıda araç ve yaya sokakları boş gösterir: sayılar yol
+            // uzunluğuyla ölçeklenir (u64 şehri = 2 000 yol karesi referans; en çok 2 katı). Yalnız süs trafiği: oyun mantığına girmez.
+            float olcek = CityMap.Organik ? Mathf.Clamp(roads.Count / 2000f, 1f, 2f) : 1f;
+            int arabaSayisi = Mathf.RoundToInt(carCount * olcek);
+            int otobusSayisi = Mathf.RoundToInt(busCount * olcek);
+            int yayaSayisi = Mathf.RoundToInt(pedestrianCount * olcek);
+
+            for (int i = 0; i < arabaSayisi; i++)
             {
                 var a = NewAgent(Kind.Car, roads[rng.Next(roads.Count)], 0.55f + (float)rng.NextDouble() * 0.35f, 0.17f);
                 if (usePack && packCars.Length > 0) AttachPrefab(a, packCars[rng.Next(packCars.Length)], 0.34f, false);
                 else AttachBox(a, new Vector3(0.3f, 0.15f, 0.1f), CarColors[rng.Next(CarColors.Length)]);
             }
-            for (int i = 0; i < busCount; i++)
+            for (int i = 0; i < otobusSayisi; i++)
             {
                 var a = NewAgent(Kind.Bus, roads[rng.Next(roads.Count)], 0.4f, 0.17f);
                 if (usePack && packBuses.Length > 0) AttachPrefab(a, packBuses[rng.Next(packBuses.Length)], 0.58f, false);
                 else if (usePack && packCars.Length > 0) AttachPrefab(a, packCars[rng.Next(packCars.Length)], 0.34f, false);
                 else AttachBox(a, new Vector3(0.56f, 0.19f, 0.17f), i % 2 == 0 ? new Color(0.95f, 0.78f, 0.20f) : new Color(0.20f, 0.45f, 0.80f));
             }
-            for (int i = 0; i < pedestrianCount; i++)
+            for (int i = 0; i < yayaSayisi; i++)
             {
                 var a = NewAgent(Kind.Walker, roads[rng.Next(roads.Count)], 0.1f + (float)rng.NextDouble() * 0.06f, rng.NextDouble() < 0.5 ? 0.44f : -0.44f);
                 if (usePack && packPeople.Length > 0) AttachPrefab(a, packPeople[rng.Next(packPeople.Length)], CharacterVisuals.TargetHeight * 0.92f, true);

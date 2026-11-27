@@ -507,6 +507,7 @@ namespace KuryeTycoon
 
             var rng = new System.Random(12345);
             SimgeBloklariniSec(map, shopTiles);
+            bool buyukPlan = CityMap.Organik && CityMap.Width * CityMap.Height > 12000;     // u65 şehri (144 × 134): parça sayısı ~2,6 katı
             for (int x = 0; x < CityMap.Width; x++)
             {
                 for (int y = 0; y < CityMap.Height; y++)
@@ -726,7 +727,8 @@ namespace KuryeTycoon
                                 var h = ownHousesTum[rng.Next(ownHousesTum.Length)];
                                 AddPrefab(h, tile, OwnFootprint(h, 0.97f), face, null, default, 0f, true, true);
                             }
-                            else AddTrees(tile, rng, 2 + rng.Next(2), packTreesOk);
+                            // u65: büyük planda bahçeli ev / banliyö arka arsası 390 → 1 474 kare; arsa başına bir ağaç az (2–3 → 1–2)
+                            else AddTrees(tile, rng, 2 + rng.Next(2) - (buyukPlan ? 1 : 0), packTreesOk);
                             break;
 
                         default: // eski şehir, kule bloklar, çarşı, kampüs
@@ -1554,7 +1556,8 @@ namespace KuryeTycoon
 
         static Texture2D KirDokusu(CityMap map, float x0, float y0, float w, float h, int durum)
         {
-            const int TW = 1536;
+            // u65: büyük planda (144 × 134 + kır payı = 232 kare) 1536 piksel kare başına 6,6 piksele düşerdi: 2048'e çıkar
+            int TW = w > 200f ? 2048 : 1536;
             int TH = Mathf.Clamp(Mathf.RoundToInt(TW * h / w), 256, 2048);
             var px = new Color32[TW * TH];
             float sx = w / TW, sy = h / TH;
@@ -2734,15 +2737,25 @@ namespace KuryeTycoon
                 }
                 if (enIyi == null) break;
                 var liste = bekleyenler[enIyi];
-                bekleyenler.Remove(enIyi);
+                if (AtolyeUretici.Kurulmadi(enIyi)) arkaPlanKurulan++;
                 AtolyeUretici.Hazirla(enIyi);
-                foreach (var e in liste)
+                // u65: büyük şehirde bir şablonun yüzlerce kopyası olabilir; hepsi tek karede yerleştirilirse oyun takılır. Odağa en
+                // yakın kopyadan başlanır; süre dolunca kalanlar listede bekler (şablon artık hazır: sonraki karelerde yalnız kopyalanır).
+                if (odakVar && liste.Count > 1)
                 {
+                    var o = odak;
+                    liste.Sort((a, b) => (new Vector2(b.tile.x, b.tile.y) - o).sqrMagnitude.CompareTo((new Vector2(a.tile.x, a.tile.y) - o).sqrMagnitude));
+                }
+                while (liste.Count > 0)
+                {
+                    var e = liste[liste.Count - 1];      // sıralıysa en yakın sonda
+                    liste.RemoveAt(liste.Count - 1);
                     pieces.Remove(e.yer);
                     if (e.yer.t != null) Destroy(e.yer.t.gameObject);
                     AddPrefab(enIyi, e.tile, e.footprint, e.face, null, e.offset, e.targetHeight, e.registerHeight, e.own);
+                    if (sw.ElapsedMilliseconds >= 10) break;
                 }
-                arkaPlanKurulan++;
+                if (liste.Count == 0) bekleyenler.Remove(enIyi);
             } while (bekleyenler.Count > 0 && sw.ElapsedMilliseconds < 10);
             lastGrow = -1f;      // yeni parçalar yükselme oranını ve görünürlüğünü alsın
             if (bekleyenler.Count == 0)
