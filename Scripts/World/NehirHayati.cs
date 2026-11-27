@@ -7,6 +7,10 @@ namespace KuryeTycoon
     /// Nehrin hayatı (organik şehir): nehir boyunca gidip gelen tekneler (gezi teknesi, kayık, mavna), suyun üstünde
     /// süzülen ördek aileleri, kıyılarda sazlık. Tekneler köprülerin altından geçer (su yüzeyi zeminin altında).
     /// Nehrin orta çizgisi su karelerinden bulunur (en uzak iki su karesi arasındaki yol, yumuşatılmış).
+    /// Modeller Bina Atölyesi parçalarıdır (hedefi "nehir:…": gezi teknesi, dar kanal teknesi, kürekli kayık, ördek, kuğu,
+    /// sazlık, nilüfer; AtolyeUretici.Nehir): pastel gölgelendirici ve kalem çizgisiyle şehrin geri kalanıyla aynı dilde.
+    /// Sazlıklar tek mesh'te birleşir ve rüzgârda eğilir (köşe animasyonu); teknelerin bayrağı dalgalanır. Atölye çevre
+    /// modelleri kapalıysa ya da kütüphane yoksa eski, kutulardan kurulan tekneler kullanılır.
     /// </summary>
     public class NehirHayati : MonoBehaviour
     {
@@ -171,11 +175,55 @@ namespace KuryeTycoon
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
         }
 
+        // ---- atölye modelleri
+        const float AtolyeOlcek = 0.085f;       // metre → kare (donatılar 0,1; tekneler nehre sığsın diye biraz küçük)
+        const float SazOlcek = 0.075f;          // sazlık ve nilüferler (birleşik mesh'in taşıyıcı ölçeği: mesh metre uzayında kalır)
+        // atölye mesh'i (−X ileri, Y yukarı) → gezgin ekseni (x ileri, −z yukarı)
+        static readonly Quaternion AtolyeDonus = Quaternion.LookRotation(Vector3.down, Vector3.back);
+
+        static bool AtolyeVar => AtolyeAyari.Cevre && AtolyeUretici.Nehir("tekne").Count > 0;
+
+        /// <summary>Atölye şablonunun kopyasını gezginin altına koyar (gölge düşürür; çarpıştırıcı yok).</summary>
+        static Transform AtolyeKoy(GameObject sablon, Transform ust, Vector3 yer, float olcek)
+        {
+            var k = Instantiate(sablon, ust, false);
+            k.name = sablon.name;
+            k.transform.localPosition = yer;
+            k.transform.localRotation = AtolyeDonus;
+            k.transform.localScale = Vector3.one * olcek;
+            foreach (var r in k.GetComponentsInChildren<Renderer>(true))
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+                r.receiveShadows = true;
+            }
+            return k.transform;
+        }
+
+        static GameObject Sec(List<GameObject> l, string icerir, System.Random rng)
+        {
+            if (l == null || l.Count == 0) return null;
+            if (icerir != null)
+                foreach (var g in l) if (g != null && g.name.Contains(icerir)) return g;
+            return l[rng.Next(l.Count)];
+        }
+
         Transform Tekne(int tur, System.Random rng)
         {
             var go = new GameObject(tur == 0 ? "Gezi teknesi" : tur == 1 ? "Kayık" : "Mavna");
             go.transform.SetParent(transform, false);
             var t = go.transform;
+            if (AtolyeVar)
+            {
+                var sablon = Sec(AtolyeUretici.Nehir("tekne"), tur == 0 ? "tekne_gezi" : tur == 1 ? "tekne_kayik" : "tekne_kanal", rng);
+                if (sablon != null)
+                {
+                    // gezi teknesi ve kanal teknesi uzun (13–14 m): dar nehirde kıyıya taşmasın diye biraz daha küçük
+                    float olcek = AtolyeOlcek * (tur == 1 ? 1.15f : 0.8f);
+                    // gövde suya gömülür (model su hattı z = 0'da, omurga biraz altında dursun; gezgin ekseninde +z aşağı)
+                    AtolyeKoy(sablon, t, new Vector3(0f, 0f, (tur == 1 ? 0.12f : 0.3f) * olcek), olcek);
+                    return t;
+                }
+            }
             const float S = 0.075f;
             Color[] govde = { new Color(0.93f, 0.92f, 0.88f), new Color(0.75f, 0.24f, 0.20f), new Color(0.20f, 0.33f, 0.55f), new Color(0.25f, 0.45f, 0.35f) };
             var g = govde[rng.Next(govde.Length)];
@@ -214,6 +262,26 @@ namespace KuryeTycoon
             go.transform.SetParent(transform, false);
             const float S = 0.075f;
             int n = 2 + rng.Next(4);
+            if (AtolyeVar && AtolyeUretici.Nehir("ordek").Count > 0)
+            {
+                // Altıda bir aile kuğu çifti; gerisi anne (ya da yeşil başlı) ördek ve arkasında dizili yavrular
+                var kugular = AtolyeUretici.Nehir("kugu");
+                var yavrular = AtolyeUretici.Nehir("yavru");
+                if (kugular.Count > 0 && rng.Next(6) == 0)
+                {
+                    AtolyeKoy(kugular[0], go.transform, Vector3.zero, AtolyeOlcek * 0.9f);
+                    AtolyeKoy(kugular[0], go.transform, new Vector3(-1.6f * S, 0.9f * S, 0f), AtolyeOlcek * 0.82f);
+                    return go.transform;
+                }
+                var ordekler2 = AtolyeUretici.Nehir("ordek");
+                AtolyeKoy(ordekler2[rng.Next(ordekler2.Count)], go.transform, Vector3.zero, AtolyeOlcek * 1.25f);
+                for (int i = 1; i < n; i++)
+                {
+                    var sb = yavrular.Count > 0 ? yavrular[0] : ordekler2[0];
+                    AtolyeKoy(sb, go.transform, new Vector3(-i * 0.75f * S, (i % 2 == 0 ? 0.22f : -0.22f) * S, 0f), AtolyeOlcek * (yavrular.Count > 0 ? 1.25f : 0.7f));
+                }
+                return go.transform;
+            }
             for (int i = 0; i < n; i++)
             {
                 bool anne = i == 0;
@@ -230,9 +298,66 @@ namespace KuryeTycoon
             return go.transform;
         }
 
+        /// <summary>
+        /// Atölye sazlıkları ve nilüferleri: kıyı şeridine saz demetleri, kıyıya yakın durgun suya nilüfer öbekleri. Malzeme
+        /// başına tek mesh'te birleşir (AtolyeBirlestirici); sazlar rüzgârda eğilir, nilüferler suyla hafifçe oynar.
+        /// </summary>
+        void AtolyeSazlik(System.Random rng)
+        {
+            var sazlar = AtolyeUretici.Nehir("sazlik");
+            var niluferler = AtolyeUretici.Nehir("nilufer");
+            var malzeme = new Dictionary<Material, List<AtolyeBirlestirici.Ornek>>();
+            void Ekle(GameObject sablon, Vector3 yer, float aci, float olcek)
+            {
+                var m = Matrix4x4.TRS(yer, Quaternion.Euler(0f, 0f, aci) * Quaternion.Euler(-90f, 0f, 0f), Vector3.one * olcek);
+                var kokTers = sablon.transform.worldToLocalMatrix;
+                foreach (var mf in sablon.GetComponentsInChildren<MeshFilter>(true))
+                {
+                    var r = mf.GetComponent<MeshRenderer>();
+                    if (mf.sharedMesh == null || r == null) continue;
+                    var mats = r.sharedMaterials;
+                    var yerel = kokTers * mf.transform.localToWorldMatrix;
+                    for (int i = 0; i < mf.sharedMesh.subMeshCount && i < mats.Length; i++)
+                    {
+                        if (mats[i] == null) continue;
+                        if (!malzeme.TryGetValue(mats[i], out var l)) malzeme[mats[i]] = l = new List<AtolyeBirlestirici.Ornek>();
+                        l.Add(new AtolyeBirlestirici.Ornek { mesh = mf.sharedMesh, sub = i, m = m * yerel, faz = (float)rng.NextDouble() * 6.2832f });
+                    }
+                }
+            }
+            int W = CityMap.Width, H = CityMap.Height;
+            for (int x = 0; x < W; x++)
+                for (int y = 0; y < H; y++)
+                {
+                    if (!CityMap.WaterAt(x, y)) continue;
+                    bool kiyi = false;
+                    for (int dx = -1; dx <= 1 && !kiyi; dx++)
+                        for (int dy = -1; dy <= 1 && !kiyi; dy++)
+                            if (!CityMap.WaterAt(x + dx, y + dy) && !CityMap.RoadAt(x + dx, y + dy)) kiyi = true;
+                    if (!kiyi || rng.NextDouble() > 0.6) continue;
+                    int demet = 3 + rng.Next(5);
+                    for (int i = 0; i < demet; i++)
+                    {
+                        var p = new Vector2(x + (float)rng.NextDouble() - 0.5f, y + (float)rng.NextDouble() - 0.5f);
+                        float cuk = Arazi.NehirCukur(p.x, p.y);
+                        if (cuk < 0.45f) continue;                       // kuru zemin
+                        if (cuk <= 0.9f)
+                            Ekle(sazlar[rng.Next(sazlar.Count)], new Vector3(p.x, p.y, Arazi.Z(p) - 0.001f), (float)rng.NextDouble() * 360f,
+                                 SazOlcek * (0.75f + (float)rng.NextDouble() * 0.5f));
+                        else if (niluferler.Count > 0 && cuk < 0.97f && rng.Next(3) == 0)
+                            Ekle(niluferler[rng.Next(niluferler.Count)], new Vector3(p.x, p.y, SuZ - 0.0006f), (float)rng.NextDouble() * 360f,
+                                 SazOlcek * (0.8f + (float)rng.NextDouble() * 0.5f));
+                    }
+                }
+            foreach (var kv in malzeme)
+                AtolyeBirlestirici.Kur(transform, "Sazlık · " + kv.Key.name, kv.Key, kv.Value, SazOlcek, false);
+            AtolyeBirlestirici.Bosalt();
+        }
+
         /// <summary>Kıyıda sazlık: su kenarındaki karelerde ince saz demetleri (tek mesh).</summary>
         void Sazlik(System.Random rng)
         {
+            if (AtolyeVar && AtolyeUretici.Nehir("sazlik").Count > 0) { AtolyeSazlik(rng); return; }
             var v = new List<Vector3>();
             var tr = new List<int>();
             int W = CityMap.Width, H = CityMap.Height;

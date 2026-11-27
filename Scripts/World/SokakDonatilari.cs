@@ -13,6 +13,9 @@ namespace KuryeTycoon
     ///  • Kır yollarında ahşap elektrik direkleri, tarlalarda saman balyaları.
     /// Bütün donatılar malzeme başına tek mesh'te birleşir (binlerce parça tek tek çizilmesin). Lamba başları (YIsik_)
     /// GeceIsiklari tarafından bulunur ve geceleri yanar.
+    /// Atölye donatıları (Pastel_ malzemeli) AtolyeBirlestirici ile birleşir: kalem çizgisi şeritlerinin öbür ucu ve çevre
+    /// animasyonunun sabitleri de taşınır (asılı sepetler titreşir, flamalar ve bayraklar dalgalanır, çeşme suyu akar).
+    /// Meydan ve parklarda ayrıca bayrak direği, güvercinler, içme çeşmesi; ana cadde lambalarının bir kısmı flamalı.
     /// Dünyada yukarı −Z; kare = 10 m. Donatılar metre ölçüsünde, Olcek ile küçültülür.
     /// </summary>
     public static class SokakDonatilari
@@ -202,8 +205,8 @@ namespace KuryeTycoon
             switch (z)
             {
                 case Zone.OldTown:
-                    tablo = new[] { ("bank", .13f), ("cop_kutusu", .14f), ("saksi", .12f), ("ilan_sutunu", .05f), ("posta_kutusu", .04f),
-                                    ("bisiklet_park", .04f), ("yangin_musluk", .04f), ("bufe", .02f), ("cesme", .02f) }; break;
+                    tablo = new[] { ("bank", .13f), ("cop_kutusu", .14f), ("saksi", .13f), ("ilan_sutunu", .05f), ("posta_kutusu", .04f),
+                                    ("bisiklet_park", .04f), ("yangin_musluk", .03f), ("bufe", .02f), ("cesme", .02f), ("baba", .04f), ("guvercin", .02f) }; break;
                 case Zone.Mixed:
                     tablo = new[] { ("cop_kutusu", .17f), ("bank", .09f), ("bisiklet_park", .07f), ("posta_kutusu", .05f), ("yangin_musluk", .05f),
                                     ("saksi", .08f), ("sarj", .03f), ("ilan_sutunu", .03f), ("reklam_panosu", .02f), ("trafo", .03f), ("geri_donusum", .03f), ("bufe", .02f) }; break;
@@ -220,9 +223,9 @@ namespace KuryeTycoon
                     tablo = new[] { ("cop_kutusu", .1f), ("sarj", .1f), ("reklam_panosu", .06f), ("bisiklet_park", .05f), ("saksi", .05f) }; break;
                 case Zone.Park:
                 case Zone.River:
-                    tablo = new[] { ("bank", .25f), ("cop_kutusu", .12f), ("cesme", .04f), ("bufe", .02f) }; break;
+                    tablo = new[] { ("bank", .25f), ("cop_kutusu", .12f), ("cesme", .04f), ("bufe", .02f), ("saksi", .06f), ("guvercin", .04f), ("bayrak_diregi", .015f) }; break;
                 case Zone.Plaza:
-                    tablo = new[] { ("bank", .2f), ("saksi", .2f), ("baba", .12f), ("ilan_sutunu", .08f), ("bufe", .05f) }; break;
+                    tablo = new[] { ("bank", .18f), ("saksi", .2f), ("baba", .1f), ("ilan_sutunu", .06f), ("bufe", .05f), ("guvercin", .06f), ("bayrak_diregi", .04f) }; break;
                 default:
                     return null;
             }
@@ -382,6 +385,19 @@ namespace KuryeTycoon
             foreach (var kv in top.malzeme)
             {
                 var liste = kv.Value;
+                if (kv.Key.name.StartsWith("Pastel_"))
+                {
+                    // Atölye donatıları: kalem çizgisinin öbür ucu ve animasyon sabitleri de taşınmalı (AtolyeBirlestirici)
+                    var ornekler = new List<AtolyeBirlestirici.Ornek>(liste.Count);
+                    foreach (var kopya in liste)
+                    {
+                        Vector3 yer = kopya.transform.GetColumn(3);
+                        ornekler.Add(new AtolyeBirlestirici.Ornek { mesh = kopya.mesh, sub = kopya.subMeshIndex, m = kopya.transform,
+                            faz = R01(Mathf.RoundToInt(yer.x * 53f), Mathf.RoundToInt(yer.y * 53f), 5) * 6.2832f });
+                    }
+                    sonuc.AddRange(AtolyeBirlestirici.Kur(parent, "Donatılar · " + kv.Key.name, kv.Key, ornekler, Olcek, true));
+                    continue;
+                }
                 int bas = 0;
                 while (bas < liste.Count)
                 {
@@ -406,6 +422,7 @@ namespace KuryeTycoon
                     bas = son;
                 }
             }
+            AtolyeBirlestirici.Bosalt();
             Debug.Log($"Kurye Tycoon · sokak donatıları: {top.adet} parça, {sonuc.Count} birleşik mesh");
             return sonuc;
         }

@@ -401,6 +401,25 @@ def avm(u, n):
 AGAC_PARK = ["agac_cinar_1", "agac_cinar_2", "agac_cinar_3", "agac_mese_1", "agac_mese_2", "agac_ihlamur_1", "agac_ihlamur_2",
              "agac_kestane_1", "agac_kestane_2", "agac_yuvarlak_1", "agac_yuvarlak_3", "agac_hus_1", "agac_sogut_1", "agac_sogut_2",
              "agac_kavak_1", "agac_kavak_2", "agac_cam_2"]
+# parklar (v9): yeni türler ve varyantlar da. AGAC_PARK'a eklenmedi: kilise ve çarşı tasarımları da onu kullanıyor, liste
+# uzarsa tohumlu seçimler kayar ve parkla ilgisi olmayan tasarımlar da değişirdi.
+AGAC_PARK9 = ["agac_cinar_1", "agac_cinar_2", "agac_cinar_3", "agac_cinar_4", "agac_cinar_5", "agac_mese_1", "agac_mese_2", "agac_mese_3",
+             "agac_ihlamur_1", "agac_ihlamur_2", "agac_ihlamur_3", "agac_kestane_1", "agac_kestane_2", "agac_kestane_3", "agac_yuvarlak_1",
+             "agac_yuvarlak_3", "agac_hus_1", "agac_hus_3", "agac_sogut_1", "agac_sogut_2", "agac_kavak_1", "agac_kavak_2", "agac_cam_2",
+             "agac_akcaagac_1", "agac_akcaagac_2", "agac_kiraz_1", "agac_kiraz_2", "agac_saricam_1", "agac_porsuk_1"]
+# park çalıları ve yol kenarı donatıları (v9: yeni çalılar, bank ve lamba varyantları)
+CALI_PARK = CALI + ["cali_gul", "cali_rododendron", "cali_simsir_koni", "cicek_tarhi", "cicek_obegi", "ot_obegi"]
+PARK_DONATI = ["bank", "bank_yesil", "bank", "sokak_lambasi", "sokak_lambasi_sepetli", "cop_kutusu", "bisiklet_park", "saksi_tas", "cesme_icme"]
+
+
+def _yonlu(ad, x, y, aci, olcek=1.0, renk=0):
+    """Açısı belli süs (bank çeşmeye baksın, lamba köşede dursun). aci: derece, model −Y'si (önü) 0'da −y'ye bakar."""
+    return dict(ad=ad, x=round(x, 2), y=round(y, 2), aci=round(aci, 1), olcek=round(olcek, 2), renk=renk)
+
+
+def _zemin(avlu):
+    return [dict(ad="arsa_avlu" if (x, y) in avlu else "arsa_cim", x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0)
+            for x in range(IZ) for y in range(IZ)]
 
 
 def park(u, n):
@@ -431,34 +450,77 @@ def park(u, n):
         bos = [(x, y) for x in range(IZ) for y in range(IZ) if (x, y) not in avlu and (x, y) != gol]
         u.rnd.shuffle(bos)
         for (x, y) in bos[:u.sec([2, 3, 3, 4, 5])]:
-            s.append(u.sus(u.sec(AGAC_PARK), hucre_m(x) + u.rnd.uniform(-0.5, 0.5), hucre_m(y) + u.rnd.uniform(-0.5, 0.5), u.rnd.uniform(0.75, 1.05), u.rnd.randrange(3)))
+            s.append(u.sus(u.sec(AGAC_PARK9), hucre_m(x) + u.rnd.uniform(-0.5, 0.5), hucre_m(y) + u.rnd.uniform(-0.5, 0.5), u.rnd.uniform(0.75, 1.05), u.rnd.randrange(3)))
         for (x, y) in bos[5:5 + u.sec([1, 2, 3])]:
-            s.append(u.sus(u.sec(CALI + ["cicek_tarhi", "cicek_obegi", "ot_obegi"]), hucre_m(x), hucre_m(y)))
+            s.append(u.sus(u.sec(CALI_PARK), hucre_m(x), hucre_m(y)))
         yollar = sorted(avlu)
         u.rnd.shuffle(yollar)
         for (x, y) in yollar[:u.sec([2, 3, 4])]:
-            s.append(u.sus(u.sec(["bank", "bank", "sokak_lambasi", "cop_kutusu", "bisiklet_park"]), hucre_m(x) + 1.0, hucre_m(y) + u.rnd.uniform(-0.6, 0.6)))
+            s.append(u.sus(u.sec(PARK_DONATI), hucre_m(x) + 1.0, hucre_m(y) + u.rnd.uniform(-0.6, 0.6)))
         if u.rnd.random() < 0.25 and avlu:
             x, y = u.sec(sorted(avlu))
-            s.append(u.sus(u.sec(["cesme", "heykel", "cicek_havuzu"]), hucre_m(x), hucre_m(y)))
+            s.append(u.sus(u.sec(["cesme", "heykel", "cicek_tarhi", "bayrak_diregi", "guvercinler"]), hucre_m(x), hucre_m(y)))
         u.kaydet(l, "", "konut", [], susler=s, zemin=None)
     # meydan (çeşmeli), anıt, göl: City3D bunları adlarından tanır
     for i in range(3):
         s = [dict(ad="arsa_avlu", x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0) for x in range(IZ) for y in range(IZ)]
-        s += [u.sus("cesme", 0, 0, 1.4), u.sus("bank", -3.0, 0, 1.0), u.sus("bank", 3.0, 0, 1.0), u.sus("sokak_lambasi", -5.6, -5.6), u.sus("sokak_lambasi", 5.6, 5.6),
-              u.sus(u.sec(AGAC_PARK), -5.0, 5.0, 0.9), u.sus(u.sec(AGAC_PARK), 5.0, -5.0, 0.9), u.sus("cicek_tarhi", 0, -4.2), u.sus("cicek_tarhi", 0, 4.2)]
+        # çeşme ortada (Ø ~3,7 m), banklar çeşmeye bakar, köşelerde çift fenerli lambalar, güvercinler, bayrak direği
+        s += [_yonlu("cesme", 0, 0, 0, 1.15), _yonlu("bank", -3.9, 0, 90), _yonlu("bank", 3.9, 0, -90), _yonlu("bank_tas", 0, 3.9, 0), _yonlu("bank_tas", 0, -3.9, 180),
+              _yonlu("sokak_lambasi_cift", -5.6, -5.6, 45), _yonlu("sokak_lambasi_cift", 5.6, 5.6, 45),
+              u.sus(u.sec(AGAC_PARK9), -5.0, 5.0, 0.9), u.sus(u.sec(AGAC_PARK9), 5.0, -5.0, 0.9), _yonlu("cicek_tarhi", -3.6, -4.9, 0), _yonlu("cicek_tarhi", 3.6, 4.9, 0),
+              u.sus("guvercinler", 2.4, -2.6), u.sus("guvercinler", -2.6, 2.2), _yonlu("saksi_tas", 5.4, 0.0, 0), _yonlu("saksi_tas", -5.4, 0.0, 0)]
+        if i == 1:
+            s.append(_yonlu("bayrak_diregi", 5.6, -5.6, 0))
         u.kaydet(l, "meydan", "konut", [], susler=s, zemin=None)
     for i in range(2):
         s = [dict(ad="arsa_avlu" if (x in (1, 2, 3) and y in (1, 2, 3)) else "arsa_cim", x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0)
              for x in range(IZ) for y in range(IZ)]
-        s += [u.sus("heykel", 0, 0, 1.8), u.sus("cicek_tarhi", -2.8, 0), u.sus("cicek_tarhi", 2.8, 0)] + \
-             [u.sus(u.sec(AGAC_PARK), hucre_m(x), hucre_m(y), 0.9) for x, y in ((0, 0), (4, 0), (0, 4), (4, 4))]
+        s += [_yonlu("heykel", 0, 0, 0, 1.3), _yonlu("cicek_tarhi", -2.6, 0, 90), _yonlu("cicek_tarhi", 2.6, 0, 90), _yonlu("bank", 0, -3.6, 180),
+              _yonlu("sokak_lambasi", -3.4, -3.4, 0), _yonlu("sokak_lambasi", 3.4, 3.4, 0), u.sus("guvercinler", 1.2, -1.8)] + \
+             [u.sus(u.sec(AGAC_PARK9), hucre_m(x), hucre_m(y), 0.9) for x, y in ((0, 0), (4, 0), (0, 4), (4, 4))]
         u.kaydet(l, "anit", "konut", [], susler=s, zemin=None)
     for i in range(2):
         s = [dict(ad="arsa_gol" if (1 <= x <= 3 and 1 <= y <= 3) else "arsa_cim", x=round(hucre_m(x), 2), y=round(hucre_m(y), 2), aci=0.0, olcek=1.0, renk=0)
              for x in range(IZ) for y in range(IZ)]
-        s += [u.sus("agac_sogut_1", -5.4, 5.2, 0.9), u.sus("agac_sogut_2", 5.2, -5.4, 0.9), u.sus("bank", 0, -6.0, 1.0), u.sus("kayik", 0.5, 0.5, 0.8)]
+        s += [u.sus("agac_sogut_1", -5.4, 5.2, 0.9), u.sus("agac_sogut_2", 5.2, -5.4, 0.9), _yonlu("bank", 0, -6.0, 180), u.sus("kayik", 0.5, 0.5, 0.8),
+              u.sus("sazlik", -3.6, 3.5), u.sus("sazlik_kucuk", 3.4, 3.7), u.sus("sazlik_kucuk", -3.7, -1.5), u.sus("nilufer_obegi", 1.8, -1.6), u.sus("nilufer_obegi", -1.6, 2.0),
+              _yonlu("kugu", -1.2, -0.8, 30, 1.0)]
         u.kaydet(l, "gol", "konut", [], susler=s, zemin=None)
+    # ---- v9: atlıkarınca (dönen), müzik köşkü, oyun alanı, bayraklı çiçek bahçesi
+    orta9 = {(x, y) for x in (1, 2, 3) for y in (1, 2, 3)}
+    for i in range(2):                                           # adında "atlikarinca": City3D şehre en çok iki tane koyar
+        s = _zemin(orta9)
+        s += [_yonlu("atlikarinca", 0, 0, 0)]
+        s += [_yonlu("sokak_lambasi_sepetli", sx * 4.5, sy * 4.5, 0) for sx in (-1, 1) for sy in (-1, 1)]
+        s += [_yonlu("bank_yesil", 0, -5.6, 180), _yonlu("bank_yesil", 0, 5.6, 0), _yonlu("cop_kutusu", 1.6, -5.6, 0), _yonlu("saksi_kule", -5.6, 0, 0), _yonlu("saksi_kule", 5.6, 0, 0)]
+        s += [u.sus(u.sec(AGAC_PARK9), sx * 5.7, sy * 5.7, 0.85) for sx, sy in ((-1, 1), (1, -1))]
+        s += [u.sus(u.sec(["cali_gul", "cali_ortanca", "cali_rododendron"]), sx * 5.6, sy * 5.6) for sx, sy in ((-1, -1), (1, 1))]
+        u.kaydet(l, "atlikarinca", "konut", [], susler=s, zemin=None)
+    for i in range(2):
+        s = _zemin({(2, 0), (2, 1), (1, 2), (2, 2), (3, 2), (2, 3)})
+        s += [_yonlu("muzik_kosku", 0, 0.6, 0)]
+        s += [_yonlu("bank", -3.0, -4.6, 180), _yonlu("bank", 3.0, -4.6, 180), _yonlu("bank_yesil", -4.9, -2.2, 90), _yonlu("bank_yesil", 4.9, -2.2, -90)]
+        s += [_yonlu("sokak_lambasi", -1.6, -5.9, 0), _yonlu("sokak_lambasi", 1.6, -5.9, 0)]
+        s += [u.sus(u.sec(AGAC_PARK9), sx * 5.5, 5.4, 0.9) for sx in (-1, 1)] + [u.sus(u.sec(CALI_PARK[:9]), sx * 5.4, 1.2) for sx in (-1, 1)]
+        s += [_yonlu("cicek_tarhi", -4.6, -5.8, 0), _yonlu("cicek_tarhi", 4.6, -5.8, 0)]
+        u.kaydet(l, "kosk", "konut", [], susler=s, zemin=None)
+    for i in range(2):
+        s = _zemin({(x, 0) for x in range(IZ)})
+        s += [_yonlu("oyun_alani", 0, 1.2, 0 if i == 0 else 180)]
+        s += [_yonlu("bank", -3.2, -4.4, 180), _yonlu("bank", 3.2, -4.4, 180), _yonlu("cop_kutusu", 0, -4.6, 0), _yonlu("sokak_lambasi", -5.8, -5.6, 0)]
+        s += [_yonlu("cit_ahsap", hucre_m(x), 4.9, 0) for x in range(IZ)]
+        s += [u.sus(u.sec(AGAC_PARK9), sx * 5.4, 6.0, 0.85) for sx in (-1, 1)] + [u.sus(u.sec(AGAC_PARK9), 5.6, -2.0, 0.8)]
+        u.kaydet(l, "oyun", "konut", [], susler=s, zemin=None)
+    for i in range(2):
+        s = _zemin({(2, y) for y in range(IZ)} | {(x, 2) for x in range(IZ)})
+        s += [_yonlu("bayrak_diregi", 0, 0, 0) if i == 0 else _yonlu("saksi_kule", 0, 0, 0)]
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                s += [_yonlu("cicek_tarhi", sx * 3.6, sy * 2.2, 0), _yonlu("cicek_tarhi", sx * 3.6, sy * 4.6, 0), _yonlu("cali_simsir_koni", sx * 1.7, sy * 1.7, 0),
+                      _yonlu("cit_bitki_cicekli" if (sx * sy > 0) else "cit_bitki", sx * 4.2, sy * 6.3, 0)]
+        s += [_yonlu("bank_tas", -1.9, 0, 90), _yonlu("bank_tas", 1.9, 0, -90), _yonlu("saksi_tas", 0, -5.8, 0), _yonlu("saksi_tas", 0, 5.8, 0),
+              u.sus("agac_kiraz_1", -5.9, 0.0, 0.9), u.sus("agac_kiraz_2", 5.9, 0.0, 0.9)]
+        u.kaydet(l, "bahce", "konut", [], susler=s, zemin=None)
     return l
 
 
@@ -485,7 +547,7 @@ def ciftlik(u, n):
         bos = [(x, y) for x in range(IZ) for y in range(IZ) if (x, y) not in dolu]
         u.rnd.shuffle(bos)
         for (x, y) in bos[:u.sec([3, 4, 5])]:
-            s.append(u.sus(u.sec(["saman_balyasi", "kuyu", "sebze_bahcesi", "koyun", "koyun", "odun_yigini", "agac_meyve_1", "agac_meyve_2", "cit_ahsap", "kutuk"]),
+            s.append(u.sus(u.sec(["saman_balyasi", "saman_balyasi_istif", "kuyu", "sebze_bahcesi", "koyun", "koyun", "odun_yigini", "agac_meyve_1", "agac_meyve_2", "cit_kir", "cit_ahsap", "kutuk", "ot_obegi"]),
                            hucre_m(x) + u.rnd.uniform(-0.5, 0.5), hucre_m(y) + u.rnd.uniform(-0.5, 0.5)))
         u.kaydet(l, "", "konut", b, susler=s, zemin=u.sec(["cim", "cim", "bahce"]))
     return l

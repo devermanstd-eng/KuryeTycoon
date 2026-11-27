@@ -7,6 +7,10 @@
 //    inceldi (varsayılan 1,15 piksel), ayrıntı çizgileri biraz saydam; çizgi kameraya daha az çekilir (arkada kalan
 //    girintili kenarlar öne sızıp görüntüyü ağırlaştırmasın).
 //  • uv.x = 0 olan üçgenler açılmaz: ağaç taçlarının "ters kabuğu" (biraz büyük, yüzleri ters kopya) aynı malzemeyle dış hat olur.
+//  • Çevre animasyonu: köşe renginin alfası animasyon modunu taşır (CevreAnimasyon.hlsl; 255: yok). Şeridin iki ucu da
+//    (POSITION ve TEXCOORD1) yüzeyle AYNI işlevle kaydırılır: salınan ağacın, dalgalanan bayrağın, dönen atlıkarıncanın
+//    çizgisi yüzeyden ayrılmaz. Ters kabuk üçgenleri (uv.x = 0) de aynı kaymayı alır. Titreme gürültüsü kaymamış konuma
+//    bağlıdır (çizgi oynarken kalınlığı kıpırdamaz).
 //  • Renk köşe renginden (yüzey renginin koyusu). Işıksız; gölge düşürmez; derinlik / normal dokusuna yazmaz (ekran
 //    geçişindeki mürekkep çizgisi bu şeritleri görmez).
 //  • Uzaklık solması (u59): kameradan _CizgiYakin karede tam, _CizgiUzak karede ana hatlar _CizgiUzakAlfa'ya kadar solar ve
@@ -69,10 +73,12 @@ Shader "KuryeTycoon/PastelCizgi"
             float _PastelCizgiGizle;
             float _PastelKis;        // kış: yaprak döken taçların ters kabuğu (uv.x = 0, uv.y = 2) çizilmez
 
+            #include "CevreAnimasyon.hlsl"
+
             struct Attributes
             {
                 float4 positionOS : POSITION;
-                float2 uv : TEXCOORD0;
+                float4 uv : TEXCOORD0;       // xy: yan / uç; zw: animasyon sabitleri (mesh'te animasyon varsa)
                 float3 diger : TEXCOORD1;
                 half4 color : COLOR;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -121,15 +127,21 @@ Shader "KuryeTycoon/PastelCizgi"
                 Varyings o = (Varyings)0;
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                float4 cp = PC_Kirpma(v.positionOS.xyz);
+                // çevre animasyonu: şeridin iki ucu da yüzeyle aynı kaymayı alır
+                float3 pa = v.positionOS.xyz;
+                float3 pb = v.diger;
+                float3 nBos = float3(0.0, 1.0, 0.0);
+                CA_Uygula(pa, nBos, v.color.a, v.uv.zw);
+                CA_Uygula(pb, nBos, v.color.a, v.uv.zw);
+                float4 cp = PC_Kirpma(pa);
                 // Uzaklaştıkça çizgi solar ve incelir: uzaktan şehir çizgi ağına dönmesin (yakında el çizimi, uzakta yumuşak)
-                float uzaklik = abs(TransformWorldToView(TransformObjectToWorld(v.positionOS.xyz)).z);
+                float uzaklik = abs(TransformWorldToView(TransformObjectToWorld(pa)).z);
                 float sol = smoothstep(_CizgiYakin, _CizgiUzak, uzaklik);
                 bool ayrinti = abs(v.uv.x) > 0.05 && abs(v.uv.x) < 0.75;
                 half alfa = 1.0h;
                 if (abs(v.uv.x) > 0.05)
                 {
-                    float4 cq = PC_Kirpma(v.diger);
+                    float4 cq = PC_Kirpma(pb);
                     float2 sp = cp.xy / max(cp.w, 1e-5) * _ScreenParams.xy * 0.5;
                     float2 sq = cq.xy / max(cq.w, 1e-5) * _ScreenParams.xy * 0.5;
                     float2 d = sq - sp;

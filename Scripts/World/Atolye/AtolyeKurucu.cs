@@ -20,11 +20,20 @@ namespace KuryeTycoon
     ///    gelen parçaların ek yerleri çizilmez. Ağaç taçlarının "Pastel_Kabuk" yüzleri de bu alt-mesh'e gider.
     ///  • Malzemeler dosya değildir: "Pastel_&lt;etiket&gt;_&lt;rrggbb&gt;" adıyla çalışırken kurulur ve önbelleğe alınır
     ///    (renk addan; gece ışıkları, mevsim ve kar sistemleri malzemeyi adından tanır).
+    ///  • Kütüphane üç dosyadır (10 MB sınırı): pastel_parcalar.json (bina parçaları + tablolar) ile ek dosyalar
+    ///    pastel_agac.json ve pastel_cevre.json (<see cref="EkDosyalar"/>); okununca tek listede birleşir.
+    ///  • Çevre animasyonu: malzeme adındaki işaret (_Salin_, _Hisir_, _Titrek_, _Saz_, _Dalga_, _Akis_, _Doner_, _Sark_)
+    ///    köşenin modunu verir (<see cref="AnimModu"/>). Mod köşe renginin alfasına, yerleşimin sabitleri (taban yüksekliği
+    ///    ve faz, bayrak çapası, dönme ekseni) TEXCOORD0.zw'ye yazılır; kalem çizgisi köşeleri de aynı değerleri taşır
+    ///    (Resources/Gorsel/CevreAnimasyon.hlsl: yüzey ve çizgi aynı kaymayı hesaplar, çizgi yüzeyden ayrılmaz).
     /// </summary>
     public static class AtolyeKurucu
     {
         public const string KutuphaneYol = "Assets/KuryeTycoon/Resources/Atolye/pastel_parcalar.json";
         public const string KutuphaneKaynak = "Atolye/pastel_parcalar";       // Resources yolu (TextAsset)
+        // Ağaç / çalı ve çevre parçaları (sokak donatısı, park ve nehir öğeleri) ayrı dosyalarda: tek dosya 10 MB sınırını
+        // aşıyordu (pastel_parcalar.py: EK_DOSYA). Ana kütüphane okununca bunlar da okunup parça listelerine eklenir.
+        public static readonly string[] EkDosyalar = { "pastel_agac", "pastel_cevre" };
         public const string TasarimKaynak = "Atolye/Tasarimlar";              // Resources klasörü (tasarım JSON'ları)
         public const string CizgiMalzemesi = "Pastel_Cizgi_3a2f3a";
         public const int Apartman = 0, Fachwerk = 1, Tas = 2, Kaide = 3, Merdiven = 4;
@@ -37,7 +46,7 @@ namespace KuryeTycoon
         // ---------------------------------------------------------------- kütüphane (JSON)
 
         [Serializable] public class AltVeri { public string malzeme; public int[] uc; }
-        [Serializable] public class ParcaVeri { public string ad, grup, aciklama, hedef; public bool kucuk; public int sinir; public float[] v; public AltVeri[] alt; }   // sinir: bir iç mekânda en fazla kaç tane (0: varsayılan)
+        [Serializable] public class ParcaVeri { public string ad, grup, aciklama, hedef; public bool kucuk; public int sinir; public float[] v; public AltVeri[] alt; public float[] capa; }   // sinir: bir iç mekânda en fazla kaç tane (0: varsayılan)
         [Serializable]
         public class TurVeri
         {
@@ -87,6 +96,43 @@ namespace KuryeTycoon
             public int kisRengi = 7;         // bu yaprak rengi önizlemede kışı gösterir (yalnız bilgi; oyunda _PastelKis)
         }
 
+        /// <summary>Ek parça dosyası (pastel_agac.json, pastel_cevre.json): ana kütüphaneyle aynı parça biçimi.</summary>
+        [Serializable]
+        class CevreKutuphanesi
+        {
+            public int surum;
+            public ParcaVeri[] parcalar, hafifler, uzaklar;
+        }
+
+        static string DosyaOku(string dosya, string kaynak)
+        {
+            string metin = null;
+#if UNITY_EDITOR
+            // Editörde önce diskten oku: içe aktarma henüz bitmemişken TextAsset eski içeriği verebilir
+            try
+            {
+                string tam = Path.Combine(Application.dataPath, "KuryeTycoon/Resources/Atolye/" + dosya);
+                if (File.Exists(tam)) metin = File.ReadAllText(tam);
+            }
+            catch (Exception) { metin = null; }
+#endif
+            if (string.IsNullOrEmpty(metin))
+            {
+                var ta = Resources.Load<TextAsset>(kaynak);
+                if (ta != null) metin = ta.text;
+            }
+            return metin;
+        }
+
+        static ParcaVeri[] Birlestir(ParcaVeri[] a, ParcaVeri[] b)
+        {
+            if (b == null || b.Length == 0) return a;
+            if (a == null || a.Length == 0) return b;
+            var l = new List<ParcaVeri>(a.Length + b.Length);
+            l.AddRange(a); l.AddRange(b);
+            return l.ToArray();
+        }
+
         static Kutuphane kut;
         static Dictionary<string, ParcaVeri> parca, hafif, uzak;
         static Dictionary<string, TurVeri> tur;
@@ -113,21 +159,7 @@ namespace KuryeTycoon
             hafif = new Dictionary<string, ParcaVeri>();
             uzak = new Dictionary<string, ParcaVeri>();
             tur = new Dictionary<string, TurVeri>();
-            string metin = null;
-#if UNITY_EDITOR
-            // Editörde önce diskten oku: içe aktarma henüz bitmemişken TextAsset eski içeriği verebilir
-            try
-            {
-                string tam = Path.Combine(Application.dataPath, "KuryeTycoon/Resources/Atolye/pastel_parcalar.json");
-                if (File.Exists(tam)) metin = File.ReadAllText(tam);
-            }
-            catch (Exception) { metin = null; }
-#endif
-            if (string.IsNullOrEmpty(metin))
-            {
-                var ta = Resources.Load<TextAsset>(KutuphaneKaynak);
-                if (ta != null) metin = ta.text;
-            }
+            string metin = DosyaOku("pastel_parcalar.json", KutuphaneKaynak);
             if (string.IsNullOrEmpty(metin))
             {
                 Debug.LogError("Bina Atölyesi: parça kütüphanesi yok: " + KutuphaneYol + " (python3 Tools/Blender/pastel_parcalar.py --json)");
@@ -136,10 +168,31 @@ namespace KuryeTycoon
             Kutuphane k;
             try { k = JsonUtility.FromJson<Kutuphane>(metin); }
             catch (Exception ex) { Debug.LogError("Bina Atölyesi: parça kütüphanesi okunamadı: " + ex.Message); return false; }
-            if (k == null || k.parcalar == null || k.parcalar.Length == 0 || k.surum < 5 || k.turler == null || k.yaprakRenk == null || k.tenteRenk == null)
+            if (k == null || k.parcalar == null || k.parcalar.Length == 0 || k.surum < 6 || k.turler == null || k.yaprakRenk == null || k.tenteRenk == null)
             {
-                Debug.LogError("Bina Atölyesi: parça kütüphanesi eski ya da eksik (sürüm 5 gerekli). python3 Tools/Blender/pastel_parcalar.py --json");
+                Debug.LogError("Bina Atölyesi: parça kütüphanesi eski ya da eksik (sürüm 6 gerekli). python3 Tools/Blender/pastel_parcalar.py --json");
                 return false;
+            }
+            // Ağaçlar ve çevre parçaları ek dosyalarda (sürüm 6): ana listelere eklenir, geri kalan kod tek kütüphane görür
+            foreach (string ek in EkDosyalar)
+            {
+                string ekMetin = DosyaOku(ek + ".json", "Atolye/" + ek);
+                if (string.IsNullOrEmpty(ekMetin))
+                {
+                    Debug.LogError("Bina Atölyesi: parça dosyası yok: Assets/KuryeTycoon/Resources/Atolye/" + ek + ".json (python3 Tools/Blender/pastel_parcalar.py --json). Ağaçlar / donatılar kurulamaz.");
+                    continue;
+                }
+                try
+                {
+                    var cv = JsonUtility.FromJson<CevreKutuphanesi>(ekMetin);
+                    if (cv != null)
+                    {
+                        k.parcalar = Birlestir(k.parcalar, cv.parcalar);
+                        k.hafifler = Birlestir(k.hafifler, cv.hafifler);
+                        k.uzaklar = Birlestir(k.uzaklar, cv.uzaklar);
+                    }
+                }
+                catch (Exception ex) { Debug.LogError("Bina Atölyesi: " + ek + ".json okunamadı: " + ex.Message); }
             }
             foreach (var p in k.parcalar) parca[p.ad] = p;
             if (k.hafifler != null) foreach (var p in k.hafifler) hafif[p.ad] = p;
@@ -234,7 +287,8 @@ namespace KuryeTycoon
         // ---------------------------------------------------------------- kurallar (pastel_parcalar.py: yerlesim)
 
         // Y, y, a, m: yaprağın dört tonu (orta, koyu, açık sarımsı, gölge yanı); k: taç dış hattı
-        class Renkler { public string D, d, C, c, K, T, Y, y, a, m, k; }
+        // g (v9): taç içinin derin gölgesi (yaprak sürgünlerinin altındaki dolu kütle)
+        class Renkler { public string D, d, C, c, K, T, Y, y, a, m, k, g; }
 
         struct Yer
         {
@@ -323,11 +377,13 @@ namespace KuryeTycoon
         /// Yaprak renginden açık (ışık) ve gölge yanı tonları (pastel_parcalar.py: yaprak_tonlari): yeşilde gölge mavimsi,
         /// sonbahar gibi sıcak renkte kızıl (aynı ağaçta sarı-turuncu-kızıl karışır).
         /// </summary>
-        static void YaprakTonlari(string yp, out string acik, out string golge)
+        static void YaprakTonlari(string yp, out string acik, out string golge, out string derin)
         {
             Color32 c = Renk(yp);
+            bool sicak = c.r > c.g;
             acik = Karis(yp, "#f6ecaa", 0.32f);
-            golge = c.r > c.g ? Karis(Koyu(yp, 0.92f), "#c0503a", 0.42f) : Karis(Koyu(yp, 0.9f), "#5f8fa8", 0.24f);
+            golge = sicak ? Karis(Koyu(yp, 0.92f), "#c0503a", 0.42f) : Karis(Koyu(yp, 0.9f), "#5f8fa8", 0.24f);
+            derin = sicak ? Karis(Koyu(yp, 0.74f), "#7a3a30", 0.3f) : Karis(Koyu(yp, 0.74f), "#3f6f78", 0.3f);
         }
 
         /// <summary>Kalem çizgisi rengi: yüzey renginin koyusu, sıcak mor-kahveye kaydırılmış; v6'da daha açık (siyaha yakın değil).</summary>
@@ -385,11 +441,11 @@ namespace KuryeTycoon
                 string ct = !Bos(T.catiRenk) ? T.catiRenk : kt.catiRenk[Mod(cati, kt.catiRenk.Length)];
                 string vr = !Bos(t.vurgu) ? t.vurgu : !Bos(T.vurgu) ? T.vurgu : kt.vurguRenk[Sec(Karma(t.tohum, renk, cati, 7), kt.vurguRenk.Length)];
                 string yp = kt.yaprakRenk[Mod(yaprak, kt.yaprakRenk.Length)];
-                YaprakTonlari(yp, out string acik, out string golge);
+                YaprakTonlari(yp, out string acik, out string golge, out string derin);
                 return new Renkler
                 {
                     D = dv, d = Koyu(dv, 0.9f), C = ct, c = Koyu(ct, 0.86f), K = vr, T = kt.tenteRenk[Mod(t.tente, kt.tenteRenk.Length)],
-                    Y = yp, y = Koyu(yp, 0.88f), a = acik, m = golge, k = CizgiRengiHex(yp),
+                    Y = yp, y = Koyu(yp, 0.88f), a = acik, m = golge, k = CizgiRengiHex(yp), g = derin,
                 };
             }
 
@@ -1031,7 +1087,7 @@ namespace KuryeTycoon
 
         static readonly Renkler SahneRenk = new Renkler
         {
-            D = "#f6f0e2", d = "#e3dccb", C = "#c8553f", c = "#ad4835", K = "#3f7d74", T = "#c8553f", Y = "#8fbf7a", y = "#7da86b", a = "#afcd89", m = "#78a47b", k = "#42443d",
+            D = "#f6f0e2", d = "#e3dccb", C = "#c8553f", c = "#ad4835", K = "#3f7d74", T = "#c8553f", Y = "#8fbf7a", y = "#7da86b", a = "#afcd89", m = "#78a47b", k = "#42443d", g = "#5c8263",
         };
 
         public static float Kademe => Kut != null ? Kut.kademe : 1.2f;
@@ -1187,6 +1243,7 @@ namespace KuryeTycoon
                 case "a": hex = r.a ?? r.Y; break;
                 case "m": hex = r.m ?? r.y; break;
                 case "k": hex = r.k; break;
+                case "g": hex = r.g ?? r.y; break;
                 default: hex = r.K; break;
             }
             return ad.Substring(0, i + 1) + hex.TrimStart('#');
@@ -1206,6 +1263,8 @@ namespace KuryeTycoon
 
         class Kenar
         {
+            public byte mod;         // çevre animasyonu: kenarı ilk gören yüzün modu ve sabitleri (çizgi yüzeyle birlikte oynar)
+            public Vector2 ab;
             public Vector3 a, b;
             public Yuzey sahip;      // çizginin yazılacağı grup: kenarı ilk gören yüzün grubu
             public List<(Vector3 n, Vector3 ic, Color32 renk)> yuzler = new List<(Vector3, Vector3, Color32)>(4);
@@ -1222,6 +1281,22 @@ namespace KuryeTycoon
         {
             public List<Vector3> kose = new List<Vector3>();
             public Dictionary<string, List<int>> alt = new Dictionary<string, List<int>>();
+            // çevre animasyonu (yalnız animasyonlu köşesi olan grupta dolar): yüzey köşesi başına mod ve iki sabit;
+            // çizgi köşelerinde mod cRenk'in alfasında, sabitler cAb'de
+            public List<byte> mod;
+            public List<Vector2> ab;
+            public List<Vector2> cAb = new List<Vector2>();
+
+            /// <summary>Yüzey köşesine animasyon modu yazar (listeler köşe sayısına kadar sıfırla doldurulur).</summary>
+            public void Anim(int i, byte m, Vector2 sabit)
+            {
+                if (mod == null) { mod = new List<byte>(kose.Count); ab = new List<Vector2>(kose.Count); }
+                while (mod.Count <= i) { mod.Add(0); ab.Add(Vector2.zero); }
+                if (m > mod[i]) { mod[i] = m; ab[i] = sabit; }
+            }
+
+            public byte ModAl(int i) => mod != null && i < mod.Count ? mod[i] : (byte)0;
+            public Vector2 AbAl(int i) => ab != null && i < ab.Count ? ab[i] : Vector2.zero;
             // kalem çizgileri alt-mesh'i: köşe, öbür uç (uv1), yan / uç (uv0), renk
             public List<Vector3> cKose = new List<Vector3>(), cDiger = new List<Vector3>();
             public List<Vector2> cUv = new List<Vector2>();
@@ -1288,6 +1363,31 @@ namespace KuryeTycoon
             return k;
         }
 
+        // ---------------------------------------------------------------- çevre animasyonu
+        // Malzeme adındaki işaret → mod (Tools/Blender/pastel_parcalar.py "ANİMASYON İŞARETLERİ"; Resources/Gorsel/CevreAnimasyon.hlsl).
+        public const byte AnimYok = 0, AnimSalin = 1, AnimHisir = 2, AnimTitrek = 3, AnimSaz = 4, AnimDalga = 5, AnimAkis = 6, AnimDoner = 7, AnimSark = 8;
+
+        /// <summary>Malzeme adındaki animasyon işaretinden köşe modu (işaret yoksa 0).</summary>
+        public static byte AnimModu(string mat)
+        {
+            if (mat == null || mat.Length < 12) return AnimYok;
+            if (mat.Contains("_Hisir_")) return AnimHisir;
+            if (mat.Contains("_Salin_")) return AnimSalin;
+            if (mat.Contains("_Titrek_")) return AnimTitrek;
+            if (mat.Contains("_Saz_")) return AnimSaz;
+            if (mat.Contains("_Dalga_")) return AnimDalga;
+            if (mat.Contains("_Akis_")) return AnimAkis;
+            if (mat.Contains("_Doner_")) return AnimDoner;
+            if (mat.Contains("_Sark_")) return AnimSark;
+            return AnimYok;
+        }
+
+        /// <summary>Modun köşe rengi alfası (gölgelendirici: mod = (255 − alfa) / 24).</summary>
+        public static byte AnimAlfa(byte mod) => (byte)(255 - 24 * mod);
+
+        /// <summary>Köşe rengi alfasından mod (AtolyeBirlestirici: birleştirirken sabitleri taşımak için).</summary>
+        public static byte AlfadanMod(byte alfa) => (byte)((255 - alfa + 12) / 24);
+
         /// <summary>Yerleşimi gruplara toplar. sec: yerleşim grubu → çıktı grubu (null: atla).</summary>
         /// <summary>Tasarım tek bir ağaç / çalı süsü mü ve kütüphanede en uzak görünümü (LOD2) var mı?</summary>
         public static bool UzakVar(BinaTasarimi t)
@@ -1325,9 +1425,9 @@ namespace KuryeTycoon
                 bool karo = CatiKarolari.Contains(y.ad);
                 float ca = Mathf.Cos(y.aci), sa = Mathf.Sin(y.aci);
                 gecici.Clear();
-                for (int i = 0; i + 2 < pv.v.Length; i += 3)
+                // parça ekseninden (ölçeklenmiş, metre) Unity model uzayına: açı, kaydırma, 90°'lik dönüşler, yerleşim kökü
+                Vector3 Donustur(float px, float py, float pz)
                 {
-                    float px = pv.v[i] * y.olcek, py = pv.v[i + 1] * y.olcek, pz = pv.v[i + 2] * y.olcek;
                     if (y.aci != 0f) { float tx = px * ca - py * sa; py = px * sa + py * ca; px = tx; }
                     if (karo)
                     {
@@ -1340,13 +1440,37 @@ namespace KuryeTycoon
                         px += y.kay.x; py += y.kay.y;
                         for (int q = 0; q < y.don; q++) { float tx = -py; py = px; px = tx; }
                     }
-                    gecici.Add(Unity(y.cx + px, y.cy + py, y.z + pz * y.zs));
+                    return Unity(y.cx + px, y.cy + py, y.z + pz * y.zs);
                 }
+                for (int i = 0; i + 2 < pv.v.Length; i += 3)
+                    gecici.Add(Donustur(pv.v[i] * y.olcek, pv.v[i + 1] * y.olcek, pv.v[i + 2] * y.olcek));
                 int bas = yz.kose.Count;
                 yz.kose.AddRange(gecici);
+                // çevre animasyonu: yerleşimin sabitleri (model uzayında, bu yerleşimin dönüşümüyle)
+                Vector3 kokU = Donustur(0f, 0f, 0f);
+                Vector3 capaU = pv.capa != null && pv.capa.Length >= 2 ? Donustur(pv.capa[0] * y.olcek, pv.capa[1] * y.olcek, 0f) : kokU;
+                // faz yalnız yerleşimin yerinden (köşe sırasından değil): aynı ağacın yakın / hafif / uzak mesh'leri aynı fazda salınır
+                float fazY = (Karma(Mathf.RoundToInt(kokU.x * 37f), Mathf.RoundToInt(kokU.z * 37f), Mathf.RoundToInt(kokU.y * 37f), 11) & 1023) * (6.2832f / 1024f);
+                float sarkUst = float.NegativeInfinity;
+                foreach (var a in pv.alt)
+                    if (AnimModu(a.malzeme) == AnimSark)
+                        for (int i = 0; i < a.uc.Length; i++) sarkUst = Mathf.Max(sarkUst, gecici[a.uc[i]].y);
+                Vector2 Sabit(byte m)
+                {
+                    switch (m)
+                    {
+                        case AnimSalin: case AnimHisir: case AnimSaz: return new Vector2(kokU.y, fazY);
+                        case AnimTitrek: return new Vector2(0f, fazY);
+                        case AnimDalga: case AnimDoner: return new Vector2(capaU.x, capaU.z);
+                        case AnimSark: return new Vector2(sarkUst, 0f);
+                        default: return Vector2.zero;
+                    }
+                }
                 foreach (var a in pv.alt)
                 {
                     string mat = Renkli(a.malzeme, y.r);
+                    byte am = AnimModu(a.malzeme);
+                    Vector2 asb = Sabit(am);
                     // pencere camları üç ışık grubuna dağılır (GeceIsiklari her grubu ayrı saatte yakar / söndürür)
                     if (y.cam != 0 && mat.StartsWith("Pastel_Cam_")) mat = "Pastel_Cam" + (y.cam + 1) + "_" + mat.Substring(11);
                     if (mat.StartsWith("Pastel_Kabuk_"))
@@ -1354,6 +1478,7 @@ namespace KuryeTycoon
                         // ters kabuk: çizgi alt-mesh'ine, açılmayan (uv.x = 0) üçgenler olarak
                         if (hafifMi) continue;
                         Color32 kr = AddanRenk(mat);
+                        kr.a = AnimAlfa(am);          // kabuk da yüzeyle birlikte oynar
                         // yaprak döken tacın kabuğu: uv.y = 2 işaretiyle yazılır, kışın PastelCizgi gizler (_PastelKis)
                         var kUv = new Vector2(0f, mat.StartsWith("Pastel_Kabuk_Dok_") ? 2f : 0f);
                         for (int i = 0; i + 2 < a.uc.Length; i += 3)
@@ -1362,7 +1487,7 @@ namespace KuryeTycoon
                             for (int q = 0; q < 3; q++)
                             {
                                 Vector3 p = gecici[a.uc[i + q]];
-                                yz.cKose.Add(p); yz.cDiger.Add(p); yz.cUv.Add(kUv); yz.cRenk.Add(kr);
+                                yz.cKose.Add(p); yz.cDiger.Add(p); yz.cUv.Add(kUv); yz.cRenk.Add(kr); yz.cAb.Add(asb);
                             }
                             yz.cUc.Add(cb); yz.cUc.Add(cb + 2); yz.cUc.Add(cb + 1);
                         }
@@ -1371,6 +1496,11 @@ namespace KuryeTycoon
                     var l = yz.Liste(mat);
                     // eksen çevirisi yönü ters çevirir: üçgen sırası da ters
                     for (int i = 0; i + 2 < a.uc.Length; i += 3) { l.Add(bas + a.uc[i]); l.Add(bas + a.uc[i + 2]); l.Add(bas + a.uc[i + 1]); }
+                    if (am != AnimYok)
+                    {
+                        for (int i = 0; i < a.uc.Length; i++) yz.Anim(bas + a.uc[i], am, asb);
+                        AnimMalzeme(mat);
+                    }
                 }
             }
             foreach (var c in s.cokgenler)
@@ -1418,9 +1548,11 @@ namespace KuryeTycoon
                         Vector3 n = Vector3.Cross(p1 - p0, p2 - p0);
                         if (n.sqrMagnitude < 1e-12f) continue;
                         n.Normalize();
-                        KenarEkle(kenarlar, yz, p0, p1, p2, n, renk);
-                        KenarEkle(kenarlar, yz, p1, p2, p0, n, renk);
-                        KenarEkle(kenarlar, yz, p2, p0, p1, n, renk);
+                        byte km = yz.ModAl(l[i]);
+                        Vector2 kab = yz.AbAl(l[i]);
+                        KenarEkle(kenarlar, yz, p0, p1, p2, n, renk, km, kab);
+                        KenarEkle(kenarlar, yz, p1, p2, p0, n, renk, km, kab);
+                        KenarEkle(kenarlar, yz, p2, p0, p1, n, renk, km, kab);
                     }
                 }
             }
@@ -1446,6 +1578,8 @@ namespace KuryeTycoon
                 var yz = ke.sahip;
                 int cb = yz.cKose.Count;
                 Color32 renk = L[0].renk;
+                renk.a = AnimAlfa(ke.mod);
+                for (int q = 0; q < 4; q++) yz.cAb.Add(ke.ab);
                 // kademeli kalınlık: uv.x'in büyüklüğü şeridin yarı genişliğini ölçekler (PastelCizgi: yana açma = uv.x × kalınlık)
                 float kal = hafifMi ? 1f : (ke.a - ke.b).sqrMagnitude >= KalinBoy * KalinBoy ? Kalin : Ince;
                 yz.cKose.Add(ke.a); yz.cDiger.Add(ke.b); yz.cUv.Add(new Vector2(-kal, 1f)); yz.cRenk.Add(renk);
@@ -1469,11 +1603,42 @@ namespace KuryeTycoon
             int toplam = yuzeySay + yz.cKose.Count;
             var kose = new List<Vector3>(toplam);
             var renkler = new List<Color32>(toplam);
-            var uv0 = new List<Vector2>(toplam);
             var uv1 = new List<Vector3>(toplam);
             var beyaz = new Color32(255, 255, 255, 255);
-            for (int i = 0; i < yuzeySay; i++) { Vector3 p = yz.kose[i] - kaydir; kose.Add(p); renkler.Add(beyaz); uv0.Add(Vector2.zero); uv1.Add(p); }
-            for (int i = 0; i < yz.cKose.Count; i++) { kose.Add(yz.cKose[i] - kaydir); renkler.Add(yz.cRenk[i]); uv0.Add(yz.cUv[i]); uv1.Add(yz.cDiger[i] - kaydir); }
+            // Çevre animasyonu olan mesh'te uv0 dört bileşenli (zw: animasyon sabitleri), mod köşe renginin alfasında;
+            // animasyonsuz mesh'te (binaların çoğu) uv0 iki bileşenli kalır (bellek aynı), alfa hep 255.
+            bool anim = yz.mod != null;
+            if (!anim)
+                for (int i = 0; i < yz.cRenk.Count; i++)
+                    if (yz.cRenk[i].a != 255) { anim = true; break; }
+            List<Vector2> uv0 = anim ? null : new List<Vector2>(toplam);
+            List<Vector4> uv0a = anim ? new List<Vector4>(toplam) : null;
+            for (int i = 0; i < yuzeySay; i++)
+            {
+                Vector3 p = yz.kose[i] - kaydir;
+                kose.Add(p); uv1.Add(p);
+                if (anim)
+                {
+                    byte m = yz.ModAl(i);
+                    Vector2 sb = yz.AbAl(i);
+                    if (m == AnimSalin || m == AnimHisir || m == AnimSaz || m == AnimSark) sb.x -= yKaydir;
+                    renkler.Add(new Color32(255, 255, 255, AnimAlfa(m)));
+                    uv0a.Add(new Vector4(0f, 0f, sb.x, sb.y));
+                }
+                else { renkler.Add(beyaz); uv0.Add(Vector2.zero); }
+            }
+            for (int i = 0; i < yz.cKose.Count; i++)
+            {
+                kose.Add(yz.cKose[i] - kaydir); renkler.Add(yz.cRenk[i]); uv1.Add(yz.cDiger[i] - kaydir);
+                if (anim)
+                {
+                    Vector2 sb = i < yz.cAb.Count ? yz.cAb[i] : Vector2.zero;
+                    byte m = AlfadanMod(yz.cRenk[i].a);
+                    if (m == AnimSalin || m == AnimHisir || m == AnimSaz || m == AnimSark) sb.x -= yKaydir;
+                    uv0a.Add(new Vector4(yz.cUv[i].x, yz.cUv[i].y, sb.x, sb.y));
+                }
+                else uv0.Add(yz.cUv[i]);
+            }
             var cUc = new List<int>(yz.cUc.Count);
             for (int i = 0; i < yz.cUc.Count; i++) cUc.Add(yz.cUc[i] + yuzeySay);
 
@@ -1481,7 +1646,7 @@ namespace KuryeTycoon
             if (kose.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.SetVertices(kose);
             mesh.SetColors(renkler);
-            mesh.SetUVs(0, uv0);
+            if (anim) mesh.SetUVs(0, uv0a); else mesh.SetUVs(0, uv0);
             mesh.SetUVs(1, uv1);
             bool cizgiVar = cUc.Count > 0;
             mesh.subMeshCount = adlar.Count + (cizgiVar ? 1 : 0);
@@ -1497,12 +1662,13 @@ namespace KuryeTycoon
             return mesh;
         }
 
-        static void KenarEkle(Dictionary<(long, long), Kenar> kenarlar, Yuzey sahip, Vector3 a, Vector3 b, Vector3 ucuncu, Vector3 n, Color32 renk)
+        static void KenarEkle(Dictionary<(long, long), Kenar> kenarlar, Yuzey sahip, Vector3 a, Vector3 b, Vector3 ucuncu, Vector3 n, Color32 renk,
+                              byte mod = 0, Vector2 ab = default)
         {
             long ka = Nicem(a), kb = Nicem(b);
             if (ka == kb) return;
             var anahtar = ka < kb ? (ka, kb) : (kb, ka);
-            if (!kenarlar.TryGetValue(anahtar, out var ke)) kenarlar[anahtar] = ke = new Kenar { a = a, b = b, sahip = sahip };
+            if (!kenarlar.TryGetValue(anahtar, out var ke)) kenarlar[anahtar] = ke = new Kenar { a = a, b = b, sahip = sahip, mod = mod, ab = ab };
             // yüzün içine doğru yön: üçüncü köşenin kenara dik bileşeni
             Vector3 e = (b - a).normalized;
             Vector3 ic = ucuncu - a;
@@ -1534,6 +1700,16 @@ namespace KuryeTycoon
         // ---------------------------------------------------------------- malzemeler
 
         static readonly Dictionary<string, Material> malzemeOnbellek = new Dictionary<string, Material>();
+        static readonly int AnimasyonId = Shader.PropertyToID("_Animasyon");
+
+        /// <summary>
+        /// Animasyonlu köşesi olan malzemede köşe animasyonunu açar (Pastel.shader: _Animasyon). Animasyon işaretli malzeme
+        /// adları başka hiçbir yerde kullanılmaz (zemin gibi köşe alfası başka anlam taşıyabilecek mesh'ler etkilenmez).
+        /// </summary>
+        static void AnimMalzeme(string ad)
+        {
+            if (malzemeOnbellek.TryGetValue(ad, out var m) && m != null && m.HasProperty(AnimasyonId)) m.SetFloat(AnimasyonId, 1f);
+        }
 
         /// <summary>Oyun başlarken (alan yeniden yüklenmese de) önbellekler boşalır: yok edilmiş malzemeler kullanılmasın.</summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -1576,6 +1752,8 @@ namespace KuryeTycoon
             Ayar(m, "_Cam", cam ? 1f : 0f);
             // Mevsim kırpması (Pastel.shader: _Dokum): yaprak döken ağaç yaprakları kışın çizilmez, dal karı yalnız kışın çizilir
             Ayar(m, "_Dokum", ad.StartsWith("Pastel_Yaprak_Dok_") ? 1f : ad.StartsWith("Pastel_DalKar_") ? 2f : 0f);
+            // Çevre animasyonu (Pastel.shader: _Animasyon): adında animasyon işareti olan malzemelerde açık
+            Ayar(m, "_Animasyon", AnimModu(ad) != AnimYok ? 1f : 0f);
             // Gece ışık verenler (GeceIsiklari "Pastel_Cam…", "Pastel_Vitrin_", "Pastel_Isik_", "Pastel_Yazi_" adlarını tanır): gündüz ışıma siyah
             if ((cam || ad.StartsWith("Pastel_Isik") || ad.StartsWith("Pastel_Yazi")) && m.HasProperty("_EmissionColor"))
             {

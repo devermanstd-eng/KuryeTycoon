@@ -25,6 +25,7 @@ namespace KuryeTycoon
 
         static Transform kok;
         static List<GameObject> binalar, agaclar, donatilar;
+        static Dictionary<string, List<GameObject>> nehir;      // tür ("tekne", "ordek", "kugu", "sazlik" ...) → şablonlar
         static readonly Dictionary<GameObject, BinaTasarimi> bekleyen = new Dictionary<GameObject, BinaTasarimi>();
         static double toplamMs;
         static int kurulan, ucgen;
@@ -33,7 +34,7 @@ namespace KuryeTycoon
         static void OyunBasi()
         {
             // Alan yeniden yüklenmese de (Enter Play Mode ayarı) eski oyunun yok edilmiş şablonları kullanılmasın
-            kok = null; binalar = null; agaclar = null; donatilar = null;
+            kok = null; binalar = null; agaclar = null; donatilar = null; nehir = null;
             bekleyen.Clear();
             toplamMs = 0; kurulan = 0; ucgen = 0;
         }
@@ -175,11 +176,23 @@ namespace KuryeTycoon
             return donatilar;
         }
 
+        /// <summary>
+        /// Nehir öğesi şablonları (Nehir_&lt;tür&gt;_atolye_&lt;ad&gt;): hedefi "nehir:&lt;tür&gt;" olan parçalar (tekne, ordek, yavru, kugu,
+        /// sazlik, nilufer). Model ekseni: tekneler +x'e bakar, su hattı z = 0 (Unity mesh'inde −X ileri, Y yukarı).
+        /// Tür yoksa boş liste.
+        /// </summary>
+        public static List<GameObject> Nehir(string tur)
+        {
+            CevreKur();
+            return nehir != null && nehir.TryGetValue(tur, out var l) ? l : new List<GameObject>();
+        }
+
         static void CevreKur()
         {
             if (agaclar != null && donatilar != null && (agaclar.Count == 0 || agaclar[0] != null) && (donatilar.Count == 0 || donatilar[0] != null)) return;
             agaclar = new List<GameObject>();
             donatilar = new List<GameObject>();
+            nehir = new Dictionary<string, List<GameObject>>();
             var kt = AtolyeKurucu.Kut;
             if (kt == null) return;
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -190,7 +203,9 @@ namespace KuryeTycoon
                 if ((p.grup != "agac" && p.grup != "cevre") || string.IsNullOrEmpty(p.hedef)) continue;
                 string ad;
                 bool lod, agac = false;
-                if (p.hedef == "agac") { ad = "Agac_atolye_" + p.ad.Replace("agac_", ""); lod = true; agac = true; }
+                string nehirTur = null;
+                if (p.hedef.StartsWith("nehir:")) { nehirTur = p.hedef.Substring(6); ad = "Nehir_" + nehirTur + "_atolye_" + p.ad; lod = false; }
+                else if (p.hedef == "agac") { ad = "Agac_atolye_" + p.ad.Replace("agac_", ""); lod = true; agac = true; }
                 else if (p.hedef == "cali") { ad = "Cali_atolye_" + p.ad.Replace("cali_", ""); lod = true; agac = true; }
                 else
                 {
@@ -208,7 +223,12 @@ namespace KuryeTycoon
                 try { Doldur(go, t, lod); }
                 catch (System.Exception ex) { Debug.LogError("Kurye Tycoon · atölye: '" + ad + "' kurulamadı: " + ex); }
                 Yok(t);
-                (agac ? agaclar : donatilar).Add(go);
+                if (nehirTur != null)
+                {
+                    if (!nehir.TryGetValue(nehirTur, out var nl)) nehir[nehirTur] = nl = new List<GameObject>();
+                    nl.Add(go);
+                }
+                else (agac ? agaclar : donatilar).Add(go);
                 n++;
             }
             sw.Stop();

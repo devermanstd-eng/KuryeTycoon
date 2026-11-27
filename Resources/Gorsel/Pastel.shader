@@ -7,6 +7,10 @@
 //  • Köşe rengi (COLOR) tabanla çarpılır (atölye mesh'lerinde beyaz).
 //  • URP/Lit ve AnimeToon ile aynı özellik adları (_BaseColor, _EmissionColor, _Surface, _Cull ...): oyunun gece ışıkları,
 //    kilitli semt rengi, kar katmanı ve mevsim kodu değişmeden çalışır. Işıma her zaman eklenir.
+//  • Çevre animasyonu (_Animasyon = 1; AtolyeKurucu adında animasyon işareti olan malzemelerde açar): köşe konumu
+//    CevreAnimasyon.hlsl ile kaydırılır (rüzgârda salınan ağaç, titreşen yaprak, bayrak, akan su, dönen atlıkarınca).
+//    Mod köşe renginin alfasında, sabitler TEXCOORD0.zw'de. Gölge, derinlik ve normal geçişleri de aynı kaymayı uygular
+//    (gölge ve mürekkep konturu da oynar). Kâğıt dokusu kaymamış konuma bağlıdır (yüzeyde kaymaz).
 //  • Kontur bu gölgelendiricide değil: mesh'in "Pastel_Cizgi" alt-mesh'i (KuryeTycoon/PastelCizgi) ya da oyunda ekran geçişi.
 //  Malzemeler adla kurulur: "Pastel_<etiket>_<rrggbb>" (Editor/BinaAtolyesiKurucu.cs).
 Shader "KuryeTycoon/Pastel"
@@ -40,6 +44,9 @@ Shader "KuryeTycoon/Pastel"
 
         [Header(Mevsim)]
         _Dokum("Mevsim kırpması (0 yok, 1 kışın çizilmez, 2 yalnız kışın çizilir)", Float) = 0
+
+        [Header(Animasyon)]
+        [Toggle] _Animasyon("Çevre animasyonu (köşe alfası: mod)", Float) = 0
 
         // URP/Lit uyumu (oyun kodu bu adları kullanıyor)
         [HideInInspector] _Smoothness("Smoothness", Range(0, 1)) = 0.1
@@ -78,12 +85,21 @@ Shader "KuryeTycoon/Pastel"
         half _Metallic;
         half _Surface;
         half _Dokum;
+        half _Animasyon;
     CBUFFER_END
 
     // Kış (global; City3D mevsime göre, Bina Atölyesi "Kış önizlemesi" ile yazar): yaprak döken ağaçların yaprakları
     // (_Dokum = 1) çizilmez, dallardaki kar şeritleri (_Dokum = 2) yalnız o zaman çizilir. Bütün geçişlerde çağrılır
     // (gölge ve derinlik de kırpılsın: çıplak ağacın gölgesi ve mürekkep konturu da çıplak olsun).
     float _PastelKis;
+
+    #include "CevreAnimasyon.hlsl"
+
+    // Köşeyi (ve normalini) çevre animasyonuyla kaydırır; malzemede kapalıysa ya da köşenin modu yoksa dokunmaz
+    void PastelAnimasyon(inout float3 po, inout float3 no, half4 renk, float4 uv)
+    {
+        if (_Animasyon > 0.5) CA_Uygula(po, no, renk.a, uv.zw);
+    }
 
     void PastelMevsimKirp()
     {
@@ -150,7 +166,7 @@ Shader "KuryeTycoon/Pastel"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
-                float2 uv : TEXCOORD0;
+                float4 uv : TEXCOORD0;
                 half4 color : COLOR;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
@@ -175,14 +191,17 @@ Shader "KuryeTycoon/Pastel"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_TRANSFER_INSTANCE_ID(v, o);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                VertexPositionInputs p = GetVertexPositionInputs(v.positionOS.xyz);
+                float3 po = v.positionOS.xyz;
+                float3 no = v.normalOS;
+                PastelAnimasyon(po, no, v.color, v.uv);
+                VertexPositionInputs p = GetVertexPositionInputs(po);
                 o.positionCS = p.positionCS;
                 o.positionWS = p.positionWS;
-                o.normalWS = TransformObjectToWorldNormal(v.normalOS);
-                o.uv = TRANSFORM_TEX(v.uv, _BaseMap);
+                o.normalWS = TransformObjectToWorldNormal(no);
+                o.uv = TRANSFORM_TEX(v.uv.xy, _BaseMap);
                 o.fogCoord = ComputeFogFactor(p.positionCS.z);
-                o.color = v.color;
-                o.positionOS = v.positionOS.xyz;
+                o.color = half4(v.color.rgb, 1.0h);
+                o.positionOS = v.positionOS.xyz;      // kâğıt dokusu kaymamış konuma göre (yüzeye yapışık kalır)
                 o.normalOS = v.normalOS;
                 return o;
             }
@@ -280,15 +299,18 @@ Shader "KuryeTycoon/Pastel"
             float3 _LightDirection;
             float3 _LightPosition;
 
-            struct A { float4 positionOS : POSITION; float3 normalOS : NORMAL; UNITY_VERTEX_INPUT_INSTANCE_ID };
+            struct A { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 uv : TEXCOORD0; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct VG { float4 positionCS : SV_POSITION; };
 
             VG vertG(A v)
             {
                 VG o;
                 UNITY_SETUP_INSTANCE_ID(v);
-                float3 pw = TransformObjectToWorld(v.positionOS.xyz);
-                float3 nw = TransformObjectToWorldNormal(v.normalOS);
+                float3 po = v.positionOS.xyz;
+                float3 no = v.normalOS;
+                PastelAnimasyon(po, no, v.color, v.uv);
+                float3 pw = TransformObjectToWorld(po);
+                float3 nw = TransformObjectToWorldNormal(no);
                 #if defined(_CASTING_PUNCTUAL_LIGHT_SHADOW)
                     float3 ld = normalize(_LightPosition - pw);
                 #else
@@ -322,14 +344,17 @@ Shader "KuryeTycoon/Pastel"
             #pragma fragment fragD
             #pragma multi_compile_instancing
 
-            struct A { float4 positionOS : POSITION; UNITY_VERTEX_INPUT_INSTANCE_ID };
+            struct A { float4 positionOS : POSITION; float4 uv : TEXCOORD0; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct VD { float4 positionCS : SV_POSITION; };
 
             VD vertD(A v)
             {
                 VD o;
                 UNITY_SETUP_INSTANCE_ID(v);
-                o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
+                float3 po = v.positionOS.xyz;
+                float3 no = float3(0.0, 1.0, 0.0);
+                PastelAnimasyon(po, no, v.color, v.uv);
+                o.positionCS = TransformObjectToHClip(po);
                 return o;
             }
 
@@ -351,15 +376,18 @@ Shader "KuryeTycoon/Pastel"
             #pragma multi_compile_instancing
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
-            struct A { float4 positionOS : POSITION; float3 normalOS : NORMAL; UNITY_VERTEX_INPUT_INSTANCE_ID };
+            struct A { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 uv : TEXCOORD0; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct VN { float4 positionCS : SV_POSITION; float3 normalWS : TEXCOORD0; };
 
             VN vertN(A v)
             {
                 VN o;
                 UNITY_SETUP_INSTANCE_ID(v);
-                o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
-                o.normalWS = TransformObjectToWorldNormal(v.normalOS);
+                float3 po = v.positionOS.xyz;
+                float3 no = v.normalOS;
+                PastelAnimasyon(po, no, v.color, v.uv);
+                o.positionCS = TransformObjectToHClip(po);
+                o.normalWS = TransformObjectToWorldNormal(no);
                 return o;
             }
 
