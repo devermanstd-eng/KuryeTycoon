@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace KuryeTycoon
@@ -15,6 +16,9 @@ namespace KuryeTycoon
     ///    _Ic [altında _Ampul, _Poset], _Kepenk) + LOD1; içi olmayan modelde LOD0 / LOD1 tek mesh. CatiKaldir, DukkanCanli ve
     ///    GeceIsiklari değişmeden çalışır.
     ///  • Süre ölçülür: <see cref="SureyiYaz"/> şehir kurulunca toplamı Console'a yazar.
+    ///  • u72: bina mesh'lerinin hesabı (yerleşim, yüzeyler, kalem çizgileri) <see cref="ArkaPlandaHazirla"/> ile arka plan iş
+    ///    parçacığında yapılır; ana iş parçacığında (<see cref="Hazirla"/>) yalnız Mesh ve GameObject kurulur. Eskiden bir model
+    ///    30–80 ms ana iş parçacığını tutuyordu, şehir kurulurken oyun 10–15 FPS'e düşüyordu.
     /// </summary>
     public static class AtolyeUretici
     {
@@ -27,6 +31,10 @@ namespace KuryeTycoon
         static List<GameObject> binalar, agaclar, donatilar;
         static Dictionary<string, List<GameObject>> nehir;      // tür ("tekne", "ordek", "kugu", "sazlik" ...) → şablonlar
         static readonly Dictionary<GameObject, BinaTasarimi> bekleyen = new Dictionary<GameObject, BinaTasarimi>();
+        // arka planda hesaplanan ham mesh verileri (yalnız ana iş parçacığı okur / yazar; görevin içi bu sözlüğe dokunmaz)
+        static readonly Dictionary<GameObject, Task<AtolyeKurucu.HamBina>> hazirlik = new Dictionary<GameObject, Task<AtolyeKurucu.HamBina>>();
+        /// <summary>Arka plan iş parçacığı kullanılabilir mi (WebGL'de yok).</summary>
+        static bool IsParcacigiVar => Application.platform != RuntimePlatform.WebGLPlayer && SystemInfo.processorCount > 1;
         static double toplamMs;
         static int kurulan, ucgen;
 
@@ -36,6 +44,7 @@ namespace KuryeTycoon
             // Alan yeniden yüklenmese de (Enter Play Mode ayarı) eski oyunun yok edilmiş şablonları kullanılmasın
             kok = null; binalar = null; agaclar = null; donatilar = null; nehir = null;
             bekleyen.Clear();
+            hazirlik.Clear();     // süren görevler biter, sonuçları kullanılmaz
             toplamMs = 0; kurulan = 0; ucgen = 0;
         }
 
@@ -120,8 +129,20 @@ namespace KuryeTycoon
             if (sablon == null || bekleyen.Count == 0) return;
             if (!bekleyen.TryGetValue(sablon, out var t)) return;
             bekleyen.Remove(sablon);
+            AtolyeKurucu.HamBina ham = null;
+            if (hazirlik.TryGetValue(sablon, out var gorev))
+            {
+                hazirlik.Remove(sablon);
+                // bitmediyse burada beklenir (City3D yalnız bitenleri ister); hata verdiyse aşağıda aynı iş ana iş parçacığında denenir
+                try { ham = gorev.Result; }
+                catch (System.Exception ex) { Debug.LogWarning("Kurye Tycoon · atölye: '" + sablon.name + "' arka planda kurulamadı, yeniden deneniyor: " + ex.GetBaseException().Message); }
+            }
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            try { Doldur(sablon, t, true); }
+            try
+            {
+                if (ham != null) DoldurHam(sablon, ham, true);
+                else Doldur(sablon, t, true);
+            }
             catch (System.Exception ex) { Debug.LogError("Kurye Tycoon · atölye: '" + sablon.name + "' kurulamadı: " + ex); }
             sw.Stop();
             toplamMs += sw.Elapsed.TotalMilliseconds;
@@ -137,6 +158,32 @@ namespace KuryeTycoon
             try { Doldur(go, t, true); }
             catch (System.Exception ex) { Debug.LogError("Kurye Tycoon · atölye: '" + go.name + "' kurulamadı: " + ex); Yok(go); return null; }
             return go;
+        }
+
+        /// <summary>
+        /// Şablonun ham mesh verisini arka plan iş parçacığında hesaplamaya başlar (başlamışsa bir şey yapmaz). true: şablon
+        /// <see cref="Hazirla"/> için hazır (hesap bitti, zaten kurulu ya da atölye şablonu değil); false: hesap sürüyor.
+        /// </summary>
+        public static bool ArkaPlandaHazirla(GameObject sablon)
+        {
+            if (sablon == null || !bekleyen.TryGetValue(sablon, out var t)) return true;
+            if (hazirlik.TryGetValue(sablon, out var gorev)) return gorev.IsCompleted;
+            if (!IsParcacigiVar || AtolyeKurucu.Kut == null) return true;   // Hazirla eski yoldan kurar
+            hazirlik[sablon] = Task.Run(() => AtolyeKurucu.HamKur(t, true));
+            return false;
+        }
+
+        /// <summary>Şablon <see cref="Hazirla"/> için hazır mı (yeni hesap başlatmaz).</summary>
+        public static bool HazirMi(GameObject sablon)
+        {
+            if (sablon == null || !bekleyen.ContainsKey(sablon)) return true;
+            return hazirlik.TryGetValue(sablon, out var gorev) ? gorev.IsCompleted : !IsParcacigiVar;
+        }
+
+        /// <summary>Arka planda hesabı başlamış, henüz bitmemiş şablon sayısı.</summary>
+        public static int SurenHazirlik
+        {
+            get { int n = 0; foreach (var g in hazirlik.Values) if (!g.IsCompleted) n++; return n; }
         }
 
         /// <summary>Şablonun mesh'leri henüz kurulmadı mı (City3D arka planda kurar, o sırada yerinde kutu durur).</summary>
@@ -198,6 +245,9 @@ namespace KuryeTycoon
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var sayac = new Dictionary<string, int>();
             int n = 0;
+            // u72: önce bütün parçaların tasarımı (ana iş parçacığı), sonra mesh hesapları bütün çekirdeklerde paralel,
+            // en son Mesh / GameObject kurulumu yine ana iş parçacığında
+            var isler = new List<(string ad, bool lod, bool agac, string nehirTur, BinaTasarimi t)>();
             foreach (var p in kt.parcalar)
             {
                 if ((p.grup != "agac" && p.grup != "cevre") || string.IsNullOrEmpty(p.hedef)) continue;
@@ -219,8 +269,23 @@ namespace KuryeTycoon
                 t.hideFlags = HideFlags.HideAndDontSave;
                 t.ad = p.ad;
                 t.susler.Add(new BinaTasarimi.Sus { ad = p.ad, olcek = 1f, renk = 0 });
+                isler.Add((ad, lod, agac, nehirTur, t));
+            }
+            var hamlar = new AtolyeKurucu.HamBina[isler.Count];
+            if (IsParcacigiVar)
+            {
+                try { Parallel.For(0, isler.Count, i => { hamlar[i] = AtolyeKurucu.HamKur(isler[i].t, isler[i].lod); }); }
+                catch (System.Exception ex) { Debug.LogWarning("Kurye Tycoon · atölye: çevre modelleri paralel kurulamadı, sırayla kuruluyor: " + ex.GetBaseException().Message); }
+            }
+            for (int i = 0; i < isler.Count; i++)
+            {
+                var (ad, lod, agac, nehirTur, t) = isler[i];
                 var go = Sablon(ad);
-                try { Doldur(go, t, lod); }
+                try
+                {
+                    if (hamlar[i] != null) DoldurHam(go, hamlar[i], lod);
+                    else Doldur(go, t, lod);
+                }
                 catch (System.Exception ex) { Debug.LogError("Kurye Tycoon · atölye: '" + ad + "' kurulamadı: " + ex); }
                 Yok(t);
                 if (nehirTur != null)
@@ -320,24 +385,33 @@ namespace KuryeTycoon
         /// </summary>
         public static void Doldur(GameObject kokGo, BinaTasarimi t, bool lod)
         {
+            DoldurHam(kokGo, AtolyeKurucu.HamKur(t, lod), lod);
+        }
+
+        /// <summary>Hazır ham veriden (<see cref="AtolyeKurucu.HamKur"/>) şablonun mesh'lerini ve LOD'larını kurar (ana iş parçacığı).</summary>
+        static void DoldurHam(GameObject kokGo, AtolyeKurucu.HamBina h, bool lod)
+        {
             string ad = kokGo.name;
-            if (lod)
+            if (h.gruplu)
             {
-                var kur = AtolyeKurucu.KurGruplu(t);
-                if (kur != null && kur.plan != null && kur.plan.hucreler.Count > 0 && kur.mesh.ContainsKey("Cati") && kur.mesh.ContainsKey("Ic"))
+                var kur = new AtolyeKurucu.Kurulum { plan = h.plan, tur = h.tur };
+                foreach (var kv in h.grup)
                 {
-                    GrupluDoldur(kokGo, t, kur);
-                    return;
+                    var m = AtolyeKurucu.MeshOlustur(kv.Value, out var gAdlar);
+                    if (m == null) continue;
+                    kur.mesh[kv.Key] = m;
+                    kur.malzeme[kv.Key] = gAdlar;
                 }
-                if (kur != null)
-                    foreach (var m in kur.mesh.Values) Yok(m);
+                var gHafif = AtolyeKurucu.MeshOlustur(h.hafif, out var gHafifAdlar);
+                GrupluDoldur(kokGo, kur, gHafif, gHafifAdlar);
+                return;
             }
-            var mesh = AtolyeKurucu.Kur(t, false, out var adlar);
+            var mesh = AtolyeKurucu.MeshOlustur(h.tek, out var adlar);
             if (mesh == null) return;
             mesh.name = ad;
             Say(mesh);
             List<string> hafifAdlar = null;
-            var hafif = lod ? AtolyeKurucu.Kur(t, true, out hafifAdlar) : null;
+            var hafif = lod ? AtolyeKurucu.MeshOlustur(h.hafif, out hafifAdlar) : null;
             if (hafif != null)
             {
                 hafif.name = ad + "_Hafif";
@@ -345,9 +419,7 @@ namespace KuryeTycoon
                 var l1 = Parca(kokGo.transform, "LOD1", hafif, AtolyeKurucu.Malzemeler(hafifAdlar));
                 var grup = kokGo.AddComponent<LODGroup>();
                 // ağaç ve çalılarda üçüncü düzey (LOD2: gövde + bir iki küme, en çok ~40 üçgen): şehirde çok sayıda ağaç var
-                Mesh uzakMesh = null;
-                List<string> uzakAdlar = null;
-                if (AtolyeKurucu.UzakVar(t)) uzakMesh = AtolyeKurucu.Kur(t, true, out uzakAdlar, false, true);
+                var uzakMesh = AtolyeKurucu.MeshOlustur(h.uzak, out var uzakAdlar);
                 if (uzakMesh != null)
                 {
                     uzakMesh.name = ad + "_Uzak";
@@ -368,10 +440,9 @@ namespace KuryeTycoon
         /// İçi olan bina: kök [LODGroup + AtolyePlani] → LOD0 (boş; çocukları &lt;ad&gt;_Govde, _Duvar_*, _Cati, _Ic [altında _Ampul,
         /// _Poset], _Kepenk) + LOD1 (tek mesh, içsiz). _Ic, _Kepenk ve _Poset kapalı durur: oyunda CatiKaldir ve DukkanCanli açar.
         /// </summary>
-        static void GrupluDoldur(GameObject kokGo, BinaTasarimi t, AtolyeKurucu.Kurulum kur)
+        static void GrupluDoldur(GameObject kokGo, AtolyeKurucu.Kurulum kur, Mesh hafif, List<string> hafifAdlar)
         {
             string ad = kokGo.name;
-            var hafif = AtolyeKurucu.Kur(t, true, out var hafifAdlar);
             var l0 = new GameObject("LOD0").transform;
             l0.SetParent(kokGo.transform, false);
             var plan = kokGo.AddComponent<AtolyePlani>();

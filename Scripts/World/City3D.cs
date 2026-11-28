@@ -2218,7 +2218,8 @@ namespace KuryeTycoon
                 // Binalar gölge düşürür ve alır (güneş: Gorsel3D). 2D Renderer'da bu ayarların etkisi yok.
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
                 r.receiveShadows = true;
-                r.sortingOrder = 5;
+                // (u72) sortingOrder verilmez: 0 dışındaki sıra renderer'ı GPU Resident Drawer'ın dışında bırakır (her bina ayrı
+                // çizim komutu olur). Binalar opak ve derinlik testli: çizim sırası görüntüyü değiştirmez.
             }
 
             var b = CombinedBounds(renderers);
@@ -2310,7 +2311,7 @@ namespace KuryeTycoon
             int vs = seed % VaryCount;
             foreach (var r in rs)
             {
-                r.SetPropertyBlock(null);
+                // (u72) SetPropertyBlock(null) çağrılmaz: City3D property block kullanmıyor; çağrı renderer'ı GPU Resident Drawer dışına itiyordu
                 var orig = Originals(r);
                 var mats = new Material[orig.Length];
                 for (int i = 0; i < orig.Length; i++)
@@ -2364,7 +2365,7 @@ namespace KuryeTycoon
             if (seed >= 0) { TintVaried(rs, dark, seed); return; }
             foreach (var r in rs)
             {
-                r.SetPropertyBlock(null);
+                // (u72) SetPropertyBlock(null) çağrılmaz: City3D property block kullanmıyor; çağrı renderer'ı GPU Resident Drawer dışına itiyordu
                 var orig = Originals(r);
                 if (!dark) { r.sharedMaterials = orig; continue; } // malzemenin kendi rengi
                 // Kilitli bölge: her malzeme kendi renginin soluk hâli (düz gri değil)
@@ -2608,7 +2609,7 @@ namespace KuryeTycoon
             var mf = holder.gameObject.AddComponent<MeshFilter>();
             var mr = holder.gameObject.AddComponent<MeshRenderer>();
             mr.sharedMaterial = mat;
-            mr.sortingOrder = 5; // zemin ve dükkan karelerinin üstünde, kurye ve müşterilerin altında
+            // (u72) sortingOrder yok: GPU Resident Drawer'a girsin (bkz. AddPrefab)
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
             mf.sharedMesh = BoxMesh();
@@ -2712,7 +2713,13 @@ namespace KuryeTycoon
             l.Add(new Bekleyen { tile = tile, footprint = footprint, face = face, targetHeight = targetHeight, offset = offset, registerHeight = registerHeight, own = own, yer = p });
         }
 
-        /// <summary>Her karede ~10 ms: kameranın baktığı yere en yakın bekleyen şablonu kurar, kutuları gerçek binayla değiştirir.</summary>
+        // u72: şablonların mesh hesabı arka plan iş parçacıklarında (AtolyeUretici.ArkaPlandaHazirla); karede yalnız hesabı biten
+        // şablonların Mesh'i kurulur ve kopyaları yerleştirilir, ~KareButcesi ms'yi geçmeden. Eskiden bir şablonun hesabı ana iş
+        // parçacığında 30–80 ms sürüyordu ve süre sınırı ancak sonra bakılıyordu: şehir kurulurken oyun 10–15 FPS'e düşüyordu.
+        const float KareButcesiMs = 6f;
+        readonly List<(float d, GameObject sablon)> arkaPlanSira = new List<(float, GameObject)>();
+
+        /// <summary>Her karede: odağa yakın şablonların hesabını arka planda başlatır, hazır olanları birkaç ms içinde yerleştirir.</summary>
         void ArkaPlanAdim()
         {
             if (bekleyenler.Count == 0) return;
@@ -2720,25 +2727,39 @@ namespace KuryeTycoon
             Vector2 odak = default;
             bool odakVar = cam != null && MapCamera.I != null && MapCamera.I.GroundPoint(cam, new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), out odak);
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            do
+
+            // şablonlar odağa uzaklıklarına göre (bir şablonun en yakın kopyası)
+            arkaPlanSira.Clear();
+            foreach (var kv in bekleyenler)
             {
-                GameObject enIyi = null;
-                float enYakin = float.MaxValue;
-                foreach (var kv in bekleyenler)
+                float d = 0f;
+                if (odakVar)
                 {
-                    float d = 0f;
-                    if (odakVar)
-                    {
-                        d = float.MaxValue;
-                        foreach (var e in kv.Value) d = Mathf.Min(d, (new Vector2(e.tile.x, e.tile.y) - odak).sqrMagnitude);
-                    }
-                    if (d < enYakin) { enYakin = d; enIyi = kv.Key; }
-                    if (!odakVar) break;
+                    d = float.MaxValue;
+                    foreach (var e in kv.Value) d = Mathf.Min(d, (new Vector2(e.tile.x, e.tile.y) - odak).sqrMagnitude);
                 }
-                if (enIyi == null) break;
-                var liste = bekleyenler[enIyi];
-                if (AtolyeUretici.Kurulmadi(enIyi)) arkaPlanKurulan++;
-                AtolyeUretici.Hazirla(enIyi);
+                arkaPlanSira.Add((d, kv.Key));
+            }
+            if (odakVar) arkaPlanSira.Sort((a, b) => a.d.CompareTo(b.d));
+
+            // en yakın birkaç şablonun hesabı arka planda (çekirdek sayısı kadar, ana iş parçacığına bir çekirdek bırakılır)
+            int esZamanli = Mathf.Clamp(SystemInfo.processorCount - 1, 1, 6);
+            int suren = 0;
+            foreach (var (_, sablon) in arkaPlanSira)
+            {
+                if (suren >= esZamanli) break;
+                if (!AtolyeUretici.ArkaPlandaHazirla(sablon)) suren++;
+            }
+
+            // hesabı biten şablonlar: mesh'ler kurulur, kopyalar odağa en yakından başlayarak yerleşir
+            bool degisti = false;
+            foreach (var (_, sablon) in arkaPlanSira)
+            {
+                if (sw.Elapsed.TotalMilliseconds >= KareButcesiMs) break;
+                if (!AtolyeUretici.HazirMi(sablon)) continue;
+                var liste = bekleyenler[sablon];
+                if (AtolyeUretici.Kurulmadi(sablon)) arkaPlanKurulan++;
+                AtolyeUretici.Hazirla(sablon);
                 // u65: büyük şehirde bir şablonun yüzlerce kopyası olabilir; hepsi tek karede yerleştirilirse oyun takılır. Odağa en
                 // yakın kopyadan başlanır; süre dolunca kalanlar listede bekler (şablon artık hazır: sonraki karelerde yalnız kopyalanır).
                 if (odakVar && liste.Count > 1)
@@ -2752,12 +2773,14 @@ namespace KuryeTycoon
                     liste.RemoveAt(liste.Count - 1);
                     pieces.Remove(e.yer);
                     if (e.yer.t != null) Destroy(e.yer.t.gameObject);
-                    AddPrefab(enIyi, e.tile, e.footprint, e.face, null, e.offset, e.targetHeight, e.registerHeight, e.own);
-                    if (sw.ElapsedMilliseconds >= 10) break;
+                    AddPrefab(sablon, e.tile, e.footprint, e.face, null, e.offset, e.targetHeight, e.registerHeight, e.own);
+                    if (lastGrow >= 0f) ParcaBuyut(pieces[pieces.Count - 1], lastGrow);   // yalnız yeni parça (bütün şehir değil)
+                    else degisti = true;
+                    if (sw.Elapsed.TotalMilliseconds >= KareButcesiMs) break;
                 }
-                if (liste.Count == 0) bekleyenler.Remove(enIyi);
-            } while (bekleyenler.Count > 0 && sw.ElapsedMilliseconds < 10);
-            lastGrow = -1f;      // yeni parçalar yükselme oranını ve görünürlüğünü alsın
+                if (liste.Count == 0) bekleyenler.Remove(sablon);
+            }
+            if (degisti) lastGrow = -1f;      // yeni parçalar yükselme oranını ve görünürlüğünü alsın
             if (bekleyenler.Count == 0)
             {
                 Debug.Log($"Kurye Tycoon · atölye: {arkaPlanKurulan} şehir modeli arka planda kuruldu ({Time.realtimeSinceStartup - arkaPlanBaslangic:0.0} sn)");
@@ -2778,16 +2801,20 @@ namespace KuryeTycoon
             float g = MapCamera.I.Tilt01;
             if (Mathf.Abs(g - lastGrow) < 0.001f) return;
             lastGrow = g;
+            foreach (var p in pieces) ParcaBuyut(p, g);
+        }
+
+        /// <summary>Parçayı yükselme oranına göre gösterir / gizler ve boyunu verir (g: kamera eğimi 0–1).</summary>
+        static void ParcaBuyut(Piece p, float g)
+        {
+            if (p.t == null) return;
             bool show = g > 0.01f;
-            foreach (var p in pieces)
-            {
-                if (p.t.gameObject.activeSelf != show) p.t.gameObject.SetActive(show);
-                if (!show) continue;
-                var s = p.t.localScale;
-                // Kutu: birim kutu boyu kadar uzatılır. Paket modeli: zaten doğru boyda, sadece yükselme oranı.
-                if (p.flat) continue;
-                p.t.localScale = new Vector3(s.x, s.y, Mathf.Max(0.001f, (p.prefab ? p.heightMul : p.height) * g));
-            }
+            if (p.t.gameObject.activeSelf != show) p.t.gameObject.SetActive(show);
+            if (!show) return;
+            // Kutu: birim kutu boyu kadar uzatılır. Paket modeli: zaten doğru boyda, sadece yükselme oranı.
+            if (p.flat) return;
+            var s = p.t.localScale;
+            p.t.localScale = new Vector3(s.x, s.y, Mathf.Max(0.001f, (p.prefab ? p.heightMul : p.height) * g));
         }
     }
 }

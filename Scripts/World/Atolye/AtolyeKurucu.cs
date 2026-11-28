@@ -202,7 +202,50 @@ namespace KuryeTycoon
             return true;
         }
 
-        public static Color Renk(string hex) => ColorUtility.TryParseHtmlString(hex, out var c) ? c : Color.white;
+        /// <summary>
+        /// "#rgb", "#rgba", "#rrggbb", "#rrggbbaa" → renk. Saf C#: binalar arka plan iş parçacığında kurulurken de çalışır (u72).
+        /// Başka biçim (ör. renk adı) yalnız ana iş parçacığında ColorUtility'ye sorulur; olmazsa beyaz.
+        /// </summary>
+        public static Color Renk(string hex)
+        {
+            if (HexOku(hex, out var c)) return c;
+            if (AnaIsParcacigi && ColorUtility.TryParseHtmlString(hex, out var c2)) return c2;
+            return Color.white;
+        }
+
+        static int anaIsParcacigi = -1;
+        /// <summary>Ana iş parçacığında mı (oyun başında kaydedilir; editörde oyun dışında hep evet).</summary>
+        public static bool AnaIsParcacigi => anaIsParcacigi < 0 || System.Threading.Thread.CurrentThread.ManagedThreadId == anaIsParcacigi;
+
+        static bool HexOku(string s, out Color32 c)
+        {
+            c = new Color32(255, 255, 255, 255);
+            if (string.IsNullOrEmpty(s) || s[0] != '#') return false;
+            int n = s.Length - 1;
+            if (n != 3 && n != 4 && n != 6 && n != 8) return false;
+            uint v = 0;
+            for (int i = 1; i < s.Length; i++)
+            {
+                char ch = s[i];
+                int d = ch >= '0' && ch <= '9' ? ch - '0' : ch >= 'a' && ch <= 'f' ? ch - 'a' + 10 : ch >= 'A' && ch <= 'F' ? ch - 'A' + 10 : -1;
+                if (d < 0) return false;
+                v = (v << 4) | (uint)d;
+            }
+            if (n <= 4)
+            {
+                // kısa biçim: her hane iki kez (#abc = #aabbcc)
+                uint a = n == 4 ? v & 15 : 15u;
+                uint k = n == 4 ? v >> 4 : v;
+                c = new Color32((byte)(((k >> 8) & 15) * 17), (byte)(((k >> 4) & 15) * 17), (byte)((k & 15) * 17), (byte)(a * 17));
+            }
+            else
+            {
+                uint a = n == 8 ? v & 255 : 255u;
+                uint k = n == 8 ? v >> 8 : v;
+                c = new Color32((byte)((k >> 16) & 255), (byte)((k >> 8) & 255), (byte)(k & 255), (byte)a);
+            }
+            return true;
+        }
 
         public static TurVeri TurBul(BinaTasarimi t)
         {
@@ -1363,6 +1406,59 @@ namespace KuryeTycoon
             return k;
         }
 
+        /// <summary>
+        /// Bir tasarımın oyun modeli için gereken bütün mesh'lerin ham verisi (u72). <see cref="HamKur"/> arka plan iş parçacığında
+        /// çalışabilir: yerleşim bir kez hesaplanır, yakın (gruplu ya da tek), hafif ve uzak görünüm aynı yerleşimden çıkar.
+        /// </summary>
+        public class HamBina
+        {
+            public bool gruplu;                         // içi olan bina: grup → mesh (Govde, Cati, Duvar_*, Ic, ...)
+            public Dictionary<string, MeshVeri> grup;
+            public IcPlani plan;
+            public TurVeri tur;
+            public MeshVeri tek, hafif, uzak;           // tek: içsiz yakın görünüm; hafif: LOD1; uzak: ağaç / çalı LOD2
+        }
+
+        /// <summary>
+        /// Tasarımın ham mesh verisi (lod: hafif ve uzak görünüm de). Unity nesnesine dokunmaz: kütüphane (<see cref="Kut"/>) ana
+        /// iş parçacığında yüklenmiş olmalı. Kütüphane yoksa ya da tasarım boşsa boş sonuç.
+        /// </summary>
+        public static HamBina HamKur(BinaTasarimi t, bool lod)
+        {
+            var h = new HamBina();
+            if (t == null || kut == null) return h;
+            if ((t.bloklar == null || t.bloklar.Count == 0) && (t.susler == null || t.susler.Count == 0)) return h;
+            var s = Yerlesim(t);
+            Func<string, string> gizle = g => GizliGrup(g) ? null : "";
+            if (lod)
+            {
+                var gruplar = Topla(s, false, g => g);
+                var d = new Dictionary<string, MeshVeri>();
+                foreach (var kv in gruplar)
+                {
+                    var v = MeshVeriYap(kv.Value, t.ad + "_" + kv.Key, kv.Key == "Kepenk" ? KepenkKok : 0f);
+                    if (v != null) d[kv.Key] = v;
+                }
+                if (s.plan != null && s.plan.hucreler.Count > 0 && d.ContainsKey("Cati") && d.ContainsKey("Ic"))
+                {
+                    h.gruplu = true; h.grup = d; h.plan = s.plan; h.tur = s.T;
+                }
+            }
+            if (!h.gruplu)
+            {
+                h.tek = Tekli(Topla(s, false, gizle), t.ad);
+                if (h.tek == null) return h;
+            }
+            if (lod)
+            {
+                h.hafif = Tekli(Topla(s, true, gizle), t.ad + "_Hafif");
+                if (!h.gruplu && h.hafif != null && UzakVar(t)) h.uzak = Tekli(Topla(s, true, gizle, true), t.ad + "_Uzak");
+            }
+            return h;
+        }
+
+        static MeshVeri Tekli(Dictionary<string, Yuzey> gruplar, string ad) => gruplar.TryGetValue("", out var y) ? MeshVeriYap(y, ad, 0f) : null;
+
         // ---------------------------------------------------------------- çevre animasyonu
         // Malzeme adındaki işaret → mod (Tools/Blender/pastel_parcalar.py "ANİMASYON İŞARETLERİ"; Resources/Gorsel/CevreAnimasyon.hlsl).
         public const byte AnimYok = 0, AnimSalin = 1, AnimHisir = 2, AnimTitrek = 3, AnimSaz = 4, AnimDalga = 5, AnimAkis = 6, AnimDoner = 7, AnimSark = 8;
@@ -1591,10 +1687,49 @@ namespace KuryeTycoon
             return gruplar;
         }
 
+        /// <summary>
+        /// Bir mesh'in ham dizileri: arka plan iş parçacığında hazırlanır (Unity nesnesi yok), ana iş parçacığında
+        /// <see cref="MeshOlustur"/> ile Mesh'e dönüşür (u72).
+        /// </summary>
+        public class MeshVeri
+        {
+            public string ad;
+            public List<Vector3> kose, uv1;
+            public List<Color32> renk;
+            public List<Vector2> uv0;          // animasyonsuz mesh
+            public List<Vector4> uv0a;         // çevre animasyonlu mesh (zw: animasyon sabitleri)
+            public List<List<int>> ucgen;      // alt-mesh başına üçgenler (sonuncusu kalem çizgileri, varsa)
+            public List<string> malzemeAdlari;
+        }
+
         /// <summary>Grubun mesh'i: önce yüzey köşeleri (beyaz köşe rengi), sonra çizgi köşeleri. yKaydir: kök bu yüksekliğe taşınır.</summary>
         static Mesh MeshYap(Yuzey yz, string ad, float yKaydir, out List<string> malzemeAdlari)
         {
+            return MeshOlustur(MeshVeriYap(yz, ad, yKaydir), out malzemeAdlari);
+        }
+
+        /// <summary>Ham diziler → Mesh (yalnız ana iş parçacığında). Veri yoksa null.</summary>
+        public static Mesh MeshOlustur(MeshVeri v, out List<string> malzemeAdlari)
+        {
             malzemeAdlari = new List<string>();
+            if (v == null) return null;
+            var mesh = new Mesh { name = v.ad };
+            if (v.kose.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
+            mesh.SetVertices(v.kose);
+            mesh.SetColors(v.renk);
+            if (v.uv0a != null) mesh.SetUVs(0, v.uv0a); else mesh.SetUVs(0, v.uv0);
+            mesh.SetUVs(1, v.uv1);
+            mesh.subMeshCount = v.ucgen.Count;
+            for (int i = 0; i < v.ucgen.Count; i++) mesh.SetTriangles(v.ucgen[i], i);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            malzemeAdlari = new List<string>(v.malzemeAdlari);
+            return mesh;
+        }
+
+        /// <summary>Grubun ham mesh dizileri (Unity nesnesi oluşturmaz; arka planda çalışabilir). Boşsa null.</summary>
+        static MeshVeri MeshVeriYap(Yuzey yz, string ad, float yKaydir)
+        {
             if (yz.kose.Count == 0 && yz.cKose.Count == 0) return null;
             var adlar = new List<string>(yz.alt.Keys);
             adlar.Sort(string.CompareOrdinal);
@@ -1642,24 +1777,14 @@ namespace KuryeTycoon
             var cUc = new List<int>(yz.cUc.Count);
             for (int i = 0; i < yz.cUc.Count; i++) cUc.Add(yz.cUc[i] + yuzeySay);
 
-            var mesh = new Mesh { name = ad };
-            if (kose.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-            mesh.SetVertices(kose);
-            mesh.SetColors(renkler);
-            if (anim) mesh.SetUVs(0, uv0a); else mesh.SetUVs(0, uv0);
-            mesh.SetUVs(1, uv1);
-            bool cizgiVar = cUc.Count > 0;
-            mesh.subMeshCount = adlar.Count + (cizgiVar ? 1 : 0);
-            for (int i = 0; i < adlar.Count; i++) mesh.SetTriangles(yz.alt[adlar[i]], i);
-            if (cizgiVar)
+            var ucgen = new List<List<int>>(adlar.Count + 1);
+            for (int i = 0; i < adlar.Count; i++) ucgen.Add(yz.alt[adlar[i]]);
+            if (cUc.Count > 0)
             {
-                mesh.SetTriangles(cUc, adlar.Count);
+                ucgen.Add(cUc);
                 adlar.Add(CizgiMalzemesi);
             }
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
-            malzemeAdlari = adlar;
-            return mesh;
+            return new MeshVeri { ad = ad, kose = kose, uv1 = uv1, renk = renkler, uv0 = uv0, uv0a = uv0a, ucgen = ucgen, malzemeAdlari = adlar };
         }
 
         static void KenarEkle(Dictionary<(long, long), Kenar> kenarlar, Yuzey sahip, Vector3 a, Vector3 b, Vector3 ucuncu, Vector3 n, Color32 renk,
@@ -1708,6 +1833,8 @@ namespace KuryeTycoon
         /// </summary>
         static void AnimMalzeme(string ad)
         {
+            // Arka plan iş parçacığında malzemeye dokunulmaz: Malzeme() kurarken _Animasyon'u zaten addan açar
+            if (!AnaIsParcacigi) return;
             if (malzemeOnbellek.TryGetValue(ad, out var m) && m != null && m.HasProperty(AnimasyonId)) m.SetFloat(AnimasyonId, 1f);
         }
 
@@ -1715,6 +1842,7 @@ namespace KuryeTycoon
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Sifirla()
         {
+            anaIsParcacigi = System.Threading.Thread.CurrentThread.ManagedThreadId;
             malzemeOnbellek.Clear();
             Shader.SetGlobalFloat("_PastelKis", 0f);       // kış önizlemesi / önceki oyundan kalan kış: yapraklar geri gelir
         }
