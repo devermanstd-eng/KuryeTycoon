@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-28 u68 (sonsuz büyüme: dükkan ortaklık seviyesi, filo merkezleri, müdür kartları / yatırım / hücum)";
+        public const string CodeVersion = "2026-11-28 u69 (debug: P tuşu kasaya 1 milyon € ekler; u68 sonsuz büyüme)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 
@@ -91,14 +91,29 @@ namespace KuryeTycoon
         void OnDestroy() { EventManager.Notified -= OnNotified; }
         static void OnNotified(string m) => Telemetry.Line(m);
 
+        /// <summary>P tuşunun kasaya eklediği para (yalnız Unity editöründe ve geliştirme derlemesinde): 1 milyon €.</summary>
+        public const long DebugPara = (long)(1000000 * GameData.FtPerEuro);
+
         // F9: IMGUI klavye olayı (proje yeni Input System kullanıyor; eski UnityEngine.Input hata verir)
+        // P (yalnız editör / geliştirme derlemesi): kasaya 1 milyon € sermaye ekler; sistemleri denemek için (u69)
         void OnGUI()
         {
             var e = Event.current;
-            if (e == null || e.type != EventType.KeyDown || e.keyCode != KeyCode.F9) return;
+            if (e == null || e.type != EventType.KeyDown) return;
             if (GameBootstrap.I == null || !GameBootstrap.I.Started) return;
-            e.Use();
-            Write(true);
+            if (e.keyCode == KeyCode.F9)
+            {
+                e.Use();
+                Write(true);
+                return;
+            }
+            if (e.keyCode == KeyCode.P && (Application.isEditor || Debug.isDebugBuild) && EconomyManager.I != null)
+            {
+                e.Use();
+                EconomyManager.I.AddSermaye(DebugPara, "Debug: P tuşu");
+                Telemetry.Add("Debug: P ile para");   // test özetinde ve hata raporunda görünsün
+                EventManager.I.Notify($"Debug: kasaya {GameData.Ft(DebugPara)} eklendi (P tuşu, yalnız editörde).");
+            }
         }
 
         // ------------------------------------------------------------------ rapor
