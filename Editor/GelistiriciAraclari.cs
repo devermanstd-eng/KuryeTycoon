@@ -74,5 +74,19 @@ namespace KuryeTycoon.EditorTools
             AracAnimasyon.AcikTut = !AracAnimasyon.AcikTut;
             Debug.Log("Kurye Tycoon: araç kapıları " + (AracAnimasyon.AcikTut ? "açık tutuluyor" : "normal"));
         }
+
+        [MenuItem("Kurye Tycoon/Deneme: Kasaya 1 milyon € ekle (P tuşu)")]
+        static void ParaEkle()
+        {
+            if (!Application.isPlaying || EconomyManager.I == null || GameBootstrap.I == null || !GameBootstrap.I.Started)
+            {
+                EditorUtility.DisplayDialog("Kurye Tycoon", "Önce Play'e bas ve bir oyun başlat.", "Tamam");
+                return;
+            }
+            EconomyManager.I.AddSermaye(DebugReport.DebugPara, "Debug: menü");
+            Telemetry.Add("Debug: P ile para");
+            EventManager.I.Notify($"Debug: kasaya {GameData.Ft(DebugReport.DebugPara)} eklendi (menü).");
+            Debug.Log($"Kurye Tycoon: kasaya {GameData.Ft(DebugReport.DebugPara)} eklendi.");
+        }
     }
 }
