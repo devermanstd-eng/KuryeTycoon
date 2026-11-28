@@ -17,6 +17,7 @@ namespace KuryeTycoon
         public float commissionBonus;      // olaylarla kazanılan ek komisyon
         public float prepMultiplier = 1f;  // "dükkan geç hazırlıyor" olayı
         public int ordersTotal;
+        public int seviye;                 // ortaklık seviyesi (DukkanSeviyesi): sipariş çarpanı, sınırsız
         public SpriteRenderer sr;
 
         // ---------- Sözleşme ilişkisi ----------

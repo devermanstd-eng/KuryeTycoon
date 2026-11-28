@@ -448,7 +448,13 @@ namespace KuryeTycoon
         }
 
         // ---------- Platform ----------
-        public int CourierCap => AccountCap[Level(UpgradeKind.Platform)];
+        /// <summary>Kurye hesabı sınırı: platform paketi + filo merkezleri (u68, sınırsız).</summary>
+        public int CourierCap => AccountCap[Level(UpgradeKind.Platform)] + FiloMerkezi.EkHesap;
+        /// <summary>Sıradaki platform paketinin eklediği hesap (son pakette 0).</summary>
+        public int PlatformEkHesap
+        {
+            get { int lv = Level(UpgradeKind.Platform); return lv + 1 < AccountCap.Length ? AccountCap[lv + 1] - AccountCap[lv] : 0; }
+        }
         public int PlatformFeePerDay => Def(UpgradeKind.Platform).DailyAt(Level(UpgradeKind.Platform));
         public string PlatformName => Def(UpgradeKind.Platform).LevelText(Level(UpgradeKind.Platform));
         public bool CourierCapFull => CourierManager.I.Couriers.Count >= CourierCap;
@@ -463,12 +469,16 @@ namespace KuryeTycoon
             {
                 var d = Def(UpgradeKind.Platform);
                 int next = Level(UpgradeKind.Platform) + 1;
-                if (next > d.MaxLevel) return "En büyük platform paketindesin; yeni kurye için biriyle yollarını ayırman gerekir.";
+                if (next > d.MaxLevel)
+                    return $"En büyük platform paketindesin: bir bölgede filo merkezi kur ya da büyüt (İşletme > Bölgeler, {GameData.Ft(FiloMerkezi.Bedel)}, +{FiloMerkezi.HesapPerSeviye} hesap).";
                 int dist = d.ReqDistrict(next);
                 if (dist > 0 && CityMap.I.UnlockLevel < dist)
                     return $"Önce \"{CityMap.DistrictNames[dist]}\" bölgesini aç (İşletme > Dükkanlar, {GameData.Ft(CityMap.BolgeBedeli(dist))}), sonra Gelişim'den kurye paketini yükselt.";
                 string kilit = LockReason(UpgradeKind.Platform);
-                if (kilit.Length > 0) return $"Kurye paketini yükseltmek için {kilit}.";
+                if (kilit.Length > 0)
+                    return FiloMerkezi.Acik
+                        ? $"Kurye paketini yükseltmek için {kilit}. Ya da bir bölgede filo merkezi kur (İşletme > Bölgeler, {GameData.Ft(FiloMerkezi.Bedel)}, +{FiloMerkezi.HesapPerSeviye} hesap)."
+                        : $"Kurye paketini yükseltmek için {kilit}.";
                 return $"Gelişim'den kurye paketini yükselt ({GameData.Ft(NextCost(UpgradeKind.Platform))}) ya da bir kuryeyle yollarını ayır.";
             }
         }
@@ -523,8 +533,8 @@ namespace KuryeTycoon
             var d = Def(k);
             int lv = Level(k);
             if (lv <= 0 || !d.canDowngrade) return "küçültülemez";
-            if (k == UpgradeKind.Platform && CourierManager.I.Couriers.Count > AccountCap[lv - 1])
-                return $"önce kurye sayısını {AccountCap[lv - 1]}'e indir";
+            if (k == UpgradeKind.Platform && CourierManager.I.Couriers.Count > AccountCap[lv - 1] + FiloMerkezi.EkHesap)
+                return $"önce kurye sayısını {AccountCap[lv - 1] + FiloMerkezi.EkHesap}'e indir";
             if (k == UpgradeKind.Ofis && SupportManager.I != null && SupportManager.I.Agents.Count > SupportCapAt(lv - 1))
                 return $"önce destek ekibini {SupportCapAt(lv - 1)} kişiye indir";
             if (k == UpgradeKind.Ofis)
@@ -560,7 +570,7 @@ namespace KuryeTycoon
             {
                 int sum = 0;
                 foreach (var d in Defs) sum += DailyCost(d.kind);
-                return sum;
+                return sum + (int)FiloMerkezi.GunlukGider;
             }
         }
 
@@ -584,6 +594,8 @@ namespace KuryeTycoon
                              : d.kind == UpgradeKind.Reklam ? $"Reklam bütçesi ({d.levelNames[Level(d.kind)]})" : $"{d.name} işletme gideri";
                 EconomyManager.I.Spend(c, label, d.category);
             }
+            if (FiloMerkezi.GunlukGider > 0)
+                EconomyManager.I.Spend(FiloMerkezi.GunlukGider, $"Filo merkezlerinin kirası ({FiloMerkezi.Toplam} seviye)", ExpenseCategory.Kira);
         }
 
         void OnNewDay()

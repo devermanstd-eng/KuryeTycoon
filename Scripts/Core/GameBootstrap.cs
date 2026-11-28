@@ -203,6 +203,7 @@ namespace KuryeTycoon
                 RestoranReklam.I.Init();
                 Yatirim.I.Init();
                 DukkanSadakati.Init();
+            FiloMerkezi.Init();
                 IsletmeTeslimati.I.Init();
                 SezonEtkinlikleri.I.Init();
                 SanalMutfak.I.Init();
@@ -288,6 +289,7 @@ namespace KuryeTycoon
             RestoranReklam.I.Init();
             Yatirim.I.Init();
             DukkanSadakati.Init();
+            FiloMerkezi.Init();
             IsletmeTeslimati.I.Init();
             SezonEtkinlikleri.I.Init();
             SanalMutfak.I.Init();

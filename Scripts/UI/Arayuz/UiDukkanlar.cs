@@ -207,6 +207,37 @@ namespace KuryeTycoon
         /// Önce kararın sayıları kutularda (sipariş ve farkı, komisyon, payın, sözleşmenin kalanı), sonra memnuniyet ve işlemler.
         /// Haritadaki bina kartı UI Toolkit'e taşınınca o da bunu kullanır.
         /// </summary>
+        /// <summary>Ortaklık seviyesi: seviye, sipariş çarpanı, sonraki dönüm noktası ve seviye atlama düğmeleri (u68).</summary>
+        void UiDukkanSeviyesi(Yazici y, Shop s)
+        {
+            if (!DukkanSeviyesi.Acik)
+            {
+                y.Kucuk($"Ortaklık seviyeleri \"{CityMap.DistrictNames[DukkanSeviyesi.GerekenBolge]}\" bölgesi açılınca başlar: dükkana yatırım yap, siparişleri katlansın.");
+                return;
+            }
+            var shop = s;
+            int lv = s.seviye;
+            int donum = DukkanSeviyesi.SonrakiDonum(lv);
+            long bedel = DukkanSeviyesi.Bedel(s);
+            long serbest = EconomyManager.I.FreeCash;
+            float dolu = Mathf.Clamp01(lv / (float)donum);
+            y.Cubuk("Ortaklık", dolu, U.Iyi, $"{lv}. seviye · sipariş ×{DukkanSeviyesi.Carpan(lv):0.00}");
+            y.Kucuk($"Sonraki dönüm noktası {donum}. seviye ({donum - lv} seviye kaldı): siparişler ×{DukkanSeviyesi.DonumCarpani:0.#}. " +
+                    $"Her seviye +%{DukkanSeviyesi.SeviyeBasiTalep * 100f:0}.");
+            y.SatirBasla();
+            y.Dugme($"Seviye atla — {Ft(bedel)}", () => DukkanSeviyesi.SeviyeAtla(shop), serbest >= bedel, "kucuk-dg");
+            int n = DukkanSeviyesi.AlinabilirSeviye(s, donum - lv, serbest, out long toplam);
+            if (n > 1)
+                y.Dugme($"{n} seviye — {Ft(toplam)}", () =>
+                {
+                    for (int i = 0; i < n; i++) if (!DukkanSeviyesi.SeviyeAtla(shop, true)) break;
+                }, true, "kucuk-dg");
+            y.SatirBitir();
+            var m = BolgeMudurleri.I != null ? BolgeMudurleri.I.MuduruOf(CityMap.RegionOf(s.tile)) : null;
+            if (m != null && m.otoYatirim)
+                y.Kucuk($"Bölge müdürün {m.ad} her sabah serbest kasanın %{m.yatirimYuzde}'ine kadarını bu bölgenin dükkanlarına yatırıyor.");
+        }
+
         void UiDukkanAyrinti(Yazici y, Shop s, RivalCompany rv)
         {
             var map = CityMap.I;
@@ -255,6 +286,8 @@ namespace KuryeTycoon
                    s.rivalContracted && !s.exclusive ? "Dükkanın müşterilerinin ne kadarı seni seçiyor: itibar, kurye sayısı ve hıza göre paylaşılır. Münhasırlık bütün rakipleri çıkarır." : null);
             y.Kutu("Sözleşme", $"{Mathf.Max(0, kalan)} gün", clock.DateOf(s.contractEndDay), null, null, kalan <= 14 ? U.Uyari : (Color?)null);
             y.KutularBitir();
+
+            if (DukkanSeviyesi.Uygun(s)) UiDukkanSeviyesi(y, s);
 
             Color sc = Color.Lerp(new Color(0.9f, 0.3f, 0.3f), new Color(0.3f, 0.85f, 0.4f), s.satisfaction / 100f);
             y.Cubuk("Memnuniyet", s.satisfaction / 100f, sc, $"{s.satisfaction:0}/100");

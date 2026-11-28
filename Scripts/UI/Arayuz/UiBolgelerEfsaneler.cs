@@ -39,7 +39,9 @@ namespace KuryeTycoon
                 y.Yazi("Her bölgeye bir müdür ata: bölgedeki dükkanları senin yerine yönetsin.");
                 y.Yardim("Müdür bölgesindeki dükkanların siparişini artırır, memnuniyetlerini her gün yükseltir, sözleşme yenilemede rakip teklif " +
                          "gelince kart açmadan karar verir (mevcut şartlarla tutar ya da teklife eşitler) ve istersen yeni dükkanlarla anlaşır " +
-                         "(kasada bedelin 3 katı varsa). Görevde kaldıkça deneyim kazanır (5 seviye). Maaşı her gün ödenir; atarken bir aylık maaş işe alım bedeli.");
+                         "(kasada bedelin 3 katı varsa). Görevde kaldıkça deneyim kazanır (5 seviye). Maaşı her gün ödenir; atarken bir aylık maaş işe alım bedeli. " +
+                         "Ayrıca bölgedeki dükkanların komisyon kartlarında senin yerine karar verir, istersen her sabah dükkan ortaklık seviyelerine yatırım yapar " +
+                         "ve iki günde bir 2 saatlik sipariş hücumu başlatabilir. Üç ve daha çok müdür varken gün sonu raporu kart olarak açılmaz.");
                 if (!BolgeMudurleri.Acik) { y.Uyari("İkinci bölge açılınca müdür atayabilirsin (Gelişim > yeni bölge)."); return; }
 
                 y.KutularBasla();
@@ -48,7 +50,10 @@ namespace KuryeTycoon
                 int yen = 0, imz = 0;
                 foreach (var m in bm.Mudurler) { yen += m.yenilenen; imz += m.imzalanan; }
                 y.Kutu("İşleri", $"{imz} yeni · {yen} yenileme", "sözleşme");
+                y.Kutu("Kurye hesapları", $"{CourierManager.I.Couriers.Count}/{UpgradeManager.I.CourierCap}",
+                       FiloMerkezi.Toplam > 0 ? $"filo merkezlerinden +{FiloMerkezi.EkHesap}" : FiloMerkezi.Acik ? "filo merkezi kurulabilir" : "100 hesaptan sonra filo merkezi");
                 y.KutularBitir();
+                y.Yardim(FiloMerkezi.Aciklama);
 
                 for (int b = 1; b <= map.UnlockLevel; b++)
                 {
@@ -64,8 +69,18 @@ namespace KuryeTycoon
                         y.KV("Deneyim", $"{lv}. seviye · {m.gun} gün" + (kalan > 0 ? $" (sonraki seviyeye {kalan} gün)" : " (en üst)"));
                         y.KV("Etkisi", $"sipariş +%{BolgeMudurleri.TalepEki(m) * 100f:0.#} · memnuniyet +{BolgeMudurleri.MemnuniyetArtisi(m):0.#}/gün", U.Iyi);
                         y.KV("Maaş", $"{Ft(BolgeMudurleri.AylikMaas(m))}/ay ({Ft(BolgeMudurleri.GunlukMaas(m))}/gün)");
-                        y.KV("İşleri", $"{m.imzalanan} yeni sözleşme · {m.yenilenen} yenileme");
+                        y.KV("İşleri", $"{m.imzalanan} yeni sözleşme · {m.yenilenen} yenileme · {m.kartKarari} karar · {m.yatirimSayisi} dükkan seviyesi ({Ft(m.yatirimToplam)})");
                         y.Onay("Yeni dükkanlarla kendisi anlaşsın", m.otoSozlesme, val => mm.otoSozlesme = val);
+                        y.Onay("Dükkan seviyelerine kendisi yatırsın", m.otoYatirim, val => mm.otoYatirim = val);
+                        if (m.otoYatirim)
+                            y.Kaydirici("Günlük yatırım payı", m.yatirimYuzde, 5f, 60f, $"serbest kasanın %{m.yatirimYuzde}'i",
+                                        val => mm.yatirimYuzde = Mathf.RoundToInt(val / 5f) * 5);
+                        if (BolgeMudurleri.HucumAktif(m))
+                            y.Not($"Sipariş hücumu sürüyor: bölgede siparişler ×{BolgeMudurleri.HucumCarpanDegeri:0.#}.");
+                        else
+                            y.Dugme(BolgeMudurleri.HucumHazir(m) ? $"Sipariş hücumu başlat (2 saat, sipariş ×{BolgeMudurleri.HucumCarpanDegeri:0.#})"
+                                                                 : $"Sipariş hücumu ({GameClock.I.DateOf(m.hucumHazirGun)} hazır)",
+                                    () => bm.HucumBaslat(mm), BolgeMudurleri.HucumHazir(m), "kucuk-dg");
                         y.Dugme("Görevden al", () => ui.AskConfirm("Görevden al", $"{mm.ad} bölge müdürlüğünden ayrılacak. İşe alım bedeli geri gelmez.",
                             "Evet, görevden al", () => bm.GorevdenAl(mm)), true, "kucuk-dg");
                     }
@@ -82,6 +97,7 @@ namespace KuryeTycoon
                                     () => bm.Ata(aa, bb), EconomyManager.I.FreeCash >= bedel, "kucuk-dg");
                         }
                     }
+                    FiloSatiri(b);
                     y.KartBitir();
                 }
 
@@ -90,6 +106,19 @@ namespace KuryeTycoon
                     y.Kucuk($"{BolgeMudurleri.UzmanlikAdlari[u]} uzmanı: {BolgeMudurleri.UzmanlikAciklamalari[u]}");
                 if (bm.Adaylar.Count == 0) y.Kucuk("Aday yok. Ara: 3 aday gelir (ücretsiz).");
                 y.Dugme(bm.AdayYenilenebilir ? "Aday ara" : "Aday ara (3 günde bir)", () => bm.AdaylariYenile(), bm.AdayYenilenebilir, "kucuk-dg");
+            }
+
+            /// <summary>Bölgenin filo merkezi (u68): seviye, eklediği hesap ve büyütme düğmesi.</summary>
+            void FiloSatiri(int bolge)
+            {
+                int lv = FiloMerkezi.Seviye(bolge);
+                string kilit = FiloMerkezi.Kilit(bolge);
+                long bedel = FiloMerkezi.Bedel;
+                y.KV("Filo merkezi", lv > 0 ? $"{lv}. seviye · +{lv * FiloMerkezi.HesapPerSeviye} kurye hesabı · kira {Ft(lv * FiloMerkezi.SeviyeGunlukGider)}/gün" : "yok");
+                if (kilit.Length > 0) { y.Kucuk($"Filo merkezi için {kilit}."); return; }
+                int bb = bolge;
+                y.Dugme(lv > 0 ? $"Filo merkezini büyüt (+{FiloMerkezi.HesapPerSeviye} hesap) — {Ft(bedel)}" : $"Filo merkezi kur (+{FiloMerkezi.HesapPerSeviye} hesap) — {Ft(bedel)}",
+                        () => FiloMerkezi.Kur(bb), EconomyManager.I.FreeCash >= bedel, "kucuk-dg");
             }
         }
 

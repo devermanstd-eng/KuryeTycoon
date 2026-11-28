@@ -15,6 +15,15 @@ namespace KuryeTycoon
         public bool otoSozlesme = true;
         public int sonSozlesmeGunu = -999;
         public int yenilenen, imzalanan;   // tuttuğu ve yeni getirdiği dükkan sayısı
+        // u68 (sonsuz büyüme): otomatik dükkan yatırımı, kart kararları ve hücum yeteneği (eski kayıtlarda varsayılanlar)
+        public bool otoYatirim = true;
+        public int yatirimYuzde = 20;      // serbest kasanın günde en çok yüzde kaçı bölgenin dükkan seviyelerine
+        public int yatirimSayisi;          // aldığı dükkan seviyesi
+        public long yatirimToplam;
+        public int kartKarari;             // senin yerine karar verdiği kart
+        public float hucumBitis = -1f;     // GameClock.TotalMinutes: hücum bu dakikaya kadar sürer
+        public int hucumHazirGun = -999;   // bu günden itibaren yeniden kullanılabilir
+        public int hucumSayisi;
     }
 
     [Serializable]
@@ -46,6 +55,10 @@ namespace KuryeTycoon
             "Dükkanlarla arası iyidir: memnuniyet artışı ×2, sözleşme yenilemede dükkanı mevcut şartlarla tutma ihtimali yüksek.",
         };
         static readonly int[] SeviyeGunu = { 0, 7, 20, 40, 70 };
+        public const float HucumSuresiDk = 120f;
+        public const float HucumCarpanDegeri = 1.5f;
+        public const int HucumBeklemeGun = 2;
+        public const int KartRaporuIcinMudur = 3;   // bu kadar müdür varken gün sonu raporu kart olarak açılmaz
         const long TabanMaas = 350000;
 
         public readonly List<BolgeMuduru> Mudurler = new List<BolgeMuduru>();
@@ -107,6 +120,36 @@ namespace KuryeTycoon
             if (I == null || I.Mudurler.Count == 0 || s == null || !s.contracted || s.own || s.kargo) return 1f;
             var m = I.MuduruOf(CityMap.RegionOf(s.tile));
             return m == null ? 1f : 1f + TalepEki(m);
+        }
+
+        // ------------------------------------------------------------------ hücum (aktif yetenek, u68)
+
+        public static bool HucumAktif(BolgeMuduru m) => m != null && GameClock.I != null && GameClock.I.TotalMinutes < m.hucumBitis;
+        public static bool HucumHazir(BolgeMuduru m) => m != null && GameClock.I != null && !HucumAktif(m) && GameClock.I.Day >= m.hucumHazirGun;
+
+        /// <summary>Müdürün bölgesinde hücum sürüyorsa o bölgedeki dükkanların sipariş çarpanı (OrderManager).</summary>
+        public static float HucumCarpani(Shop s)
+        {
+            if (I == null || I.Mudurler.Count == 0 || s == null || !s.contracted || s.own || s.kargo) return 1f;
+            var m = I.MuduruOf(CityMap.RegionOf(s.tile));
+            return HucumAktif(m) ? HucumCarpanDegeri : 1f;
+        }
+
+        /// <summary>
+        /// "Sipariş hücumu": müdür bölgedeki dükkanlarla 2 saatlik bir kampanya yapar (uygulamada bölge vitrini, ücretsiz teslimat
+        /// rozeti): siparişler ×1,5. İki günde bir kullanılabilir. Yoğun saatten hemen önce açmak en kârlısı; yeterli kurye yoksa
+        /// siparişler kaçar.
+        /// </summary>
+        public bool HucumBaslat(BolgeMuduru m)
+        {
+            if (!HucumHazir(m)) return false;
+            m.hucumBitis = GameClock.I.TotalMinutes + HucumSuresiDk;
+            m.hucumHazirGun = GameClock.I.Day + HucumBeklemeGun;
+            m.hucumSayisi++;
+            Telemetry.Add("Müdür hücumu");
+            EventManager.I.Notify($"{m.ad}: {CityMap.DistrictNames[m.bolge]} sipariş hücumu başladı. 2 saat boyunca bölgedeki dükkanlara sipariş ×{HucumCarpanDegeri:0.#}. " +
+                                  "Yeterli kurye çevrimiçi değilse siparişler kaçar.");
+            return true;
         }
 
         public long GunlukToplamMaas
@@ -191,6 +234,8 @@ namespace KuryeTycoon
                 Ilgilen(m);
                 string imza = YeniSozlesme(m, clk.Day);
                 if (imza != null) yapilan.Add(imza);
+                string yatirim = OtoYatirim(m);
+                if (yatirim != null) yapilan.Add(yatirim);
             }
             if (yapilan.Count > 0) EventManager.I.Notify("Bölge müdürleri: " + string.Join(" · ", yapilan) + ".");
         }
@@ -218,6 +263,149 @@ namespace KuryeTycoon
             m.sonSozlesmeGunu = gun;
             m.imzalanan++;
             return $"{m.ad} {en.Name} ile sözleşme imzaladı ({GameData.Ft(en.def.contractCost)})";
+        }
+
+        /// <summary>
+        /// Otomatik dükkan yatırımı (u68): serbest kasanın yatirimYuzde'si kadarını bölgedeki en ucuz dükkan seviyelerine yatırır
+        /// (en çok 20 seviye). Kasada bir haftalık sabit gider kadar para hep kalır.
+        /// </summary>
+        string OtoYatirim(BolgeMuduru m)
+        {
+            if (!m.otoYatirim || m.yatirimYuzde <= 0 || EconomyManager.I == null || UpgradeManager.I == null) return null;
+            if (!DukkanSeviyesi.Acik || !DukkanSeviyesi.KuryeYetiyor) return null;   // kurye yetmiyorsa sipariş katlanmaz
+            long rezerv = 7L * (UpgradeManager.I.TotalDailyCost + GunlukToplamMaas);
+            long serbest = EconomyManager.I.FreeCash - rezerv;
+            if (serbest <= 0) return null;
+            long butce = serbest * m.yatirimYuzde / 100;
+            int alinan = 0, donum = 0;
+            long harcanan = 0;
+            for (int k = 0; k < 20; k++)
+            {
+                Shop en = null;
+                long enBedel = long.MaxValue;
+                foreach (var s in CityMap.I.Shops)
+                {
+                    if (!DukkanSeviyesi.Uygun(s) || CityMap.RegionOf(s.tile) != m.bolge) continue;
+                    long b = DukkanSeviyesi.Bedel(s);
+                    if (b < enBedel) { en = s; enBedel = b; }
+                }
+                if (en == null || harcanan + enBedel > butce) break;
+                int eski = DukkanSeviyesi.DonumSayisi(en.seviye);
+                if (!DukkanSeviyesi.SeviyeAtla(en, true)) break;
+                harcanan += enBedel;
+                alinan++;
+                if (DukkanSeviyesi.DonumSayisi(en.seviye) > eski) donum++;
+            }
+            if (alinan == 0) return null;
+            m.yatirimSayisi += alinan;
+            m.yatirimToplam += harcanan;
+            return $"{m.ad} bölgedeki dükkanlara {alinan} ortaklık seviyesi yatırdı ({GameData.Ft(harcanan)})" + (donum > 0 ? $", {donum} dönüm noktası" : "");
+        }
+
+        // ------------------------------------------------------------------ kartları devralma (u68)
+
+        static Shop DukkanAdla(string ad)
+        {
+            if (CityMap.I == null || string.IsNullOrEmpty(ad)) return null;
+            foreach (var s in CityMap.I.Shops) if (s.Name == ad) return s;
+            return null;
+        }
+
+        /// <summary>Metinde adı geçen dükkan (en uzun eşleşen ad: "Burger Queen" ile "Burger Queen Express" karışmasın).</summary>
+        static Shop DukkanMetinde(string metin)
+        {
+            if (CityMap.I == null || string.IsNullOrEmpty(metin)) return null;
+            Shop en = null;
+            foreach (var s in CityMap.I.Shops)
+                if (!string.IsNullOrEmpty(s.Name) && metin.Contains(s.Name) && (en == null || s.Name.Length > en.Name.Length)) en = s;
+            return en;
+        }
+
+        static int Secenek(GameEvent e, string parca)
+        {
+            for (int i = 0; i < e.choices.Count; i++)
+                if (e.choices[i].label != null && e.choices[i].label.IndexOf(parca, StringComparison.OrdinalIgnoreCase) >= 0) return i;
+            return -1;
+        }
+
+        /// <summary>Dükkanın son ayda (yoksa bu ay) sözleşmeli dükkanların siparişlerindeki payı.</summary>
+        static float Pay(Shop s)
+        {
+            long top = 0, bu = 0;
+            foreach (var x in CityMap.I.Shops)
+            {
+                if (!x.contracted) continue;
+                int n = Mathf.Max(x.lastMonthOrders, x.monthOrders);
+                top += n;
+                if (x == s) bu = n;
+            }
+            return top > 0 ? bu / (float)top : 0f;
+        }
+
+        /// <summary>
+        /// EventManager.Push çağırır: kart müdürün işiyse kart açılmaz, müdür seçer ve sonucu bildirim olarak yazar. true: devraldı.
+        /// Devraldıkları: bölgesindeki bir dükkanın komisyon indirimi istemesi, ortak reklam teklifi ve dükkan sahibinin indirim baskısı.
+        /// Bütün bölgelerin yarısından fazlasında (en az 3) müdür varsa gün sonu raporu da kart olarak açılmaz (haber akışına düşer).
+        /// </summary>
+        public bool KartiUstlen(GameEvent e)
+        {
+            if (Mudurler.Count == 0 || e == null || string.IsNullOrEmpty(e.title) || CityMap.I == null) return false;
+            string t = e.title;
+
+            if (t.StartsWith("Gün sonu raporu") && Mudurler.Count >= KartRaporuIcinMudur && Mudurler.Count * 2 > CityMap.I.UnlockLevel)
+            {
+                Telemetry.Add("Müdür kararı: Gün sonu raporu");
+                string ozet = "";
+                if (e.ozet != null)
+                    foreach (var o in e.ozet) ozet += (ozet.Length > 0 ? " · " : "") + $"{o.baslik} {o.deger}";
+                EventManager.I.Notify(t + (ozet.Length > 0 ? ": " + ozet : "") + " (bölge müdürleri raporu okudu, ayrıntı İstatistik'te).");
+                return true;
+            }
+
+            const string indirimEki = " indirim istiyor";
+            Shop s;
+            if (t.EndsWith(indirimEki)) s = DukkanAdla(t.Substring(0, t.Length - indirimEki.Length));
+            else if (t == "Komisyon teklifi" || t == "Dükkan komisyon indirimi istiyor") s = DukkanMetinde(e.body);
+            else return false;
+            if (s == null) return false;
+            var m = MuduruOf(CityMap.RegionOf(s.tile));
+            if (m == null) return false;
+
+            int sec;
+            string neden;
+            float pay = Pay(s);
+            if (t.EndsWith(indirimEki))
+            {
+                // Hacim indirimi (−2 puan): dükkan memnuniyetsizse ya da siparişlerin büyük kısmı ondan geliyorsa kabul
+                bool kabul = s.satisfaction < 50f || pay >= 0.2f;
+                sec = Secenek(e, kabul ? "kabul" : "reddet");
+                neden = kabul ? $"memnuniyet {s.satisfaction:0}, siparişlerin %{pay * 100f:0}'i: dükkanı kaybetmemek için" : $"memnuniyet {s.satisfaction:0} yeterli, komisyon korunur";
+            }
+            else if (t == "Komisyon teklifi")
+            {
+                // Ortak reklam karşılığı +2 puan komisyon: 3 aylık ek komisyon bedelin 1,5 katını geçiyorsa kabul
+                float gunluk = Mathf.Max(s.lastMonthOrders / 30f, s.monthOrders / (float)Mathf.Max(1, GameClock.I.DayOfMonth));
+                float sepet = (s.def.basketMin + s.def.basketMax) / 2f;
+                long kazanc = (long)(gunluk * sepet * 0.02f * 90f);
+                bool kabul = kazanc > 45000 && EconomyManager.I.FreeCash > 120000;
+                sec = Secenek(e, kabul ? "kabul" : "reddet");
+                neden = $"3 ayda ~{GameData.Ft(kazanc)} ek komisyon" + (kabul ? "" : ", değmez");
+            }
+            else
+            {
+                // Kalıcı −3 puan: reddetmek memnuniyeti 30 düşürür; dükkan önemliyse ve gidecekse kabul
+                bool kabul = s.satisfaction - 30f < 40f && pay >= 0.1f;
+                sec = Secenek(e, kabul ? "kabul" : "reddet");
+                neden = kabul ? $"memnuniyet {s.satisfaction:0}: reddedilirse dükkan gider (siparişlerin %{pay * 100f:0}'i)" : $"memnuniyet {s.satisfaction:0}, kalıcı indirim verilmez";
+            }
+            if (sec < 0) return false;
+
+            var secim = e.choices[sec];
+            m.kartKarari++;
+            Telemetry.Add("Müdür kararı: " + t);
+            EventManager.I.Notify($"{m.ad} ({CityMap.DistrictNames[m.bolge]} müdürü) senin yerine karar verdi: {t} → {secim.label} · {neden}.");
+            secim.action?.Invoke();
+            return true;
         }
 
         /// <summary>

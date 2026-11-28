@@ -81,6 +81,8 @@ namespace KuryeTycoon
 
         public void Push(GameEvent e)
         {
+            // Bölge müdürünün işi olan kartlar açılmaz: müdür seçer, haber akışına yazar (u68)
+            if (BolgeMudurleri.I != null && BolgeMudurleri.I.KartiUstlen(e)) return;
             Telemetry.Add("Karar kartı: " + e.title);
             if (e.choices.Count == 0) e.Add("Tamam", null);
             queue.Enqueue(e);

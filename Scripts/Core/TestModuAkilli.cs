@@ -56,6 +56,7 @@ namespace KuryeTycoon
             AkilliKurumsal();
             // Kurye açığı çok büyükse gün içinde de alır (oyuncu bildirimleri görüp İşe Alım'a bakar)
             if (clk.Hour >= 9 && clk.Hour <= 20) AkilliIseAlim(true);
+            if (clk.Hour == 11 || clk.Hour == 18) AkilliHucum();
 
             if (clk.Hour == 7 && sonSabahGun != clk.Day)
             {
@@ -64,6 +65,7 @@ namespace KuryeTycoon
                 AkilliSozlesme();
                 AkilliBolge();
                 AkilliGelistirme();
+                AkilliSonsuzBuyume();
                 AkilliDestek();
                 AkilliOperasyon();
                 AkilliEkipman();
@@ -74,6 +76,97 @@ namespace KuryeTycoon
                 AkilliMutfakArGe();
                 if (clk.DayOfWeek == 0 && sonHaftaGun != clk.Day) { sonHaftaGun = clk.Day; AkilliFiyat(); }
             }
+        }
+
+        // ------------------------------------------------------------------ sonsuz büyüme (u68): filo merkezi, müdür, dükkan seviyesi
+
+        /// <summary>
+        /// Kurye hesapları doluyken filo merkezi: sıradaki platform paketi alınamıyorsa (kilitli, son paket) ya da hesap başına
+        /// filo merkezinden pahalıysa, en az seviyeli açık bölgede merkez kurar/büyütür.
+        /// </summary>
+        bool FiloKur(long para, string neden)
+        {
+            if (!FiloMerkezi.Acik) return false;
+            var up = UpgradeManager.I;
+            long bedel = FiloMerkezi.Bedel;
+            if (bedel > para) return false;
+            int pc = up.NextCost(UpgradeKind.Platform);
+            int ek = up.PlatformEkHesap;
+            if (pc > 0 && ek > 0 && up.LockReason(UpgradeKind.Platform).Length == 0 &&
+                pc / (float)ek <= bedel / (float)FiloMerkezi.HesapPerSeviye) return false;   // paket hesap başına daha ucuz: önce paket
+            int enB = -1;
+            for (int b = 1; b <= CityMap.I.UnlockLevel; b++)
+                if (FiloMerkezi.Kilit(b).Length == 0 && (enB < 0 || FiloMerkezi.Seviye(b) < FiloMerkezi.Seviye(enB))) enB = b;
+            if (enB < 0 || !FiloMerkezi.Kur(enB)) return false;
+            Eylem("Filo", $"{CityMap.DistrictNames[enB]} filo merkezi {FiloMerkezi.Seviye(enB)}. seviye ({Ft(bedel)}), kurye sınırı {up.CourierCap} · neden: {neden}");
+            return true;
+        }
+
+        /// <summary>
+        /// Her sabah: bölge müdürü (bölgede ≥ 3 sözleşmeli dükkan, boş para işe alım bedelinin 4 katı; en yetenekli aday),
+        /// müdürü olmayan bölgelerde dükkan seviyeleri (boş paranın 1/4'ü, en ucuz seviyeler, en çok 10). Birikim yaparken dokunmaz.
+        /// </summary>
+        void AkilliSonsuzBuyume()
+        {
+            if (Biriktir) return;
+            var bm = BolgeMudurleri.I;
+            var map = CityMap.I;
+            if (bm != null && BolgeMudurleri.Acik)
+            {
+                for (int b = 1; b <= map.UnlockLevel; b++)
+                {
+                    if (bm.MuduruOf(b) != null || bm.DukkanSayisi(b, true) < 3) continue;
+                    if (bm.Adaylar.Count == 0) bm.AdaylariYenile();
+                    BolgeMuduru en = null;
+                    foreach (var a in bm.Adaylar) if (en == null || a.yetenek > en.yetenek) en = a;
+                    if (en == null) break;
+                    long bedel = BolgeMudurleri.IseAlimBedeli(en);
+                    if (Bos < bedel * 4) break;
+                    string ad = en.ad;
+                    int dukkan = bm.DukkanSayisi(b, true);
+                    if (bm.Ata(en, b))
+                        Eylem("Müdür", $"{CityMap.DistrictNames[b]}: {ad} ({BolgeMudurleri.UzmanlikAdlari[en.uzmanlik]}, yetenek %{en.yetenek * 100f:0}, {Ft(bedel)}) · neden: bölgede {dukkan} sözleşmeli dükkan");
+                }
+            }
+
+            long butce = Bos / 4;
+            if (butce <= 0 || !DukkanSeviyesi.Acik || !DukkanSeviyesi.KuryeYetiyor) return;
+            int alinan = 0, donum = 0;
+            long harcanan = 0;
+            for (int k = 0; k < 10; k++)
+            {
+                Shop en = null;
+                long enBedel = long.MaxValue;
+                foreach (var s in map.Shops)
+                {
+                    if (!DukkanSeviyesi.Uygun(s)) continue;
+                    if (bm != null && bm.MuduruOf(CityMap.RegionOf(s.tile)) != null) continue;   // müdür kendisi yatırıyor
+                    long bd = DukkanSeviyesi.Bedel(s);
+                    if (bd < enBedel) { en = s; enBedel = bd; }
+                }
+                if (en == null || harcanan + enBedel > butce) break;
+                int eski = DukkanSeviyesi.DonumSayisi(en.seviye);
+                if (!DukkanSeviyesi.SeviyeAtla(en, true)) break;
+                harcanan += enBedel;
+                alinan++;
+                if (DukkanSeviyesi.DonumSayisi(en.seviye) > eski) donum++;
+            }
+            if (alinan > 0)
+                Eylem("Seviye", $"{alinan} dükkan ortaklık seviyesi ({Ft(harcanan)})" + (donum > 0 ? $", {donum} dönüm noktası" : "") + $" · neden: boş para {Ft(Bos + harcanan)}");
+        }
+
+        /// <summary>Öğle (11:00) ve akşam (18:00) yoğunluğundan önce: kurye açığı yoksa hazır müdürlerin hücumunu başlatır.</summary>
+        void AkilliHucum()
+        {
+            var bm = BolgeMudurleri.I;
+            if (bm == null || bm.Mudurler.Count == 0) return;
+            if (IptalOrani(1) > 0.06f || KayipOrani(1) > 0.12f) return;   // kurye yetmiyor: fazla sipariş kaçar
+            foreach (var m in bm.Mudurler)
+                if (BolgeMudurleri.HucumHazir(m) && bm.HucumBaslat(m))
+                {
+                    Eylem("Hücum", $"{CityMap.DistrictNames[m.bolge]} sipariş hücumu ({m.ad}) · neden: yoğun saat öncesi, iptal %{IptalOrani(1) * 100f:0}");
+                    break;   // bir seferde bir bölge
+                }
         }
 
         // ------------------------------------------------------------------ sanal mutfak ve Ar-Ge
@@ -937,6 +1030,7 @@ namespace KuryeTycoon
                 long bosDar = BosDar;
                 if (kilit.Length == 0 && Al(UpgradeKind.Platform, bosDar, neden, true)) { biriktiriyordu = false; return; }
                 if (kilit.Contains("ofis") && Al(UpgradeKind.Ofis, bosDar, "platform paketi daha büyük ofis istiyor · " + neden, true)) return;
+                if (FiloKur(bosDar, neden)) { biriktiriyordu = false; return; }
             }
             else if (up.CourierCapFull && KayitSistemi.I != null && KayitSistemi.I.HesapBekleyen > 0 && IptalOrani(2) > 0.03f &&
                      Al(UpgradeKind.Platform, bos, "kurye hesapları dolu, iptaller sürüyor")) return;

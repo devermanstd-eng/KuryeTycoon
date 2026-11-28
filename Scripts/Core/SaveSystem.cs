@@ -73,6 +73,7 @@ namespace KuryeTycoon
         public bool oncelikli;                 // öncelikli hazırlık anlaşması (eski kayıtlarda yok)
         public int oncelikDegisimGunu = -999;
         public float sadakat = -1f;            // dükkan sadakati (eski kayıtlarda -1: sözleşme yaşından tahmin)
+        public int seviye;                     // ortaklık seviyesi (DukkanSeviyesi; eski kayıtlarda 0)
     }
 
     [System.Serializable]
@@ -204,6 +205,7 @@ namespace KuryeTycoon
         public ArGeSave arge;                  // Ar-Ge (eski kayıtlarda yok)
         public KutlamaSave kutlama;            // seri ve rekorlar (eski kayıtlarda yok)
         public BolgeSave bolge;                // bölge müdürleri (eski kayıtlarda yok)
+        public int[] filoMerkezi;              // bölge başına filo merkezi seviyesi (FiloMerkezi; eski kayıtlarda yok)
     }
 
     // =====================================================================
@@ -449,7 +451,8 @@ namespace KuryeTycoon
                 mutfak = SanalMutfak.I != null ? SanalMutfak.I.Kaydet() : null,
                 arge = ArGe.I != null ? ArGe.I.Kaydet() : null,
                 kutlama = Kutlama.I != null ? Kutlama.I.Kaydet() : null,
-                bolge = BolgeMudurleri.I != null ? BolgeMudurleri.I.Kaydet() : null
+                bolge = BolgeMudurleri.I != null ? BolgeMudurleri.I.Kaydet() : null,
+                filoMerkezi = FiloMerkezi.Kaydet()
             };
 
             foreach (var s in CityMap.I.Shops)
@@ -462,7 +465,7 @@ namespace KuryeTycoon
                     contractStartDay = s.contractStartDay, contractEndDay = s.contractEndDay, monthOrders = s.monthOrders,
                     lastMonthOrders = s.lastMonthOrders, negotiateCooldownUntil = s.negotiateCooldownUntil,
                     resignBlockedUntil = s.resignBlockedUntil, oncelikli = s.oncelikli, oncelikDegisimGunu = s.oncelikDegisimGunu,
-                    sadakat = s.sadakat
+                    sadakat = s.sadakat, seviye = s.seviye
                 });
 
             foreach (var c in cm.Couriers)
@@ -523,12 +526,14 @@ namespace KuryeTycoon
                 s.resignBlockedUntil = ss.resignBlockedUntil;
                 s.oncelikli = ss.oncelikli && s.contracted; s.oncelikDegisimGunu = ss.oncelikDegisimGunu;
                 s.sadakat = ss.sadakat >= 0f ? ss.sadakat : DukkanSadakati.EskiKayitTahmini(s, GameClock.I.Day);
+                s.seviye = Mathf.Max(0, ss.seviye);
             }
             if (DarkStore.I != null) DarkStore.I.RestoreSave(d.darkStore);
             if (HizmetSeviyeleri.I != null) HizmetSeviyeleri.I.Yukle(d.hizmet);
             if (KargoAnlasmasi.I != null) KargoAnlasmasi.I.Yukle(d.kargo);
             if (GunPlani.I != null) GunPlani.I.Yukle(d.gunPlani);
             GelisimAgaci.Yukle(d.agacBonuslari);
+            FiloMerkezi.Yukle(d.filoMerkezi);
             if (Abonelik.I != null) Abonelik.I.Yukle(d.abonelik);
             if (RestoranReklam.I != null) RestoranReklam.I.Yukle(d.reklam);
             if (Yatirim.I != null) Yatirim.I.Yukle(d.yatirim);

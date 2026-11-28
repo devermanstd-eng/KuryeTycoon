@@ -827,6 +827,7 @@ namespace KuryeTycoon
                           $"restoran reklamı {(RestoranReklam.I != null ? RestoranReklam.SeviyeAdlari[RestoranReklam.I.seviye] : "-")} (toplam {GameData.Ft(RestoranReklam.I != null ? RestoranReklam.I.toplamGelir : 0)}) · " +
                           $"yatırım: {(Yatirim.I != null ? Yatirim.I.tamamlanan : 0)} tur, pay %{(Yatirim.I != null ? Yatirim.I.pay * 100f : 100f):0}, baskı {(Yatirim.I != null ? Yatirim.I.baski : 0)} · " +
                           $"ağaçta {GelisimAgaci.AlinanSayisi} küçük düğüm (komisyon +%{GelisimAgaci.Bonus(BonusTip.Komisyon) * 100f:0}, sipariş +%{GelisimAgaci.Bonus(BonusTip.Siparis) * 100f:0})");
+            sb.AppendLine(SonsuzBuyumeSatiri());
             var it = IsletmeTeslimati.I;
             int[] sad = new int[4];
             int munhasir = 0;
@@ -1040,6 +1041,34 @@ namespace KuryeTycoon
                 if (GUI.Button(new Rect(r.x + 150, r.y + 56, 150, 28), "Ana menüye dön")) GameBootstrap.Restart();
             }
             GUI.matrix = eskiMatris;
+        }
+
+        /// <summary>Özetin "Sonsuz büyüme" satırı (u68): dükkan seviyeleri, filo merkezleri, müdürler ve oyuncuya gelen kart yükü.</summary>
+        static string SonsuzBuyumeSatiri()
+        {
+            int n = 0, top = 0, enYuksek = 0, donumlu = 0;
+            if (CityMap.I != null)
+                foreach (var s in CityMap.I.Shops)
+                {
+                    if (!DukkanSeviyesi.Uygun(s)) continue;
+                    n++; top += s.seviye;
+                    if (s.seviye > enYuksek) enYuksek = s.seviye;
+                    if (DukkanSeviyesi.DonumSayisi(s.seviye) > 0) donumlu++;
+                }
+            int kart = 0, mudurKarari = 0;
+            foreach (var kv in Telemetry.Counts)
+            {
+                if (kv.Key.StartsWith("Karar kartı: ")) kart += kv.Value;
+                else if (kv.Key.StartsWith("Müdür kararı: ")) mudurKarari += kv.Value;
+            }
+            var bm = BolgeMudurleri.I;
+            long yatirim = 0;
+            if (bm != null) foreach (var m in bm.Mudurler) yatirim += m.yatirimToplam;
+            return $"Sonsuz büyüme: dükkan seviyesi ort. {(n > 0 ? top / (float)n : 0f):0.0} / en yüksek {enYuksek} ({n} dükkan, {donumlu}'i dönüm noktası geçti) · " +
+                   $"seviye alımı {Sayac("Dükkan seviyesi")} · dönüm noktası {Sayac("Dükkan dönüm noktası")} · " +
+                   $"filo merkezi {FiloMerkezi.Toplam} seviye (+{FiloMerkezi.EkHesap} hesap, kurye sınırı {(UpgradeManager.I != null ? UpgradeManager.I.CourierCap : 0)}) · " +
+                   $"müdür {(bm != null ? bm.Mudurler.Count : 0)} (yatırım {GameData.Ft(yatirim)}, hücum {Sayac("Müdür hücumu")}) · " +
+                   $"oyuncuya gelen kart {kart}, müdürün devraldığı {mudurKarari}";
         }
 
         static int Toplam(Dictionary<string, int> d) { int t = 0; foreach (var v in d.Values) t += v; return t; }

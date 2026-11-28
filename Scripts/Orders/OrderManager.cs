@@ -115,7 +115,8 @@ namespace KuryeTycoon
 
         /// <summary>Dükkanın şu anki talep ağırlığı (yoğunluk × saat çarpanı).</summary>
         static float ShopDemand(Shop s) =>
-            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s) * DukkanSadakati.SiparisCarpani(s) * BolgeMudurleri.TalepCarpani(s);
+            s.def.weight * CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s) * RestoranReklam.TalepCarpani(s) * DukkanSadakati.SiparisCarpani(s) * BolgeMudurleri.TalepCarpani(s)
+            * DukkanSeviyesi.TalepCarpani(s) * BolgeMudurleri.HucumCarpani(s);
 
         /// <summary>Saat çarpanı; dükkan kapalıysa (ya da kapanışa 15 dk kaldıysa) 0. 24 saat açık yerlerde gece de biraz sipariş.</summary>
         static float CurveNow(Shop s)
@@ -158,7 +159,8 @@ namespace KuryeTycoon
             foreach (var s in CityMap.I.Shops)
                 if (s.contracted && CityMap.I.IsUnlocked(s.tile))
                     demand += CurveNow(s) * RivalShare(s) * CityEvents.ShopFactor(s)
-                              * (s.own ? s.def.weight / 0.7f : 1f);   // kendi marketin: depo büyüklüğü ve stok talebi değiştirir
+                              * (s.own ? s.def.weight / 0.7f : 1f)   // kendi marketin: depo büyüklüğü ve stok talebi değiştirir
+                              * DukkanSeviyesi.TalepCarpani(s) * BolgeMudurleri.HucumCarpani(s);   // ortaklık seviyesi ve müdür hücumu toplam siparişi büyütür (u68)
 
             float rate = baseRatePerShop * demand
                          * (0.55f + 0.15f * CompanyProfile.Reputation) * WeatherSystem.I.DemandFactor * UpgradeManager.I.OrderRateMultiplier
