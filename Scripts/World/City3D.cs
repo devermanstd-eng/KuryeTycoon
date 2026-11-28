@@ -2091,8 +2091,31 @@ namespace KuryeTycoon
             mr.sharedMaterial = karMalzeme;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = true;
+            LodaEkle(r, mr);
             go.SetActive(false);
             return go;
+        }
+
+        /// <summary>
+        /// (u72) Kar kabuğu kaynağıyla aynı LOD seviyesine girer: yoksa bir binanın yakın, hafif ve uzak modellerinin kabukları
+        /// aynı anda çizilir (kışın üç kat geometri).
+        /// </summary>
+        static void LodaEkle(Renderer kaynak, Renderer kabuk)
+        {
+            var lg = kaynak.GetComponentInParent<LODGroup>(true);
+            if (lg == null) return;
+            var lods = lg.GetLODs();
+            for (int i = 0; i < lods.Length; i++)
+            {
+                var rs = lods[i].renderers;
+                if (rs == null || System.Array.IndexOf(rs, kaynak) < 0) continue;
+                var yeni = new Renderer[rs.Length + 1];
+                rs.CopyTo(yeni, 0);
+                yeni[rs.Length] = kabuk;
+                lods[i].renderers = yeni;
+                lg.SetLODs(lods);
+                return;
+            }
         }
 
         /// <summary>Yukarı bakan üçgenlerden (eğim [min, max) aralığında) kaydırılmış kar kabuğu.</summary>

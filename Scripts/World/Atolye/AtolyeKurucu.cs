@@ -1417,6 +1417,7 @@ namespace KuryeTycoon
             public IcPlani plan;
             public TurVeri tur;
             public MeshVeri tek, hafif, uzak;           // tek: içsiz yakın görünüm; hafif: LOD1; uzak: ağaç / çalı LOD2
+            public MeshVeri uzakBina;                   // bina LOD2 (u72): bloklardan kutu gövde, cam şeridi, çatı
         }
 
         /// <summary>
@@ -1453,8 +1454,94 @@ namespace KuryeTycoon
             {
                 h.hafif = Tekli(Topla(s, true, gizle), t.ad + "_Hafif");
                 if (!h.gruplu && h.hafif != null && UzakVar(t)) h.uzak = Tekli(Topla(s, true, gizle, true), t.ad + "_Uzak");
+                if (h.hafif != null && s.blok.Count > 0) h.uzakBina = UzakBinaVeri(s, t.ad + "_UzakBina");
             }
             return h;
+        }
+
+        // ---------------------------------------------------------------- uzak bina (LOD2, u72)
+        // Tam şehirde ekranda 75–90 milyon üçgen vardı: uzaktaki binalar bile "hafif" modelle (şablon başına binlerce üçgen)
+        // çiziliyordu. Ekranda küçük kalan bina artık bloklarından kurulan basit modelle çizilir: her açık yüzde bir duvar,
+        // her katta bir cam şeridi (gece ışıkları onu yakar), tepede çatı (eğimli tarzlarda alçak kırma). Malzeme adları
+        // asıllarıyla aynı kalıbı kullanır (Pastel_Duvar_, Pastel_Cati_, Pastel_Cam_): mevsim, kar, kilit
+        // solgunluğu ve gece ışıkları değişmeden çalışır. Kalem çizgisi yok (o boyda görünmüyor).
+
+        const string UzakCamRengi = "bcd6f0";
+        const float UzakCatiBoyu = 1.4f;   // eğimli çatının tepe yüksekliği (m); asıl çatılar 1,7–3,4 m
+
+        static string Hex(string renk) => string.IsNullOrEmpty(renk) ? "ffffff" : renk.TrimStart('#');
+
+        /// <summary>Model metresinden (x, y, z yukarı) Unity model uzayına.</summary>
+        static Vector3 U(Vector2 p, float z) => Unity(p.x, p.y, z);
+
+        /// <summary>Dörtgen ekler; üçgen sırası verilen dış normale göre çevrilir.</summary>
+        static void UzakDortgen(Yuzey yz, string mat, Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 n)
+        {
+            int i = yz.kose.Count;
+            yz.kose.Add(a); yz.kose.Add(b); yz.kose.Add(c); yz.kose.Add(d);
+            var l = yz.Liste(mat);
+            if (Vector3.Dot(Vector3.Cross(b - a, c - a), n) >= 0f) { l.Add(i); l.Add(i + 1); l.Add(i + 2); l.Add(i); l.Add(i + 2); l.Add(i + 3); }
+            else { l.Add(i); l.Add(i + 2); l.Add(i + 1); l.Add(i); l.Add(i + 3); l.Add(i + 2); }
+        }
+
+        static void UzakUcgen(Yuzey yz, string mat, Vector3 a, Vector3 b, Vector3 c, Vector3 n)
+        {
+            int i = yz.kose.Count;
+            yz.kose.Add(a); yz.kose.Add(b); yz.kose.Add(c);
+            var l = yz.Liste(mat);
+            if (Vector3.Dot(Vector3.Cross(b - a, c - a), n) >= 0f) { l.Add(i); l.Add(i + 1); l.Add(i + 2); }
+            else { l.Add(i); l.Add(i + 2); l.Add(i + 1); }
+        }
+
+        /// <summary>Bina bloklarından uzak görünüm mesh'i (arka planda çalışabilir). Blok yoksa null.</summary>
+        static MeshVeri UzakBinaVeri(Durum s, string ad)
+        {
+            float A = Hucre * 0.5f, KAT = KatBoyu;
+            float orta = (Izgara - 1) * 0.5f;
+            var yz = new Yuzey();
+            var yukari = U(Vector2.zero, 1f) - U(Vector2.zero, 0f);
+            foreach (var b in s.blok.Values)
+            {
+                if (b.tarz == Merdiven) continue;
+                var r = s.RenkleriAl(b);
+                string duvar = "Pastel_Duvar_" + Hex(r.D), cati = "Pastel_Cati_" + Hex(r.C);
+                var m = new Vector2((b.x - orta) * Hucre, (b.y - orta) * Hucre);
+                float z0 = b.k * KAT, z1 = z0 + KAT;
+                for (int i = 0; i < 4; i++)
+                {
+                    if (s.Dolu(b.x + Yon[i].x, b.y + Yon[i].y, b.k)) continue;
+                    var d = new Vector2(Yon[i].x, Yon[i].y);
+                    var tg = new Vector2(-d.y, d.x);
+                    var yuz = m + d * A;
+                    var n = U(d, 0f) - U(Vector2.zero, 0f);
+                    UzakDortgen(yz, duvar, U(yuz - tg * A, z0), U(yuz + tg * A, z0), U(yuz + tg * A, z1), U(yuz - tg * A, z1), n);
+                    if (b.tarz == Kaide) continue;
+                    // cam şeridi: katın ortasında, duvardan biraz dışarıda. Tek cam grubu (Pastel_Cam_): bu uzaklıkta pencerelerin
+                    // ayrı saatlerde yanması seçilmiyor, üç grup her binaya iki çizim komutu daha ekliyordu
+                    string camMat = "Pastel_Cam_" + UzakCamRengi;
+                    var cy = yuz + d * 0.03f;
+                    float w = A * 0.62f, za = z0 + KAT * 0.36f, zb = z0 + KAT * 0.74f;
+                    UzakDortgen(yz, camMat, U(cy - tg * w, za), U(cy + tg * w, za), U(cy + tg * w, zb), U(cy - tg * w, zb), n);
+                }
+                if (s.Var(b.x, b.y, b.k + 1)) continue;
+                // çatı: düz terasta ve taş kaidede düz; öbür tarzlarda hücre başına alçak kırma
+                var p00 = m + new Vector2(-A, -A); var p10 = m + new Vector2(A, -A); var p11 = m + new Vector2(A, A); var p01 = m + new Vector2(-A, A);
+                if (b.ct == 4 || b.tarz == Kaide)
+                {
+                    UzakDortgen(yz, cati, U(p00, z1), U(p10, z1), U(p11, z1), U(p01, z1), yukari);
+                    continue;
+                }
+                var tepe = U(m, z1 + UzakCatiBoyu);
+                var kenar = new[] { p00, p10, p11, p01 };
+                for (int i = 0; i < 4; i++)
+                {
+                    var a = kenar[i]; var c = kenar[(i + 1) % 4];
+                    var dis = (a + c) * 0.5f - m;
+                    var n = (U(dis, 0f) - U(Vector2.zero, 0f)).normalized + yukari;
+                    UzakUcgen(yz, cati, U(a, z1), U(c, z1), tepe, n);
+                }
+            }
+            return MeshVeriYap(yz, ad, 0f);
         }
 
         static MeshVeri Tekli(Dictionary<string, Yuzey> gruplar, string ad) => gruplar.TryGetValue("", out var y) ? MeshVeriYap(y, ad, 0f) : null;

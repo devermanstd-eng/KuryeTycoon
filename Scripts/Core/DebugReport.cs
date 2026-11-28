@@ -78,7 +78,7 @@ namespace KuryeTycoon
     {
         public static DebugReport I { get; private set; }
         /// <summary>Raporda hangi kodla oynandığını görmek için; her önemli güncellemede değişir.</summary>
-        public const string CodeVersion = "2026-11-28 u72 (optimizasyon: bina mesh hesabı arka plan iş parçacığında)";
+        public const string CodeVersion = "2026-11-28 u73 (optimizasyon: uzak bina LOD2, GRD geri alındı, grafik ayarı denetimi)";
         public static string Folder => Path.Combine(Application.persistentDataPath, "hata_ayiklama");
         public string lastPath = "";
 

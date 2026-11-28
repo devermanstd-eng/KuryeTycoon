@@ -159,7 +159,6 @@ Shader "KuryeTycoon/Pastel"
             #pragma multi_compile _ _FORWARD_PLUS _CLUSTER_LIGHT_LOOP
             #pragma multi_compile_fog
             #pragma multi_compile_instancing
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"   // GPU Resident Drawer (u72)
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
@@ -294,7 +293,6 @@ Shader "KuryeTycoon/Pastel"
             #pragma vertex vertG
             #pragma fragment fragG
             #pragma multi_compile_instancing
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"   // GPU Resident Drawer (u72)
             #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
@@ -345,7 +343,6 @@ Shader "KuryeTycoon/Pastel"
             #pragma vertex vertD
             #pragma fragment fragD
             #pragma multi_compile_instancing
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"   // GPU Resident Drawer (u72)
 
             struct A { float4 positionOS : POSITION; float4 uv : TEXCOORD0; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };
             struct VD { float4 positionCS : SV_POSITION; };
@@ -377,7 +374,6 @@ Shader "KuryeTycoon/Pastel"
             #pragma vertex vertN
             #pragma fragment fragN
             #pragma multi_compile_instancing
-            #include_with_pragmas "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DOTS.hlsl"   // GPU Resident Drawer (u72)
             #pragma multi_compile_fragment _ _GBUFFER_NORMALS_OCT
 
             struct A { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 uv : TEXCOORD0; half4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID };

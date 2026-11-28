@@ -243,6 +243,9 @@ namespace KuryeTycoon
         static bool lodAlindi;
         static float oLodBias = 1f;
 
+        /// <summary>Seçili seviyenin LOD uzaklık çarpanı (Uygula hiç çalışmadıysa NaN).</summary>
+        public static float HedefLodBias => lodAlindi ? oLodBias * LodCarpani : float.NaN;
+
         /// <summary>
         /// Kare hızı sınırı: ekranın yenileme hızı (en çok 60). Sınırsızken ekran kartı boşuna tam güçte çalışır,
         /// dizüstü ısınır ve fan döner; tycoon oyununda 60 kare yeter.
@@ -323,9 +326,12 @@ namespace KuryeTycoon
 
         void OnDestroy() { if (I == this) I = null; }
 
+        float denetim = 3f;
+
         void Update()
         {
             float dt = Time.unscaledDeltaTime;
+            AyarDenetle(dt);
             toplam += dt;
             kare++;
             if (toplam < 4f) return;
@@ -333,6 +339,25 @@ namespace KuryeTycoon
             toplam = 0f;
             kare = 0;
             Karar();
+        }
+
+        /// <summary>
+        /// (u73) Seçili kalite gerçekten uygulanmış mı: oyun başladıktan sonra birkaç saniyede bir bakar. 28.11 ölçümünde ayar
+        /// "Düşük" görünürken oyun Yüksek'in LOD çarpanıyla (lodBias 2) çiziliyordu: ayar ancak Ayarlar'dan yeniden seçilince
+        /// uygulanıyordu (aynı şehirde 8 → 21 FPS). Sapma görülürse ayar yeniden uygulanır ve Console'a yazılır.
+        /// </summary>
+        void AyarDenetle(float dt)
+        {
+            denetim -= dt;
+            if (denetim > 0f) return;
+            denetim = 3f;
+            if (GameBootstrap.I == null || !GameBootstrap.I.Started || !Gorsel3D.Active) return;
+            float hedef = GrafikKalitesi.HedefLodBias;
+            if (!float.IsNaN(hedef) && Mathf.Abs(QualitySettings.lodBias - hedef) < 0.01f) return;
+            float once = QualitySettings.lodBias;
+            GrafikKalitesi.Uygula();
+            Debug.Log($"Kurye Tycoon · grafik: {GrafikKalitesi.Adlar[GrafikKalitesi.Seviye]} yeniden uygulandı " +
+                      $"(LOD çarpanı {once:0.00} → {QualitySettings.lodBias:0.00}).");
         }
 
         void Karar()

@@ -24,6 +24,9 @@ namespace KuryeTycoon
     {
         const float LodGecis = 0.08f;      // BlenderBinaKurulum ile aynı
         const float UzakGecis = 0.025f;    // ağaç / çalı: bu ekran payının altında en uzak görünüm (LOD2)
+        // u72: bina bu ekran payının altında basit modelle (AtolyeKurucu.UzakBinaVeri) çizilir. Tam şehirde ekran 75–90 milyon
+        // üçgendi; uzaktaki binanın "hafif" modeli bile binlerce üçgen. Yükseltmek ayrıntıyı uzağa taşır, FPS düşer.
+        public const float UzakBinaGecis = 0.03f;
         // Şablondaki çocuk sırası (adlar "<ad>_<grup>"): CatiKaldir "_Cati" ve "_Ic" ile biten çocukları arar
         static readonly string[] GrupSirasi = { "Govde", "Duvar_On", "Duvar_Sag", "Duvar_Arka", "Duvar_Sol", "Cati", "Ic", "Ampul", "Poset", "Kepenk" };
 
@@ -403,7 +406,8 @@ namespace KuryeTycoon
                     kur.malzeme[kv.Key] = gAdlar;
                 }
                 var gHafif = AtolyeKurucu.MeshOlustur(h.hafif, out var gHafifAdlar);
-                GrupluDoldur(kokGo, kur, gHafif, gHafifAdlar);
+                var gUzak = AtolyeKurucu.MeshOlustur(h.uzakBina, out var gUzakAdlar);
+                GrupluDoldur(kokGo, kur, gHafif, gHafifAdlar, gUzak, gUzakAdlar);
                 return;
             }
             var mesh = AtolyeKurucu.MeshOlustur(h.tek, out var adlar);
@@ -420,11 +424,20 @@ namespace KuryeTycoon
                 var grup = kokGo.AddComponent<LODGroup>();
                 // ağaç ve çalılarda üçüncü düzey (LOD2: gövde + bir iki küme, en çok ~40 üçgen): şehirde çok sayıda ağaç var
                 var uzakMesh = AtolyeKurucu.MeshOlustur(h.uzak, out var uzakAdlar);
+                List<string> uzakBinaAdlar = null;
+                var uzakBina = uzakMesh == null ? AtolyeKurucu.MeshOlustur(h.uzakBina, out uzakBinaAdlar) : null;
                 if (uzakMesh != null)
                 {
                     uzakMesh.name = ad + "_Uzak";
                     var l2 = Parca(kokGo.transform, "LOD2", uzakMesh, AtolyeKurucu.Malzemeler(uzakAdlar));
                     grup.SetLODs(new[] { new LOD(LodGecis, new Renderer[] { l0 }), new LOD(UzakGecis, new Renderer[] { l1 }), new LOD(0.0005f, new Renderer[] { l2 }) });
+                }
+                else if (uzakBina != null)
+                {
+                    uzakBina.name = ad + "_UzakBina";
+                    Say(uzakBina);
+                    var l2 = Parca(kokGo.transform, "LOD2", uzakBina, AtolyeKurucu.Malzemeler(uzakBinaAdlar));
+                    grup.SetLODs(new[] { new LOD(LodGecis, new Renderer[] { l0 }), new LOD(UzakBinaGecis, new Renderer[] { l1 }), new LOD(0.0005f, new Renderer[] { l2 }) });
                 }
                 else grup.SetLODs(new[] { new LOD(LodGecis, new Renderer[] { l0 }), new LOD(0.0005f, new Renderer[] { l1 }) });
                 Sinir(grup, mesh.bounds);
@@ -440,7 +453,7 @@ namespace KuryeTycoon
         /// İçi olan bina: kök [LODGroup + AtolyePlani] → LOD0 (boş; çocukları &lt;ad&gt;_Govde, _Duvar_*, _Cati, _Ic [altında _Ampul,
         /// _Poset], _Kepenk) + LOD1 (tek mesh, içsiz). _Ic, _Kepenk ve _Poset kapalı durur: oyunda CatiKaldir ve DukkanCanli açar.
         /// </summary>
-        static void GrupluDoldur(GameObject kokGo, AtolyeKurucu.Kurulum kur, Mesh hafif, List<string> hafifAdlar)
+        static void GrupluDoldur(GameObject kokGo, AtolyeKurucu.Kurulum kur, Mesh hafif, List<string> hafifAdlar, Mesh uzak = null, List<string> uzakAdlar = null)
         {
             string ad = kokGo.name;
             var l0 = new GameObject("LOD0").transform;
@@ -493,8 +506,16 @@ namespace KuryeTycoon
                 hafif.name = ad + "_Hafif";
                 l1 = Parca(kokGo.transform, "LOD1", hafif, AtolyeKurucu.Malzemeler(hafifAdlar));
             }
+            MeshRenderer l2 = null;
+            if (uzak != null && l1 != null)
+            {
+                uzak.name = ad + "_UzakBina";
+                Say(uzak);
+                l2 = Parca(kokGo.transform, "LOD2", uzak, AtolyeKurucu.Malzemeler(uzakAdlar));
+            }
             var lg = kokGo.AddComponent<LODGroup>();
-            if (l1 != null) lg.SetLODs(new[] { new LOD(LodGecis, cizilen.ToArray()), new LOD(0.0005f, new Renderer[] { l1 }) });
+            if (l2 != null) lg.SetLODs(new[] { new LOD(LodGecis, cizilen.ToArray()), new LOD(UzakBinaGecis, new Renderer[] { l1 }), new LOD(0.0005f, new Renderer[] { l2 }) });
+            else if (l1 != null) lg.SetLODs(new[] { new LOD(LodGecis, cizilen.ToArray()), new LOD(0.0005f, new Renderer[] { l1 }) });
             else lg.SetLODs(new[] { new LOD(0.0005f, cizilen.ToArray()) });
             // sınırlar mesh'lerden (şablon kapalı bir kökün altında: Renderer.bounds güvenilmez)
             var b = new Bounds();
