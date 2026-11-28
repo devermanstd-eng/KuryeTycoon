@@ -15,7 +15,7 @@ namespace KuryeTycoon
     }
 
     /// <summary>
-    /// Ar-Ge (Şirket > Ar-Ge): zamanla ilerleyen araştırma sırası. Bir proje başlatılınca bedeli peşin ödenir, oyun günleriyle
+    /// Ar-Ge (Şirket > Gelişim ağacının alt dalı; u71'e kadar ayrı "Ar-Ge" sekmesiydi): zamanla ilerleyen araştırma sırası. Bir proje başlatılınca bedeli peşin ödenir, oyun günleriyle
     /// ilerler; bitince kalıcı etkisi açılır. Aynı anda bir proje araştırılır, iki proje sıraya konabilir (bedeli sırası gelince).
     /// Oyun kapalıyken de ilerler: kayıt yüklenince gerçek saatin her saati 0,5 oyun günü sayılır (en fazla sıradaki projenin sonuna).
     /// Bazı projeler öncekileri ister (ağaç). Etkiler gelişim ağacının küçük bonuslarına eklenir (GelisimAgaci.Bonus) ya da özeldir:

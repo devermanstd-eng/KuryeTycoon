@@ -14,6 +14,8 @@ namespace KuryeTycoon
     ///  • para yetmezse ya da kilitliyse düğüm sallanır, fiyat çubuğu kırmızı yanıp söner
     ///  • bilgi kutusu yumuşakça açılır
     /// Çizgiler Painter2D ile tek bir elemanda çizilir.
+    /// Ar-Ge (u71): eskiden ayrı sekmeydi; artık ağacın en altındaki mor dal. Laboratuvar düğümü araştırılan projeyi gösterir,
+    /// proje düğümüne tıklayınca araştırma başlar (bir proje sürerken tıklanan sıraya girer, bedeli sırası gelince ödenir).
     /// </summary>
     public partial class GameUI
     {
@@ -34,7 +36,7 @@ namespace KuryeTycoon
         readonly List<Vector2> agacAkisYolu = new List<Vector2>();
         float agacAkisBas = -10f;
 
-        const float AgacOrtaX = 720f, AgacOrtaY = 470f, AgacTuvalW = 1440f, AgacTuvalH = 940f;
+        const float AgacOrtaX = 720f, AgacOrtaY = 470f, AgacTuvalW = 1440f, AgacTuvalH = 1260f;   // u71: Ar-Ge dalı için aşağı uzadı
         static readonly Color AgYesil = AgRenk(155, 227, 107, 255);
         static readonly Color AgBeyaz = AgRenk(242, 245, 247, 255);
         static readonly Color AgKirmizi = AgRenk(239, 90, 95, 255);
@@ -47,7 +49,7 @@ namespace KuryeTycoon
         /// <summary>Ağaç ekranda (OnGUI haritayı ve IMGUI çizimlerini atlar).</summary>
         bool AgacGorunur => agacAcik && agacPerde != null && U.Gorunur(agacPerde);
 
-        enum AgDurum { Merkez, Gizli, Max, Kilit, Alinir, Pahali }
+        enum AgDurum { Merkez, Gizli, Max, Kilit, Alinir, Pahali, Surer }   // Surer: Ar-Ge projesi araştırılıyor ya da sırada
 
         class AgacGorsel
         {
@@ -203,6 +205,7 @@ namespace KuryeTycoon
             AgacGosterim(gos, AgBeyaz, "Alınabilir");
             AgacGosterim(gos, AgKirmizi, "Para yetmiyor");
             AgacGosterim(gos, AgGri, "Kilitli · \"?\" komşusunu alınca açılır");
+            AgacGosterim(gos, GelisimAgaci.DalRenkleri[4], "Ar-Ge: araştırılıyor ya da sırada");
             var nasil = U.Yazi(gos, "Sürükle: kaydır · Tekerlek: yakınlaştır · Tıkla: yükselt", "minik");
             nasil.style.color = AgRenk(169, 179, 188, 255);
             nasil.style.marginTop = 6;
@@ -329,12 +332,12 @@ namespace KuryeTycoon
 
         void AgacDugumKur(AgacDugum d)
         {
-            var g = new AgacGorsel { d = d, boy = d.id == GelisimAgaci.Merkez ? 72f : (d.buyuk ? 56f : 46f) };
+            var g = new AgacGorsel { d = d, boy = d.id == GelisimAgaci.Merkez ? 72f : d.argeMerkez ? 64f : (d.buyuk || d.arge != null ? 56f : 46f) };
             Vector2 p = AgacYer(d.konum);
             g.halo = U.Gecirgen(agacTuval);
             float hb = g.boy + 22f;
             Mutlak(g.halo, p.x - hb / 2f, p.y - hb / 2f, hb, hb);
-            Cerceve(g.halo, 0, Color.clear, d.buyuk ? 22f : 30f);
+            Cerceve(g.halo, 0, Color.clear, d.buyuk || d.ArGeDugumu ? 22f : 30f);
             g.halo.style.backgroundColor = U.A(AgYesil, 0.35f);
 
             g.kok = U.El(agacTuval);
@@ -342,7 +345,7 @@ namespace KuryeTycoon
             g.kok.style.alignItems = Align.Center;
             g.kok.style.justifyContent = Justify.Center;
             g.kok.style.transformOrigin = new TransformOrigin(Length.Percent(50), Length.Percent(50));
-            Cerceve(g.kok, 3, AgGri, d.buyuk ? 14f : 23f);
+            Cerceve(g.kok, 3, AgGri, d.buyuk || d.ArGeDugumu ? 14f : 23f);
             g.kok.style.backgroundColor = AgZemin;
             g.kok.pickingMode = PickingMode.Position;
             g.ikon = U.Simge(g.kok, d.simge, Color.white, g.boy * 0.55f);
@@ -387,6 +390,18 @@ namespace KuryeTycoon
             var up = UpgradeManager.I;
             var e = EconomyManager.I;
             if (!GelisimAgaci.Acik(d)) return AgDurum.Gizli;
+            if (d.argeMerkez) return AgDurum.Merkez;
+            if (d.arge != null)
+            {
+                var a = ArGe.I;
+                var p = ArGe.Bul(d.arge);
+                if (a == null || p == null) return AgDurum.Kilit;
+                if (a.Tamam(p.id)) return AgDurum.Max;
+                if (a.aktif == p.id || a.Sira.Contains(p.id)) return AgDurum.Surer;
+                if (a.Engel(p).Length > 0) return AgDurum.Kilit;
+                // Bir proje sürerken yeni proje sıraya girer, bedeli sırası gelince ödenir: para şimdi gerekmez
+                return !string.IsNullOrEmpty(a.aktif) || e.FreeCash >= p.bedel ? AgDurum.Alinir : AgDurum.Pahali;
+            }
             if (d.buyuk)
             {
                 int lv = up.Level(d.kind), mx = UpgradeManager.Def(d.kind).MaxLevel;
@@ -402,11 +417,18 @@ namespace KuryeTycoon
         int AgacSeviye(AgacDugum d, out int mx)
         {
             if (d.buyuk) { mx = UpgradeManager.Def(d.kind).MaxLevel; return UpgradeManager.I.Level(d.kind); }
+            if (d.argeMerkez) { mx = ArGe.Projeler.Count; return ArGe.I != null ? ArGe.I.TamamSayisi : 0; }
             mx = 1;
             return GelisimAgaci.Sahip(d.id) ? 1 : 0;
         }
 
-        long AgacBedel(AgacDugum d) => d.buyuk ? UpgradeManager.I.NextCost(d.kind) : (GelisimAgaci.Sahip(d.id) ? -1 : d.bedel);
+        long AgacBedel(AgacDugum d)
+        {
+            if (d.buyuk) return UpgradeManager.I.NextCost(d.kind);
+            if (d.argeMerkez) return -1;
+            if (d.arge != null) return GelisimAgaci.Sahip(d.id) ? -1 : (ArGe.Bul(d.arge)?.bedel ?? -1);
+            return GelisimAgaci.Sahip(d.id) ? -1 : d.bedel;
+        }
 
         void AgacDurumYenile()
         {
@@ -423,15 +445,29 @@ namespace KuryeTycoon
                     if (!agacIlkYenileme) g.acilma = t;   // ilk açılışta efekt yok, sonradan açılanda var
                 }
                 Color c = yeni == AgDurum.Max ? AgYesil : yeni == AgDurum.Alinir ? AgBeyaz : yeni == AgDurum.Pahali ? AgKirmizi
-                        : yeni == AgDurum.Merkez ? UITheme.Accent : AgGri;
+                        : yeni == AgDurum.Surer ? GelisimAgaci.DalRenkleri[4]
+                        : yeni == AgDurum.Merkez ? (g.d.argeMerkez ? GelisimAgaci.DalRenkleri[4] : (Color)UITheme.Accent) : AgGri;
                 CerceveRengi(g.kok, c);
                 U.Zemin(g.kok, gizli ? AgGizliZemin : AgZemin);
                 int lv = AgacSeviye(g.d, out int mx);
-                string sv = gizli ? "" : g.d.buyuk && lv > 0 ? $"{lv}/{mx}" : (!g.d.buyuk && lv > 0 ? "alındı" : "");
+                string sv = gizli ? "" : g.d.ArGeDugumu ? ArGeEtiketi(g.d, lv, mx)
+                          : g.d.buyuk && lv > 0 ? $"{lv}/{mx}" : (!g.d.buyuk && lv > 0 ? "alındı" : "");
                 U.Metin(g.seviye, sv);
             }
             agacIlkYenileme = false;
             agacCizgi.MarkDirtyRepaint();
+        }
+
+        /// <summary>Ar-Ge düğümünün altındaki küçük yazı: laboratuvarda tamamlanan sayısı, projede yüzde / sırada / tamam.</summary>
+        static string ArGeEtiketi(AgacDugum d, int lv, int mx)
+        {
+            var a = ArGe.I;
+            if (a == null) return "";
+            if (d.argeMerkez) return a.Aktif != null ? $"%{a.Oran * 100f:0} · {lv}/{mx}" : $"{lv}/{mx}";
+            if (lv > 0) return "tamam";
+            if (a.aktif == d.arge) return $"%{a.Oran * 100f:0}";
+            if (a.Sira.Contains(d.arge)) return "sırada";
+            return "";
         }
 
         // ------------------------------------------------------------------ bilgi kutusu
@@ -466,6 +502,12 @@ namespace KuryeTycoon
             }
             U.Goster(agacBar, true);
             int lv = AgacSeviye(d, out int mx);
+            if (d.ArGeDugumu)
+            {
+                ArGeBilgiYaz(d, lv, mx);
+                AgacBarYaz();
+                return;
+            }
             if (d.buyuk)
             {
                 var def = UpgradeManager.Def(d.kind);
@@ -491,6 +533,47 @@ namespace KuryeTycoon
             AgacBarYaz();
         }
 
+        void ArGeBilgiYaz(AgacDugum d, int lv, int mx)
+        {
+            var a = ArGe.I;
+            var gri = AgRenk(169, 179, 188, 255);
+            U.Renk(agacBilgiAlt, gri);
+            if (a == null) return;
+            if (d.argeMerkez)
+            {
+                var ak = a.Aktif;
+                U.Metin(agacBilgiAd, "AR-GE LABORATUVARI");
+                U.Metin(agacBilgiDeger, ak != null ? $"{ak.ad}: %{a.Oran * 100f:0}" : "Araştırma yok");
+                U.Metin(agacBilgiAcik, "Araştırma projeleri: bedeli peşin, oyun günleriyle ilerler, bitince kalıcı etki. Oyun kapalıyken de ilerler " +
+                                       $"(gerçek her saat {ArGe.CevrimdisiGunSaatBasi:0.#} oyun günü). Aynı anda bir proje; {ArGe.SiraSiniri} proje sıraya konabilir." +
+                                       (a.Sira.Count > 0 ? $"\nSırada: {string.Join(", ", a.Sira.ConvertAll(x => ArGe.Bul(x)?.ad ?? x))}" : ""));
+                U.Metin(agacBilgiSeviye, $"TAMAMLANAN: {lv} / {mx} · harcanan {Ft(a.harcanan)}");
+                U.Metin(agacBilgiAlt, ak != null ? $"{a.KalanGun:0.#} gün kaldı" : "Aşağıdaki projelerden birine tıkla");
+                return;
+            }
+            var p = ArGe.Bul(d.arge);
+            if (p == null) return;
+            U.Metin(agacBilgiAd, p.ad.ToUpper());
+            U.Metin(agacBilgiDeger, p.etki);
+            string once = "";
+            if (p.onKosul.Length > 0)
+            {
+                var adlar = new List<string>();
+                foreach (var k in p.onKosul) adlar.Add((a.Tamam(k) ? "✓ " : "") + ArGe.Bul(k).ad);
+                once = $"\nÖnce: {string.Join(", ", adlar)}";
+            }
+            U.Metin(agacBilgiAcik, p.aciklama + once);
+            bool tamam = a.Tamam(p.id), aktif = a.aktif == p.id, sirada = a.Sira.Contains(p.id);
+            U.Metin(agacBilgiSeviye, tamam ? "TAMAMLANDI" : aktif ? "ARAŞTIRILIYOR" : sirada ? "SIRADA" : $"{p.gun:0} OYUN GÜNÜ");
+            string engel = tamam || aktif || sirada ? "" : a.Engel(p);
+            U.Metin(agacBilgiAlt, tamam ? "Kalıcı etki açık"
+                               : aktif ? $"{a.KalanGun:0.#} gün kaldı"
+                               : sirada ? "Bedeli sırası gelince ödenir · tıkla: sıradan çıkar"
+                               : engel.Length > 0 ? $"Kilitli: {engel}"
+                               : !string.IsNullOrEmpty(a.aktif) ? "Tıkla: sıraya ekle (bedeli sırası gelince)" : "Tıkla: araştırmayı başlat");
+            if (engel.Length > 0) U.Renk(agacBilgiAlt, U.Uyari);
+        }
+
         static string AgacBonusMetni(AgacDugum d)
         {
             float simdi = GelisimAgaci.Bonus(d.tip);
@@ -509,7 +592,13 @@ namespace KuryeTycoon
             long bedel = AgacBedel(g.d);
             long serbest = EconomyManager.I.FreeCash;
             float dol; string yazi; Color renk;
-            if (bedel < 0) { dol = 1f; yazi = "En üst seviye"; renk = AgRenk(47, 90, 51, 255); }
+            var ag = ArGe.I;
+            bool argeSurer = ag != null && (g.d.argeMerkez ? ag.Aktif != null : g.d.arge != null && ag.aktif == g.d.arge);
+            bool argeSirada = ag != null && g.d.arge != null && ag.Sira.Contains(g.d.arge);
+            if (argeSurer) { dol = ag.Oran; yazi = $"Araştırılıyor %{ag.Oran * 100f:0} · {ag.KalanGun:0.#} gün"; renk = U.A(GelisimAgaci.DalRenkleri[4], 0.55f); }
+            else if (argeSirada) { dol = 0f; yazi = $"Sırada · {Ft(bedel)} sırası gelince"; renk = AgGri; }
+            else if (g.d.argeMerkez) { dol = 0f; yazi = "Araştırma yok"; renk = AgGri; }
+            else if (bedel < 0) { dol = 1f; yazi = g.d.arge != null ? "Tamamlandı" : "En üst seviye"; renk = AgRenk(47, 90, 51, 255); }
             else if (g.durum == AgDurum.Kilit) { dol = 0f; yazi = $"Kilitli · {Ft(bedel)}"; renk = AgGri; }
             else
             {
@@ -533,6 +622,7 @@ namespace KuryeTycoon
             AgacBilgiYaz();
             var d = g.d;
             float t = Time.unscaledTime;
+            if (d.argeMerkez) return;   // laboratuvar: yalnız bilgi
             switch (g.durum)
             {
                 case AgDurum.Gizli:
@@ -546,6 +636,27 @@ namespace KuryeTycoon
                     return;
                 case AgDurum.Max:
                     return;
+                case AgDurum.Surer:
+                    // Sıradaki projeye tıklamak onu sıradan çıkarır; araştırılan proje durdurulamaz
+                    if (d.arge != null && ArGe.I != null && ArGe.I.Sira.Contains(d.arge)) { ArGe.I.SiradanCikar(d.arge); AgacDurumYenile(); AgacBilgiYaz(); }
+                    else g.sallanma = t;
+                    return;
+            }
+            if (d.arge != null)
+            {
+                var a = ArGe.I;
+                var p = ArGe.Bul(d.arge);
+                if (a == null || p == null || a.Engel(p).Length > 0) { g.sallanma = t; return; }
+                bool siraya = !string.IsNullOrEmpty(a.aktif);
+                if (siraya)
+                {
+                    if (a.Baslat(p)) AgacSatinAlindi(g); else g.sallanma = t;
+                    return;
+                }
+                ConfirmIfExpensive(p.bedel, "Ar-Ge",
+                    $"{p.ad}: {p.gun:0} oyun günü sürer, bitince {p.etki}. Bedel {Ft(p.bedel)} peşin. Serbest kasan {Ft(EconomyManager.I.FreeCash)}.",
+                    () => { if (a.Baslat(p)) AgacSatinAlindi(g); else { g.sallanma = Time.unscaledTime; agacBarFlas = Time.unscaledTime; } });
+                return;
             }
             if (d.buyuk)
             {
@@ -677,8 +788,8 @@ namespace KuryeTycoon
             if (!agacKayHazir && pw > 10f && ph > 10f)
             {
                 agacKayHazir = true;
-                agacZoom = Mathf.Clamp(Mathf.Min(pw / 1300f, ph / 900f), 0.5f, 1.2f);
-                agacKay = new Vector2(pw / 2f - AgacOrtaX * agacZoom, ph / 2f - AgacOrtaY * agacZoom);
+                agacZoom = Mathf.Clamp(Mathf.Min(pw / 1300f, ph / 1050f), 0.5f, 1.2f);
+                agacKay = new Vector2(pw / 2f - AgacOrtaX * agacZoom, ph / 2f - (AgacOrtaY + 110f) * agacZoom);   // Ar-Ge dalı da görünsün
             }
             agacTuval.style.left = agacKay.x;
             agacTuval.style.top = agacKay.y;

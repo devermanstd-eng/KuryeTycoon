@@ -153,7 +153,7 @@ namespace KuryeTycoon
 
         static int KucukDugumToplam
         {
-            get { int n = 0; foreach (var d in GelisimAgaci.Dugumler) if (!d.buyuk && d.id != GelisimAgaci.Merkez) n++; return n; }
+            get { int n = 0; foreach (var d in GelisimAgaci.Dugumler) if (!d.buyuk && !d.ArGeDugumu && d.id != GelisimAgaci.Merkez) n++; return n; }
         }
 
         static void B(string id, string kat, string ad, string aciklama, Func<bool> kosul, Func<float> ilerleme = null, Func<string> metin = null) =>

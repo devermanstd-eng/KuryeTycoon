@@ -40,8 +40,8 @@ namespace KuryeTycoon
             new MenuGroupDef
             {
                 label = "Şirket", title = "Şirket", icon = Icons.Kind.Finance,
-                tabs = new[] { Tab.Finans, Tab.Gelistirmeler, Tab.ArGe, Tab.Istatistik, Tab.Analitik },
-                tabLabels = new[] { "Finans", "Gelişim", "Ar-Ge", "Grafik", "Analitik" }
+                tabs = new[] { Tab.Finans, Tab.Gelistirmeler, Tab.Istatistik, Tab.Analitik },   // Ar-Ge gelişim ağacında (u71)
+                tabLabels = new[] { "Finans", "Gelişim", "Grafik", "Analitik" }
             },
             new MenuGroupDef { label = "Ayarlar", title = "Ayarlar", icon = Icons.Kind.Settings, tabs = new[] { Tab.Ayarlar }, tabLabels = new[] { "Ayarlar" } },
         };

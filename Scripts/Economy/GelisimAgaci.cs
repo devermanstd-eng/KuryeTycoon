@@ -18,26 +18,36 @@ namespace KuryeTycoon
         public long bedel;              // küçük düğüm (Ft, tek seferlik)
         public string ust;              // üst düğüm (null: merkeze bağlı, baştan açık)
         public Vector2 konum;           // ağaçtaki yeri (merkez 0,0; +y aşağı)
-        public int dal;                 // 0 Operasyon · 1 Kurye · 2 Müşteri ve dükkan · 3 Yeni iş kolları · -1 merkez
+        public int dal;                 // 0 Operasyon · 1 Kurye · 2 Müşteri ve dükkan · 3 Yeni iş kolları · 4 Ar-Ge · -1 merkez
         public Icons.Kind simge;
+        public string arge;             // Ar-Ge düğümü: ArGe.Proje kimliği (u71)
+        public bool argeMerkez;         // Ar-Ge laboratuvarı: dalın merkezi, hep sahip (u71)
 
-        public string Ad => buyuk ? UpgradeManager.Def(kind).name : ad;
+        /// <summary>Ar-Ge dalının düğümü (laboratuvar ya da proje): küçük bonus değil, kendi kuralları ArGe'de.</summary>
+        public bool ArGeDugumu => arge != null || argeMerkez;
+
+        public string Ad => buyuk ? UpgradeManager.Def(kind).name
+                          : argeMerkez ? "Ar-Ge laboratuvarı"
+                          : arge != null ? (ArGe.Bul(arge)?.ad ?? arge) : ad;
     }
 
     /// <summary>
-    /// Gelişim ağacı (incremental oyunlardaki gibi ortadan dışa yayılan ağaç). Merkezde merkez ofis; dört dal: Operasyon,
-    /// Kurye, Müşteri ve dükkan, Yeni iş kolları. Büyük düğümler mevcut geliştirmeler (seviyeli), aralarındaki küçük düğümler
-    /// ucuz, tek seferlik bonuslar. Bir düğüm ancak üst düğümü alınınca görünür ("?" açılır) ve alınabilir; büyük düğümün
+    /// Gelişim ağacı (incremental oyunlardaki gibi ortadan dışa yayılan ağaç). Merkezde merkez ofis; beş dal: Operasyon,
+    /// Kurye, Müşteri ve dükkan, Yeni iş kolları, Ar-Ge. Büyük düğümler mevcut geliştirmeler (seviyeli), aralarındaki küçük düğümler
+    /// ucuz, tek seferlik bonuslar. Ar-Ge dalı (u71, eskiden ayrı "Ar-Ge" sekmesi): aşağıda Ar-Ge laboratuvarından çıkan araştırma
+    /// projeleri; bedel peşin, oyun günleriyle ilerler, bir proje araştırılırken iki proje sıraya konabilir (kurallar ArGe'de). Bir düğüm ancak üst düğümü alınınca görünür ("?" açılır) ve alınabilir; büyük düğümün
     /// eski kilitleri (bölge, ofis) de geçerli (UpgradeManager.LockReason ağaç kilidini de sorar).
     /// Küçük bonusların toplamı sınırlı tutuldu: komisyon +%8, sipariş +%9, kurye hızı +%4, başvuru +%13, moral +3 puan.
     /// </summary>
     public static class GelisimAgaci
     {
         public const string Merkez = "merkez";
-        public static readonly string[] DalAdlari = { "Operasyon", "Kurye", "Müşteri ve dükkan", "Yeni iş kolları" };
+        public const string ArGeLab = "arge";
+        public static readonly string[] DalAdlari = { "Operasyon", "Kurye", "Müşteri ve dükkan", "Yeni iş kolları", "Ar-Ge" };
         public static readonly Color[] DalRenkleri =
         {
-            new Color32(76, 195, 255, 255), new Color32(126, 217, 87, 255), new Color32(255, 180, 84, 255), new Color32(232, 138, 210, 255)
+            new Color32(76, 195, 255, 255), new Color32(126, 217, 87, 255), new Color32(255, 180, 84, 255), new Color32(232, 138, 210, 255),
+            new Color32(170, 150, 255, 255)
         };
 
         public static readonly List<AgacDugum> Dugumler = new List<AgacDugum>();
@@ -51,6 +61,10 @@ namespace KuryeTycoon
             Ekle(new AgacDugum { id = id, ad = ad, tip = t, miktar = m, bedel = bedel, ust = ust, konum = new Vector2(x, y), dal = dal, simge = s });
 
         static AgacDugum Ekle(AgacDugum d) { Dugumler.Add(d); sozluk[d.id] = d; return d; }
+
+        /// <summary>Ar-Ge proje düğümü (kimliği "arge_" + proje). ust: ağaçtaki çizgisi (projenin ilk ön koşulu ya da laboratuvar).</summary>
+        static AgacDugum A(string proje, string ust, float x, float y, Icons.Kind s) =>
+            Ekle(new AgacDugum { id = "arge_" + proje, arge = proje, ust = ust, konum = new Vector2(x, y), dal = 4, simge = s });
 
         static GelisimAgaci()
         {
@@ -90,6 +104,19 @@ namespace KuryeTycoon
             B("kargo", UpgradeKind.Kargo, null, 0, 160, 3, Icons.Kind.Car);
             B("isletme", UpgradeKind.Isletme, null, 130, 310, 3, Icons.Kind.Basket);
             K("k_komisyon4", "+%2 komisyon", BonusTip.Komisyon, 0.02f, 300000, "kargo", 0, 290, 3, Icons.Kind.Coins);
+            // Ar-Ge (en aşağıda; u71): laboratuvar baştan açık, projeler ön koşul sırasıyla. Çizgi ilk ön koşula gider;
+            // birden çok ön koşulu olan projenin (drone, drone filosu) öteki koşulu bilgi kutusunda yazar ve ArGe kuralı uygular.
+            Ekle(new AgacDugum { id = ArGeLab, argeMerkez = true, konum = new Vector2(-260, 440), dal = 4, simge = Icons.Kind.Upgrades });
+            A("rota", ArGeLab, -90, 520, Icons.Kind.Flag);
+            A("termal", ArGeLab, -430, 440, Icons.Kind.Basket);
+            A("batarya", ArGeLab, -330, 580, Icons.Kind.Bolt);
+            A("talep", "arge_rota", 70, 470, Icons.Kind.Chart);
+            A("uygulama2", "arge_rota", -90, 640, Icons.Kind.Phone);
+            A("uzaktan", "arge_uygulama2", 70, 640, Icons.Kind.Clock);
+            A("fiyat", "arge_talep", 240, 440, Icons.Kind.Coins);
+            A("bulut", "arge_talep", 240, 560, Icons.Kind.Settings);
+            A("drone", "arge_batarya", -330, 700, Icons.Kind.Scooter);
+            A("drone2", "arge_bulut", 400, 560, Icons.Kind.Equipment);
         }
 
         public static AgacDugum Bul(string id) => id != null && sozluk.TryGetValue(id, out var d) ? d : null;
@@ -106,13 +133,22 @@ namespace KuryeTycoon
         {
             var d = Bul(id);
             if (d == null) return false;
-            if (d.id == Merkez) return true;
+            if (d.id == Merkez || d.argeMerkez) return true;
             if (d.buyuk) return UpgradeManager.I != null && UpgradeManager.I.Level(d.kind) > 0;
+            if (d.arge != null) return ArGe.I != null && ArGe.I.Tamam(d.arge);
             return alinan.Contains(id);
         }
 
-        /// <summary>Düğüm görünüyor mu (üst düğümü alınmış ya da merkeze bağlı).</summary>
-        public static bool Acik(AgacDugum d) => d.ust == null || Sahip(d.ust);
+        /// <summary>Düğüm görünüyor mu (üst düğümü alınmış ya da merkeze bağlı; Ar-Ge'de üst proje araştırılıyor ya da sıradaysa da).</summary>
+        public static bool Acik(AgacDugum d) => d.ust == null || Sahip(d.ust) || ArGeSurer(d.ust);
+
+        /// <summary>Ar-Ge düğümünün projesi araştırılıyor ya da sırada.</summary>
+        public static bool ArGeSurer(string id)
+        {
+            var d = Bul(id);
+            if (d == null || d.arge == null || ArGe.I == null) return false;
+            return ArGe.I.aktif == d.arge || ArGe.I.Sira.Contains(d.arge);
+        }
 
         /// <summary>UpgradeManager.LockReason için: ilk seviye ancak üst düğüm alınınca.</summary>
         public static string UstKilidi(UpgradeKind k, int hedefSeviye)
@@ -143,6 +179,7 @@ namespace KuryeTycoon
         public static string KucukEngeli(AgacDugum d)
         {
             if (d == null || d.buyuk) return "";
+            if (d.ArGeDugumu) return "Ar-Ge projesi";   // küçük bonus değil (ArGe.Engel)
             if (alinan.Contains(d.id)) return "alındı";
             if (!Acik(d)) return $"önce \"{Bul(d.ust).Ad}\" al";
             return "";
@@ -167,7 +204,7 @@ namespace KuryeTycoon
         {
             alinan.Clear();
             if (ids == null) return;
-            foreach (var id in ids) { var d = Bul(id); if (d != null && !d.buyuk) alinan.Add(id); }
+            foreach (var id in ids) { var d = Bul(id); if (d != null && !d.buyuk && !d.ArGeDugumu) alinan.Add(id); }
         }
 
         /// <summary>Merkezden düğüme giden yol (efekt: satın alınca ışık bu yoldan akar).</summary>
