@@ -17,7 +17,7 @@ namespace KuryeTycoon
         public int yenilenen, imzalanan;   // tuttuğu ve yeni getirdiği dükkan sayısı
         // u68 (sonsuz büyüme): otomatik dükkan yatırımı, kart kararları ve hücum yeteneği (eski kayıtlarda varsayılanlar)
         public bool otoYatirim = true;
-        public int yatirimYuzde = 20;      // serbest kasanın günde en çok yüzde kaçı bölgenin dükkan seviyelerine
+        public int yatirimYuzde = 10;      // serbest kasanın günde en çok yüzde kaçı bölgenin dükkan seviyelerine (u70: 20 → 10)
         public int yatirimSayisi;          // aldığı dükkan seviyesi
         public long yatirimToplam;
         public int kartKarari;             // senin yerine karar verdiği kart
@@ -58,7 +58,7 @@ namespace KuryeTycoon
         public const float HucumSuresiDk = 120f;
         public const float HucumCarpanDegeri = 1.5f;
         public const int HucumBeklemeGun = 2;
-        public const int KartRaporuIcinMudur = 3;   // bu kadar müdür varken gün sonu raporu kart olarak açılmaz
+        public const int KartRaporuIcinMudur = 2;   // u70: 3 → 2   // bu kadar müdür varken gün sonu raporu kart olarak açılmaz
         const long TabanMaas = 350000;
 
         public readonly List<BolgeMuduru> Mudurler = new List<BolgeMuduru>();
@@ -267,13 +267,13 @@ namespace KuryeTycoon
 
         /// <summary>
         /// Otomatik dükkan yatırımı (u68): serbest kasanın yatirimYuzde'si kadarını bölgedeki en ucuz dükkan seviyelerine yatırır
-        /// (en çok 20 seviye). Kasada bir haftalık sabit gider kadar para hep kalır.
+        /// (en çok 20 seviye). Kasada iki haftalık sabit gider kadar para hep kalır (u70; önce bir hafta).
         /// </summary>
         string OtoYatirim(BolgeMuduru m)
         {
             if (!m.otoYatirim || m.yatirimYuzde <= 0 || EconomyManager.I == null || UpgradeManager.I == null) return null;
             if (!DukkanSeviyesi.Acik || !DukkanSeviyesi.KuryeYetiyor) return null;   // kurye yetmiyorsa sipariş katlanmaz
-            long rezerv = 7L * (UpgradeManager.I.TotalDailyCost + GunlukToplamMaas);
+            long rezerv = 14L * (UpgradeManager.I.TotalDailyCost + GunlukToplamMaas);
             long serbest = EconomyManager.I.FreeCash - rezerv;
             if (serbest <= 0) return null;
             long butce = serbest * m.yatirimYuzde / 100;
@@ -352,13 +352,37 @@ namespace KuryeTycoon
             if (Mudurler.Count == 0 || e == null || string.IsNullOrEmpty(e.title) || CityMap.I == null) return false;
             string t = e.title;
 
-            if (t.StartsWith("Gün sonu raporu") && Mudurler.Count >= KartRaporuIcinMudur && Mudurler.Count * 2 > CityMap.I.UnlockLevel)
+            if (t.StartsWith("Gün sonu raporu") && Mudurler.Count >= KartRaporuIcinMudur)
             {
                 Telemetry.Add("Müdür kararı: Gün sonu raporu");
                 string ozet = "";
                 if (e.ozet != null)
                     foreach (var o in e.ozet) ozet += (ozet.Length > 0 ? " · " : "") + $"{o.baslik} {o.deger}";
                 EventManager.I.Notify(t + (ozet.Length > 0 ? ": " + ozet : "") + " (bölge müdürleri raporu okudu, ayrıntı İstatistik'te).");
+                return true;
+            }
+
+            // Kurye kaynaklı iade (u70): siparişin dükkanının bölgesinde müdür varsa o karar verir. Kural: iade kuryeden düşülür;
+            // kuryenin morali düşükse (0,5 altı) şirket üstlenir.
+            if (t == "Eksik teslimat (kurye)" || t == "Hasarlı sipariş")
+            {
+                var ds = DukkanMetinde(e.body);
+                var km = ds != null ? MuduruOf(CityMap.RegionOf(ds.tile)) : null;
+                if (km == null) return false;
+                Courier kurye = null;
+                if (CourierManager.I != null && e.body != null)
+                    foreach (var c in CourierManager.I.Couriers)
+                        if (!string.IsNullOrEmpty(c.courierName) && e.body.Contains(c.courierName) &&
+                            (kurye == null || c.courierName.Length > kurye.courierName.Length)) kurye = c;
+                bool sirket = kurye != null && kurye.morale < 0.5f;
+                int ks = Secenek(e, sirket ? "şirket karşılasın" : "kuryeden düş");
+                if (ks < 0) return false;
+                var ksec = e.choices[ks];
+                km.kartKarari++;
+                Telemetry.Add("Müdür kararı: " + t);
+                EventManager.I.Notify($"{km.ad} ({CityMap.DistrictNames[km.bolge]} müdürü) senin yerine karar verdi: {t} → {ksec.label} · " +
+                                      (sirket ? $"{kurye.ShortName}'ın morali düşük ({kurye.morale:0.00})" : "kural: kurye kaynaklı iade kuryeden düşülür") + ".");
+                ksec.action?.Invoke();
                 return true;
             }
 

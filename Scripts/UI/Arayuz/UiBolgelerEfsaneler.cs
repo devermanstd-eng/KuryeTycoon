@@ -41,7 +41,7 @@ namespace KuryeTycoon
                          "gelince kart açmadan karar verir (mevcut şartlarla tutar ya da teklife eşitler) ve istersen yeni dükkanlarla anlaşır " +
                          "(kasada bedelin 3 katı varsa). Görevde kaldıkça deneyim kazanır (5 seviye). Maaşı her gün ödenir; atarken bir aylık maaş işe alım bedeli. " +
                          "Ayrıca bölgedeki dükkanların komisyon kartlarında senin yerine karar verir, istersen her sabah dükkan ortaklık seviyelerine yatırım yapar " +
-                         "ve iki günde bir 2 saatlik sipariş hücumu başlatabilir. Üç ve daha çok müdür varken gün sonu raporu kart olarak açılmaz.");
+                         "ve iki günde bir 2 saatlik sipariş hücumu başlatabilir. Kurye kaynaklı iade kartlarını da o karara bağlar. İki ve daha çok müdür varken gün sonu raporu kart olarak açılmaz.");
                 if (!BolgeMudurleri.Acik) { y.Uyari("İkinci bölge açılınca müdür atayabilirsin (Gelişim > yeni bölge)."); return; }
 
                 y.KutularBasla();

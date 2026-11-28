@@ -136,7 +136,7 @@ namespace KuryeTycoon
     /// <summary>
     /// Filo merkezleri (28.11, u68). En büyük platform paketlerinin üstünde sınırsız kurye kapasitesi: 100 hesaplık paketten (Büyük şehir)
     /// sonra her açık bölgede bir filo merkezi kurulup büyütülebilir. Her seviye +6 kurye hesabı (merkezin kayıt, ekipman ve vardiya
-    /// kapasitesi), bedeli bütün merkezlerin toplam seviyesiyle ×1,15 büyür; her seviyenin günlük kirası 16 000 Ft (40 €).
+    /// kapasitesi), bedeli bütün merkezlerin toplam seviyesiyle ×1,07 büyür (u70; ilk sürümde ×1,15); her seviyenin günlük kirası 16 000 Ft (40 €).
     /// Platform paketleri (Denizhan'ın 26.11 eğrisi) aynen kalır: paketler kurye başına daha ucuzdur, filo merkezi onların üstündeki
     /// sınırsız kuyruk ve ofis/hub kilitlerine takılınca alternatif yol.
     /// </summary>
@@ -144,7 +144,7 @@ namespace KuryeTycoon
     {
         public const int HesapPerSeviye = 6;
         public const long TabanBedel = 4000000;          // 10 000 €
-        public const float BedelBuyume = 1.15f;
+        public const float BedelBuyume = 1.07f;          // u70: 1,15 → 1,07 (10 M € testinde 32 seviye ~5,8 M € tuttu)
         public const long SeviyeGunlukGider = 16000;     // 40 €
         public const int GerekenPlatform = 8;            // Büyük şehir (100 hesap)
 
